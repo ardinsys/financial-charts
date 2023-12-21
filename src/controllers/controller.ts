@@ -308,6 +308,19 @@ export abstract class ChartController<TOptions> {
     return this.contexts.get(type)!;
   }
 
+  protected getVisibleTimeRange(): TimeRange {
+    const ctx = this.getContext("main");
+    const pixelPerSecond =
+      ctx.canvas.width / (this.timeRange.end - this.timeRange.start);
+
+    const timeRange = this.dataExtent.getXMax() - this.dataExtent.getXMin();
+    const visibleTimeRange = timeRange / this.zoomLevel;
+    const startTime =
+      this.dataExtent.getXMin() + this.panOffset / pixelPerSecond;
+    const endTime = startTime + visibleTimeRange;
+    return { start: startTime, end: endTime };
+  }
+
   public draw(data: ChartData[]) {
     this.data = this.transformData(data);
     this.dataExtent = this.createDataExtent(this.data, this.timeRange);

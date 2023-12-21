@@ -55,8 +55,7 @@ export class CandlestickDataExtent extends DataExtent {
   }
 
   public addDataPoint(data: ChartData) {
-    const time =
-      typeof data.time === "number" ? data.time : new Date(data.time).getTime();
+    const time = data.time;
 
     let changed = time > this.xMax || time < this.xMin;
 

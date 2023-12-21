@@ -37,17 +37,17 @@ onMounted(() => {
     {
       time: nineam.getTime() + 1000 * 60 * 15,
       open: 10,
-      high: 16,
+      high: 15,
       low: 8,
       close: 15,
     },
-    {
-      time: nineam.getTime() + 1000 * 60 * 30,
-      open: 15,
-      high: 17,
-      low: 11,
-      close: 12,
-    },
+    // {
+    //   time: nineam.getTime() + 1000 * 60 * 30,
+    //   open: 15,
+    //   high: 17,
+    //   low: 11,
+    //   close: 12,
+    // },
     // 2. candle
     {
       time: nineam.getTime() + 1000 * 60 * 45,

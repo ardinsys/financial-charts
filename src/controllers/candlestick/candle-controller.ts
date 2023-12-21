@@ -41,6 +41,9 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
   }
 
   private drawYAxis(): void {
+    const priceFormat = new Intl.NumberFormat("hu", {
+      maximumFractionDigits: 2,
+    });
     const ctx = this.getContext("y-label");
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.fillStyle = "white";
@@ -52,19 +55,36 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 
-    const yAxisValues = this.dataExtent.getYAxisValues(ctx, 30);
+    const padding = 60;
 
-    for (const value of yAxisValues) {
-      const { y } = this.dataExtent.mapToPixel(
-        this.timeRange.start,
+    const yAxisValues: number[] = [];
+    const availableHeight = ctx.canvas.height;
+    const priceRange =
+      this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
+    const numberOfLines = Math.floor(availableHeight / padding);
+
+    for (let i = 0; i <= numberOfLines; i++) {
+      const y = availableHeight * (i / numberOfLines);
+      const price =
+        this.visibleExtent.getYMax() - priceRange * (y / availableHeight);
+      yAxisValues.push(price);
+    }
+
+    for (let i = 0; i < yAxisValues.length; i++) {
+      const value = yAxisValues[i];
+      const { y } = this.visibleExtent.mapToPixel(
+        this.getVisibleTimeRange().start,
         value,
         ctx.canvas,
         this.zoomLevel,
         this.panOffset
       );
 
-      ctx.fillText(value.toFixed(2), ctx.canvas.width - 5, y);
-
+      ctx.fillText(
+        priceFormat.format(value),
+        ctx.canvas.width - 5,
+        y + (i == 0 ? 8 : i == numberOfLines ? -8 : 0)
+      );
       const mainCtx = this.getContext("main");
 
       mainCtx.lineWidth = 1;
@@ -192,16 +212,47 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
     }
   }
 
+  private visibleExtent: DataExtent = new CandlestickDataExtent([], {
+    start: 0,
+    end: 0,
+  });
+
   protected drawChart(): void {
     const ctx = this.getContext("main");
+    const pixelPerSecond =
+      ctx.canvas.width / (this.timeRange.end - this.timeRange.start);
+
+    const visibleTimeRange = this.getVisibleTimeRange();
+    let firstPointIndex = 0;
+    let lastPointIndex = this.data.length - 1;
+
+    for (let i = 0; i < this.data.length; i++) {
+      if (this.data[i].time >= visibleTimeRange.start - this.options.stepSize) {
+        firstPointIndex = i;
+        break;
+      }
+    }
+
+    for (let i = this.data.length - 1; i >= 0; i--) {
+      if (this.data[i].time <= visibleTimeRange.end) {
+        lastPointIndex = i;
+        break;
+      }
+    }
+
+    const visibleDataPoints = this.data.slice(
+      firstPointIndex,
+      lastPointIndex + 1
+    );
+    // Do not recalc xMin and xMax to preserve x positions
+    // but we need to adjust yMin and yMax to the visible data points
+    this.visibleExtent.recalculate(visibleDataPoints, this.timeRange);
 
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     this.drawYAxis();
     this.drawXAxis();
 
-    const pixelPerSecond =
-      ctx.canvas.width / (this.timeRange.end - this.timeRange.start);
     const candleSpacing =
       this.options.stepSize * pixelPerSecond * this.zoomLevel * this.spacing;
     const candleWidth =
@@ -209,12 +260,12 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
 
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 
-    for (let i = 0; i < this.data.length; i++) {
-      const point = this.data[i];
+    for (let i = 0; i < visibleDataPoints.length; i++) {
+      const point = visibleDataPoints[i];
       if (point.time < this.timeRange.start) continue;
       if (point.time > this.timeRange.end) break;
 
-      const { x } = this.dataExtent.mapToPixel(
+      const { x } = this.visibleExtent.mapToPixel(
         point.time,
         point.close!,
         ctx.canvas,
@@ -222,7 +273,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
         this.panOffset
       );
 
-      const high = this.dataExtent.mapToPixel(
+      const high = this.visibleExtent.mapToPixel(
         point.time,
         point.high!,
         ctx.canvas,
@@ -230,7 +281,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
         this.panOffset
       ).y;
 
-      const low = this.dataExtent.mapToPixel(
+      const low = this.visibleExtent.mapToPixel(
         point.time,
         point.low!,
         ctx.canvas,
@@ -238,7 +289,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
         this.panOffset
       ).y;
 
-      const open = this.dataExtent.mapToPixel(
+      const open = this.visibleExtent.mapToPixel(
         point.time,
         point.open!,
         ctx.canvas,
@@ -246,7 +297,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
         this.panOffset
       ).y;
 
-      const close = this.dataExtent.mapToPixel(
+      const close = this.visibleExtent.mapToPixel(
         point.time,
         point.close!,
         ctx.canvas,
@@ -280,14 +331,15 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
     }
   }
 
-  private isNewCandle = false;
+  private canDrawWithOptimization = false;
 
   protected drawNewChartPoint(_: ChartData): void {
-    if (this.isNewCandle) {
+    if (!this.canDrawWithOptimization) {
       this.drawChart();
-      this.isNewCandle = false;
       return;
     }
+
+    this.canDrawWithOptimization = false;
 
     const data = this.data[this.data.length - 1];
     const ctx = this.getContext("main");
@@ -433,7 +485,11 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
         close: d.close!,
       };
     } else {
-      this.isNewCandle = true;
+      const range = this.getVisibleTimeRange();
+      const inVisibleRange = d.time >= range.start && d.time <= range.end;
+      if (inVisibleRange) {
+        this.canDrawWithOptimization = !this.visibleExtent.addDataPoint(d);
+      }
       this.data.push(lastData);
       return d;
     }
