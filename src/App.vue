@@ -138,14 +138,16 @@ onMounted(() => {
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 70vh;
+      height: 100vh;
     "
   >
     <div
       style="
         background: white;
-        width: min(80%, 800px);
-        height: min(90vh, 400px);
+        width: min(80%, 1600px);
+        height: min(90vh, 900px);
+        /* width: 100%;
+        height: 100%; */
         position: relative;
         overflow: hidden;
         border-radius: 5px;
@@ -161,4 +163,8 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped></style>
+<style>
+body {
+  margin: 0;
+}
+</style>

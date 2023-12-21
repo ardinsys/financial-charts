@@ -202,7 +202,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
 
     const firstXEnd =
       this.dataExtent.mapToPixel(
-        this.xLabelStartX,
+        this.xLabelStartX + this.options.stepSize / 2,
         0,
         { width: canvasWidth, height: 0 } as HTMLCanvasElement,
         this.zoomLevel,
@@ -224,7 +224,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       );
       const textWidth = ctx.measureText(text).width;
 
-      if (x - textWidth / 2 - padding > firstXEnd + padding) {
+      if (x - textWidth / 2 > firstXEnd + padding) {
         stepSize = Math.abs(startTime - this.xLabelStartX);
         break;
       }
@@ -500,10 +500,8 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
     const closestDataPoint = this.data.reduce((prev, curr) =>
       Math.abs(curr.time - time) < Math.abs(prev.time - time) ? curr : prev
     );
-
     this.pointerTime = closestDataPoint.time;
     this.pointerY = Math.min(e.y, this.getContext("main").canvas.height);
-
     this.drawCorsshair();
   }
 
@@ -531,9 +529,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       this.zoomLevel,
       this.panOffset
     );
-
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
     ctx.strokeStyle = "#9598A1";
     ctx.lineWidth = 1;
     ctx.setLineDash([5, 6]);
@@ -543,7 +539,6 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
     ctx.moveTo(0, this.pointerY);
     ctx.lineTo(this.getContext("main").canvas.width, this.pointerY);
     ctx.stroke();
-
     const text = new Intl.DateTimeFormat("hu", {
       year: "numeric",
       month: "short",
@@ -551,12 +546,10 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       hour: "2-digit",
       minute: "2-digit",
     }).format(this.pointerTime);
-
     const textWidth = ctx.measureText(text).width;
     const textPadding = 10;
     const rectWidth = textWidth + textPadding * 2;
     const maxRectX = ctx.canvas.width - rectWidth;
-
     const rectX = Math.min(
       Math.max(x - textWidth / 2 - textPadding, 0),
       maxRectX
@@ -565,7 +558,6 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       Math.max(x - textWidth / 2, textPadding),
       maxRectX + textPadding
     );
-
     ctx.fillStyle = "#131722";
     ctx.rect(
       rectX,
@@ -573,10 +565,8 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       rectWidth,
       textPadding * 2 + 12
     );
-
     ctx.font = "12px monospace";
     ctx.fillStyle = "white";
-
     const price = this.visibleExtent.pixelToPoint(
       0,
       this.pointerY,
@@ -585,13 +575,10 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       this.panOffset
     ).price;
     const priceText = new Intl.NumberFormat("hu").format(price); // adjust the number of decimal places as needed
-
     const priceRectWidth = this.getContext("y-label").canvas.width;
     const priceMaxRectX = ctx.canvas.width - priceRectWidth;
-
     const priceRectX = priceMaxRectX;
     const priceTextX = priceMaxRectX + 10;
-
     ctx.fillStyle = "#131722";
     ctx.rect(
       priceRectX,
@@ -599,9 +586,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       priceRectWidth,
       textPadding + 12
     );
-
     ctx.fill();
-
     ctx.fillStyle = "white";
     ctx.fillText(
       text,
