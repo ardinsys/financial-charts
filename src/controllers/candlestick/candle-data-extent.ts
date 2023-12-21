@@ -11,7 +11,7 @@ export class CandlestickDataExtent extends DataExtent {
     padding: number
   ): number[] {
     const xAxisValues: number[] = [];
-    const availableWidth = ctx.canvas.width - 60;
+    const availableWidth = ctx.canvas.width - 80;
     const timeRange = this.xMax - this.xMin;
     const numberOfPoints = Math.floor(availableWidth / padding);
 

@@ -17,6 +17,10 @@ export abstract class ChartController<TOptions> {
   protected panOffset = 0;
   protected timeRange: TimeRange;
   protected dataExtent!: DataExtent;
+
+  protected yLabelWidth = 80;
+  protected xLabelHeight = 30;
+
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
   private resizeObserver: ResizeObserver;
@@ -54,6 +58,14 @@ export abstract class ChartController<TOptions> {
       this.lastPointerPosition = undefined;
       this.lastTouchDistance = undefined;
       this.isPanning = false;
+      requestAnimationFrame(() => {
+        this.getContext("crosshair").clearRect(
+          0,
+          0,
+          topCanvas.width,
+          topCanvas.height
+        );
+      });
     });
     this.resizeObserver = new ResizeObserver(() => {
       this.resizeCanvases();
@@ -109,14 +121,14 @@ export abstract class ChartController<TOptions> {
       );
       requestAnimationFrame(() => this.drawChart());
       this.lastPointerPosition = { x: event.clientX };
-    } else {
-      requestAnimationFrame(() =>
-        this.pointerMove({
-          x: event.clientX,
-          y: event.clientY,
-        })
-      );
     }
+    requestAnimationFrame(() => {
+      const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
+      this.pointerMove({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      });
+    });
   };
 
   private adjustZoomLevel(zoomFactor: number) {
@@ -136,7 +148,7 @@ export abstract class ChartController<TOptions> {
     const oldPoint = this.dataExtent.pixelToPoint(
       offsetX,
       0,
-      this.getCanvas("main"),
+      this.getContext("main").canvas,
       this.zoomLevel,
       this.panOffset
     );
@@ -146,7 +158,7 @@ export abstract class ChartController<TOptions> {
     const newPixelPoint = this.dataExtent.mapToPixel(
       oldPoint.time,
       oldPoint.price,
-      this.getCanvas("main"),
+      this.getContext("main").canvas,
       this.zoomLevel,
       this.panOffset
     );
@@ -161,8 +173,13 @@ export abstract class ChartController<TOptions> {
       )
     );
 
-    requestAnimationFrame(() => this.drawChart());
+    requestAnimationFrame(() => {
+      this.drawChart();
+      this.onZoom();
+    });
   };
+
+  protected onZoom() {}
 
   private onTouchStart = (event: TouchEvent) => {
     if (event.touches.length === 1) {
@@ -231,18 +248,20 @@ export abstract class ChartController<TOptions> {
 
     if (type === "y-label") {
       canvas.style.right = "0px";
-      canvas.width = 60;
-    } else if (type === "x-label") {
+      canvas.width = this.yLabelWidth;
+    } else if (type === "x-label" || type === "crosshair") {
       canvas.width = this.container.offsetWidth;
     } else {
-      canvas.width = this.container.offsetWidth - 60; // subtract yLabel width
+      canvas.width = this.container.offsetWidth - this.yLabelWidth; // subtract yLabel width
     }
 
     if (type === "x-label") {
       canvas.style.bottom = "0px";
-      canvas.height = 40;
+      canvas.height = this.xLabelHeight;
+    } else if (type === "crosshair") {
+      canvas.height = this.container.offsetHeight;
     } else {
-      canvas.height = this.container.offsetHeight - 40; // subtract xLabel height
+      canvas.height = this.container.offsetHeight - this.xLabelHeight; // subtract xLabel height
     }
 
     return canvas;
@@ -261,18 +280,20 @@ export abstract class ChartController<TOptions> {
 
         if (type === "y-label") {
           canvas.style.right = "0px";
-          canvas.width = 60;
-        } else if (type === "x-label") {
+          canvas.width = this.yLabelWidth;
+        } else if (type === "x-label" || type === "crosshair") {
           canvas.width = this.container.offsetWidth;
         } else {
-          canvas.width = this.container.offsetWidth - 60; // subtract yLabel width
+          canvas.width = this.container.offsetWidth - this.yLabelWidth; // subtract yLabel width
         }
 
         if (type === "x-label") {
           canvas.style.bottom = "0px";
-          canvas.height = 40;
+          canvas.height = this.xLabelHeight;
+        } else if (type === "crosshair") {
+          canvas.height = this.container.offsetHeight;
         } else {
-          canvas.height = this.container.offsetHeight - 40; // subtract xLabel height
+          canvas.height = this.container.offsetHeight - this.xLabelHeight; // subtract xLabel height
         }
 
         if (this.contexts.has(type)) {
@@ -281,18 +302,20 @@ export abstract class ChartController<TOptions> {
       } else {
         if (type === "y-label") {
           canvas.style.right = "0px";
-          canvas.width = 60;
-        } else if (type === "x-label") {
+          canvas.width = this.yLabelWidth;
+        } else if (type === "x-label" || type === "crosshair") {
           canvas.width = this.container.offsetWidth;
         } else {
-          canvas.width = this.container.offsetWidth - 60; // subtract yLabel width
+          canvas.width = this.container.offsetWidth - this.yLabelWidth; // subtract yLabel width
         }
 
         if (type === "x-label") {
           canvas.style.bottom = "0px";
-          canvas.height = 40;
+          canvas.height = this.xLabelHeight;
+        } else if (type === "crosshair") {
+          canvas.height = this.container.offsetHeight;
         } else {
-          canvas.height = this.container.offsetHeight - 40; // subtract xLabel height
+          canvas.height = this.container.offsetHeight - this.xLabelHeight; // subtract xLabel height
         }
       }
     });
@@ -359,5 +382,29 @@ export abstract class ChartController<TOptions> {
     this.resizeObserver.disconnect();
     this.canvases.forEach((canvas) => canvas.remove());
     this.canvases.clear();
+  }
+
+  protected estimatePriceLabelDecimalPlaces(
+    priceRange: number,
+    canvasHeight: number,
+    labelSpacing: number
+  ) {
+    const maxLabels = Math.floor(canvasHeight / labelSpacing);
+    const stepSize = priceRange / maxLabels;
+
+    // Estimate decimal places based on step size
+    if (stepSize < 0.0001) {
+      return 5; // very small step size
+    } else if (stepSize < 0.001) {
+      return 4;
+    } else if (stepSize < 0.01) {
+      return 3;
+    } else if (stepSize < 0.1) {
+      return 2;
+    } else if (stepSize < 1) {
+      return 1;
+    } else {
+      return 0; // no decimal places needed
+    }
   }
 }

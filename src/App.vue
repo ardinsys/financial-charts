@@ -41,13 +41,13 @@ onMounted(() => {
       low: 8,
       close: 15,
     },
-    // {
-    //   time: nineam.getTime() + 1000 * 60 * 30,
-    //   open: 15,
-    //   high: 17,
-    //   low: 11,
-    //   close: 12,
-    // },
+    {
+      time: nineam.getTime() + 1000 * 60 * 30,
+      open: 15,
+      high: 17,
+      low: 11,
+      close: 12,
+    },
     // 2. candle
     {
       time: nineam.getTime() + 1000 * 60 * 45,
@@ -150,7 +150,7 @@ onMounted(() => {
         overflow: hidden;
         border-radius: 5px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-        padding: 10px;
+        padding: 0px;
       "
     >
       <div
