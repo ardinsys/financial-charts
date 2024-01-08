@@ -2,6 +2,7 @@
 import { onMounted, ref } from "vue";
 // import { LineController } from "./controllers/line/line-controller";
 import { CandlestickController } from "./controllers/candlestick/candle-controller";
+import { LineController } from "./controllers/line/line-controller";
 
 const chartContainer = ref<HTMLElement>();
 
@@ -14,13 +15,17 @@ const nineam = new Date();
 nineam.setHours(9, 0, 0, 0);
 
 onMounted(() => {
-  const controller = new CandlestickController(
+  const controller = new LineController(
     chartContainer.value!,
     {
       start: nineam.getTime(),
       end: fivepm.getTime(),
     },
     {
+      stroke: {
+        color: "red",
+        width: 2,
+      },
       stepSize: 15 * 60 * 1000,
     }
   );

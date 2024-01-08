@@ -420,7 +420,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
 
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 
-    const { x } = this.dataExtent.mapToPixel(
+    const { x } = this.visibleExtent.mapToPixel(
       data.time,
       data.close!,
       ctx.canvas,
@@ -428,7 +428,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       this.panOffset
     );
 
-    const high = this.dataExtent.mapToPixel(
+    const high = this.visibleExtent.mapToPixel(
       data.time,
       data.high!,
       ctx.canvas,
@@ -436,7 +436,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       this.panOffset
     ).y;
 
-    const low = this.dataExtent.mapToPixel(
+    const low = this.visibleExtent.mapToPixel(
       data.time,
       data.low!,
       ctx.canvas,
@@ -444,7 +444,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       this.panOffset
     ).y;
 
-    const open = this.dataExtent.mapToPixel(
+    const open = this.visibleExtent.mapToPixel(
       data.time,
       data.open!,
       ctx.canvas,
@@ -452,7 +452,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
       this.panOffset
     ).y;
 
-    const close = this.dataExtent.mapToPixel(
+    const close = this.visibleExtent.mapToPixel(
       data.time,
       data.close!,
       ctx.canvas,
