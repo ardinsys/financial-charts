@@ -502,14 +502,14 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
     );
     this.pointerTime = closestDataPoint.time;
     this.pointerY = Math.min(e.y, this.getContext("main").canvas.height);
-    this.drawCorsshair();
+    this.drawCrosshair();
   }
 
   protected onZoom(): void {
-    this.drawCorsshair();
+    this.drawCrosshair();
   }
 
-  private drawCorsshair(): void {
+  private drawCrosshair(): void {
     if (this.pointerTime === -1) return;
     if (this.pointerY === -1) return;
     if (this.pointerY >= this.getContext("main").canvas.height) {

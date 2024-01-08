@@ -391,8 +391,122 @@ export class LineController extends ChartController<LineChartOptions> {
     ctx.stroke();
   }
 
+  private pointerTime = -1;
+  private pointerY = -1;
+
+  protected onZoom(): void {
+    this.drawCrosshair();
+  }
+
   protected pointerMove(e: { x: number; y: number }) {
-    // TODO: crosshair and stuff
+    // convert e.x to timestamp
+    const rawPoint = this.visibleExtent.pixelToPoint(
+      e.x,
+      e.y,
+      this.getContext("main").canvas,
+      this.zoomLevel,
+      this.panOffset
+    );
+    const time =
+      Math.round(rawPoint.time / this.options.stepSize) * this.options.stepSize;
+    // Find the closest data point
+    const closestDataPoint = this.data.reduce((prev, curr) =>
+      Math.abs(curr.time - time) < Math.abs(prev.time - time) ? curr : prev
+    );
+    this.pointerTime = closestDataPoint.time;
+    this.pointerY = Math.min(e.y, this.getContext("main").canvas.height);
+    this.drawCrosshair();
+  }
+
+  private drawCrosshair(): void {
+    if (this.pointerTime === -1) return;
+    if (this.pointerY === -1) return;
+    if (this.pointerY >= this.getContext("main").canvas.height) {
+      this.getContext("crosshair").clearRect(
+        0,
+        0,
+        this.getContext("crosshair").canvas.width,
+        this.getContext("crosshair").canvas.height
+      );
+      return;
+    }
+    const ctx = this.getContext("crosshair");
+    const { x } = this.visibleExtent.mapToPixel(
+      this.pointerTime,
+      0,
+      this.getContext("main").canvas,
+      this.zoomLevel,
+      this.panOffset
+    );
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.strokeStyle = "#9598A1";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 6]);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, this.getContext("main").canvas.height);
+    ctx.moveTo(0, this.pointerY);
+    ctx.lineTo(this.getContext("main").canvas.width, this.pointerY);
+    ctx.stroke();
+    const text = new Intl.DateTimeFormat("hu", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(this.pointerTime);
+    const textWidth = ctx.measureText(text).width;
+    const textPadding = 10;
+    const rectWidth = textWidth + textPadding * 2;
+    const maxRectX = ctx.canvas.width - rectWidth;
+    const rectX = Math.min(
+      Math.max(x - textWidth / 2 - textPadding, 0),
+      maxRectX
+    );
+    const textX = Math.min(
+      Math.max(x - textWidth / 2, textPadding),
+      maxRectX + textPadding
+    );
+    ctx.fillStyle = "#131722";
+    ctx.rect(
+      rectX,
+      this.getContext("main").canvas.height,
+      rectWidth,
+      textPadding * 2 + 12
+    );
+    ctx.font = "12px monospace";
+    ctx.fillStyle = "white";
+    const price = this.visibleExtent.pixelToPoint(
+      0,
+      this.pointerY,
+      this.getContext("main").canvas,
+      this.zoomLevel,
+      this.panOffset
+    ).price;
+    const priceText = new Intl.NumberFormat("hu").format(price); // adjust the number of decimal places as needed
+    const priceRectWidth = this.getContext("y-label").canvas.width;
+    const priceMaxRectX = ctx.canvas.width - priceRectWidth;
+    const priceRectX = priceMaxRectX;
+    const priceTextX = priceMaxRectX + 10;
+    ctx.fillStyle = "#131722";
+    ctx.rect(
+      priceRectX,
+      Math.max(this.pointerY - textPadding / 2 - 6, 1 + textPadding / 2 - 6),
+      priceRectWidth,
+      textPadding + 12
+    );
+    ctx.fill();
+    ctx.fillStyle = "white";
+    ctx.fillText(
+      text,
+      textX,
+      this.getContext("main").canvas.height + textPadding * 2
+    );
+    ctx.fillText(
+      priceText,
+      priceTextX,
+      Math.max(this.pointerY + textPadding / 2, textPadding + 6)
+    );
   }
 
   private mapDataToStepSize(data: ChartData[], stepSize: number): ChartData[] {
