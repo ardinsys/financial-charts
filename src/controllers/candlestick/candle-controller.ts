@@ -498,9 +498,12 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
     );
     const time = rawPoint.time - (rawPoint.time % this.options.stepSize);
     // Find the closest data point
-    const closestDataPoint = this.data.reduce((prev, curr) =>
-      Math.abs(curr.time - time) < Math.abs(prev.time - time) ? curr : prev
+    const closestDataPoint = this.data.reduce(
+      (prev, curr) =>
+        Math.abs(curr.time - time) < Math.abs(prev.time - time) ? curr : prev,
+      { time: 0 }
     );
+    if (closestDataPoint.time === 0) return;
     this.pointerTime = closestDataPoint.time;
     this.pointerY = Math.min(e.y, this.getLogicalCanvas("main").height);
     this.drawCrosshair();

@@ -38,6 +38,8 @@ export abstract class ChartController<TOptions> {
     this.options = options;
     this.container = container;
     this.timeRange = timeRange;
+    // Init and scale canveses
+    this.types.forEach((type) => this.getCanvas(type));
     const topCanvas = this.getCanvas("crosshair");
     topCanvas.addEventListener("mousedown", this.onMouseDown);
     topCanvas.addEventListener("mouseup", this.onMouseUp);
@@ -69,7 +71,9 @@ export abstract class ChartController<TOptions> {
     });
     this.resizeObserver = new ResizeObserver(() => {
       this.resizeCanvases();
-      requestAnimationFrame(() => this.drawChart());
+      if (this.data.length > 0) {
+        requestAnimationFrame(() => this.drawChart());
+      }
     });
     this.resizeObserver.observe(this.container);
   }
@@ -79,7 +83,9 @@ export abstract class ChartController<TOptions> {
     this.timeRange = timeRange;
     this.zoomLevel = 1;
     this.panOffset = 0;
-    requestAnimationFrame(() => this.drawChart());
+    if (this.data.length > 0) {
+      requestAnimationFrame(() => this.drawChart());
+    }
   }
 
   private onMouseDown = (event: MouseEvent) => {
@@ -111,6 +117,7 @@ export abstract class ChartController<TOptions> {
   }
 
   private onMouseMove = (event: MouseEvent) => {
+    if (this.data.length == 0) return;
     if (this.lastPointerPosition) {
       const dx = event.clientX - this.lastPointerPosition.x;
       const newPanOffset = this.panOffset - dx / this.zoomLevel;
@@ -140,6 +147,7 @@ export abstract class ChartController<TOptions> {
   }
 
   private onWheel = (event: WheelEvent) => {
+    if (this.data.length == 0) return;
     event.preventDefault();
     const zoomFactor = event.deltaY < 0 ? 1.1 : 0.9; // adjust these values as needed
 
@@ -199,6 +207,7 @@ export abstract class ChartController<TOptions> {
   };
 
   private onTouchMove = (event: TouchEvent) => {
+    if (this.data.length == 0) return;
     if (event.touches.length === 1 && this.lastPointerPosition) {
       const dx = event.touches[0].clientX - this.lastPointerPosition.x;
       const newPanOffset = this.panOffset - dx / this.zoomLevel;
@@ -253,7 +262,6 @@ export abstract class ChartController<TOptions> {
     type: (typeof this.types)[number],
     canvas: HTMLCanvasElement
   ) {
-    console.log("adjustCanvas", type);
     const devicePixelRatio = window.devicePixelRatio || 1;
 
     if (type === "y-label") {
@@ -392,8 +400,9 @@ export abstract class ChartController<TOptions> {
   }
 
   public draw(data: ChartData[]) {
-    this.data = this.transformData(data);
     this.dataExtent = this.createDataExtent(this.data, this.timeRange);
+    if (data.length == 0) return;
+    this.data = this.transformData(data);
     requestAnimationFrame(() => this.drawChart());
   }
 
