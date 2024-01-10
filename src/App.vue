@@ -15,17 +15,17 @@ const nineam = new Date();
 nineam.setHours(9, 0, 0, 0);
 
 onMounted(() => {
-  const controller = new LineController(
+  const controller = new CandlestickController(
     chartContainer.value!,
     {
       start: nineam.getTime(),
       end: fivepm.getTime(),
     },
     {
-      stroke: {
-        color: "red",
-        width: 2,
-      },
+      // stroke: {
+      //   color: "red",
+      //   width: 2,
+      // },
       stepSize: 15 * 60 * 1000,
     }
   );

@@ -113,13 +113,13 @@ export class LineController extends ChartController<LineChartOptions> {
   }
 
   private drawYAxis(): void {
-    const padding = 40;
+    const padding = this.p(40);
 
     const { newMinPrice, newMaxPrice, roundedStepSize, maxLabels } =
       this.calculateYAxisLabels(
         this.visibleExtent.getYMax(),
         this.visibleExtent.getYMin(),
-        this.getCanvas("y-label").height,
+        this.getLogicalCanvas("y-label").height,
         padding
       );
     const decimals = Math.max(0, -Math.floor(Math.log10(roundedStepSize)));
@@ -135,7 +135,7 @@ export class LineController extends ChartController<LineChartOptions> {
     ctx.fill();
 
     ctx.fillStyle = "#000";
-    ctx.font = "12px monospace";
+    ctx.font = this.font();
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 
@@ -156,11 +156,11 @@ export class LineController extends ChartController<LineChartOptions> {
       );
 
       const text = priceFormat.format(value);
-      const textWidth = ctx.measureText(text).width;
+      const textWidth = this.l(ctx.measureText(text).width);
 
       ctx.fillText(
         text,
-        (ctx.canvas.width - textWidth) / 2 + textWidth,
+        (this.l(ctx.canvas.width) - textWidth) / 2 + textWidth,
         y + (i == 0 ? 8 : i == maxLabels ? -8 : 0)
       );
       const mainCtx = this.getContext("main");
@@ -182,6 +182,7 @@ export class LineController extends ChartController<LineChartOptions> {
 
   private drawXAxis(): void {
     const ctx = this.getContext("x-label");
+    const sizes = this.getLogicalCanvas("x-label");
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.fillStyle = "white";
     ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -194,11 +195,11 @@ export class LineController extends ChartController<LineChartOptions> {
     ctx.stroke();
 
     ctx.fillStyle = "#000";
-    ctx.font = "12px monospace";
+    ctx.font = this.font();
     ctx.textBaseline = "middle";
-    const canvasWidth = ctx.canvas.width - this.yLabelWidth;
+    const canvasWidth = ctx.canvas.width - this.p(this.yLabelWidth);
 
-    const padding = 20;
+    const padding = this.p(20);
 
     let startTime = this.dataExtent.getXMin();
     let endTime = this.dataExtent.getXMax();
@@ -284,7 +285,7 @@ export class LineController extends ChartController<LineChartOptions> {
       const textWidth = ctx.measureText(text).width;
 
       if (x - textWidth / 2 > endX || start === this.xLabelStartX) {
-        ctx.fillText(text, x - textWidth / 2, ctx.canvas.height - 15);
+        ctx.fillText(text, x - textWidth / 2, sizes.height - 15);
 
         const mainCtx = this.getContext("main");
 
@@ -292,7 +293,7 @@ export class LineController extends ChartController<LineChartOptions> {
         mainCtx.strokeStyle = "#F2F3F3";
         mainCtx.beginPath();
         mainCtx.moveTo(x, 0);
-        mainCtx.lineTo(x, mainCtx.canvas.height);
+        mainCtx.lineTo(x, this.getLogicalCanvas("main").height);
         mainCtx.stroke();
 
         endX = x + textWidth / 2 + padding;
@@ -304,8 +305,6 @@ export class LineController extends ChartController<LineChartOptions> {
 
   protected drawChart(): void {
     const ctx = this.getContext("main");
-    const pixelPerSecond =
-      ctx.canvas.width / (this.timeRange.end - this.timeRange.start);
 
     const visibleTimeRange = this.getVisibleTimeRange();
     let firstPointIndex = 0;
@@ -414,19 +413,19 @@ export class LineController extends ChartController<LineChartOptions> {
       Math.abs(curr.time - time) < Math.abs(prev.time - time) ? curr : prev
     );
     this.pointerTime = closestDataPoint.time;
-    this.pointerY = Math.min(e.y, this.getContext("main").canvas.height);
+    this.pointerY = Math.min(e.y, this.getLogicalCanvas("main").height);
     this.drawCrosshair();
   }
 
   private drawCrosshair(): void {
     if (this.pointerTime === -1) return;
     if (this.pointerY === -1) return;
-    if (this.pointerY >= this.getContext("main").canvas.height) {
+    if (this.pointerY >= this.getLogicalCanvas("main").height) {
       this.getContext("crosshair").clearRect(
         0,
         0,
-        this.getContext("crosshair").canvas.width,
-        this.getContext("crosshair").canvas.height
+        this.getLogicalCanvas("crosshair").width,
+        this.getLogicalCanvas("crosshair").height
       );
       return;
     }
@@ -444,9 +443,9 @@ export class LineController extends ChartController<LineChartOptions> {
     ctx.setLineDash([5, 6]);
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, this.getContext("main").canvas.height);
+    ctx.lineTo(x, this.getLogicalCanvas("main").height);
     ctx.moveTo(0, this.pointerY);
-    ctx.lineTo(this.getContext("main").canvas.width, this.pointerY);
+    ctx.lineTo(this.getLogicalCanvas("main").width, this.pointerY);
     ctx.stroke();
     const text = new Intl.DateTimeFormat("hu", {
       year: "numeric",
@@ -458,7 +457,7 @@ export class LineController extends ChartController<LineChartOptions> {
     const textWidth = ctx.measureText(text).width;
     const textPadding = 10;
     const rectWidth = textWidth + textPadding * 2;
-    const maxRectX = ctx.canvas.width - rectWidth;
+    const maxRectX = this.getLogicalCanvas("crosshair").width - rectWidth;
     const rectX = Math.min(
       Math.max(x - textWidth / 2 - textPadding, 0),
       maxRectX
@@ -470,11 +469,11 @@ export class LineController extends ChartController<LineChartOptions> {
     ctx.fillStyle = "#131722";
     ctx.rect(
       rectX,
-      this.getContext("main").canvas.height,
+      this.getLogicalCanvas("main").height,
       rectWidth,
       textPadding * 2 + 12
     );
-    ctx.font = "12px monospace";
+    ctx.font = this.font();
     ctx.fillStyle = "white";
     const price = this.visibleExtent.pixelToPoint(
       0,
@@ -484,8 +483,8 @@ export class LineController extends ChartController<LineChartOptions> {
       this.panOffset
     ).price;
     const priceText = new Intl.NumberFormat("hu").format(price); // adjust the number of decimal places as needed
-    const priceRectWidth = this.getContext("y-label").canvas.width;
-    const priceMaxRectX = ctx.canvas.width - priceRectWidth;
+    const priceRectWidth = this.getLogicalCanvas("y-label").width;
+    const priceMaxRectX = this.l(ctx.canvas.width) - priceRectWidth;
     const priceRectX = priceMaxRectX;
     const priceTextX = priceMaxRectX + 10;
     ctx.fillStyle = "#131722";
@@ -500,7 +499,7 @@ export class LineController extends ChartController<LineChartOptions> {
     ctx.fillText(
       text,
       textX,
-      this.getContext("main").canvas.height + textPadding * 2
+      this.getLogicalCanvas("main").height + textPadding * 2
     );
     ctx.fillText(
       priceText,

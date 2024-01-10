@@ -93,7 +93,7 @@ export abstract class ChartController<TOptions> {
   protected timeToPixel(time: number): number {
     const duration = this.dataExtent.getXMax() - this.dataExtent.getXMin();
     const relativeTime = time - this.timeRange.start;
-    const canvasWidth = this.getCanvas("main").width;
+    const canvasWidth = this.getLogicalCanvas("main").width;
     return (relativeTime / duration) * canvasWidth;
   }
 
@@ -103,7 +103,7 @@ export abstract class ChartController<TOptions> {
     const endTime = this.dataExtent.getXMin() + visibleTimeRange;
 
     const pixelPerSecond =
-      (this.getCanvas("main").width /
+      (this.getLogicalCanvas("main").width /
         (this.timeRange.end - this.timeRange.start)) *
       this.zoomLevel;
 
@@ -186,11 +186,16 @@ export abstract class ChartController<TOptions> {
       this.lastPointerPosition = {
         x: event.touches[0].clientX,
       };
+    } else if (event.touches.length === 2) {
+      const dx = event.touches[0].clientX - event.touches[1].clientX;
+      const dy = event.touches[0].clientY - event.touches[1].clientY;
+      this.lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
     }
   };
 
   private onTouchEnd = () => {
     this.lastPointerPosition = undefined;
+    this.lastTouchDistance = undefined;
   };
 
   private onTouchMove = (event: TouchEvent) => {
@@ -202,11 +207,20 @@ export abstract class ChartController<TOptions> {
         0,
         Math.min(newPanOffset, this.getMaxPanOffset())
       );
-      requestAnimationFrame(() => this.drawChart());
+      requestAnimationFrame(() => {
+        const rect =
+          this.getContext("crosshair").canvas.getBoundingClientRect();
+        this.drawChart();
+        this.pointerMove({
+          x: event.touches[0].clientX - rect.left,
+          y: event.touches[0].clientY - rect.top,
+        });
+      });
       this.lastPointerPosition = {
         x: event.touches[0].clientX,
       };
     } else if (event.touches.length === 2 && this.lastTouchDistance) {
+      event.preventDefault();
       const dx = event.touches[0].clientX - event.touches[1].clientX;
       const dy = event.touches[0].clientY - event.touches[1].clientY;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -221,7 +235,7 @@ export abstract class ChartController<TOptions> {
         0,
         Math.min(
           newPanOffset,
-          this.getCanvas("main").width * (this.zoomLevel - 1)
+          this.getLogicalCanvas("main").width * (this.zoomLevel - 1)
         )
       );
       this.adjustZoomLevel(zoomFactor);
@@ -235,6 +249,43 @@ export abstract class ChartController<TOptions> {
     }
   };
 
+  private adjustCanvas(
+    type: (typeof this.types)[number],
+    canvas: HTMLCanvasElement
+  ) {
+    console.log("adjustCanvas", type);
+    const devicePixelRatio = window.devicePixelRatio || 1;
+
+    if (type === "y-label") {
+      canvas.style.right = "0px";
+      canvas.width = this.yLabelWidth * devicePixelRatio;
+      canvas.style.width = this.yLabelWidth + "px";
+    } else if (type === "x-label" || type === "crosshair") {
+      canvas.width = this.container.offsetWidth * devicePixelRatio;
+      canvas.style.width = this.container.offsetWidth + "px";
+    } else {
+      canvas.width =
+        this.container.offsetWidth * devicePixelRatio -
+        this.yLabelWidth * devicePixelRatio;
+      canvas.style.width = this.container.offsetWidth - this.yLabelWidth + "px";
+    }
+
+    if (type === "x-label") {
+      canvas.style.bottom = "0px";
+      canvas.height = this.xLabelHeight * devicePixelRatio;
+      canvas.style.height = this.xLabelHeight + "px";
+    } else if (type === "crosshair") {
+      canvas.height = this.container.offsetHeight * devicePixelRatio;
+      canvas.style.height = this.container.offsetHeight + "px";
+    } else {
+      canvas.height =
+        this.container.offsetHeight * devicePixelRatio -
+        this.xLabelHeight * devicePixelRatio;
+      canvas.style.height =
+        this.container.offsetHeight - this.xLabelHeight + "px";
+    }
+  }
+
   public getCanvas(type: (typeof this.types)[number]): HTMLCanvasElement {
     const canvas: HTMLCanvasElement =
       this.canvases.get(type) || document.createElement("canvas");
@@ -246,25 +297,17 @@ export abstract class ChartController<TOptions> {
       this.canvases.set(type, canvas);
     }
 
-    if (type === "y-label") {
-      canvas.style.right = "0px";
-      canvas.width = this.yLabelWidth;
-    } else if (type === "x-label" || type === "crosshair") {
-      canvas.width = this.container.offsetWidth;
-    } else {
-      canvas.width = this.container.offsetWidth - this.yLabelWidth; // subtract yLabel width
-    }
+    this.adjustCanvas(type, canvas);
 
-    if (type === "x-label") {
-      canvas.style.bottom = "0px";
-      canvas.height = this.xLabelHeight;
-    } else if (type === "crosshair") {
-      canvas.height = this.container.offsetHeight;
-    } else {
-      canvas.height = this.container.offsetHeight - this.xLabelHeight; // subtract xLabel height
+    if (type === "crosshair") {
+      canvas.style.touchAction = "pan-x";
     }
 
     return canvas;
+  }
+
+  protected font(): string {
+    return `12px monospace`;
   }
 
   private resizeCanvases() {
@@ -278,63 +321,67 @@ export abstract class ChartController<TOptions> {
           .get(type)!
           .getImageData(0, 0, canvas.width, canvas.height);
 
-        if (type === "y-label") {
-          canvas.style.right = "0px";
-          canvas.width = this.yLabelWidth;
-        } else if (type === "x-label" || type === "crosshair") {
-          canvas.width = this.container.offsetWidth;
-        } else {
-          canvas.width = this.container.offsetWidth - this.yLabelWidth; // subtract yLabel width
-        }
-
-        if (type === "x-label") {
-          canvas.style.bottom = "0px";
-          canvas.height = this.xLabelHeight;
-        } else if (type === "crosshair") {
-          canvas.height = this.container.offsetHeight;
-        } else {
-          canvas.height = this.container.offsetHeight - this.xLabelHeight; // subtract xLabel height
-        }
+        this.adjustCanvas(type, canvas);
+        const ctx = this.getContext(type);
+        const devicePixelRatio = window.devicePixelRatio || 1;
+        ctx.scale(devicePixelRatio, devicePixelRatio);
 
         if (this.contexts.has(type)) {
           this.getContext(type).putImageData(img!, 0, 0);
         }
       } else {
-        if (type === "y-label") {
-          canvas.style.right = "0px";
-          canvas.width = this.yLabelWidth;
-        } else if (type === "x-label" || type === "crosshair") {
-          canvas.width = this.container.offsetWidth;
-        } else {
-          canvas.width = this.container.offsetWidth - this.yLabelWidth; // subtract yLabel width
-        }
-
-        if (type === "x-label") {
-          canvas.style.bottom = "0px";
-          canvas.height = this.xLabelHeight;
-        } else if (type === "crosshair") {
-          canvas.height = this.container.offsetHeight;
-        } else {
-          canvas.height = this.container.offsetHeight - this.xLabelHeight; // subtract xLabel height
-        }
+        this.adjustCanvas(type, canvas);
+        const ctx = this.getContext(type);
+        const devicePixelRatio = window.devicePixelRatio || 1;
+        ctx.scale(devicePixelRatio, devicePixelRatio);
       }
     });
+  }
+
+  /**
+   * Convert logical pixels to physical pixels
+   *
+   * @param num number to convert
+   * @returns number in device pixels
+   */
+  protected p(num: number) {
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    return num * devicePixelRatio;
+  }
+
+  /**
+   * Convert physical pixels to logical pixels
+   *
+   * @param num number to convert
+   * @returns number in logical pixels
+   */
+  protected l(num: number) {
+    const devicePixelRatio = window.devicePixelRatio || 1;
+    return num / devicePixelRatio;
   }
 
   protected getContext(
     type: (typeof this.types)[number]
   ): CanvasRenderingContext2D {
     if (!this.contexts.has(type)) {
-      this.contexts.set(type, this.getCanvas(type).getContext("2d")!);
+      const ctx = this.getCanvas(type).getContext("2d")!;
+      this.contexts.set(type, ctx);
     }
 
     return this.contexts.get(type)!;
   }
 
+  protected getLogicalCanvas(type: (typeof this.types)[number]) {
+    const width = this.getContext(type).canvas.width / window.devicePixelRatio;
+    const height =
+      this.getContext(type).canvas.height / window.devicePixelRatio;
+    return { width, height };
+  }
+
   protected getVisibleTimeRange(): TimeRange {
-    const ctx = this.getContext("main");
+    const size = this.getLogicalCanvas("main");
     const pixelPerSecond =
-      ctx.canvas.width / (this.timeRange.end - this.timeRange.start);
+      size.width / (this.timeRange.end - this.timeRange.start);
 
     const timeRange = this.dataExtent.getXMax() - this.dataExtent.getXMin();
     const visibleTimeRange = timeRange / this.zoomLevel;

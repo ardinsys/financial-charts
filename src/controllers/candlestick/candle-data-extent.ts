@@ -80,10 +80,11 @@ export class CandlestickDataExtent extends DataExtent {
     zoomLevel: number,
     panOffset: number
   ): { x: number; y: number } {
+    const width = canvas.width / window.devicePixelRatio || 1;
+    const height = canvas.height / window.devicePixelRatio || 1;
     // prettier-ignore
-    const x = (((time - this.xMin) / (this.xMax - this.xMin)) * canvas.width - panOffset) * zoomLevel;
-    const y =
-      (1 - (price - this.yMin) / (this.yMax - this.yMin)) * canvas.height;
+    const x = (((time - this.xMin) / (this.xMax - this.xMin)) * width - panOffset) * zoomLevel
+    const y = (1 - (price - this.yMin) / (this.yMax - this.yMin)) * height;
     return { x, y };
   }
 
@@ -94,9 +95,11 @@ export class CandlestickDataExtent extends DataExtent {
     zoomLevel: number,
     panOffset: number
   ): { time: number; price: number } {
+    const width = canvas.width / window.devicePixelRatio || 1;
+    const height = canvas.height / window.devicePixelRatio || 1;
     // prettier-ignore
-    const time = ((x / zoomLevel + panOffset) / canvas.width) * (this.xMax - this.xMin) + this.xMin;
-    const price = (1 - y / canvas.height) * (this.yMax - this.yMin) + this.yMin;
+    const time = ((x / zoomLevel + panOffset) / width) * (this.xMax - this.xMin) + this.xMin;
+    const price = (1 - y / height) * (this.yMax - this.yMin) + this.yMin;
     return { time, price };
   }
 }
