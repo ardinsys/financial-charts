@@ -78,6 +78,13 @@ export abstract class ChartController<TOptions> {
     this.resizeObserver.observe(this.container);
   }
 
+  /**
+   * Update the time range and data.
+   * Chart will be redrawn. Zoom level and pan offset will be reset.
+   *
+   * @param timeRange new time range
+   * @param data      chart data to draw
+   */
   public updateTimeRange(timeRange: TimeRange, data: ChartData[]) {
     this.data = data;
     this.timeRange = timeRange;
@@ -103,17 +110,32 @@ export abstract class ChartController<TOptions> {
     return (relativeTime / duration) * canvasWidth;
   }
 
+  /**
+   * Get the number of pixels per millisecond.
+   * Zoom level is taken into account.
+   *
+   * @returns pixels per millisecond
+   */
+  protected getPixelPerMs(): number {
+    return (
+      (this.getLogicalCanvas("main").width /
+        (this.timeRange.end - this.timeRange.start)) *
+      this.zoomLevel
+    );
+  }
+
+  /**
+   * Get the maximum pan offset in pixels.
+   *
+   * @returns maximum pan offset in pixels
+   */
   private getMaxPanOffset(): number {
     const timeRange = this.dataExtent.getXMax() - this.dataExtent.getXMin();
     const visibleTimeRange = timeRange / this.zoomLevel;
     const endTime = this.dataExtent.getXMin() + visibleTimeRange;
+    const pixelPerMs = this.getPixelPerMs();
 
-    const pixelPerSecond =
-      (this.getLogicalCanvas("main").width /
-        (this.timeRange.end - this.timeRange.start)) *
-      this.zoomLevel;
-
-    return ((this.timeRange.end - endTime) * pixelPerSecond) / this.zoomLevel;
+    return ((this.timeRange.end - endTime) * pixelPerMs) / this.zoomLevel;
   }
 
   private onMouseMove = (event: MouseEvent) => {
@@ -294,7 +316,7 @@ export abstract class ChartController<TOptions> {
     }
   }
 
-  public getCanvas(type: (typeof this.types)[number]): HTMLCanvasElement {
+  protected getCanvas(type: (typeof this.types)[number]): HTMLCanvasElement {
     const canvas: HTMLCanvasElement =
       this.canvases.get(type) || document.createElement("canvas");
 
@@ -379,6 +401,12 @@ export abstract class ChartController<TOptions> {
     return this.contexts.get(type)!;
   }
 
+  /**
+   * Get the logical canvas size.
+   *
+   * @param type which canvas you want1
+   * @returns    the logical canvas size
+   */
   protected getLogicalCanvas(type: (typeof this.types)[number]) {
     const width = this.getContext(type).canvas.width / window.devicePixelRatio;
     const height =
@@ -386,19 +414,29 @@ export abstract class ChartController<TOptions> {
     return { width, height };
   }
 
+  /**
+   * Get the currently visible time range.
+   * This is the time range that is visible on the screen.
+   *
+   * @returns the currently visible time range
+   */
   protected getVisibleTimeRange(): TimeRange {
-    const size = this.getLogicalCanvas("main");
-    const pixelPerSecond =
-      size.width / (this.timeRange.end - this.timeRange.start);
+    const pixelPerMs = this.getPixelPerMs() / this.zoomLevel;
 
     const timeRange = this.dataExtent.getXMax() - this.dataExtent.getXMin();
     const visibleTimeRange = timeRange / this.zoomLevel;
-    const startTime =
-      this.dataExtent.getXMin() + this.panOffset / pixelPerSecond;
+    const startTime = this.dataExtent.getXMin() + this.panOffset / pixelPerMs;
     const endTime = startTime + visibleTimeRange;
     return { start: startTime, end: endTime };
   }
 
+  /**
+   * Draws/Redraws the whole chart with the given data.
+   * If you only have one sequentially new point, use drawNewChartPoint
+   * instead for better performance.
+   *
+   * @param data chart data to draw
+   */
   public draw(data: ChartData[]) {
     this.dataExtent = this.createDataExtent(this.data, this.timeRange);
     if (data.length == 0) return;
@@ -406,6 +444,13 @@ export abstract class ChartController<TOptions> {
     requestAnimationFrame(() => this.drawChart());
   }
 
+  /**
+   * Draws the next point to the chart.
+   * If you have only one new point, use this
+   * for better performance.
+   *
+   * @param data chart data to draw
+   */
   public drawNextPoint(data: ChartData) {
     const tdata = this.transformNewData(data);
     this.data.push(tdata);
@@ -416,30 +461,44 @@ export abstract class ChartController<TOptions> {
     });
   }
 
+  // TODO: these two should be moved here
   protected abstract transformData(data: ChartData[]): ChartData[];
   protected abstract transformNewData(data: ChartData): ChartData;
 
   protected abstract drawChart(): void;
+
+  // TODO: this should be a global option for the charts
   protected abstract getMaxZoomLevel(): number;
 
   protected abstract drawNewChartPoint(data: ChartData): void;
 
   protected abstract pointerMove(e: { x: number; y: number }): any;
 
+  /**
+   * Properly dispose the chart controller.
+   */
   public dispose() {
-    const mainCanvas = this.getCanvas("main");
-    mainCanvas.removeEventListener("mousedown", this.onMouseDown);
-    mainCanvas.removeEventListener("mouseup", this.onMouseUp);
-    mainCanvas.removeEventListener("mousemove", this.onMouseMove);
-    mainCanvas.removeEventListener("touchstart", this.onTouchStart);
-    mainCanvas.removeEventListener("touchend", this.onTouchEnd);
-    mainCanvas.removeEventListener("touchmove", this.onTouchMove);
+    const topCanvas = this.getCanvas("crosshair");
+    topCanvas.removeEventListener("mousedown", this.onMouseDown);
+    topCanvas.removeEventListener("mouseup", this.onMouseUp);
+    topCanvas.removeEventListener("mousemove", this.onMouseMove);
+    topCanvas.removeEventListener("touchstart", this.onTouchStart);
+    topCanvas.removeEventListener("touchend", this.onTouchEnd);
+    topCanvas.removeEventListener("touchmove", this.onTouchMove);
     this.resizeObserver.unobserve(this.container);
     this.resizeObserver.disconnect();
     this.canvases.forEach((canvas) => canvas.remove());
     this.canvases.clear();
   }
 
+  /**
+   * Estimate the number of decimal places needed for the price labels.
+   *
+   * @param priceRange    price range
+   * @param canvasHeight  canvas height
+   * @param labelSpacing  label spacing
+   * @returns             number of decimal places needed
+   */
   protected estimatePriceLabelDecimalPlaces(
     priceRange: number,
     canvasHeight: number,

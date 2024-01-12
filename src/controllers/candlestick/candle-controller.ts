@@ -288,9 +288,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
 
   protected drawChart(): void {
     const ctx = this.getContext("main");
-    const sizes = this.getLogicalCanvas("main");
-    const pixelPerSecond =
-      sizes.width / (this.timeRange.end - this.timeRange.start);
+    const pixelPerMs = this.getPixelPerMs();
     const visibleTimeRange = this.getVisibleTimeRange();
     let firstPointIndex = 0;
     let lastPointIndex = this.data.length - 1;
@@ -322,10 +320,9 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
     this.drawYAxis();
     this.drawXAxis();
 
-    const candleSpacing =
-      this.options.stepSize * pixelPerSecond * this.zoomLevel * this.spacing;
-    const candleWidth =
-      this.options.stepSize * pixelPerSecond * this.zoomLevel - candleSpacing;
+    const candleSpacing = this.options.stepSize * pixelPerMs * this.spacing;
+    const candleWidth = this.options.stepSize * pixelPerMs - candleSpacing;
+
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 
     for (let i = 0; i < visibleDataPoints.length; i++) {
@@ -411,13 +408,9 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
 
     const data = this.data[this.data.length - 1];
     const ctx = this.getContext("main");
-    const sizes = this.getLogicalCanvas("main");
-    const pixelPerSecond =
-      sizes.width / (this.timeRange.end - this.timeRange.start);
-    const candleSpacing =
-      this.options.stepSize * pixelPerSecond * this.zoomLevel * this.spacing;
-    const candleWidth =
-      this.options.stepSize * pixelPerSecond * this.zoomLevel - candleSpacing;
+    const pixelPerMs = this.getPixelPerMs();
+    const candleSpacing = this.options.stepSize * pixelPerMs * this.spacing;
+    const candleWidth = this.options.stepSize * pixelPerMs - candleSpacing;
 
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 
