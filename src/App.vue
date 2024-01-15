@@ -247,6 +247,7 @@ watch(chartData, (newVal, oldVal) => {
       ></div>
     </div>
     <div style="margin-top: 20px">{{ clickedData }}</div>
+    <div id="test"></div>
   </div>
 </template>
 

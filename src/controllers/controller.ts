@@ -50,6 +50,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
 
   private isTouchCrosshair = false;
   private isTouchCrosshairTimeout?: number;
+  private isTouchCapable = "ontouchstart" in window;
 
   protected abstract createDataExtent(
     data: ChartData[],
@@ -112,17 +113,16 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     topCanvas.addEventListener("touchmove", this.onTouchMove, {
       passive: false,
     });
-    topCanvas.addEventListener("pointerleave", () => {
-      if (!this.isTouchCrosshair) {
-        this.lastPointerPosition = undefined;
-        this.lastTouchDistance = undefined;
-        this.isPanning = false;
-        requestAnimationFrame(() => {
-          this.pointerTime = -1;
-          this.pointerY = -1;
-          this.drawCrosshair();
-        });
-      }
+    topCanvas.addEventListener("pointerleave", (e) => {
+      if (e.pointerType === "touch") return;
+      this.lastPointerPosition = undefined;
+      this.lastTouchDistance = undefined;
+      this.isPanning = false;
+      requestAnimationFrame(() => {
+        this.pointerTime = -1;
+        this.pointerY = -1;
+        this.drawCrosshair();
+      });
     });
     this.resizeObserver = new ResizeObserver(() => {
       this.resizeCanvases();
@@ -303,15 +303,17 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
         if (this.isTouchCrosshair) {
           const rect =
             this.getContext("crosshair").canvas.getBoundingClientRect();
-          this.mobilePointerMove({
+          this.pointerMove({
             x: event.touches[0].clientX - rect.left,
             y: event.touches[0].clientY - rect.top,
           });
-          this.drawMobileCrosshair();
+          this.drawCrosshair();
         } else {
+          this.lastPointerPosition = undefined;
+          this.lastTouchDistance = undefined;
           this.pointerY = -1;
           this.pointerTime = -1;
-          this.drawMobileCrosshair();
+          this.drawCrosshair();
         }
       }, 500);
     } else if (event.touches.length === 2) {
@@ -342,11 +344,11 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
           const rect =
             this.getContext("crosshair").canvas.getBoundingClientRect();
 
-          this.mobilePointerMove({
+          this.pointerMove({
             x: event.touches[0].clientX - rect.left,
             y: event.touches[0].clientY - rect.top,
           });
-          this.drawMobileCrosshair();
+          this.drawCrosshair();
         });
         return;
       }
@@ -362,7 +364,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
           this.getContext("crosshair").canvas.getBoundingClientRect();
         this.drawChart();
         if (!this.isTouchCrosshair) return;
-        this.mobilePointerMove({
+        this.pointerMove({
           x: event.touches[0].clientX - rect.left,
           y: event.touches[0].clientY - rect.top,
         });
@@ -394,7 +396,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
       this.lastTouchDistance = distance;
     } else {
       const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
-      this.mobilePointerMove({
+      this.pointerMove({
         x: event.touches[0].clientX - rect.left,
         y: event.touches[0].clientY - rect.top,
       });
@@ -587,13 +589,8 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
 
   protected abstract drawNewChartPoint(data: ChartData): void;
 
-  protected mobilePointerMove(e: { x: number; y: number }) {
-    if (!this.isTouchCrosshair) return;
-    this.pointerMove(e);
-    this.drawMobileCrosshair();
-  }
-
   protected pointerMove(e: { x: number; y: number }) {
+    if (this.isTouchCapable && !this.isTouchCrosshair) return;
     const rawPoint = this.visibleExtent.pixelToPoint(
       e.x,
       e.y,
@@ -608,19 +605,13 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     this.drawCrosshair();
   }
 
-  private drawMobileCrosshair() {
-    const ctx = this.getContext("crosshair");
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    if (!this.isTouchCrosshair) return;
-    this.drawCrosshair();
-  }
-
   private drawCrosshair(): void {
     const ctx = this.getContext("crosshair");
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     if (this.pointerTime === -1) return;
     if (this.pointerY === -1) return;
+    if (this.isTouchCapable && !this.isTouchCrosshair) return;
 
     if (this.pointerY >= this.getLogicalCanvas("main").height) {
       this.getContext("crosshair").clearRect(
