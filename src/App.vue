@@ -13,6 +13,7 @@ import { ChartData } from "./controllers/types";
 import { defaultDarkTheme } from "./controllers/themes";
 
 const chartContainer = ref<HTMLElement>();
+const clickedData = ref<ChartData>();
 
 // Date that represents today 17:00
 const fivepm = new Date();
@@ -37,10 +38,14 @@ onMounted(() => {
     },
     {
       // theme: defaultDarkTheme,
-      maxZoom: 10,
+      maxZoom: 100,
       stepSize: 24 * 60 * 60 * 1000,
     }
   );
+
+  controller.setEventListener("click", (e, data) => {
+    clickedData.value = data;
+  });
 
   const mdd = new MDDClient(
     "ws://192.168.68.60:3000/mdd/ws",
@@ -55,7 +60,6 @@ onMounted(() => {
     const ins = { dataType: DataType.CHART_DATA, isin: "TESZT", mic: "XETR" };
     await mdd.subscribeInstrument(ins);
     mdd.getHistoricalChart(ins, HistoricalChartType.FIVE_YEAR).then((data) => {
-      console.log(data);
       chartData.value = data.map((c) => ({
         time: c.time,
         close: c.close,
@@ -219,6 +223,8 @@ watch(chartData, (newVal, oldVal) => {
       justify-content: center;
       align-items: center;
       height: 100vh;
+      flex-direction: column;
+      user-select: none;
     "
   >
     <div
@@ -240,6 +246,7 @@ watch(chartData, (newVal, oldVal) => {
         style="width: 100%; height: 100%; position: relative"
       ></div>
     </div>
+    <div style="margin-top: 20px">{{ clickedData }}</div>
   </div>
 </template>
 

@@ -45,11 +45,23 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
   private resizeObserver: ResizeObserver;
+  private eventListeners: Map<string, (e: Event, data: ChartData) => any> =
+    new Map();
+
+  private isTouchCrosshair = false;
+  private isTouchCrosshairTimeout?: number;
 
   protected abstract createDataExtent(
     data: ChartData[],
     timeRange: TimeRange
   ): DataExtent;
+
+  public setEventListener<E extends Event>(
+    event: "click" | "touch-click",
+    callback: (e: E, data: ChartData) => any
+  ) {
+    this.eventListeners.set(event, callback as any);
+  }
 
   protected getXLabelOffset(): number {
     return 0;
@@ -85,8 +97,8 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     // Init and scale canveses
     this.types.forEach((type) => this.getCanvas(type));
     const topCanvas = this.getCanvas("crosshair");
-    topCanvas.addEventListener("mousedown", this.onMouseDown);
-    topCanvas.addEventListener("mouseup", this.onMouseUp);
+    topCanvas.addEventListener("pointerdown", this.onMouseDown);
+    topCanvas.addEventListener("pointerup", this.onMouseUp);
     topCanvas.addEventListener("mousemove", this.onMouseMove);
     topCanvas.addEventListener("wheel", this.onWheel, {
       passive: false,
@@ -101,17 +113,16 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
       passive: false,
     });
     topCanvas.addEventListener("pointerleave", () => {
-      this.lastPointerPosition = undefined;
-      this.lastTouchDistance = undefined;
-      this.isPanning = false;
-      requestAnimationFrame(() => {
-        this.getContext("crosshair").clearRect(
-          0,
-          0,
-          topCanvas.width,
-          topCanvas.height
-        );
-      });
+      if (!this.isTouchCrosshair) {
+        this.lastPointerPosition = undefined;
+        this.lastTouchDistance = undefined;
+        this.isPanning = false;
+        requestAnimationFrame(() => {
+          this.pointerTime = -1;
+          this.pointerY = -1;
+          this.drawCrosshair();
+        });
+      }
     });
     this.resizeObserver = new ResizeObserver(() => {
       this.resizeCanvases();
@@ -139,12 +150,31 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     }
   }
 
-  private onMouseDown = (event: MouseEvent) => {
+  private onMouseDown = (event: PointerEvent) => {
+    if (event.pointerType === "touch") return;
     this.lastPointerPosition = { x: event.clientX };
   };
 
-  private onMouseUp = () => {
+  private onMouseUp = (e: PointerEvent) => {
+    if (e.pointerType === "touch") return;
+    if (!this.isPanning && this.eventListeners.has("click")) {
+      const topCanvas = this.getContext("crosshair").canvas;
+      const rect = topCanvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const rawPoint = this.dataExtent.pixelToPoint(
+        x,
+        y,
+        this.getContext("main").canvas,
+        this.zoomLevel,
+        this.panOffset
+      );
+      const closestDataPoint = this.findClosestDataPoint(rawPoint);
+      if (!closestDataPoint) return;
+      this.eventListeners.get("click")?.(e, closestDataPoint);
+    }
     this.lastPointerPosition = undefined;
+    this.isPanning = false;
   };
 
   protected timeToPixel(time: number): number {
@@ -185,6 +215,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   private onMouseMove = (event: MouseEvent) => {
     if (this.data.length == 0) return;
     if (this.lastPointerPosition) {
+      this.isPanning = true;
       const dx = event.clientX - this.lastPointerPosition.x;
       const newPanOffset = this.panOffset - dx / this.zoomLevel;
 
@@ -194,6 +225,8 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
       );
       requestAnimationFrame(() => this.drawChart());
       this.lastPointerPosition = { x: event.clientX };
+    } else {
+      this.isPanning = false;
     }
     requestAnimationFrame(() => {
       const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
@@ -258,10 +291,29 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   }
 
   private onTouchStart = (event: TouchEvent) => {
+    if (this.data.length == 0) return;
+
     if (event.touches.length === 1) {
       this.lastPointerPosition = {
         x: event.touches[0].clientX,
       };
+      this.isTouchCrosshairTimeout = setTimeout(() => {
+        this.isTouchCrosshair = !this.isTouchCrosshair;
+        this.isTouchCrosshairTimeout = undefined;
+        if (this.isTouchCrosshair) {
+          const rect =
+            this.getContext("crosshair").canvas.getBoundingClientRect();
+          this.mobilePointerMove({
+            x: event.touches[0].clientX - rect.left,
+            y: event.touches[0].clientY - rect.top,
+          });
+          this.drawMobileCrosshair();
+        } else {
+          this.pointerY = -1;
+          this.pointerTime = -1;
+          this.drawMobileCrosshair();
+        }
+      }, 500);
     } else if (event.touches.length === 2) {
       const dx = event.touches[0].clientX - event.touches[1].clientX;
       const dy = event.touches[0].clientY - event.touches[1].clientY;
@@ -270,13 +322,34 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   };
 
   private onTouchEnd = () => {
-    this.lastPointerPosition = undefined;
-    this.lastTouchDistance = undefined;
+    if (!this.isTouchCrosshair) {
+      this.lastPointerPosition = undefined;
+      this.lastTouchDistance = undefined;
+    }
+    clearTimeout(this.isTouchCrosshairTimeout);
+    this.isTouchCrosshairTimeout = undefined;
   };
 
   private onTouchMove = (event: TouchEvent) => {
     if (this.data.length == 0) return;
+    if (this.isTouchCrosshairTimeout) {
+      clearTimeout(this.isTouchCrosshairTimeout);
+      this.isTouchCrosshairTimeout = undefined;
+    }
     if (event.touches.length === 1 && this.lastPointerPosition) {
+      if (this.isTouchCrosshair) {
+        requestAnimationFrame(() => {
+          const rect =
+            this.getContext("crosshair").canvas.getBoundingClientRect();
+
+          this.mobilePointerMove({
+            x: event.touches[0].clientX - rect.left,
+            y: event.touches[0].clientY - rect.top,
+          });
+          this.drawMobileCrosshair();
+        });
+        return;
+      }
       const dx = event.touches[0].clientX - this.lastPointerPosition.x;
       const newPanOffset = this.panOffset - dx / this.zoomLevel;
       // Limit panOffset to the range [0, canvas.width * (zoomLevel - 1)]
@@ -288,7 +361,8 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
         const rect =
           this.getContext("crosshair").canvas.getBoundingClientRect();
         this.drawChart();
-        this.pointerMove({
+        if (!this.isTouchCrosshair) return;
+        this.mobilePointerMove({
           x: event.touches[0].clientX - rect.left,
           y: event.touches[0].clientY - rect.top,
         });
@@ -297,6 +371,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
         x: event.touches[0].clientX,
       };
     } else if (event.touches.length === 2 && this.lastTouchDistance) {
+      if (this.isTouchCrosshair) return;
       event.preventDefault();
       const dx = event.touches[0].clientX - event.touches[1].clientX;
       const dy = event.touches[0].clientY - event.touches[1].clientY;
@@ -307,7 +382,6 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
         this.container.offsetWidth / 2;
       const newPanOffset =
         this.panOffset - (offsetX * (zoomFactor - 1)) / this.zoomLevel;
-      // Limit panOffset to the range [0, this.getCanvas("main").width * (zoomLevel - 1)]
       this.panOffset = Math.max(
         0,
         Math.min(
@@ -319,9 +393,10 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
       requestAnimationFrame(() => this.drawChart());
       this.lastTouchDistance = distance;
     } else {
-      this.pointerMove({
-        x: event.touches[0].clientX,
-        y: event.touches[0].clientY,
+      const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
+      this.mobilePointerMove({
+        x: event.touches[0].clientX - rect.left,
+        y: event.touches[0].clientY - rect.top,
       });
     }
   };
@@ -331,6 +406,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     canvas: HTMLCanvasElement
   ) {
     const devicePixelRatio = window.devicePixelRatio || 1;
+    canvas.style.userSelect = "none";
 
     if (type === "y-label") {
       canvas.style.right = "0px";
@@ -511,6 +587,12 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
 
   protected abstract drawNewChartPoint(data: ChartData): void;
 
+  protected mobilePointerMove(e: { x: number; y: number }) {
+    if (!this.isTouchCrosshair) return;
+    this.pointerMove(e);
+    this.drawMobileCrosshair();
+  }
+
   protected pointerMove(e: { x: number; y: number }) {
     const rawPoint = this.visibleExtent.pixelToPoint(
       e.x,
@@ -526,9 +608,21 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     this.drawCrosshair();
   }
 
+  private drawMobileCrosshair() {
+    const ctx = this.getContext("crosshair");
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    if (!this.isTouchCrosshair) return;
+    this.drawCrosshair();
+  }
+
   private drawCrosshair(): void {
+    const ctx = this.getContext("crosshair");
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
     if (this.pointerTime === -1) return;
     if (this.pointerY === -1) return;
+    if (!this.isTouchCrosshair) return;
+
     if (this.pointerY >= this.getLogicalCanvas("main").height) {
       this.getContext("crosshair").clearRect(
         0,
@@ -538,8 +632,9 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
       );
       return;
     }
+
     const xOffset = this.getXLabelOffset();
-    const ctx = this.getContext("crosshair");
+
     const { x } = this.visibleExtent.mapToPixel(
       this.pointerTime + xOffset,
       0,
@@ -547,7 +642,6 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
       this.zoomLevel,
       this.panOffset
     );
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.strokeStyle = this.options.theme.crosshair.color;
     ctx.lineWidth = this.options.theme.crosshair.width;
     ctx.setLineDash(this.options.theme.crosshair.lineDash);
@@ -629,8 +723,8 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
    */
   public dispose() {
     const topCanvas = this.getCanvas("crosshair");
-    topCanvas.removeEventListener("mousedown", this.onMouseDown);
-    topCanvas.removeEventListener("mouseup", this.onMouseUp);
+    topCanvas.removeEventListener("pointerdown", this.onMouseDown);
+    topCanvas.removeEventListener("pointerup", this.onMouseUp);
     topCanvas.removeEventListener("mousemove", this.onMouseMove);
     topCanvas.removeEventListener("touchstart", this.onTouchStart);
     topCanvas.removeEventListener("touchend", this.onTouchEnd);
