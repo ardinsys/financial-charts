@@ -12,6 +12,11 @@ export interface BaseChartOptions {
   theme?: ChartTheme;
 }
 
+type AxisLabel = {
+  value: number;
+  position: number;
+};
+
 export abstract class ChartController<TOptions extends BaseChartOptions> {
   private readonly types = ["main", "crosshair", "x-label", "y-label"] as const;
   protected container: HTMLElement;
@@ -758,50 +763,57 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
 
     return niceFraction * orderOfMagnitude;
   }
-
   private calculateYAxisLabels(labelSpacing: number) {
-    const fontSize = 12;
+    const fontSize = this.options.theme.yAxis.fontSize;
     const textHeight = fontSize * 1.2; // Estimated height of text
     const canvasHeight = this.getLogicalCanvas("y-label").height;
-    const priceRange =
-      this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
 
-    // Initial calculation of max labels
-    let maxLabels = Math.floor(canvasHeight / (textHeight + labelSpacing));
-    let stepSize = priceRange / maxLabels;
-    let roundedStepSize = this.roundToNiceNumber(stepSize);
+    const range = this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
 
-    // Recalculate max labels and adjust rounded step size if necessary
-    maxLabels = Math.ceil(priceRange / roundedStepSize);
-    while (maxLabels > canvasHeight / (textHeight + labelSpacing)) {
-      stepSize = roundedStepSize * 1.5; // Increase the step size
-      roundedStepSize = this.roundToNiceNumber(stepSize);
-      maxLabels = Math.ceil(priceRange / roundedStepSize);
+    // Adjust the calculation of maxLabels to respect labelSpacing more accurately
+    const maxPossibleLabels = Math.floor(
+      canvasHeight / (textHeight + labelSpacing)
+    );
+    const maxLabels = Math.min(maxPossibleLabels, range / labelSpacing);
+
+    // Find a nice step size
+    const rawStep = range / maxLabels;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const normalizedStep = rawStep / magnitude;
+    let stepSize;
+
+    if (normalizedStep < 1.5) {
+      stepSize = 1 * magnitude;
+    } else if (normalizedStep < 3) {
+      stepSize = 2 * magnitude;
+    } else if (normalizedStep < 7.5) {
+      stepSize = 5 * magnitude;
+    } else {
+      stepSize = 10 * magnitude;
     }
 
-    // Calculate the new min and max prices
-    const newMinPrice =
-      Math.floor(this.visibleExtent.getYMin() / roundedStepSize) *
-      roundedStepSize;
-    let newMaxPrice = newMinPrice + roundedStepSize * maxLabels;
+    const firstLabel =
+      Math.ceil(this.visibleExtent.getYMin() / stepSize) * stepSize;
+    const labels: AxisLabel[] = [];
 
-    // Ensure newMaxPrice does not exceed actual max
-    if (newMaxPrice > this.visibleExtent.getYMax()) {
-      newMaxPrice = this.visibleExtent.getYMax();
+    for (
+      let value = firstLabel;
+      value <= this.visibleExtent.getYMax();
+      value += stepSize
+    ) {
+      const position =
+        canvasHeight -
+        ((value - this.visibleExtent.getYMin()) / range) * canvasHeight;
+      labels.push({ value: parseFloat(value.toFixed(10)), position });
     }
 
-    return { newMinPrice, newMaxPrice, roundedStepSize, maxLabels };
+    return labels;
   }
 
   protected drawYAxis(): void {
-    const { newMinPrice, newMaxPrice, roundedStepSize, maxLabels } =
-      this.calculateYAxisLabels(30);
+    const yAxisValues = this.calculateYAxisLabels(30);
 
-    const decimals = Math.max(0, -Math.floor(Math.log10(roundedStepSize)));
-    const priceFormat = new Intl.NumberFormat("hu", {
-      maximumFractionDigits: decimals,
-      minimumFractionDigits: decimals,
-    });
+    const priceFormat = new Intl.NumberFormat("hu");
 
     const ctx = this.getContext("y-label");
     ctx.fillStyle = this.options.theme.yAxis.backgroundColor;
@@ -814,29 +826,22 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 
-    const yAxisValues: number[] = [];
-    for (let i = 0; i <= maxLabels; i++) {
-      const price = newMinPrice + i * roundedStepSize;
-      yAxisValues.push(price);
-    }
-
     for (let i = 0; i < yAxisValues.length; i++) {
       const value = yAxisValues[i];
-      const { y } = this.visibleExtent.mapToPixel(
-        this.getVisibleTimeRange().start,
-        value,
-        ctx.canvas,
-        this.zoomLevel,
-        this.panOffset
-      );
-
-      const text = priceFormat.format(value);
+      const y = value.position;
+      if (y - this.options.theme.yAxis.fontSize < 0) continue;
+      if (
+        y + this.options.theme.yAxis.fontSize >
+        this.getLogicalCanvas("y-label").height
+      )
+        continue;
+      const text = priceFormat.format(value.value);
       const textWidth = ctx.measureText(text).width;
 
       ctx.fillText(
         text,
         (this.l(ctx.canvas.width) - textWidth) / 2 + textWidth,
-        y + (i == 0 ? 8 : i == maxLabels ? -8 : 0)
+        y
       );
       const mainCtx = this.getContext("main");
 
