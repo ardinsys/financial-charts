@@ -2,47 +2,7 @@ import { DataExtent } from "../data-extent";
 import { ChartData, TimeRange } from "../types";
 
 export class CandlestickDataExtent extends DataExtent {
-  constructor(dataset: ChartData[], timeRange: TimeRange) {
-    super(dataset, timeRange);
-  }
-
-  public getXAxisValues(
-    ctx: CanvasRenderingContext2D,
-    padding: number
-  ): number[] {
-    const xAxisValues: number[] = [];
-    const availableWidth = ctx.canvas.width - 80;
-    const timeRange = this.xMax - this.xMin;
-    const numberOfPoints = Math.floor(availableWidth / padding);
-
-    for (let i = 0; i <= numberOfPoints; i++) {
-      const x = availableWidth * (i / numberOfPoints);
-      const time = this.xMin + timeRange * (x / availableWidth);
-      xAxisValues.push(time);
-    }
-
-    return xAxisValues;
-  }
-
-  public getYAxisValues(
-    ctx: CanvasRenderingContext2D,
-    padding: number
-  ): number[] {
-    const yAxisValues: number[] = [];
-    const availableHeight = ctx.canvas.height - 40;
-    const priceRange = this.yMax - this.yMin;
-    const numberOfLines = Math.floor(availableHeight / padding);
-
-    for (let i = 1; i < numberOfLines; i++) {
-      const y = availableHeight * (i / numberOfLines);
-      const price = this.yMax - priceRange * (y / availableHeight);
-      yAxisValues.push(price);
-    }
-
-    return yAxisValues;
-  }
-
-  public recalculate(dataset: ChartData[], timeRange: TimeRange) {
+  public recalculate(dataset: ChartData[], timeRange: TimeRange): void {
     this.xMin = timeRange.start;
     this.xMax = timeRange.end;
     this.yMin = Infinity;
@@ -52,6 +12,14 @@ export class CandlestickDataExtent extends DataExtent {
       this.yMin = Math.min(this.yMin, data.low!);
       this.yMax = Math.max(this.yMax, data.high!);
     }
+    const yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+    const yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+    this.yMin = yMin;
+    this.yMax = yMax;
+  }
+  constructor(dataset: ChartData[], timeRange: TimeRange) {
+    super(dataset, timeRange);
   }
 
   public addDataPoint(data: ChartData) {
@@ -61,45 +29,29 @@ export class CandlestickDataExtent extends DataExtent {
 
     this.xMin = Math.min(this.xMin, time);
     this.xMax = Math.max(this.xMax, time);
+
+    let yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+    let yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+    const low = data.low!;
+    const high = data.high!;
+
     if (data.low !== null && data.low !== undefined) {
-      changed = changed || data.low < this.yMin;
-      this.yMin = Math.min(this.yMin, data.low!);
+      changed = changed || low < yMin;
     }
     if (data.high !== null && data.high !== undefined) {
-      changed = changed || data.high > this.yMax;
-      this.yMax = Math.max(this.yMax, data.high!);
+      changed = changed || high > yMax;
     }
 
+    this.yMin = Math.min(yMin, low);
+    this.yMax = Math.max(yMax, high);
+
+    yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+    yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+    this.yMin = yMin;
+    this.yMax = yMax;
+
     return changed;
-  }
-
-  mapToPixel(
-    time: number,
-    price: number,
-    canvas: HTMLCanvasElement,
-    zoomLevel: number,
-    panOffset: number
-  ): { x: number; y: number } {
-    const width = canvas.width / window.devicePixelRatio || 1;
-    const height = canvas.height / window.devicePixelRatio || 1;
-    // prettier-ignore
-    const x = (((time - this.xMin) / (this.xMax - this.xMin)) * width - panOffset) * zoomLevel
-    const y = (1 - (price - this.yMin) / (this.yMax - this.yMin)) * height;
-    return { x, y };
-  }
-
-  pixelToPoint(
-    x: number,
-    y: number,
-    canvas: HTMLCanvasElement,
-    zoomLevel: number,
-    panOffset: number
-  ): { time: number; price: number } {
-    const width = canvas.width / window.devicePixelRatio || 1;
-    const height = canvas.height / window.devicePixelRatio || 1;
-    // prettier-ignore
-    const time = ((x / zoomLevel + panOffset) / width) * (this.xMax - this.xMin) + this.xMin;
-    const price = (1 - y / height) * (this.yMax - this.yMin) + this.yMin;
-    return { time, price };
   }
 }

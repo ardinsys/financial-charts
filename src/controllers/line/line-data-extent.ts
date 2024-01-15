@@ -2,27 +2,7 @@ import { DataExtent } from "../data-extent";
 import { ChartData, TimeRange } from "../types";
 
 export class LineDataExtent extends DataExtent {
-  public getYAxisValues(
-    ctx: CanvasRenderingContext2D,
-    padding: number
-  ): number[] {
-    // TODO: implement
-    return [];
-  }
-
-  public getXAxisValues(
-    ctx: CanvasRenderingContext2D,
-    padding: number
-  ): number[] {
-    // TODO: implement
-    return [];
-  }
-
-  constructor(dataset: ChartData[], timeRange: TimeRange) {
-    super(dataset, timeRange);
-  }
-
-  public recalculate(dataset: ChartData[], timeRange: TimeRange) {
+  public recalculate(dataset: ChartData[], timeRange: TimeRange): void {
     this.xMin = timeRange.start;
     this.xMax = timeRange.end;
     this.yMin = Infinity;
@@ -32,52 +12,40 @@ export class LineDataExtent extends DataExtent {
       this.yMin = Math.min(this.yMin, data.close!);
       this.yMax = Math.max(this.yMax, data.close!);
     }
+
+    const yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+    const yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+    this.yMin = yMin;
+    this.yMax = yMax;
+  }
+  constructor(dataset: ChartData[], timeRange: TimeRange) {
+    super(dataset, timeRange);
   }
 
   public addDataPoint(data: ChartData) {
-    const time =
-      typeof data.time === "number" ? data.time : new Date(data.time).getTime();
+    const time = data.time;
 
     let changed = time > this.xMax || time < this.xMin;
 
     this.xMin = Math.min(this.xMin, time);
     this.xMax = Math.max(this.xMax, time);
+
+    let yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+    let yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
     if (data.close !== null && data.close !== undefined) {
-      changed = changed || data.close < this.yMin || data.close > this.yMax;
-      this.yMin = Math.min(this.yMin, data.close!);
-      this.yMax = Math.max(this.yMax, data.close!);
+      changed = changed || data.close < yMin || data.close > yMax;
+      this.yMin = Math.min(yMin, data.close!);
+      this.yMax = Math.max(yMax, data.close!);
+
+      yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+      yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+      this.yMin = yMin;
+      this.yMax = yMax;
     }
 
     return changed;
-  }
-
-  mapToPixel(
-    time: number,
-    price: number,
-    canvas: HTMLCanvasElement,
-    zoomLevel: number,
-    panOffset: number
-  ): { x: number; y: number } {
-    const width = canvas.width / window.devicePixelRatio || 1;
-    const height = canvas.height / window.devicePixelRatio || 1;
-    // prettier-ignore
-    const x = (((time - this.xMin) / (this.xMax - this.xMin)) * width - panOffset) * zoomLevel;
-    const y = (1 - (price - this.yMin) / (this.yMax - this.yMin)) * height;
-    return { x, y };
-  }
-
-  pixelToPoint(
-    x: number,
-    y: number,
-    canvas: HTMLCanvasElement,
-    zoomLevel: number,
-    panOffset: number
-  ): { time: number; price: number } {
-    const width = canvas.width / window.devicePixelRatio || 1;
-    const height = canvas.height / window.devicePixelRatio || 1;
-    // prettier-ignore
-    const time = ((x / zoomLevel + panOffset) / width) * (this.xMax - this.xMin) + this.xMin;
-    const price = (1 - y / height) * (this.yMax - this.yMin) + this.yMin;
-    return { time, price };
   }
 }

@@ -6,6 +6,8 @@ export abstract class DataExtent {
   protected yMin!: number;
   protected yMax!: number;
   protected timeRange: TimeRange;
+  protected topOffset = 0.2;
+  protected bottomOffset = 0.1;
 
   constructor(dataset: ChartData[], timeRange: TimeRange) {
     this.recalculate(dataset, timeRange);
@@ -16,31 +18,35 @@ export abstract class DataExtent {
 
   public abstract addDataPoint(data: ChartData): boolean;
 
-  public abstract mapToPixel(
+  public mapToPixel(
     time: number,
     price: number,
     canvas: HTMLCanvasElement,
     zoomLevel: number,
     panOffset: number
-  ): { x: number; y: number };
+  ) {
+    const width = canvas.width / window.devicePixelRatio || 1;
+    const height = canvas.height / window.devicePixelRatio || 1;
+    // prettier-ignore
+    const x = (((time - this.xMin) / (this.xMax - this.xMin)) * width - panOffset) * zoomLevel
+    const y = (1 - (price - this.yMin) / (this.yMax - this.yMin)) * height;
+    return { x, y };
+  }
 
-  public abstract pixelToPoint(
+  public pixelToPoint(
     x: number,
     y: number,
     canvas: HTMLCanvasElement,
     zoomLevel: number,
     panOffset: number
-  ): { time: number; price: number };
-
-  public abstract getYAxisValues(
-    ctx: CanvasRenderingContext2D,
-    padding: number
-  ): number[];
-
-  public abstract getXAxisValues(
-    ctx: CanvasRenderingContext2D,
-    padding: number
-  ): number[];
+  ) {
+    const width = canvas.width / window.devicePixelRatio || 1;
+    const height = canvas.height / window.devicePixelRatio || 1;
+    // prettier-ignore
+    const time = ((x / zoomLevel + panOffset) / width) * (this.xMax - this.xMin) + this.xMin;
+    const price = (1 - y / height) * (this.yMax - this.yMin) + this.yMin;
+    return { time, price };
+  }
 
   getYMin() {
     return this.yMin;

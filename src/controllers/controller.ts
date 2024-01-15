@@ -1,11 +1,18 @@
 import { DataExtent } from "./data-extent";
+import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";
 
 export type DeepConcrete<T> = T extends object
   ? { [P in keyof T]-?: DeepConcrete<T[P]> }
   : T;
 
-export abstract class ChartController<TOptions> {
+export interface BaseChartOptions {
+  stepSize: number;
+  maxZoom: number;
+  theme?: ChartTheme;
+}
+
+export abstract class ChartController<TOptions extends BaseChartOptions> {
   private readonly types = ["main", "crosshair", "x-label", "y-label"] as const;
   protected container: HTMLElement;
   protected canvases: Map<string, HTMLCanvasElement> = new Map();
@@ -17,9 +24,18 @@ export abstract class ChartController<TOptions> {
   protected panOffset = 0;
   protected timeRange: TimeRange;
   protected dataExtent!: DataExtent;
+  protected visibleExtent = this.createDataExtent([], {
+    start: 0,
+    end: 0,
+  });
+
+  protected xLabelStartX = Infinity;
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
+
+  protected pointerTime = -1;
+  protected pointerY = -1;
 
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
@@ -30,12 +46,35 @@ export abstract class ChartController<TOptions> {
     timeRange: TimeRange
   ): DataExtent;
 
+  protected getXLabelOffset(): number {
+    return 0;
+  }
+
+  protected getTimeFromRawDataPoint(rawPoint: ChartData): number {
+    return (
+      Math.round(rawPoint.time / this.options.stepSize) * this.options.stepSize
+    );
+  }
+
+  private findClosestDataPoint(rawPoint: ChartData): ChartData | undefined {
+    const time = this.getTimeFromRawDataPoint(rawPoint);
+    // Find the closest data point
+    const closestDataPoint = this.data.reduce(
+      (prev, curr) =>
+        Math.abs(curr.time - time) < Math.abs(prev.time - time) ? curr : prev,
+      { time: 0 }
+    );
+    if (closestDataPoint.time === 0) return;
+    return closestDataPoint;
+  }
+
   constructor(
     container: HTMLElement,
     timeRange: TimeRange,
     options: DeepConcrete<TOptions>
   ) {
     this.options = options;
+    this.options.theme = mergeThemes(defaultLightTheme, this.options.theme);
     this.container = container;
     this.timeRange = timeRange;
     // Init and scale canveses
@@ -163,7 +202,7 @@ export abstract class ChartController<TOptions> {
   private adjustZoomLevel(zoomFactor: number) {
     this.zoomLevel *= zoomFactor;
     this.zoomLevel = Math.max(
-      Math.min(this.zoomLevel, this.getMaxZoomLevel()),
+      Math.min(this.zoomLevel, this.options.maxZoom),
       1
     );
   }
@@ -209,7 +248,9 @@ export abstract class ChartController<TOptions> {
     });
   };
 
-  protected onZoom() {}
+  protected onZoom() {
+    this.drawCrosshair();
+  }
 
   private onTouchStart = (event: TouchEvent) => {
     if (event.touches.length === 1) {
@@ -440,7 +481,7 @@ export abstract class ChartController<TOptions> {
   public draw(data: ChartData[]) {
     this.dataExtent = this.createDataExtent(this.data, this.timeRange);
     if (data.length == 0) return;
-    this.data = this.transformData(data);
+    this.data = this.mapDataToStepSize(data, this.options.stepSize);
     requestAnimationFrame(() => this.drawChart());
   }
 
@@ -461,18 +502,122 @@ export abstract class ChartController<TOptions> {
     });
   }
 
-  // TODO: these two should be moved here
-  protected abstract transformData(data: ChartData[]): ChartData[];
-  protected abstract transformNewData(data: ChartData): ChartData;
-
   protected abstract drawChart(): void;
-
-  // TODO: this should be a global option for the charts
-  protected abstract getMaxZoomLevel(): number;
 
   protected abstract drawNewChartPoint(data: ChartData): void;
 
-  protected abstract pointerMove(e: { x: number; y: number }): any;
+  protected pointerMove(e: { x: number; y: number }) {
+    const rawPoint = this.visibleExtent.pixelToPoint(
+      e.x,
+      e.y,
+      this.getContext("main").canvas,
+      this.zoomLevel,
+      this.panOffset
+    );
+    const closestDataPoint = this.findClosestDataPoint(rawPoint);
+    if (!closestDataPoint) return;
+    this.pointerTime = closestDataPoint.time;
+    this.pointerY = Math.min(e.y, this.getLogicalCanvas("main").height);
+    this.drawCrosshair();
+  }
+
+  private drawCrosshair(): void {
+    if (this.pointerTime === -1) return;
+    if (this.pointerY === -1) return;
+    if (this.pointerY >= this.getLogicalCanvas("main").height) {
+      this.getContext("crosshair").clearRect(
+        0,
+        0,
+        this.getLogicalCanvas("crosshair").width,
+        this.getLogicalCanvas("crosshair").height
+      );
+      return;
+    }
+    const xOffset = this.getXLabelOffset();
+    const ctx = this.getContext("crosshair");
+    const { x } = this.visibleExtent.mapToPixel(
+      this.pointerTime + xOffset,
+      0,
+      this.getContext("main").canvas,
+      this.zoomLevel,
+      this.panOffset
+    );
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.strokeStyle = this.options.theme.crosshair.color;
+    ctx.lineWidth = this.options.theme.crosshair.width;
+    ctx.setLineDash(this.options.theme.crosshair.lineDash);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, this.getLogicalCanvas("main").height);
+    ctx.moveTo(0, this.pointerY);
+    ctx.lineTo(this.getLogicalCanvas("main").width, this.pointerY);
+    ctx.stroke();
+    const text = new Intl.DateTimeFormat("hu", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(this.pointerTime);
+    const textWidth = ctx.measureText(text).width;
+    const textPadding = 10;
+    const rectWidth = textWidth + textPadding * 2;
+    const maxRectX = this.getLogicalCanvas("crosshair").width - rectWidth;
+    const rectX = Math.min(
+      Math.max(x - textWidth / 2 - textPadding, 0),
+      maxRectX
+    );
+    const textX = Math.min(
+      Math.max(x - textWidth / 2, textPadding),
+      maxRectX + textPadding
+    );
+
+    ctx.fillStyle = this.options.theme.crosshair.tooltip.backgroundColor;
+    ctx.rect(
+      rectX,
+      this.getLogicalCanvas("main").height,
+      rectWidth,
+      textPadding * 2 + 12
+    );
+
+    const price = this.visibleExtent.pixelToPoint(
+      0,
+      this.pointerY,
+      this.getContext("main").canvas,
+      this.zoomLevel,
+      this.panOffset
+    ).price;
+    const decimals = this.estimatePriceLabelDecimalPlaces(30);
+    const priceText = new Intl.NumberFormat("hu", {
+      maximumFractionDigits: decimals,
+      minimumFractionDigits: decimals,
+    }).format(price);
+    const priceRectWidth = this.getLogicalCanvas("y-label").width;
+    const priceMaxRectX = this.l(ctx.canvas.width) - priceRectWidth;
+    const priceRectX = priceMaxRectX;
+    const priceTextX = priceMaxRectX + 10;
+
+    ctx.rect(
+      priceRectX,
+      Math.max(this.pointerY - textPadding / 2 - 6, 1 + textPadding / 2 - 6),
+      priceRectWidth,
+      textPadding + 12
+    );
+    ctx.fill();
+
+    ctx.font = `${this.options.theme.crosshair.tooltip.fontSize}px ${this.options.theme.crosshair.tooltip.font}, monospace`;
+    ctx.fillStyle = this.options.theme.crosshair.tooltip.color;
+    ctx.fillText(
+      text,
+      textX,
+      this.getLogicalCanvas("main").height + textPadding * 2
+    );
+    ctx.fillText(
+      priceText,
+      priceTextX,
+      Math.max(this.pointerY + textPadding / 2, textPadding + 6)
+    );
+  }
 
   /**
    * Properly dispose the chart controller.
@@ -499,12 +644,12 @@ export abstract class ChartController<TOptions> {
    * @param labelSpacing  label spacing
    * @returns             number of decimal places needed
    */
-  protected estimatePriceLabelDecimalPlaces(
-    priceRange: number,
-    canvasHeight: number,
-    labelSpacing: number
-  ) {
-    const maxLabels = Math.floor(canvasHeight / labelSpacing);
+  protected estimatePriceLabelDecimalPlaces(labelSpacing: number) {
+    const priceRange =
+      this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
+    const maxLabels = Math.floor(
+      this.getLogicalCanvas("main").height / labelSpacing
+    );
     const stepSize = priceRange / maxLabels;
 
     // Estimate decimal places based on step size
@@ -520,6 +665,309 @@ export abstract class ChartController<TOptions> {
       return 1;
     } else {
       return 0; // no decimal places needed
+    }
+  }
+
+  protected mapDataToStepSize(
+    data: ChartData[],
+    stepSize: number
+  ): ChartData[] {
+    if (data.length === 0) return data;
+    data = data.map((d) => {
+      return d.time % stepSize === 0
+        ? d
+        : { ...d, time: d.time - (d.time % stepSize) };
+    });
+
+    // merge data points that has the same time
+    const mergedData: ChartData[] = [];
+    let lastData: ChartData | undefined;
+
+    for (const d of data) {
+      if (!lastData) {
+        lastData = d;
+        continue;
+      }
+
+      if (d.time === lastData.time) {
+        // set last data but do not override open!
+        // setup high, low and close
+        lastData = {
+          ...lastData,
+          open: lastData.open!,
+          high: Math.max(lastData.high!, d.high!),
+          low: Math.min(lastData.low!, d.low!),
+          close: d.close!,
+        };
+      } else {
+        mergedData.push(lastData);
+        lastData = d;
+      }
+    }
+
+    mergedData.push(lastData!);
+
+    return mergedData;
+  }
+
+  protected canDrawWithOptimization = false;
+
+  protected transformNewData(data: ChartData): ChartData {
+    const d =
+      data.time % this.options.stepSize === 0
+        ? data
+        : { ...data, time: data.time - (data.time % this.options.stepSize) };
+
+    if (this.data.length === 0) return d;
+
+    const lastData = this.data.pop()!;
+
+    if (d.time === lastData.time) {
+      return {
+        ...lastData,
+        open: lastData.open!,
+        high: Math.max(lastData.high!, d.high!),
+        low: Math.min(lastData.low!, d.low!),
+        close: d.close!,
+      };
+    } else {
+      const range = this.getVisibleTimeRange();
+      const inVisibleRange = d.time >= range.start && d.time <= range.end;
+      if (inVisibleRange) {
+        this.canDrawWithOptimization = !this.visibleExtent.addDataPoint(d);
+      }
+      this.data.push(lastData);
+      return d;
+    }
+  }
+
+  protected roundToNiceNumber(number: number) {
+    const orderOfMagnitude = Math.pow(10, Math.floor(Math.log10(number)));
+    const fraction = number / orderOfMagnitude;
+
+    let niceFraction;
+    if (fraction < 1.5) {
+      niceFraction = 1;
+    } else if (fraction < 3) {
+      niceFraction = 2;
+    } else if (fraction < 7) {
+      niceFraction = 5;
+    } else {
+      niceFraction = 10;
+    }
+
+    return niceFraction * orderOfMagnitude;
+  }
+
+  private calculateYAxisLabels(labelSpacing: number) {
+    const fontSize = 12;
+    const textHeight = fontSize * 1.2; // Estimated height of text
+    const canvasHeight = this.getLogicalCanvas("y-label").height;
+    const priceRange =
+      this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
+
+    // Initial calculation of max labels
+    let maxLabels = Math.floor(canvasHeight / (textHeight + labelSpacing));
+    let stepSize = priceRange / maxLabels;
+    let roundedStepSize = this.roundToNiceNumber(stepSize);
+
+    // Recalculate max labels and adjust rounded step size if necessary
+    maxLabels = Math.ceil(priceRange / roundedStepSize);
+    while (maxLabels > canvasHeight / (textHeight + labelSpacing)) {
+      stepSize = roundedStepSize * 1.5; // Increase the step size
+      roundedStepSize = this.roundToNiceNumber(stepSize);
+      maxLabels = Math.ceil(priceRange / roundedStepSize);
+    }
+
+    // Calculate the new min and max prices
+    const newMinPrice =
+      Math.floor(this.visibleExtent.getYMin() / roundedStepSize) *
+      roundedStepSize;
+    let newMaxPrice = newMinPrice + roundedStepSize * maxLabels;
+
+    // Ensure newMaxPrice does not exceed actual max
+    if (newMaxPrice > this.visibleExtent.getYMax()) {
+      newMaxPrice = this.visibleExtent.getYMax();
+    }
+
+    return { newMinPrice, newMaxPrice, roundedStepSize, maxLabels };
+  }
+
+  protected drawYAxis(): void {
+    const { newMinPrice, newMaxPrice, roundedStepSize, maxLabels } =
+      this.calculateYAxisLabels(30);
+
+    const decimals = Math.max(0, -Math.floor(Math.log10(roundedStepSize)));
+    const priceFormat = new Intl.NumberFormat("hu", {
+      maximumFractionDigits: decimals,
+      minimumFractionDigits: decimals,
+    });
+
+    const ctx = this.getContext("y-label");
+    ctx.fillStyle = this.options.theme.yAxis.backgroundColor;
+    ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fill();
+
+    ctx.fillStyle = this.options.theme.yAxis.color;
+    ctx.font =
+      ctx.font = `${this.options.theme.yAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+
+    const yAxisValues: number[] = [];
+    for (let i = 0; i <= maxLabels; i++) {
+      const price = newMinPrice + i * roundedStepSize;
+      yAxisValues.push(price);
+    }
+
+    for (let i = 0; i < yAxisValues.length; i++) {
+      const value = yAxisValues[i];
+      const { y } = this.visibleExtent.mapToPixel(
+        this.getVisibleTimeRange().start,
+        value,
+        ctx.canvas,
+        this.zoomLevel,
+        this.panOffset
+      );
+
+      const text = priceFormat.format(value);
+      const textWidth = ctx.measureText(text).width;
+
+      ctx.fillText(
+        text,
+        (this.l(ctx.canvas.width) - textWidth) / 2 + textWidth,
+        y + (i == 0 ? 8 : i == maxLabels ? -8 : 0)
+      );
+      const mainCtx = this.getContext("main");
+
+      mainCtx.lineWidth = this.options.theme.grid.width;
+      mainCtx.strokeStyle = this.options.theme.grid.color;
+      mainCtx.beginPath();
+      mainCtx.moveTo(0, y);
+      mainCtx.lineTo(mainCtx.canvas.width, y);
+      mainCtx.stroke();
+    }
+  }
+
+  protected drawXAxis(): void {
+    const ctx = this.getContext("x-label");
+    const sizes = this.getLogicalCanvas("x-label");
+    ctx.fillStyle = this.options.theme.xAxis.backgroundColor;
+    ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fill();
+
+    ctx.strokeStyle = this.options.theme.xAxis.separatorColor;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(ctx.canvas.width, 0);
+    ctx.stroke();
+
+    ctx.fillStyle = this.options.theme.xAxis.color;
+    ctx.font = `${this.options.theme.xAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
+    ctx.textBaseline = "middle";
+    const canvasWidth = ctx.canvas.width - this.p(this.yLabelWidth);
+
+    const padding = this.p(20);
+
+    let startTime = this.dataExtent.getXMin();
+    let endTime = this.dataExtent.getXMax();
+    const dateFormat = new Intl.DateTimeFormat("hu", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    let stepSize = this.options.stepSize;
+
+    while (this.xLabelStartX === Infinity && startTime < endTime) {
+      const text = dateFormat.format(startTime);
+
+      const { x } = this.dataExtent.mapToPixel(
+        startTime + this.getXLabelOffset(),
+        0,
+        { width: canvasWidth, height: 0 } as HTMLCanvasElement,
+        this.zoomLevel,
+        this.panOffset
+      );
+      const textWidth = ctx.measureText(text).width;
+
+      if (x - textWidth / 2 > 0) {
+        this.xLabelStartX = startTime;
+        break;
+      }
+      startTime += this.options.stepSize;
+    }
+
+    const firstXEnd =
+      this.dataExtent.mapToPixel(
+        this.xLabelStartX + this.getXLabelOffset(),
+        0,
+        { width: canvasWidth, height: 0 } as HTMLCanvasElement,
+        this.zoomLevel,
+        this.panOffset
+      ).x +
+      ctx.measureText(dateFormat.format(this.xLabelStartX)).width / 2;
+
+    startTime = this.dataExtent.getXMin();
+
+    while (startTime < endTime) {
+      const text = dateFormat.format(startTime);
+
+      const { x } = this.dataExtent.mapToPixel(
+        startTime + this.getXLabelOffset(),
+        0,
+        { width: canvasWidth, height: 0 } as HTMLCanvasElement,
+        this.zoomLevel,
+        this.panOffset
+      );
+      const textWidth = ctx.measureText(text).width;
+
+      if (x - textWidth / 2 > firstXEnd + padding) {
+        stepSize = Math.abs(startTime - this.xLabelStartX);
+        break;
+      }
+      startTime += this.options.stepSize;
+    }
+
+    let start = this.xLabelStartX;
+    let endX = this.dataExtent.mapToPixel(
+      start + this.getXLabelOffset(),
+      0,
+      { width: canvasWidth, height: 0 } as HTMLCanvasElement,
+      this.zoomLevel,
+      this.panOffset
+    ).x;
+    const text = dateFormat.format(start);
+    const textWidth = ctx.measureText(text).width;
+    endX += textWidth / 2 + padding;
+
+    while (start < endTime) {
+      const text = dateFormat.format(start);
+
+      const { x } = this.dataExtent.mapToPixel(
+        start + this.getXLabelOffset(),
+        0,
+        { width: canvasWidth, height: 0 } as HTMLCanvasElement,
+        this.zoomLevel,
+        this.panOffset
+      );
+      const textWidth = ctx.measureText(text).width;
+
+      if (x - textWidth / 2 > endX || start === this.xLabelStartX) {
+        ctx.fillText(text, x - textWidth / 2, sizes.height - 15);
+
+        const mainCtx = this.getContext("main");
+
+        mainCtx.lineWidth = this.options.theme.grid.width;
+        mainCtx.strokeStyle = this.options.theme.grid.color;
+        mainCtx.beginPath();
+        mainCtx.moveTo(x, 0);
+        mainCtx.lineTo(x, mainCtx.canvas.height);
+        mainCtx.stroke();
+
+        endX = x + textWidth / 2 + padding;
+      }
+
+      start += stepSize;
     }
   }
 }

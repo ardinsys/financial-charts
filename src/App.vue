@@ -5,6 +5,7 @@ import { CandlestickController } from "./controllers/candlestick/candle-controll
 import { LineController } from "./controllers/line/line-controller";
 import { MDDClient, defaultParsers, DataType } from "@asys-private/mdd-client";
 import { ChartData } from "./controllers/types";
+import { defaultDarkTheme } from "./controllers/themes";
 
 const chartContainer = ref<HTMLElement>();
 
@@ -27,11 +28,9 @@ onMounted(() => {
       end: fivepm.getTime(),
     },
     {
-      // stroke: {
-      //   color: "red",
-      //   width: 2,
-      // },
-      stepSize: 1 * 60 * 1000,
+      theme: defaultDarkTheme,
+      maxZoom: 10,
+      stepSize: 15 * 60 * 1000,
     }
   );
 
