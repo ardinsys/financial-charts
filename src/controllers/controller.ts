@@ -621,7 +621,6 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
 
     if (this.pointerTime === -1) return;
     if (this.pointerY === -1) return;
-    if (!this.isTouchCrosshair) return;
 
     if (this.pointerY >= this.getLogicalCanvas("main").height) {
       this.getContext("crosshair").clearRect(
