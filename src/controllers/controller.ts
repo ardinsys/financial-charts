@@ -17,6 +17,12 @@ type AxisLabel = {
   position: number;
 };
 
+interface XAxisLabel {
+  date: Date;
+  displayLabel: string;
+  priority: number;
+}
+
 export abstract class ChartController<TOptions extends BaseChartOptions> {
   private readonly types = ["main", "crosshair", "x-label", "y-label"] as const;
   protected container: HTMLElement;
@@ -51,6 +57,94 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   private isTouchCrosshair = false;
   private isTouchCrosshairTimeout?: number;
   private isTouchCapable = "ontouchstart" in window;
+  private xLabelDates: Date[] = [];
+  private xLabelCache: Map<number, XAxisLabel> = new Map();
+
+  private processXLabels(): XAxisLabel[] {
+    const yearFromat = new Intl.DateTimeFormat("hu", { year: "numeric" });
+    const monthFromat = new Intl.DateTimeFormat("hu", {
+      month: "short",
+    });
+    const dayFromat = new Intl.DateTimeFormat("hu", {
+      day: "numeric",
+    });
+    const hourFromat = new Intl.DateTimeFormat("hu", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // Calculate the range of the data in days
+    const rangeInDays =
+      (this.timeRange.end - this.timeRange.start) / (1000 * 3600 * 24);
+
+    return this.xLabelDates.map((date, index, array) => {
+      const prevDate = index > 0 ? array[index - 1] : null;
+      if (this.xLabelCache.has(date.getTime())) {
+        return this.xLabelCache.get(date.getTime())!;
+      }
+
+      let ret: XAxisLabel;
+
+      if (rangeInDays > 365) {
+        if (prevDate && date.getFullYear() !== prevDate.getFullYear()) {
+          ret = {
+            date,
+            displayLabel: yearFromat.format(date),
+            priority: 4,
+          };
+        } else if (prevDate && date.getMonth() !== prevDate.getMonth()) {
+          ret = {
+            date,
+            displayLabel: monthFromat.format(date),
+            priority: 3,
+          };
+        } else {
+          ret = {
+            date,
+            displayLabel: dayFromat.format(date),
+            priority: 2,
+          };
+        }
+      } else if (rangeInDays > 30) {
+        if (prevDate && date.getMonth() !== prevDate.getMonth()) {
+          ret = {
+            date,
+            displayLabel: monthFromat.format(date),
+            priority: 3,
+          };
+        } else {
+          ret = {
+            date,
+            displayLabel: dayFromat.format(date),
+            priority: 2,
+          };
+        }
+      } else if (rangeInDays > 1) {
+        ret = {
+          date,
+          displayLabel: dayFromat.format(date),
+          priority: 2,
+        };
+      } else {
+        if (prevDate && date.getDate() !== prevDate?.getDate()) {
+          ret = {
+            date,
+            displayLabel: dayFromat.format(date),
+            priority: 1,
+          };
+        } else {
+          ret = {
+            date,
+            displayLabel: hourFromat.format(date),
+            priority: 1,
+          };
+        }
+      }
+
+      this.xLabelCache.set(date.getTime(), ret);
+      return ret;
+    });
+  }
 
   protected abstract createDataExtent(
     data: ChartData[],
@@ -565,6 +659,14 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     this.dataExtent = this.createDataExtent(this.data, this.timeRange);
     if (data.length == 0) return;
     this.data = this.mapDataToStepSize(data, this.options.stepSize);
+
+    this.xLabelDates = [];
+
+    for (const d of this.data) {
+      if (d.time < this.timeRange.start) continue;
+      this.xLabelDates.push(new Date(d.time));
+    }
+
     requestAnimationFrame(() => this.drawChart());
   }
 
@@ -826,6 +928,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
         this.canDrawWithOptimization = !this.visibleExtent.addDataPoint(d);
       }
       this.data.push(lastData);
+      this.xLabelDates.push(new Date(d.time));
       return d;
     }
   }
@@ -939,124 +1042,67 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   }
 
   protected drawXAxis(): void {
+    const labels = this.processXLabels(); // Assumed to return labels with date, displayLabel, and priority
     const ctx = this.getContext("x-label");
+    const mainCtx = this.getContext("main");
     const sizes = this.getLogicalCanvas("x-label");
-    ctx.fillStyle = this.options.theme.xAxis.backgroundColor;
-    ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.fill();
 
+    // Setting up the canvas
+    ctx.fillStyle = this.options.theme.xAxis.backgroundColor;
+    ctx.fillRect(0, 0, sizes.width, sizes.height);
+
+    // Drawing the axis line
     ctx.strokeStyle = this.options.theme.xAxis.separatorColor;
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.lineTo(ctx.canvas.width, 0);
+    ctx.lineTo(sizes.width, 0);
     ctx.stroke();
 
+    // Setting text properties
     ctx.fillStyle = this.options.theme.xAxis.color;
     ctx.font = `${this.options.theme.xAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
     ctx.textBaseline = "middle";
-    const canvasWidth = ctx.canvas.width - this.p(this.yLabelWidth);
-
+    const canvasWidth = sizes.width - this.p(this.yLabelWidth);
     const padding = this.p(20);
 
-    let startTime = this.dataExtent.getXMin();
-    let endTime = this.dataExtent.getXMax();
-    const dateFormat = new Intl.DateTimeFormat("hu", {
-      hour: "2-digit",
-      minute: "2-digit",
+    let drawnLabels: { start: number; end: number }[] = [];
+
+    labels.sort((a, b) => b.priority - a.priority);
+
+    labels.forEach((label) => {
+      const { x } = this.dataExtent.mapToPixel(
+        label.date.getTime() + this.getXLabelOffset(),
+        0,
+        { width: canvasWidth, height: 0 } as HTMLCanvasElement,
+        this.zoomLevel,
+        this.panOffset
+      );
+
+      const textWidth = ctx.measureText(label.displayLabel).width;
+      const labelPos = { start: x - textWidth / 2, end: x + textWidth / 2 };
+
+      // Check for overlap with already drawn labels
+      const overlaps = drawnLabels.some(
+        (drawnLabel) =>
+          labelPos.start < drawnLabel.end + padding &&
+          labelPos.end > drawnLabel.start - padding
+      );
+
+      if (!overlaps && labelPos.end < canvasWidth) {
+        if (labelPos.start >= 0) {
+          ctx.fillText(label.displayLabel, labelPos.start, sizes.height - 15);
+
+          // Draw grid line
+          mainCtx.lineWidth = this.options.theme.grid.width;
+          mainCtx.strokeStyle = this.options.theme.grid.color;
+          mainCtx.beginPath();
+          mainCtx.moveTo(x, 0);
+          mainCtx.lineTo(x, mainCtx.canvas.height);
+          mainCtx.stroke();
+        }
+
+        drawnLabels.push(labelPos);
+      }
     });
-
-    let stepSize = this.options.stepSize;
-
-    while (this.xLabelStartX === Infinity && startTime < endTime) {
-      const text = dateFormat.format(startTime);
-
-      const { x } = this.dataExtent.mapToPixel(
-        startTime + this.getXLabelOffset(),
-        0,
-        { width: canvasWidth, height: 0 } as HTMLCanvasElement,
-        this.zoomLevel,
-        this.panOffset
-      );
-      const textWidth = ctx.measureText(text).width;
-
-      if (x - textWidth / 2 > 0) {
-        this.xLabelStartX = startTime;
-        break;
-      }
-      startTime += this.options.stepSize;
-    }
-
-    const firstXEnd =
-      this.dataExtent.mapToPixel(
-        this.xLabelStartX + this.getXLabelOffset(),
-        0,
-        { width: canvasWidth, height: 0 } as HTMLCanvasElement,
-        this.zoomLevel,
-        this.panOffset
-      ).x +
-      ctx.measureText(dateFormat.format(this.xLabelStartX)).width / 2;
-
-    startTime = this.dataExtent.getXMin();
-
-    while (startTime < endTime) {
-      const text = dateFormat.format(startTime);
-
-      const { x } = this.dataExtent.mapToPixel(
-        startTime + this.getXLabelOffset(),
-        0,
-        { width: canvasWidth, height: 0 } as HTMLCanvasElement,
-        this.zoomLevel,
-        this.panOffset
-      );
-      const textWidth = ctx.measureText(text).width;
-
-      if (x - textWidth / 2 > firstXEnd + padding) {
-        stepSize = Math.abs(startTime - this.xLabelStartX);
-        break;
-      }
-      startTime += this.options.stepSize;
-    }
-
-    let start = this.xLabelStartX;
-    let endX = this.dataExtent.mapToPixel(
-      start + this.getXLabelOffset(),
-      0,
-      { width: canvasWidth, height: 0 } as HTMLCanvasElement,
-      this.zoomLevel,
-      this.panOffset
-    ).x;
-    const text = dateFormat.format(start);
-    const textWidth = ctx.measureText(text).width;
-    endX += textWidth / 2 + padding;
-
-    while (start < endTime) {
-      const text = dateFormat.format(start);
-
-      const { x } = this.dataExtent.mapToPixel(
-        start + this.getXLabelOffset(),
-        0,
-        { width: canvasWidth, height: 0 } as HTMLCanvasElement,
-        this.zoomLevel,
-        this.panOffset
-      );
-      const textWidth = ctx.measureText(text).width;
-
-      if (x - textWidth / 2 > endX || start === this.xLabelStartX) {
-        ctx.fillText(text, x - textWidth / 2, sizes.height - 15);
-
-        const mainCtx = this.getContext("main");
-
-        mainCtx.lineWidth = this.options.theme.grid.width;
-        mainCtx.strokeStyle = this.options.theme.grid.color;
-        mainCtx.beginPath();
-        mainCtx.moveTo(x, 0);
-        mainCtx.lineTo(x, mainCtx.canvas.height);
-        mainCtx.stroke();
-
-        endX = x + textWidth / 2 + padding;
-      }
-
-      start += stepSize;
-    }
   }
 }

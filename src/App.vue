@@ -28,22 +28,23 @@ let controller: CandlestickController;
 
 const fiveYear = new Date();
 fiveYear.setFullYear(fiveYear.getFullYear() - 5);
+fiveYear.setHours(1, 0, 0, 0);
 
 onMounted(() => {
   controller = new CandlestickController(
     chartContainer.value!,
     {
-      start: fiveYear.getTime(),
+      start: nineam.getTime(),
       end: fivepm.getTime(),
     },
     {
       // theme: defaultDarkTheme,
       maxZoom: 100,
-      stepSize: 24 * 60 * 60 * 1000,
+      stepSize: 15 * 60 * 1000,
     }
   );
 
-  controller.setEventListener("click", (e, data) => {
+  controller.setEventListener("click", (_: MouseEvent, data) => {
     clickedData.value = data;
   });
 
@@ -59,45 +60,45 @@ onMounted(() => {
   mdd.connect(2000).then(async () => {
     const ins = { dataType: DataType.CHART_DATA, isin: "TESZT", mic: "XETR" };
     await mdd.subscribeInstrument(ins);
-    mdd.getHistoricalChart(ins, HistoricalChartType.FIVE_YEAR).then((data) => {
-      chartData.value = data.map((c) => ({
-        time: c.time,
-        close: c.close,
-        high: c.high,
-        low: c.low,
-        open: c.open,
-      }));
-    });
-    // const [init] = await mdd.getInitData([
-    //   { ...ins, from: nineam, to: fivepm },
-    // ]);
-    // if (init?.type === DataType.CHART_DATA) {
-    //   chartData.value = init.chartData.map((c) => ({
-    //     time: new Date(c.timestamp).getTime(),
+    // mdd.getHistoricalChart(ins, HistoricalChartType.FIVE_YEAR).then((data) => {
+    //   chartData.value = data.map((c) => ({
+    //     time: c.time,
     //     close: c.close,
     //     high: c.high,
     //     low: c.low,
     //     open: c.open,
     //   }));
-    // }
-
-    // mdd.registerUpdateObserver({
-    //   dataTypes: [DataType.CHART_DATA],
-    //   observer: (data) => {
-    //     if (data.type === DataType.CHART_DATA) {
-    //       chartData.value = [
-    //         ...chartData.value,
-    //         {
-    //           time: new Date(data.timestamp).getTime(),
-    //           close: data.close,
-    //           high: data.high,
-    //           low: data.low,
-    //           open: data.open,
-    //         },
-    //       ];
-    //     }
-    //   },
     // });
+    const [init] = await mdd.getInitData([
+      { ...ins, from: nineam, to: fivepm },
+    ]);
+    if (init?.type === DataType.CHART_DATA) {
+      chartData.value = init.chartData.map((c) => ({
+        time: new Date(c.timestamp).getTime(),
+        close: c.close,
+        high: c.high,
+        low: c.low,
+        open: c.open,
+      }));
+    }
+
+    mdd.registerUpdateObserver({
+      dataTypes: [DataType.CHART_DATA],
+      observer: (data) => {
+        if (data.type === DataType.CHART_DATA) {
+          chartData.value = [
+            ...chartData.value,
+            {
+              time: new Date(data.timestamp).getTime(),
+              close: data.close,
+              high: data.high,
+              low: data.low,
+              open: data.open,
+            },
+          ];
+        }
+      },
+    });
   });
 
   // controller.draw([
