@@ -950,34 +950,66 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
 
     return niceFraction * orderOfMagnitude;
   }
+  // private calculateYAxisLabels(labelSpacing: number) {
+  //   const fontSize = this.options.theme.yAxis.fontSize;
+  //   const textHeight = fontSize * 1.2; // Estimated height of text
+  //   const canvasHeight = this.getLogicalCanvas("y-label").height;
+
+  //   const range = this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
+  //   console.log(this.visibleExtent.getYMax(), this.visibleExtent.getYMin());
+
+  //   // Adjust the calculation of maxLabels to respect labelSpacing more accurately
+  //   const maxPossibleLabels = Math.floor(
+  //     canvasHeight / (textHeight + labelSpacing)
+  //   );
+  //   const maxLabels = Math.min(maxPossibleLabels, range / labelSpacing);
+
+  //   // Find a nice step size
+  //   const rawStep = range / maxLabels;
+  //   const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  //   const normalizedStep = rawStep / magnitude;
+  //   let stepSize;
+
+  //   if (normalizedStep < 1.5) {
+  //     stepSize = 1 * magnitude;
+  //   } else if (normalizedStep < 3) {
+  //     stepSize = 2 * magnitude;
+  //   } else if (normalizedStep < 7.5) {
+  //     stepSize = 5 * magnitude;
+  //   } else {
+  //     stepSize = 10 * magnitude;
+  //   }
+
+  //   const firstLabel =
+  //     Math.ceil(this.visibleExtent.getYMin() / stepSize) * stepSize;
+  //   const labels: AxisLabel[] = [];
+
+  //   for (
+  //     let value = firstLabel;
+  //     value <= this.visibleExtent.getYMax();
+  //     value += stepSize
+  //   ) {
+  //     const position =
+  //       canvasHeight -
+  //       ((value - this.visibleExtent.getYMin()) / range) * canvasHeight;
+  //     labels.push({ value: parseFloat(value.toFixed(10)), position });
+  //   }
+
+  //   return labels;
+  // }
+
   private calculateYAxisLabels(labelSpacing: number) {
     const fontSize = this.options.theme.yAxis.fontSize;
     const textHeight = fontSize * 1.2; // Estimated height of text
     const canvasHeight = this.getLogicalCanvas("y-label").height;
 
-    const range = this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
+    let range = this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
+    range = Math.max(range, 0.0001); // Ensure a minimum range to avoid division by zero
 
-    // Adjust the calculation of maxLabels to respect labelSpacing more accurately
     const maxPossibleLabels = Math.floor(
       canvasHeight / (textHeight + labelSpacing)
     );
-    const maxLabels = Math.min(maxPossibleLabels, range / labelSpacing);
-
-    // Find a nice step size
-    const rawStep = range / maxLabels;
-    const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    const normalizedStep = rawStep / magnitude;
-    let stepSize;
-
-    if (normalizedStep < 1.5) {
-      stepSize = 1 * magnitude;
-    } else if (normalizedStep < 3) {
-      stepSize = 2 * magnitude;
-    } else if (normalizedStep < 7.5) {
-      stepSize = 5 * magnitude;
-    } else {
-      stepSize = 10 * magnitude;
-    }
+    const stepSize = this.calculateStepSize(range, maxPossibleLabels);
 
     const firstLabel =
       Math.ceil(this.visibleExtent.getYMin() / stepSize) * stepSize;
@@ -995,6 +1027,34 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     }
 
     return labels;
+  }
+
+  private calculateStepSize(range: number, maxLabels: number) {
+    // Determine the step size based on the range and maximum number of labels
+    const rawStep = range / maxLabels;
+
+    // Adjust the step size based on the magnitude of the range
+    let magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    if (magnitude === 0) {
+      magnitude = 0.1; // Adjust for very small ranges
+    }
+
+    let normalizedStep = rawStep / magnitude;
+    let stepSize;
+
+    if (normalizedStep < 1.5) {
+      stepSize = 1 * magnitude;
+    } else if (normalizedStep < 3) {
+      stepSize = 2 * magnitude;
+    } else if (normalizedStep < 7.5) {
+      stepSize = 5 * magnitude;
+    } else {
+      stepSize = 10 * magnitude;
+    }
+
+    // Ensure that step size is not smaller than the smallest significant digit
+    const decimalPlaces = Math.max(-Math.floor(Math.log10(range)), 0);
+    return parseFloat(stepSize.toFixed(decimalPlaces));
   }
 
   protected drawYAxis(): void {
