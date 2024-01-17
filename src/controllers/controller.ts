@@ -417,13 +417,31 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     }
   };
 
-  private onTouchEnd = () => {
+  private onTouchEnd = (e: TouchEvent) => {
     if (!this.isTouchCrosshair) {
       this.lastPointerPosition = undefined;
       this.lastTouchDistance = undefined;
     }
-    clearTimeout(this.isTouchCrosshairTimeout);
-    this.isTouchCrosshairTimeout = undefined;
+    if (this.isTouchCrosshairTimeout != undefined) {
+      if (this.isTouchCrosshair && e.changedTouches.length === 1) {
+        const rect =
+          this.getContext("crosshair").canvas.getBoundingClientRect();
+        this.eventListeners.get("touch-click")?.(
+          e,
+          this.findClosestDataPoint(
+            this.visibleExtent.pixelToPoint(
+              e.changedTouches[0].clientX - rect.left,
+              e.changedTouches[0].clientY - rect.top,
+              this.getContext("main").canvas,
+              this.zoomLevel,
+              this.panOffset
+            )
+          )!
+        );
+      }
+      clearTimeout(this.isTouchCrosshairTimeout);
+      this.isTouchCrosshairTimeout = undefined;
+    }
   };
 
   private onTouchMove = (event: TouchEvent) => {

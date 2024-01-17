@@ -47,6 +47,10 @@ onMounted(() => {
   controller.setEventListener("click", (_: MouseEvent, data) => {
     clickedData.value = data;
   });
+  controller.setEventListener("touch-click", (_: TouchEvent, data) => {
+    // @ts-ignore
+    clickedData.value = { ...data, touch: true };
+  });
 
   const mdd = new MDDClient(
     "ws://192.168.68.60:3000/mdd/ws",
