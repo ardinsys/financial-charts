@@ -1140,7 +1140,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     ctx.fillStyle = this.options.theme.xAxis.color;
     ctx.font = `${this.options.theme.xAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
     ctx.textBaseline = "middle";
-    const canvasWidth = sizes.width - this.p(this.yLabelWidth);
+    const canvasWidth = ctx.canvas.width - this.p(this.yLabelWidth);
     const padding = this.p(20);
 
     let drawnLabels: { start: number; end: number }[] = [];
