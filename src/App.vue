@@ -72,6 +72,20 @@ onMounted(() => {
         low: c.low,
         open: c.open,
       }));
+
+      setTimeout(() => {
+        controller.updateTheme(defaultDarkTheme);
+        setTimeout(() => {
+          controller.updateCoreOptions(
+            {
+              start: fiveYear.getTime(),
+              end: fivepm.getTime(),
+            },
+            1000 * 60 * 60 * 24 * 30,
+            20
+          );
+        }, 3000);
+      }, 3000);
     });
     // const [init] = await mdd.getInitData([
     //   { ...ins, from: nineam, to: fivepm },

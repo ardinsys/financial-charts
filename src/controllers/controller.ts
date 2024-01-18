@@ -30,6 +30,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   protected contexts: Map<string, CanvasRenderingContext2D> = new Map();
   protected isPanning: boolean = false;
   protected data: ChartData[] = [];
+  private originalData: ChartData[] = [];
   protected options: DeepConcrete<TOptions>;
   protected zoomLevel = 1;
   protected panOffset = 0;
@@ -39,8 +40,6 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     start: 0,
     end: 0,
   });
-
-  protected xLabelStartX = Infinity;
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
@@ -227,21 +226,54 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     this.resizeObserver.observe(this.container);
   }
 
-  /**
-   * Update the time range and data.
-   * Chart will be redrawn. Zoom level and pan offset will be reset.
-   *
-   * @param timeRange new time range
-   * @param data      chart data to draw
-   */
-  public updateTimeRange(timeRange: TimeRange, data: ChartData[]) {
-    this.data = data;
+  public updateTheme(theme: ChartTheme) {
+    this.options.theme = mergeThemes(this.options.theme, theme);
+    if (this.data.length > 0) {
+      requestAnimationFrame(() => {
+        this.drawChart();
+        this.drawCrosshair();
+      });
+    }
+  }
+
+  public updateCoreOptions(
+    timeRange: TimeRange,
+    stepSize: number,
+    maxZoom: number
+  ) {
+    this.options.maxZoom = maxZoom;
+    this.options.stepSize = stepSize;
     this.timeRange = timeRange;
     this.zoomLevel = 1;
     this.panOffset = 0;
-    if (this.data.length > 0) {
-      requestAnimationFrame(() => this.drawChart());
+    this.isPanning = false;
+    this.pointerTime = -1;
+    this.pointerY = -1;
+    this.lastTouchDistance = undefined;
+    this.lastPointerPosition = undefined;
+    this.isTouchCrosshair = false;
+    this.isTouchCrosshairTimeout = undefined;
+    this.dataExtent = this.createDataExtent(this.data, this.timeRange);
+    this.visibleExtent = this.createDataExtent([], {
+      start: 0,
+      end: 0,
+    });
+    this.xLabelCache.clear();
+    this.xLabelDates = [];
+
+    if (this.originalData.length == 0) return;
+
+    this.data = this.mapDataToStepSize(this.originalData, stepSize);
+
+    for (const d of this.data) {
+      if (d.time < this.timeRange.start) continue;
+      this.xLabelDates.push(new Date(d.time));
     }
+
+    requestAnimationFrame(() => {
+      this.drawChart();
+      this.drawCrosshair();
+    });
   }
 
   private onMouseDown = (event: PointerEvent) => {
@@ -676,6 +708,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   public draw(data: ChartData[]) {
     this.dataExtent = this.createDataExtent(this.data, this.timeRange);
     if (data.length == 0) return;
+    this.originalData = data;
     this.data = this.mapDataToStepSize(data, this.options.stepSize);
 
     this.xLabelDates = [];
@@ -696,6 +729,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
    * @param data chart data to draw
    */
   public drawNextPoint(data: ChartData) {
+    this.originalData.push(data);
     const tdata = this.transformNewData(data);
     this.data.push(tdata);
     const changed = this.dataExtent.addDataPoint(tdata);
