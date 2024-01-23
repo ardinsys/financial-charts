@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from "vue";
 // import { LineController } from "./controllers/line/line-controller";
 import { CandlestickController } from "./controllers/candlestick/candle-controller";
 import { LineController } from "./controllers/line/line-controller";
+import { AreaController } from "./controllers/area/area-controller";
 import {
   MDDClient,
   defaultParsers,
@@ -30,7 +31,7 @@ const fiveYear = new Date();
 fiveYear.setFullYear(fiveYear.getFullYear() - 5);
 
 onMounted(() => {
-  controller = new CandlestickController(
+  controller = new AreaController(
     chartContainer.value!,
     {
       start: fiveYear.getTime(),
@@ -41,6 +42,11 @@ onMounted(() => {
       // locale: "EN",
       maxZoom: 100,
       stepSize: 24 * 60 * 60 * 1000,
+      theme: {
+        line: {
+          // color: "#3d3d3d",
+        },
+      },
     }
   );
 

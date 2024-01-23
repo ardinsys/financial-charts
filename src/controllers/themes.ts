@@ -19,8 +19,6 @@ export function mergeThemes(
         defaultTheme[key] as ChartTheme,
         providedTheme[key] as ChartTheme
       );
-    } else if (providedTheme[key] == undefined) {
-      continue;
     } else {
       // @ts-ignore
       theme[key] = providedTheme[key] || defaultTheme[key];
