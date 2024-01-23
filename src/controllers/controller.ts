@@ -206,6 +206,9 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     topCanvas.addEventListener("touchmove", this.onTouchMove, {
       passive: false,
     });
+    topCanvas.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+    });
     topCanvas.addEventListener("pointerleave", (e) => {
       if (e.pointerType === "touch") return;
       this.lastPointerPosition = undefined;
