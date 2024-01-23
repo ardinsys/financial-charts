@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 // import { LineController } from "./controllers/line/line-controller";
-import { CandlestickController } from "./controllers/candlestick/candle-controller";
-import { LineController } from "./controllers/line/line-controller";
-import { AreaController } from "./controllers/area/area-controller";
 import {
   MDDClient,
   defaultParsers,
   DataType,
   HistoricalChartType,
 } from "@asys-private/mdd-client";
-import { ChartData } from "./controllers/types";
-import { defaultDarkTheme } from "./controllers/themes";
+import { ChartData } from "./chart/types";
+import { FinancialChart } from "./chart/financial-chart";
+import { AreaController } from "./controllers/area-controller";
+import { LineController } from "./controllers/line-controller";
+import { CandlestickController } from "./controllers/candle-controller";
+
+FinancialChart.registerController(AreaController);
+FinancialChart.registerController(LineController);
+FinancialChart.registerController(CandlestickController);
 
 const chartContainer = ref<HTMLElement>();
 const clickedData = ref<ChartData>();
@@ -25,19 +29,20 @@ const nineam = new Date();
 nineam.setHours(9, 0, 0, 0);
 
 const chartData = ref<ChartData[]>([]);
-let controller: CandlestickController;
+let controller: FinancialChart;
 
 const fiveYear = new Date();
 fiveYear.setFullYear(fiveYear.getFullYear() - 5);
 
 onMounted(() => {
-  controller = new AreaController(
+  controller = new FinancialChart(
     chartContainer.value!,
     {
       start: fiveYear.getTime(),
       end: fivepm.getTime(),
     },
     {
+      type: "area",
       // theme: defaultDarkTheme,
       // locale: "EN",
       maxZoom: 100,
@@ -52,7 +57,8 @@ onMounted(() => {
 
   setTimeout(() => {
     controller.updateLocale("en-US");
-  }, 10000);
+    controller.changeType("candle");
+  }, 5000);
 
   controller.setEventListener("click", (_: MouseEvent, data) => {
     clickedData.value = data;
@@ -281,3 +287,5 @@ body {
   margin: 0;
 }
 </style>
+./chart/types./chart/themes
+./controllers/area-controller./controllers/line-controller./controllers/candle-controller

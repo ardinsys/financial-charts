@@ -1,5 +1,5 @@
 import { DataExtent } from "./data-extent";
-import { ChartData, TimeRange } from "../controllers/types";
+import { ChartData, TimeRange } from "../chart/types";
 
 export class SimpleDataExtent extends DataExtent {
   public recalculate(dataset: ChartData[], timeRange: TimeRange): void {

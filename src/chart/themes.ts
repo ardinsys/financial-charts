@@ -1,4 +1,4 @@
-import { DeepConcrete } from "./controller";
+import { DeepConcrete } from "./financial-chart";
 
 export function mergeThemes(
   defaultTheme: ChartTheme,

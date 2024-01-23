@@ -1,4 +1,4 @@
-import { ChartData, TimeRange } from "./types";
+import { ChartData, TimeRange } from "../chart/types";
 
 export abstract class DataExtent {
   protected xMin!: number;

@@ -1,25 +1,7 @@
-import { BaseChartOptions, ChartController, DeepConcrete } from "../controller";
-import { DataExtent } from "../../extents/data-extent";
-import { ChartData, TimeRange } from "../types";
-import { SimpleDataExtent } from "../../extents/simple-data-extent";
+import { SimpleController } from "./controller";
 
-export interface AreaChartOptions extends BaseChartOptions {}
-
-export class AreaController extends ChartController<AreaChartOptions> {
-  protected createDataExtent(
-    data: ChartData[],
-    timeRange: TimeRange
-  ): DataExtent {
-    return new SimpleDataExtent(data, timeRange);
-  }
-
-  constructor(
-    container: HTMLElement,
-    timeRange: TimeRange,
-    options: AreaChartOptions
-  ) {
-    super(container, timeRange, options as DeepConcrete<AreaChartOptions>);
-  }
+export class AreaController extends SimpleController {
+  static ID = "area";
 
   // Convert hex color to RGBA
   hexToRGBA = (hex: string, opacity: number) => {
@@ -29,24 +11,24 @@ export class AreaController extends ChartController<AreaChartOptions> {
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   };
 
-  protected drawChart(): void {
-    const ctx = this.getContext("main");
+  draw(): void {
+    const ctx = this.chart.getContext("main");
 
-    const visibleDataPoints = this.recalculateVisibleExtent();
+    const visibleDataPoints = this.chart.recalculateVisibleExtent();
 
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     ctx.fillStyle = this.options.theme.backgroundColor;
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    this.drawYAxis();
-    this.drawXAxis();
+    this.chart.drawYAxis();
+    this.chart.drawXAxis();
 
     // Create gradient (example: vertical gradient from top to bottom)
     const gradient = ctx.createLinearGradient(
       0,
       0,
       0,
-      this.getLogicalCanvas("main").height
+      this.chart.getLogicalCanvas("main").height
     );
     gradient.addColorStop(
       0,
@@ -66,16 +48,21 @@ export class AreaController extends ChartController<AreaChartOptions> {
       lastX = 0,
       lastY = 0;
 
+    const timeRange = this.chart.getTimeRange();
+    const visibleExtent = this.chart.getVisibleExtent();
+    const zoomLevel = this.chart.getZoomLevel();
+    const panOffset = this.chart.getPanOffset();
+
     for (let i = 0; i < visibleDataPoints.length; i++) {
       const point = visibleDataPoints[i];
-      if (point.time < this.timeRange.start) continue;
-      if (point.time > this.timeRange.end) break;
-      const { x, y } = this.visibleExtent.mapToPixel(
+      if (point.time < timeRange.start) continue;
+      if (point.time > timeRange.end) break;
+      const { x, y } = visibleExtent.mapToPixel(
         point.time,
         point.close!,
         ctx.canvas,
-        this.zoomLevel,
-        this.panOffset
+        zoomLevel,
+        panOffset
       );
 
       if (firstPoint) {
