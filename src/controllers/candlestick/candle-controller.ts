@@ -1,7 +1,7 @@
 import { BaseChartOptions, ChartController, DeepConcrete } from "../controller";
-import { DataExtent } from "../data-extent";
+import { DataExtent } from "../../extents/data-extent";
 import { ChartData, TimeRange } from "../types";
-import { CandlestickDataExtent } from "./candle-data-extent";
+import { ComplexDataExtent } from "../../extents/complex-data-extent";
 
 export interface CandlestickChartOptions extends BaseChartOptions {}
 
@@ -12,7 +12,7 @@ export class CandlestickController extends ChartController<CandlestickChartOptio
     data: ChartData[],
     timeRange: TimeRange
   ): DataExtent {
-    return new CandlestickDataExtent(data, timeRange);
+    return new ComplexDataExtent(data, timeRange);
   }
 
   constructor(

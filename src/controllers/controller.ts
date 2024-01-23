@@ -1,4 +1,4 @@
-import { DataExtent } from "./data-extent";
+import { DataExtent } from "../extents/data-extent";
 import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";

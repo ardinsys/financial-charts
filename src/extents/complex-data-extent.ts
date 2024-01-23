@@ -1,7 +1,7 @@
-import { DataExtent } from "../data-extent";
-import { ChartData, TimeRange } from "../types";
+import { DataExtent } from "./data-extent";
+import { ChartData, TimeRange } from "../controllers/types";
 
-export class LineDataExtent extends DataExtent {
+export class ComplexDataExtent extends DataExtent {
   public recalculate(dataset: ChartData[], timeRange: TimeRange): void {
     this.xMin = timeRange.start;
     this.xMax = timeRange.end;
@@ -9,10 +9,9 @@ export class LineDataExtent extends DataExtent {
     this.yMax = -Infinity;
 
     for (const data of dataset) {
-      this.yMin = Math.min(this.yMin, data.close!);
-      this.yMax = Math.max(this.yMax, data.close!);
+      this.yMin = Math.min(this.yMin, data.low!);
+      this.yMax = Math.max(this.yMax, data.high!);
     }
-
     const yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
     const yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
 
@@ -34,17 +33,24 @@ export class LineDataExtent extends DataExtent {
     let yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
     let yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
 
-    if (data.close !== null && data.close !== undefined) {
-      changed = changed || data.close < yMin || data.close > yMax;
-      this.yMin = Math.min(yMin, data.close!);
-      this.yMax = Math.max(yMax, data.close!);
+    const low = data.low!;
+    const high = data.high!;
 
-      yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
-      yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
-
-      this.yMin = yMin;
-      this.yMax = yMax;
+    if (data.low !== null && data.low !== undefined) {
+      changed = changed || low < yMin;
     }
+    if (data.high !== null && data.high !== undefined) {
+      changed = changed || high > yMax;
+    }
+
+    this.yMin = Math.min(yMin, low);
+    this.yMax = Math.max(yMax, high);
+
+    yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+    yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+    this.yMin = yMin;
+    this.yMax = yMax;
 
     return changed;
   }

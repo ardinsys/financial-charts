@@ -1,7 +1,7 @@
 import { BaseChartOptions, ChartController, DeepConcrete } from "../controller";
-import { DataExtent } from "../data-extent";
+import { DataExtent } from "../../extents/data-extent";
 import { ChartData, TimeRange } from "../types";
-import { LineDataExtent } from "./line-data-extent";
+import { SimpleDataExtent } from "../../extents/simple-data-extent";
 
 export interface LineChartOptions extends BaseChartOptions {}
 
@@ -10,7 +10,7 @@ export class LineController extends ChartController<LineChartOptions> {
     data: ChartData[],
     timeRange: TimeRange
   ): DataExtent {
-    return new LineDataExtent(data, timeRange);
+    return new SimpleDataExtent(data, timeRange);
   }
 
   constructor(

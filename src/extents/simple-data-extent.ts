@@ -1,7 +1,7 @@
-import { DataExtent } from "../data-extent";
-import { ChartData, TimeRange } from "../types";
+import { DataExtent } from "./data-extent";
+import { ChartData, TimeRange } from "../controllers/types";
 
-export class AreaDataExtent extends DataExtent {
+export class SimpleDataExtent extends DataExtent {
   public recalculate(dataset: ChartData[], timeRange: TimeRange): void {
     this.xMin = timeRange.start;
     this.xMax = timeRange.end;
