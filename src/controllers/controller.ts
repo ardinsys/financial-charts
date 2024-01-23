@@ -730,18 +730,15 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
    */
   public drawNextPoint(data: ChartData) {
     this.originalData.push(data);
-    const tdata = this.transformNewData(data);
-    this.data.push(tdata);
-    const changed = this.dataExtent.addDataPoint(tdata);
+    this.transformNewData(data);
+
     requestAnimationFrame(() => {
-      if (changed) this.drawChart();
-      else this.drawNewChartPoint(tdata);
+      this.drawChart();
+      this.drawCrosshair();
     });
   }
 
   protected abstract drawChart(): void;
-
-  protected abstract drawNewChartPoint(data: ChartData): void;
 
   protected pointerMove(e: { x: number; y: number }) {
     if (this.isTouchCapable && !this.isTouchCrosshair) return;
@@ -953,33 +950,35 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     return mergedData;
   }
 
-  protected canDrawWithOptimization = false;
-
-  protected transformNewData(data: ChartData): ChartData {
+  protected transformNewData(data: ChartData) {
     const d =
       data.time % this.options.stepSize === 0
         ? data
         : { ...data, time: data.time - (data.time % this.options.stepSize) };
 
-    if (this.data.length === 0) return d;
+    // If there isn't any data yet, just add it
+    if (this.data.length === 0) {
+      this.data.push(d);
+      this.dataExtent.addDataPoint(d);
+      return;
+    }
 
-    const lastData = this.data.pop()!;
+    const lastData = this.data[this.data.length - 1];
 
+    // If the data is the same as the last data, update the last data
     if (d.time === lastData.time) {
-      return {
+      const td = {
         ...lastData,
         open: lastData.open!,
         high: Math.max(lastData.high!, d.high!),
         low: Math.min(lastData.low!, d.low!),
         close: d.close!,
       };
+      this.data[this.data.length - 1] = td;
+      this.dataExtent.addDataPoint(td);
     } else {
-      const range = this.getVisibleTimeRange();
-      const inVisibleRange = d.time >= range.start && d.time <= range.end;
-      if (inVisibleRange) {
-        this.canDrawWithOptimization = !this.visibleExtent.addDataPoint(d);
-      }
-      this.data.push(lastData);
+      this.data.push(d);
+      this.dataExtent.addDataPoint(d);
       this.xLabelDates.push(new Date(d.time));
       return d;
     }
@@ -1002,53 +1001,6 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
 
     return niceFraction * orderOfMagnitude;
   }
-  // private calculateYAxisLabels(labelSpacing: number) {
-  //   const fontSize = this.options.theme.yAxis.fontSize;
-  //   const textHeight = fontSize * 1.2; // Estimated height of text
-  //   const canvasHeight = this.getLogicalCanvas("y-label").height;
-
-  //   const range = this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
-  //   console.log(this.visibleExtent.getYMax(), this.visibleExtent.getYMin());
-
-  //   // Adjust the calculation of maxLabels to respect labelSpacing more accurately
-  //   const maxPossibleLabels = Math.floor(
-  //     canvasHeight / (textHeight + labelSpacing)
-  //   );
-  //   const maxLabels = Math.min(maxPossibleLabels, range / labelSpacing);
-
-  //   // Find a nice step size
-  //   const rawStep = range / maxLabels;
-  //   const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
-  //   const normalizedStep = rawStep / magnitude;
-  //   let stepSize;
-
-  //   if (normalizedStep < 1.5) {
-  //     stepSize = 1 * magnitude;
-  //   } else if (normalizedStep < 3) {
-  //     stepSize = 2 * magnitude;
-  //   } else if (normalizedStep < 7.5) {
-  //     stepSize = 5 * magnitude;
-  //   } else {
-  //     stepSize = 10 * magnitude;
-  //   }
-
-  //   const firstLabel =
-  //     Math.ceil(this.visibleExtent.getYMin() / stepSize) * stepSize;
-  //   const labels: AxisLabel[] = [];
-
-  //   for (
-  //     let value = firstLabel;
-  //     value <= this.visibleExtent.getYMax();
-  //     value += stepSize
-  //   ) {
-  //     const position =
-  //       canvasHeight -
-  //       ((value - this.visibleExtent.getYMin()) / range) * canvasHeight;
-  //     labels.push({ value: parseFloat(value.toFixed(10)), position });
-  //   }
-
-  //   return labels;
-  // }
 
   private calculateYAxisLabels(labelSpacing: number) {
     const fontSize = this.options.theme.yAxis.fontSize;
@@ -1216,5 +1168,35 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
         drawnLabels.push(labelPos);
       }
     });
+  }
+
+  protected recalculateVisibleExtent() {
+    const visibleTimeRange = this.getVisibleTimeRange();
+    let firstPointIndex = 0;
+    let lastPointIndex = this.data.length - 1;
+
+    for (let i = 0; i < this.data.length; i++) {
+      if (this.data[i].time >= visibleTimeRange.start - this.options.stepSize) {
+        firstPointIndex = i;
+        break;
+      }
+    }
+
+    for (let i = this.data.length - 1; i >= 0; i--) {
+      if (this.data[i].time <= visibleTimeRange.end) {
+        lastPointIndex = i;
+        break;
+      }
+    }
+
+    const visibleDataPoints = this.data.slice(
+      firstPointIndex,
+      lastPointIndex + 1
+    );
+    // Do not recalc xMin and xMax to preserve x positions
+    // but we need to adjust yMin and yMax to the visible data points
+    this.visibleExtent.recalculate(visibleDataPoints, this.timeRange);
+
+    return visibleDataPoints;
   }
 }

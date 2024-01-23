@@ -28,19 +28,18 @@ let controller: CandlestickController;
 
 const fiveYear = new Date();
 fiveYear.setFullYear(fiveYear.getFullYear() - 5);
-fiveYear.setHours(1, 0, 0, 0);
 
 onMounted(() => {
-  controller = new CandlestickController(
+  controller = new LineController(
     chartContainer.value!,
     {
-      start: fiveYear.getTime(),
+      start: nineam.getTime(),
       end: fivepm.getTime(),
     },
     {
       // theme: defaultDarkTheme,
       maxZoom: 100,
-      stepSize: 24 * 60 * 60 * 1000,
+      stepSize: 1 * 60 * 1000,
     }
   );
 
@@ -64,59 +63,59 @@ onMounted(() => {
   mdd.connect(2000).then(async () => {
     const ins = { dataType: DataType.CHART_DATA, isin: "TESZT", mic: "XETR" };
     await mdd.subscribeInstrument(ins);
-    mdd.getHistoricalChart(ins, HistoricalChartType.FIVE_YEAR).then((data) => {
-      chartData.value = data.map((c) => ({
-        time: c.time,
-        close: c.close,
-        high: c.high,
-        low: c.low,
-        open: c.open,
-      }));
-
-      setTimeout(() => {
-        controller.updateTheme(defaultDarkTheme);
-        setTimeout(() => {
-          controller.updateCoreOptions(
-            {
-              start: fiveYear.getTime(),
-              end: fivepm.getTime(),
-            },
-            1000 * 60 * 60 * 24 * 30,
-            20
-          );
-        }, 3000);
-      }, 3000);
-    });
-    // const [init] = await mdd.getInitData([
-    //   { ...ins, from: nineam, to: fivepm },
-    // ]);
-    // if (init?.type === DataType.CHART_DATA) {
-    //   chartData.value = init.chartData.map((c) => ({
-    //     time: new Date(c.timestamp).getTime(),
+    // mdd.getHistoricalChart(ins, HistoricalChartType.FIVE_YEAR).then((data) => {
+    //   chartData.value = data.map((c) => ({
+    //     time: c.time,
     //     close: c.close,
     //     high: c.high,
     //     low: c.low,
     //     open: c.open,
     //   }));
-    // }
 
-    // mdd.registerUpdateObserver({
-    //   dataTypes: [DataType.CHART_DATA],
-    //   observer: (data) => {
-    //     if (data.type === DataType.CHART_DATA) {
-    //       chartData.value = [
-    //         ...chartData.value,
+    //   setTimeout(() => {
+    //     controller.updateTheme(defaultDarkTheme);
+    //     setTimeout(() => {
+    //       controller.updateCoreOptions(
     //         {
-    //           time: new Date(data.timestamp).getTime(),
-    //           close: data.close,
-    //           high: data.high,
-    //           low: data.low,
-    //           open: data.open,
+    //           start: fiveYear.getTime(),
+    //           end: fivepm.getTime(),
     //         },
-    //       ];
-    //     }
-    //   },
+    //         1000 * 60 * 60 * 24 * 30,
+    //         20
+    //       );
+    //     }, 3000);
+    //   }, 3000);
     // });
+    const [init] = await mdd.getInitData([
+      { ...ins, from: nineam, to: fivepm },
+    ]);
+    if (init?.type === DataType.CHART_DATA) {
+      chartData.value = init.chartData.map((c) => ({
+        time: new Date(c.timestamp).getTime(),
+        close: c.close,
+        high: c.high,
+        low: c.low,
+        open: c.open,
+      }));
+    }
+
+    mdd.registerUpdateObserver({
+      dataTypes: [DataType.CHART_DATA],
+      observer: (data) => {
+        if (data.type === DataType.CHART_DATA) {
+          chartData.value = [
+            ...chartData.value,
+            {
+              time: new Date(data.timestamp).getTime(),
+              close: data.close,
+              high: data.high,
+              low: data.low,
+              open: data.open,
+            },
+          ];
+        }
+      },
+    });
   });
 
   // controller.draw([
