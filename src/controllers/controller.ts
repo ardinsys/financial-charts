@@ -1,14 +1,19 @@
 import { DataExtent } from "./data-extent";
+import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";
 
-export type DeepConcrete<T> = T extends object
+export type DeepConcrete<T> = T extends Function
+  ? T
+  : T extends object
   ? { [P in keyof T]-?: DeepConcrete<T[P]> }
   : T;
 
 export interface BaseChartOptions {
   stepSize: number;
   maxZoom: number;
+  locale?: string;
+  formatter?: Formatter;
   theme?: ChartTheme;
 }
 
@@ -61,18 +66,6 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   private xLabelCache: Map<number, XAxisLabel> = new Map();
 
   private processXLabels(): XAxisLabel[] {
-    const yearFromat = new Intl.DateTimeFormat("hu", { year: "numeric" });
-    const monthFromat = new Intl.DateTimeFormat("hu", {
-      month: "short",
-    });
-    const dayFromat = new Intl.DateTimeFormat("hu", {
-      day: "numeric",
-    });
-    const hourFromat = new Intl.DateTimeFormat("hu", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
     // Calculate the range of the data in days
     const rangeInDays =
       (this.timeRange.end - this.timeRange.start) / (1000 * 3600 * 24);
@@ -89,19 +82,19 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
         if (prevDate && date.getFullYear() !== prevDate.getFullYear()) {
           ret = {
             date,
-            displayLabel: yearFromat.format(date),
+            displayLabel: this.options.formatter.formatYear(date.getTime()),
             priority: 4,
           };
         } else if (prevDate && date.getMonth() !== prevDate.getMonth()) {
           ret = {
             date,
-            displayLabel: monthFromat.format(date),
+            displayLabel: this.options.formatter.formatMonth(date.getTime()),
             priority: 3,
           };
         } else {
           ret = {
             date,
-            displayLabel: dayFromat.format(date),
+            displayLabel: this.options.formatter.formatDay(date.getTime()),
             priority: 2,
           };
         }
@@ -109,33 +102,33 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
         if (prevDate && date.getMonth() !== prevDate.getMonth()) {
           ret = {
             date,
-            displayLabel: monthFromat.format(date),
+            displayLabel: this.options.formatter.formatMonth(date.getTime()),
             priority: 3,
           };
         } else {
           ret = {
             date,
-            displayLabel: dayFromat.format(date),
+            displayLabel: this.options.formatter.formatDay(date.getTime()),
             priority: 2,
           };
         }
       } else if (rangeInDays > 1) {
         ret = {
           date,
-          displayLabel: dayFromat.format(date),
+          displayLabel: this.options.formatter.formatDay(date.getTime()),
           priority: 2,
         };
       } else {
         if (prevDate && date.getDate() !== prevDate?.getDate()) {
           ret = {
             date,
-            displayLabel: dayFromat.format(date),
+            displayLabel: this.options.formatter.formatDay(date.getTime()),
             priority: 1,
           };
         } else {
           ret = {
             date,
-            displayLabel: hourFromat.format(date),
+            displayLabel: this.options.formatter.formatHour(date.getTime()),
             priority: 1,
           };
         }
@@ -186,6 +179,9 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     options: DeepConcrete<TOptions>
   ) {
     this.options = options;
+    this.options.locale = this.options.locale || navigator.language || "en-US";
+    this.options.formatter = this.options.formatter || new DefaultFormatter();
+    this.options.formatter.setLocale(this.options.locale);
     this.options.theme = mergeThemes(defaultLightTheme, this.options.theme);
     this.outsideContainer = container;
     this.container = document.createElement("div");
@@ -282,6 +278,21 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
       this.xLabelDates.push(new Date(d.time));
     }
 
+    requestAnimationFrame(() => {
+      this.drawChart();
+      this.drawCrosshair();
+    });
+  }
+
+  public updateLocale(locale: string) {
+    this.options.locale = locale;
+    this.options.formatter.setLocale(locale);
+    this.xLabelCache.clear();
+    this.xLabelDates = [];
+    for (const d of this.data) {
+      if (d.time < this.timeRange.start) continue;
+      this.xLabelDates.push(new Date(d.time));
+    }
     requestAnimationFrame(() => {
       this.drawChart();
       this.drawCrosshair();
@@ -804,13 +815,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     ctx.moveTo(0, this.pointerY);
     ctx.lineTo(this.getLogicalCanvas("main").width, this.pointerY);
     ctx.stroke();
-    const text = new Intl.DateTimeFormat("hu", {
-      year: "numeric",
-      month: "short",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(this.pointerTime);
+    const text = this.options.formatter.formatTooltipDate(this.pointerTime);
     const textWidth = ctx.measureText(text).width;
     const textPadding = 10;
     const rectWidth = textWidth + textPadding * 2;
@@ -840,10 +845,10 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
       this.panOffset
     ).price;
     const decimals = this.estimatePriceLabelDecimalPlaces(30);
-    const priceText = new Intl.NumberFormat("hu", {
-      maximumFractionDigits: decimals,
-      minimumFractionDigits: decimals,
-    }).format(price);
+    const priceText = this.options.formatter.formatTooltipPrice(
+      price,
+      decimals
+    );
     const priceRectWidth = this.getLogicalCanvas("y-label").width;
     const priceMaxRectX = this.l(ctx.canvas.width) - priceRectWidth;
     const priceRectX = priceMaxRectX;
@@ -1077,8 +1082,6 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   protected drawYAxis(): void {
     const yAxisValues = this.calculateYAxisLabels(30);
 
-    const priceFormat = new Intl.NumberFormat("hu");
-
     const ctx = this.getContext("y-label");
     ctx.fillStyle = this.options.theme.yAxis.backgroundColor;
     ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -1099,7 +1102,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
         this.getLogicalCanvas("y-label").height
       )
         continue;
-      const text = priceFormat.format(value.value);
+      const text = this.options.formatter.formatPrice(value.value);
       const textWidth = ctx.measureText(text).width;
 
       ctx.fillText(

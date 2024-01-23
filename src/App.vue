@@ -38,10 +38,15 @@ onMounted(() => {
     },
     {
       // theme: defaultDarkTheme,
+      // locale: "EN",
       maxZoom: 100,
       stepSize: 24 * 60 * 60 * 1000,
     }
   );
+
+  setTimeout(() => {
+    controller.updateLocale("en-US");
+  }, 10000);
 
   controller.setEventListener("click", (_: MouseEvent, data) => {
     clickedData.value = data;
