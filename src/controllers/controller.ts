@@ -25,6 +25,7 @@ interface XAxisLabel {
 
 export abstract class ChartController<TOptions extends BaseChartOptions> {
   private readonly types = ["main", "crosshair", "x-label", "y-label"] as const;
+  protected outsideContainer: HTMLElement;
   protected container: HTMLElement;
   protected canvases: Map<string, HTMLCanvasElement> = new Map();
   protected contexts: Map<string, CanvasRenderingContext2D> = new Map();
@@ -186,7 +187,14 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
   ) {
     this.options = options;
     this.options.theme = mergeThemes(defaultLightTheme, this.options.theme);
-    this.container = container;
+    this.outsideContainer = container;
+    this.container = document.createElement("div");
+    this.container.style.position = "relative";
+    this.container.style.width = "100%";
+    this.container.style.height = "100%";
+    this.container.style.backgroundColor = this.options.theme.backgroundColor;
+    this.outsideContainer.appendChild(this.container);
+
     this.timeRange = timeRange;
     // Init and scale canveses
     this.types.forEach((type) => this.getCanvas(type));
@@ -231,6 +239,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
 
   public updateTheme(theme: ChartTheme) {
     this.options.theme = mergeThemes(this.options.theme, theme);
+    this.container.style.backgroundColor = this.options.theme.backgroundColor;
     if (this.data.length > 0) {
       requestAnimationFrame(() => {
         this.drawChart();
@@ -876,6 +885,7 @@ export abstract class ChartController<TOptions extends BaseChartOptions> {
     this.resizeObserver.unobserve(this.container);
     this.resizeObserver.disconnect();
     this.canvases.forEach((canvas) => canvas.remove());
+    this.container.remove();
     this.canvases.clear();
   }
 

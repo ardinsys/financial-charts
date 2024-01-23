@@ -258,12 +258,8 @@ watch(chartData, (newVal, oldVal) => {
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
         padding: 0px;
       "
-    >
-      <div
-        ref="chartContainer"
-        style="width: 100%; height: 100%; position: relative"
-      ></div>
-    </div>
+      ref="chartContainer"
+    ></div>
     <div style="margin-top: 20px">{{ clickedData }}</div>
     <div id="test"></div>
   </div>
