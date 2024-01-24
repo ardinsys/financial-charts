@@ -14,12 +14,14 @@ import { LineController } from "./controllers/line-controller";
 import { BarController } from "./controllers/bar-controller";
 import { HollowCandleController } from "./controllers/hollow-candle-controller";
 import { CandlestickController } from "./controllers/candle-controller";
+import { SteplineController } from "./controllers/step-line-controller";
 
 FinancialChart.registerController(AreaController);
 FinancialChart.registerController(LineController);
 FinancialChart.registerController(CandlestickController);
 FinancialChart.registerController(BarController);
 FinancialChart.registerController(HollowCandleController);
+FinancialChart.registerController(SteplineController);
 
 const chartContainer = ref<HTMLElement>();
 const clickedData = ref<ChartData>();
@@ -46,7 +48,7 @@ onMounted(() => {
       end: fivepm.getTime(),
     },
     {
-      type: "hollow-candle",
+      type: "stepline",
       // theme: defaultDarkTheme,
       // locale: "EN",
       maxZoom: 100,

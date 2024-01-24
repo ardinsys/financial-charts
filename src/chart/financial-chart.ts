@@ -10,7 +10,13 @@ export type DeepConcrete<T> = T extends Function
   ? { [P in keyof T]-?: DeepConcrete<T[P]> }
   : T;
 
-export type ControllerID = "area" | "line" | "candle" | "bar" | "hollow-candle";
+export type ControllerID =
+  | "area"
+  | "line"
+  | "candle"
+  | "bar"
+  | "hollow-candle"
+  | "stepline";
 export type ControllerType = ControllerID | Omit<string, ControllerID>;
 
 export interface ChartOptions {
