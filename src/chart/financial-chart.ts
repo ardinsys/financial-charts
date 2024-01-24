@@ -16,7 +16,8 @@ export type ControllerID =
   | "candle"
   | "bar"
   | "hollow-candle"
-  | "stepline";
+  | "stepline"
+  | "hlc-area";
 export type ControllerType = ControllerID | Omit<string, ControllerID>;
 
 export interface ChartOptions {

@@ -50,6 +50,18 @@ export interface ChartTheme {
     width?: number;
     fill?: string | Gradient;
   };
+  hlcArea?: {
+    width?: number;
+    closeColor?: string;
+    high?: {
+      color?: string;
+      fill?: string;
+    };
+    low: {
+      color?: string;
+      fill?: string;
+    };
+  };
   bar?: {
     upColor?: string;
     downColor?: string;
@@ -104,6 +116,18 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
       [1, "rgba(41, 98, 254, 0)"],
     ],
   },
+  hlcArea: {
+    width: 1,
+    closeColor: "#2962FF",
+    high: {
+      color: "#609895",
+      fill: "rgba(96, 152, 149, 0.1)",
+    },
+    low: {
+      color: "#F23645",
+      fill: "rgba(242, 54, 69, 0.1)",
+    },
+  },
   bar: {
     upColor: "#609895",
     downColor: "#F23645",
@@ -157,6 +181,18 @@ export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
       [0, "rgba(41, 98, 254, 0.4)"],
       [1, "rgba(41, 98, 254, 0)"],
     ],
+  },
+  hlcArea: {
+    width: 1,
+    closeColor: "#2962FF",
+    high: {
+      color: "#609895",
+      fill: "rgba(96, 152, 149, 0.1)",
+    },
+    low: {
+      color: "#F23645",
+      fill: "rgba(242, 54, 69, 0.1)",
+    },
   },
   bar: {
     upColor: "#089981",

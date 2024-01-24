@@ -10,6 +10,7 @@ export * from "./controllers/line-controller";
 export * from "./controllers/bar-controller";
 export * from "./controllers/hollow-candle-controller";
 export * from "./controllers/step-line-controller";
+export * from "./controllers/hlc-area-controller";
 
 export * from "./extents/data-extent";
 export * from "./extents/simple-data-extent";

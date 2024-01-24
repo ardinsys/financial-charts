@@ -15,6 +15,8 @@ import { BarController } from "./controllers/bar-controller";
 import { HollowCandleController } from "./controllers/hollow-candle-controller";
 import { CandlestickController } from "./controllers/candle-controller";
 import { SteplineController } from "./controllers/step-line-controller";
+import { HLCAreaController } from "./controllers/hlc-area-controller";
+import { defaultDarkTheme } from "./chart/themes";
 
 FinancialChart.registerController(AreaController);
 FinancialChart.registerController(LineController);
@@ -22,6 +24,7 @@ FinancialChart.registerController(CandlestickController);
 FinancialChart.registerController(BarController);
 FinancialChart.registerController(HollowCandleController);
 FinancialChart.registerController(SteplineController);
+FinancialChart.registerController(HLCAreaController);
 
 const chartContainer = ref<HTMLElement>();
 const clickedData = ref<ChartData>();
@@ -48,16 +51,11 @@ onMounted(() => {
       end: fivepm.getTime(),
     },
     {
-      type: "stepline",
-      // theme: defaultDarkTheme,
+      type: "hlc-area",
+      theme: defaultDarkTheme,
       // locale: "EN",
       maxZoom: 100,
       stepSize: 24 * 60 * 60 * 1000,
-      theme: {
-        line: {
-          // color: "#3d3d3d",
-        },
-      },
     }
   );
 
@@ -270,16 +268,17 @@ watch(chartData, (newVal, oldVal) => {
   >
     <div
       style="
-        background: white;
         width: min(80%, 1200px);
         height: min(90vh, 600px);
         /* width: 100%;
         height: 100%; */
         position: relative;
         overflow: hidden;
-        border-radius: 5px;
+        border-radius: 15px;
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-        padding: 0px;
+        padding: 20px;
+        padding-right: 5px;
+        background: #161a25;
       "
       ref="chartContainer"
     ></div>
