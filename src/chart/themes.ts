@@ -50,6 +50,10 @@ export interface ChartTheme {
     width?: number;
     fill?: string | Gradient;
   };
+  bar?: {
+    upColor?: string;
+    downColor?: string;
+  };
   xAxis?: {
     color?: string;
     fontSize?: number;
@@ -100,6 +104,10 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
       [1, "rgba(41, 98, 254, 0)"],
     ],
   },
+  bar: {
+    upColor: "#609895",
+    downColor: "#F23645",
+  },
   xAxis: {
     color: "#000000",
     fontSize: 12,
@@ -149,6 +157,10 @@ export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
       [0, "rgba(41, 98, 254, 0.4)"],
       [1, "rgba(41, 98, 254, 0)"],
     ],
+  },
+  bar: {
+    upColor: "#089981",
+    downColor: "#F23645",
   },
   xAxis: {
     color: "#B2B5BE",

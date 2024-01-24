@@ -11,11 +11,13 @@ import { ChartData } from "./chart/types";
 import { FinancialChart } from "./chart/financial-chart";
 import { AreaController } from "./controllers/area-controller";
 import { LineController } from "./controllers/line-controller";
+import { BarController } from "./controllers/bar-controller";
 import { CandlestickController } from "./controllers/candle-controller";
 
 FinancialChart.registerController(AreaController);
 FinancialChart.registerController(LineController);
 FinancialChart.registerController(CandlestickController);
+FinancialChart.registerController(BarController);
 
 const chartContainer = ref<HTMLElement>();
 const clickedData = ref<ChartData>();
@@ -42,7 +44,7 @@ onMounted(() => {
       end: fivepm.getTime(),
     },
     {
-      type: "area",
+      type: "bar",
       // theme: defaultDarkTheme,
       // locale: "EN",
       maxZoom: 100,
@@ -55,10 +57,10 @@ onMounted(() => {
     }
   );
 
-  setTimeout(() => {
-    controller.updateLocale("en-US");
-    controller.changeType("candle");
-  }, 5000);
+  // setTimeout(() => {
+  //   controller.updateLocale("en-US");
+  //   controller.changeType("candle");
+  // }, 5000);
 
   controller.setEventListener("click", (_: MouseEvent, data) => {
     clickedData.value = data;
