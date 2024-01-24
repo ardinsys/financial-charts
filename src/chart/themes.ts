@@ -27,6 +27,8 @@ export function mergeThemes(
   return theme;
 }
 
+export type Gradient = Array<[number, string]>;
+
 export interface ChartTheme {
   backgroundColor?: string;
   grid?: {
@@ -42,6 +44,11 @@ export interface ChartTheme {
   line?: {
     color?: string;
     width?: number;
+  };
+  area?: {
+    color?: string;
+    width?: number;
+    fill?: string | Gradient;
   };
   xAxis?: {
     color?: string;
@@ -85,6 +92,14 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
     color: "#2962FF",
     width: 1,
   },
+  area: {
+    color: "#2962FF",
+    width: 1,
+    fill: [
+      [0, "rgba(41, 98, 254, 0.4)"],
+      [1, "rgba(41, 98, 254, 0)"],
+    ],
+  },
   xAxis: {
     color: "#000000",
     fontSize: 12,
@@ -126,6 +141,14 @@ export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
   line: {
     color: "#2962FE",
     width: 1,
+  },
+  area: {
+    color: "#2962FE",
+    width: 1,
+    fill: [
+      [0, "rgba(41, 98, 254, 0.4)"],
+      [1, "rgba(41, 98, 254, 0)"],
+    ],
   },
   xAxis: {
     color: "#B2B5BE",

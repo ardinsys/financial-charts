@@ -3,14 +3,6 @@ import { SimpleController } from "./controller";
 export class AreaController extends SimpleController {
   static ID = "area";
 
-  // Convert hex color to RGBA
-  hexToRGBA = (hex: string, opacity: number) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-  };
-
   draw(): void {
     const ctx = this.chart.getContext("main");
 
@@ -23,25 +15,10 @@ export class AreaController extends SimpleController {
     this.chart.drawYAxis();
     this.chart.drawXAxis();
 
-    // Create gradient (example: vertical gradient from top to bottom)
-    const gradient = ctx.createLinearGradient(
-      0,
-      0,
-      0,
-      this.chart.getLogicalCanvas("main").height
-    );
-    gradient.addColorStop(
-      0,
-      this.hexToRGBA(this.options.theme.line.color, 0.4)
-    ); // Line color (opaque)
-    gradient.addColorStop(1, this.hexToRGBA(this.options.theme.line.color, 0)); // Line color (transparent)
-
-    ctx.fillStyle = gradient; // Use the gradient for the fill
-
-    ctx.lineWidth = this.options.theme.line.width;
+    ctx.lineWidth = this.options.theme.area.width;
     const linePath = new Path2D();
-    ctx.strokeStyle = this.options.theme.line.color;
-    ctx.lineWidth = this.options.theme.line.width;
+    ctx.strokeStyle = this.options.theme.area.color;
+    ctx.lineWidth = this.options.theme.area.width;
     let firstPoint = true;
     let firstX = 0,
       lastX = 0;
@@ -81,6 +58,20 @@ export class AreaController extends SimpleController {
     linePath.lineTo(firstX, ctx.canvas.height); // Line to the start along the bottom
     linePath.closePath();
 
-    ctx.fill(linePath); // Fill the closed area with the gradient
+    if (typeof this.options.theme.area.fill === "string") {
+      ctx.fillStyle = this.options.theme.area.fill;
+    } else {
+      const gradient = ctx.createLinearGradient(
+        0,
+        0,
+        0,
+        this.chart.getLogicalCanvas("main").height
+      );
+      for (const stop of this.options.theme.area.fill) {
+        gradient.addColorStop(stop[0], stop[1]);
+      }
+      ctx.fillStyle = gradient;
+    }
+    ctx.fill(linePath);
   }
 }
