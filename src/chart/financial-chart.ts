@@ -77,7 +77,7 @@ export class FinancialChart {
     new Map();
 
   private isTouchCrosshair = false;
-  private isTouchCrosshairTimeout?: number;
+  private isTouchCrosshairTimeout?: NodeJS.Timeout;
   private isTouchCapable = "ontouchstart" in window;
   private xLabelDates: Date[] = [];
   private xLabelCache: Map<number, XAxisLabel> = new Map();

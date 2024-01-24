@@ -44,9 +44,7 @@ export class AreaController extends SimpleController {
     ctx.lineWidth = this.options.theme.line.width;
     let firstPoint = true;
     let firstX = 0,
-      firstY = 0,
-      lastX = 0,
-      lastY = 0;
+      lastX = 0;
 
     const timeRange = this.chart.getTimeRange();
     const visibleExtent = this.chart.getVisibleExtent();
@@ -69,12 +67,10 @@ export class AreaController extends SimpleController {
         linePath.moveTo(x, y);
         firstPoint = false;
         firstX = x; // Remember the first point to close the path later
-        firstY = y;
       } else {
         linePath.lineTo(x, y);
       }
       lastX = x; // Remember the last point to close the path later
-      lastY = y;
     }
 
     ctx.stroke(linePath);

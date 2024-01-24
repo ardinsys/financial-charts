@@ -1,21 +1,23 @@
 {
-  "name": "ardin-charts",
-  "private": true,
-  "version": "0.0.0",
+  "name": "@ardinsys/financial-charts",
+  "version": "1.0.0",
   "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "vite --host",
-    "build": "vue-tsc && vite build",
+    "build": "vite build && tsc src/index.ts --declaration --emitDeclarationOnly --esModuleInterop --outDir dist",
     "preview": "vite preview"
-  },
-  "dependencies": {
-    "vue": "^3.3.11"
   },
   "devDependencies": {
     "@asys-private/mdd-client": "^2.4.2",
     "@vitejs/plugin-vue": "^4.5.2",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
+    "vue": "^3.3.11",
     "vue-tsc": "^1.8.25"
   }
 }
