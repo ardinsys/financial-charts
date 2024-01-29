@@ -293,9 +293,26 @@ export class FinancialChart {
       });
     });
     this.resizeObserver = new ResizeObserver(() => {
+      const oldCanvasSize = this.getLogicalCanvas("main").width;
       this.resizeCanvases();
+      const newCanvasSize = this.getLogicalCanvas("main").width;
+
       if (this.data.length > 0) {
-        requestAnimationFrame(() => this.controller.draw());
+        requestAnimationFrame(() => {
+          // Calculate scale factor
+          const scaleFactor = newCanvasSize / oldCanvasSize;
+
+          // Adjust panOffset based on the scale factor
+          const newPanOffset = this.panOffset * scaleFactor;
+
+          // Constrain newPanOffset within bounds
+          this.panOffset = Math.max(
+            0,
+            Math.min(newPanOffset, this.getMaxPanOffset())
+          );
+
+          this.controller.draw();
+        });
       }
     });
     this.resizeObserver.observe(this.container);
