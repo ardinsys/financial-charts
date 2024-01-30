@@ -23,3 +23,132 @@ Canvas based charting library for price charts with a dead simple API, which sup
 - interactive drawing (only API, UI needs to be made separately)
 - support for use case when you do not want to display a fixed timerange, rather some infite time like trading view does. (will also support realtime moving when new data arrives)
 - sync between multiple charts if applicable
+
+## Quick start
+
+### Import and register the controllers you will use
+
+```ts
+import { FinancialChart } from "@ardinsys/financial-charts";
+import { AreaController } from "@ardinsys/financial-charts";
+import { LineController } from "@ardinsys/financial-charts";
+import { BarController } from "@ardinsys/financial-charts";
+import { HollowCandleController } from "@ardinsys/financial-charts";
+import { CandlestickController } from "@ardinsys/financial-charts";
+import { SteplineController } from "@ardinsys/financial-charts";
+import { HLCAreaController } from "@ardinsys/financial-charts";
+
+FinancialChart.registerController(AreaController);
+FinancialChart.registerController(LineController);
+FinancialChart.registerController(CandlestickController);
+FinancialChart.registerController(BarController);
+FinancialChart.registerController(HollowCandleController);
+FinancialChart.registerController(SteplineController);
+FinancialChart.registerController(HLCAreaController);
+```
+
+### Import the default themes, or create your own
+
+```ts
+import {
+  defaultDarkTheme,
+  defaultLightTheme,
+  mergeThemes,
+  type ChartTheme,
+} from "@ardinsys/financial-charts";
+
+const myTheme: ChartTheme = {
+  /* provide the values you want to override */
+};
+
+// Use the utility function to merge your theme.
+// If you only want to use the light theme then you can skip this step
+// since by default your theme will be merged with the light theme
+const fullTheme = mergeThemes(defaultDarkTheme, myTheme);
+```
+
+### Create your chart
+
+```ts
+import { FinancialChart } from "@ardinsys/financial-charts";
+
+const chart = new FinancialChart(
+  // this can be a react/vue ref or anything. It should be a HTMLElement.
+  document.getElementById("my-container"),
+  {
+    // Time range that will be visible
+    start: nineam.getTime(),
+    end: fivepm.getTime(),
+  },
+  {
+    type: "hlc-area",
+    theme: myTheme,
+    // default is the navigator language
+    locale: "EN",
+    maxZoom: 100,
+    // step size in millis
+    stepSize: 15 * 60 * 1000,
+  }
+);
+```
+
+### Draw / Update your chart
+
+**Your data must be sorted beforehand!**
+
+```ts
+// Initial draw
+// If you want to use completely new and different data, also use this method
+chart.draw([
+  {
+    time: nineam.getTime(),
+    open: 11,
+    high: 15,
+    low: 10,
+    close: 10,
+  },
+  {
+    time: nineam.getTime() + 1000 * 60 * 15,
+    open: 10,
+    high: 15,
+    low: 8,
+    close: 15,
+  },
+  {
+    time: nineam.getTime() + 1000 * 60 * 30,
+    open: 15,
+    high: 17,
+    low: 11,
+    close: 12,
+  },
+]);
+
+// Update with next point
+chart.drawNextPoint({
+  time: nineam.getTime() + 1000 * 60 * 45,
+  close: 13,
+  high: 14,
+  low: 10,
+  open: 11,
+});
+```
+
+### Change chart type, options, theme, locale etc.
+
+```ts
+// Chart will hold its state
+chart.changeType("candle");
+```
+
+```ts
+// Chart will hold its state
+chart.updateTheme(yourTheme);
+```
+
+```ts
+// Chart will NOT hold its state
+// It will be redrawn with default state
+// zoom will be set to 1, panOffset will be set to 0
+// data will be remapped to the new stepSize
+chart.updateCoreOptions(timeRange, stepSize, maxZoom);
+```
