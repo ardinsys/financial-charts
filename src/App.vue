@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 // import { LineController } from "./controllers/line/line-controller";
-import {
-  MDDClient,
-  defaultParsers,
-  DataType,
-  HistoricalChartType,
-} from "@asys-private/mdd-client";
 import { ChartData } from "./chart/types";
 import { FinancialChart } from "./chart/financial-chart";
 import { AreaController } from "./controllers/area-controller";
@@ -47,7 +41,7 @@ onMounted(() => {
   controller = new FinancialChart(
     chartContainer.value!,
     {
-      start: fiveYear.getTime(),
+      start: nineam.getTime(),
       end: fivepm.getTime(),
     },
     {
@@ -55,14 +49,9 @@ onMounted(() => {
       theme: defaultDarkTheme,
       // locale: "EN",
       maxZoom: 100,
-      stepSize: 24 * 60 * 60 * 1000,
+      stepSize: 15 * 60 * 1000,
     }
   );
-
-  // setTimeout(() => {
-  //   controller.updateLocale("en-US");
-  //   controller.changeType("candle");
-  // }, 5000);
 
   controller.setEventListener("click", (_: MouseEvent, data) => {
     clickedData.value = data;
@@ -72,177 +61,109 @@ onMounted(() => {
     clickedData.value = { ...data, touch: true };
   });
 
-  const mdd = new MDDClient(
-    "ws://192.168.68.60:3000/mdd/ws",
-    "teszt",
-    1,
-    2000,
-    1000
-  );
-  mdd.registerParsers(...defaultParsers);
+  controller.draw([
+    // 1. candle
+    {
+      time: nineam.getTime(),
+      open: 11,
+      high: 15,
+      low: 10,
+      close: 10,
+    },
+    {
+      time: nineam.getTime() + 1000 * 60 * 15,
+      open: 10,
+      high: 15,
+      low: 8,
+      close: 15,
+    },
+    {
+      time: nineam.getTime() + 1000 * 60 * 30,
+      open: 15,
+      high: 17,
+      low: 11,
+      close: 12,
+    },
+    // 2. candle
+    {
+      time: nineam.getTime() + 1000 * 60 * 45,
+      open: 12,
+      high: 15,
+      low: 10,
+      close: 13,
+    },
+    {
+      time: nineam.getTime() + 1000 * 60 * 60,
+      open: 13,
+      high: 13,
+      low: 8,
+      close: 11,
+    },
+    {
+      time: nineam.getTime() + 1000 * 60 * 75,
+      open: 11,
+      high: 14,
+      low: 10,
+      close: 14,
+    },
+    // 3. candle
+    {
+      time: nineam.getTime() + 1000 * 60 * 90,
+      open: 13,
+      high: 15,
+      low: 10,
+      close: 12,
+    },
+    {
+      time: nineam.getTime() + 1000 * 60 * 115,
+      open: 11,
+      high: 16,
+      low: 10,
+      close: 12,
+    },
+    {
+      time: nineam.getTime() + 1000 * 60 * 130,
+      open: 14,
+      high: 15,
+      low: 10,
+      close: 12,
+    },
+    // 4. candle
+    {
+      time: nineam.getTime() + 1000 * 60 * 145,
+      open: 12,
+      high: 15,
+      low: 8,
+      close: 10,
+    },
+    {
+      time: nineam.getTime() + 1000 * 60 * 160,
+      open: 10,
+      high: 15,
+      low: 8,
+      close: 12,
+    },
+  ]);
 
-  mdd.connect(2000).then(async () => {
-    const ins = { dataType: DataType.CHART_DATA, isin: "TESZT", mic: "XETR" };
-    await mdd.subscribeInstrument(ins);
-    mdd.getHistoricalChart(ins, HistoricalChartType.FIVE_YEAR).then((data) => {
-      chartData.value = data.map((c) => ({
-        time: c.time,
-        close: c.close,
-        high: c.high,
-        low: c.low,
-        open: c.open,
-      }));
-
-      // setTimeout(() => {
-      //   controller.updateTheme(defaultDarkTheme);
-      //   setTimeout(() => {
-      //     controller.updateCoreOptions(
-      //       {
-      //         start: fiveYear.getTime(),
-      //         end: fivepm.getTime(),
-      //       },
-      //       1000 * 60 * 60 * 24 * 30,
-      //       20
-      //     );
-      //   }, 3000);
-      // }, 3000);
+  setTimeout(() => {
+    controller.drawNextPoint({
+      time: nineam.getTime() + 1000 * 60 * 175,
+      close: 14,
+      high: 13,
+      low: 10,
+      open: 11,
     });
-    // const [init] = await mdd.getInitData([
-    //   { ...ins, from: nineam, to: fivepm },
-    // ]);
-    // if (init?.type === DataType.CHART_DATA) {
-    //   chartData.value = init.chartData.map((c) => ({
-    //     time: new Date(c.timestamp).getTime(),
-    //     close: c.close,
-    //     high: c.high,
-    //     low: c.low,
-    //     open: c.open,
-    //   }));
-    // }
 
-    // mdd.registerUpdateObserver({
-    //   dataTypes: [DataType.CHART_DATA],
-    //   observer: (data) => {
-    //     if (data.type === DataType.CHART_DATA) {
-    //       chartData.value = [
-    //         ...chartData.value,
-    //         {
-    //           time: new Date(data.timestamp).getTime(),
-    //           close: data.close,
-    //           high: data.high,
-    //           low: data.low,
-    //           open: data.open,
-    //         },
-    //       ];
-    //     }
-    //   },
-    // });
-  });
-
-  // controller.draw([
-  //   // 1. candle
-  //   {
-  //     time: nineam.getTime(),
-  //     open: 11,
-  //     high: 15,
-  //     low: 10,
-  //     close: 10,
-  //   },
-  //   {
-  //     time: nineam.getTime() + 1000 * 60 * 15,
-  //     open: 10,
-  //     high: 15,
-  //     low: 8,
-  //     close: 15,
-  //   },
-  //   {
-  //     time: nineam.getTime() + 1000 * 60 * 30,
-  //     open: 15,
-  //     high: 17,
-  //     low: 11,
-  //     close: 12,
-  //   },
-  //   // 2. candle
-  //   {
-  //     time: nineam.getTime() + 1000 * 60 * 45,
-  //     open: 12,
-  //     high: 15,
-  //     low: 10,
-  //     close: 13,
-  //   },
-  //   {
-  //     time: nineam.getTime() + 1000 * 60 * 60,
-  //     open: 13,
-  //     high: 13,
-  //     low: 8,
-  //     close: 11,
-  //   },
-  //   {
-  //     time: nineam.getTime() + 1000 * 60 * 75,
-  //     open: 11,
-  //     high: 14,
-  //     low: 10,
-  //     close: 14,
-  //   },
-  //   // 3. candle
-  //   {
-  //     time: nineam.getTime() + 1000 * 60 * 90,
-  //     open: 13,
-  //     high: 15,
-  //     low: 10,
-  //     close: 12,
-  //   },
-  //   {
-  //     time: nineam.getTime() + 1000 * 60 * 115,
-  //     open: 11,
-  //     high: 16,
-  //     low: 10,
-  //     close: 12,
-  //   },
-  //   {
-  //     time: nineam.getTime() + 1000 * 60 * 130,
-  //     open: 14,
-  //     high: 15,
-  //     low: 10,
-  //     close: 12,
-  //   },
-  //   // 4. candle
-  //   {
-  //     time: nineam.getTime() + 1000 * 60 * 145,
-  //     open: 12,
-  //     high: 15,
-  //     low: 8,
-  //     close: 10,
-  //   },
-  //   // sokadik
-  //   {
-  //     time: nineam.getTime() + 1000 * 60 * 160,
-  //     open: 10,
-  //     high: 15,
-  //     low: 8,
-  //     close: 12,
-  //   },
-  // ]);
-
-  // setTimeout(() => {
-  //   controller.drawNextPoint({
-  //     time: nineam.getTime() + 1000 * 60 * 175,
-  //     close: 14,
-  //     high: 13,
-  //     low: 10,
-  //     open: 11,
-  //   });
-
-  //   setTimeout(() => {
-  //     controller.drawNextPoint({
-  //       time: nineam.getTime() + 1000 * 60 * 175,
-  //       close: 13,
-  //       high: 14,
-  //       low: 10,
-  //       open: 11,
-  //     });
-  //   }, 2000);
-  // }, 2000);
+    setTimeout(() => {
+      controller.drawNextPoint({
+        time: nineam.getTime() + 1000 * 60 * 175,
+        close: 13,
+        high: 14,
+        low: 10,
+        open: 11,
+      });
+    }, 2000);
+  }, 2000);
 });
 
 watch(chartData, (newVal, oldVal) => {
@@ -292,5 +213,3 @@ body {
   margin: 0;
 }
 </style>
-./chart/types./chart/themes
-./controllers/area-controller./controllers/line-controller./controllers/candle-controller
