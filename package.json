@@ -2,15 +2,22 @@
   "name": "@ardinsys/financial-charts",
   "version": "0.1.0",
   "type": "module",
+  "license": "Apache 2.0",
+  "author": "ARDINSYS Zrt.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "vite --host",
     "build": "vite build && tsc src/index.ts --declaration --emitDeclarationOnly --esModuleInterop --outDir dist",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@asys-private/mdd-client": "^2.4.2",
