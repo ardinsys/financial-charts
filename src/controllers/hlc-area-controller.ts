@@ -94,8 +94,8 @@ export class HLCAreaController extends OHLCController {
 
     for (let i = visibleDataPoints.length - 1; i >= 0; i--) {
       const point = visibleDataPoints[i];
-      if (point.time < timeRange.start) continue;
-      if (point.time > timeRange.end) break;
+      if (point.time < timeRange.start) break;
+      if (point.time > timeRange.end) continue;
 
       const close = visibleExtent.mapToPixel(
         point.time,
