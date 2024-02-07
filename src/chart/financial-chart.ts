@@ -1294,7 +1294,7 @@ export class FinancialChart {
 
     const visibleDataPoints = this.data.slice(
       firstPointIndex,
-      lastPointIndex + 1
+      Math.min(lastPointIndex + 1 + 1, this.data.length)
     );
     // Do not recalc xMin and xMax to preserve x positions
     // but we need to adjust yMin and yMax to the visible data points
