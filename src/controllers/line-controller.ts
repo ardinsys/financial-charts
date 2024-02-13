@@ -31,6 +31,9 @@ export class LineController extends SimpleController {
       const point = visibleDataPoints[i];
       if (point.time < timeRange.start) continue;
       if (point.time > timeRange.end) break;
+
+      if (point.close == undefined) continue;
+
       const { x, y } = visibleExtent.mapToPixel(
         point.time,
         point.close!,

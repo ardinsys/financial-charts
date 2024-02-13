@@ -32,6 +32,11 @@ export class HollowCandleController extends OHLCController {
       if (point.time < timeRange.start) continue;
       if (point.time > timeRange.end) break;
 
+      if (point.close == undefined) continue;
+      if (point.open == undefined) continue;
+      if (point.high == undefined) continue;
+      if (point.low == undefined) continue;
+
       const { x } = visibleExtent.mapToPixel(
         point.time,
         point.close!,
