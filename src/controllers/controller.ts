@@ -21,12 +21,15 @@ export abstract class ChartController {
     timeRange: TimeRange
   ): DataExtent;
 
+  abstract getEffectiveCrosshairValues(): boolean[];
   abstract getXLabelOffset(): number;
   abstract getTimeFromRawDataPoint(rawPoint: ChartData): number;
   abstract draw(): void;
 }
 
 export abstract class SimpleController extends ChartController {
+  private simpleCrosshairValues = [false, false, false, true];
+
   createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
     return new SimpleDataExtent(data, timeRange);
   }
@@ -40,9 +43,15 @@ export abstract class SimpleController extends ChartController {
       Math.round(rawPoint.time / this.options.stepSize) * this.options.stepSize
     );
   }
+
+  getEffectiveCrosshairValues() {
+    return this.simpleCrosshairValues;
+  }
 }
 
 export abstract class OHLCController extends ChartController {
+  private ohlcCrosshairValues = [true, true, true, true];
+
   createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
     return new OHLCDataExtent(data, timeRange);
   }
@@ -53,5 +62,9 @@ export abstract class OHLCController extends ChartController {
 
   getTimeFromRawDataPoint(rawPoint: ChartData): number {
     return rawPoint.time - (rawPoint.time % this.options.stepSize);
+  }
+
+  getEffectiveCrosshairValues() {
+    return this.ohlcCrosshairValues;
   }
 }

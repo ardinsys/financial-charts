@@ -9,6 +9,12 @@ type Point = {
 export class HLCAreaController extends OHLCController {
   static ID = "hlc-area";
 
+  private crosshairValues = [false, true, true, true];
+
+  getEffectiveCrosshairValues(): boolean[] {
+    return this.crosshairValues;
+  }
+
   getXLabelOffset(): number {
     return 0;
   }

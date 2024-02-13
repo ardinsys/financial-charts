@@ -6,6 +6,12 @@ import { OHLCController } from "./controller";
 export class SteplineController extends OHLCController {
   static ID = "stepline";
 
+  private crosshairValues = [false, false, false, true];
+
+  getEffectiveCrosshairValues(): boolean[] {
+    return this.crosshairValues;
+  }
+
   createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
     return new SimpleDataExtent(data, timeRange);
   }

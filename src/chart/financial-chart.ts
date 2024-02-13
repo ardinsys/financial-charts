@@ -75,6 +75,7 @@ export class FinancialChart {
   protected xLabelHeight = 30;
 
   protected pointerTime = -1;
+  protected crosshairDataPoint: ChartData | null = null;
   protected pointerY = -1;
 
   private lastTouchDistance?: number;
@@ -861,6 +862,7 @@ export class FinancialChart {
     );
     const closestDataPoint = this.findClosestDataPoint(rawPoint);
     if (!closestDataPoint) return;
+    this.crosshairDataPoint = closestDataPoint;
     this.pointerTime = closestDataPoint.time;
     this.pointerY = Math.min(e.y, this.getLogicalCanvas("main").height);
     this.drawCrosshair();
@@ -961,6 +963,58 @@ export class FinancialChart {
       priceTextX,
       Math.max(this.pointerY + textPadding / 2, textPadding + 6)
     );
+
+    ctx.font = `${this.options.theme.crosshair.infoLine.fontSize}px ${this.options.theme.crosshair.infoLine.font}, monospace`;
+
+    const p = this.crosshairDataPoint!;
+
+    const ohlc = [p.open, p.high, p.low, p.close];
+    const labels =
+      this.options.theme.crosshair.infoLine.labels[this.options.locale] ||
+      this.options.theme.crosshair.infoLine.labels["*"];
+    const visibleLabels = this.controller.getEffectiveCrosshairValues();
+
+    let ohlcTextX = 10;
+    const spacing = 10;
+
+    for (let i = 0; i < ohlc.length; i++) {
+      if (!visibleLabels[i]) continue;
+      const price = ohlc[i];
+      if (price == undefined) continue;
+      const ohlcText = this.options.formatter.formatTooltipPrice(
+        price,
+        decimals
+      );
+
+      const labelWidth = ctx.measureText(labels[i]).width;
+      const valueWidth = ctx.measureText(ohlcText).width;
+      if (
+        ohlcTextX + labelWidth + valueWidth >
+        this.getLogicalCanvas("main").width
+      )
+        break;
+
+      ctx.fillStyle = this.options.theme.crosshair.infoLine.color;
+      ctx.fillText(
+        labels[i],
+        ohlcTextX,
+        this.options.theme.crosshair.tooltip.fontSize + 10
+      );
+      ohlcTextX += labelWidth;
+
+      if (p.open != undefined && p.close != undefined) {
+        ctx.fillStyle =
+          p.open! > p.close!
+            ? this.options.theme.crosshair.infoLine.downColor
+            : this.options.theme.crosshair.infoLine.upColor;
+      }
+      ctx.fillText(
+        ohlcText,
+        ohlcTextX,
+        this.options.theme.crosshair.tooltip.fontSize + 10
+      );
+      ohlcTextX += valueWidth + spacing;
+    }
   }
 
   /**

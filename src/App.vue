@@ -45,7 +45,7 @@ onMounted(() => {
       end: fivepm.getTime(),
     },
     {
-      type: "hlc-area",
+      type: "candle",
       theme: defaultDarkTheme,
       // locale: "EN",
       maxZoom: 100,

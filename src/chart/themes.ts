@@ -83,6 +83,14 @@ export interface ChartTheme {
     color?: string;
     width?: number;
     lineDash?: number[];
+    infoLine?: {
+      upColor?: string;
+      downColor?: string;
+      fontSize?: number;
+      font?: string;
+      color?: string;
+      labels?: Record<string, string[]>;
+    };
     tooltip?: {
       backgroundColor?: string;
       color?: string;
@@ -149,6 +157,14 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
     color: "#9598A1",
     width: 1,
     lineDash: [5, 6],
+    infoLine: {
+      upColor: "#609895",
+      downColor: "#F23645",
+      fontSize: 12,
+      font: "Roboto Mono",
+      color: "#000000",
+      labels: { "*": ["O: ", "H: ", "L: ", "C: "] },
+    },
     tooltip: {
       backgroundColor: "#131722",
       color: "#FFFFFF",
@@ -215,6 +231,14 @@ export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
     color: "#9598A1",
     width: 1,
     lineDash: [5, 6],
+    infoLine: {
+      upColor: "#089981",
+      downColor: "#F23645",
+      fontSize: 12,
+      font: "Roboto Mono",
+      color: "#FFFFFF",
+      labels: { "*": ["O: ", "H: ", "L: ", "C: "] },
+    },
     tooltip: {
       backgroundColor: "#363A45",
       color: "#FFFFFF",
