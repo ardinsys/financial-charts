@@ -65,6 +65,8 @@ export class HLCAreaController extends OHLCController {
       if (point.time < timeRange.start) continue;
       if (point.time > timeRange.end) break;
 
+      if (point.high == undefined || point.low == undefined) continue;
+
       const high = visibleExtent.mapToPixel(
         point.time,
         point.high!,
@@ -102,6 +104,8 @@ export class HLCAreaController extends OHLCController {
       const point = visibleDataPoints[i];
       if (point.time < timeRange.start) break;
       if (point.time > timeRange.end) continue;
+
+      if (point.close == undefined) continue;
 
       const close = visibleExtent.mapToPixel(
         point.time,
