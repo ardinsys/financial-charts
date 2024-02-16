@@ -14,6 +14,8 @@ export class MovingAverageIndicator extends Indicator<
   MovingAverageTheme,
   MovingAverageOptions
 > {
+  static ID = "SMA";
+
   public getDefaultOptions(): MovingAverageOptions {
     return { period: 5, source: "close" };
   }
