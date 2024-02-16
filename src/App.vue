@@ -11,6 +11,7 @@ import { CandlestickController } from "./controllers/candle-controller";
 import { SteplineController } from "./controllers/step-line-controller";
 import { HLCAreaController } from "./controllers/hlc-area-controller";
 import { defaultDarkTheme } from "./chart/themes";
+import { MovingAverageIndicator } from "./indicators/moving-average";
 
 FinancialChart.registerController(AreaController);
 FinancialChart.registerController(LineController);
@@ -52,6 +53,8 @@ onMounted(() => {
       stepSize: 15 * 60 * 1000,
     }
   );
+
+  controller.addIndicator(new MovingAverageIndicator());
 
   controller.setEventListener("click", (_: MouseEvent, data) => {
     clickedData.value = data;

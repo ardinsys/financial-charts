@@ -1,24 +1,19 @@
 import { DeepConcrete } from "./financial-chart";
 
-export function mergeThemes(
-  defaultTheme: ChartTheme,
-  providedTheme: ChartTheme
-) {
-  if (providedTheme == undefined)
-    return { ...defaultTheme } as DeepConcrete<ChartTheme>;
+export function mergeThemes<T extends object = ChartTheme>(
+  defaultTheme: any,
+  providedTheme: any
+): T {
+  if (providedTheme == undefined) return { ...defaultTheme };
   // @ts-ignore
-  const theme: DeepConcrete<ChartTheme> = {};
-  for (const k in defaultTheme) {
-    const key = k as keyof ChartTheme;
+  const theme: T = {};
+  for (const key in defaultTheme) {
     if (
       typeof defaultTheme[key] === "object" &&
       !Array.isArray(defaultTheme[key])
     ) {
       // @ts-ignore
-      theme[key] = mergeThemes(
-        defaultTheme[key] as ChartTheme,
-        providedTheme[key] as ChartTheme
-      );
+      theme[key] = mergeThemes(defaultTheme[key], providedTheme[key]);
     } else {
       // @ts-ignore
       theme[key] = providedTheme[key] || defaultTheme[key];
@@ -30,6 +25,7 @@ export function mergeThemes(
 export type Gradient = Array<[number, string]>;
 
 export interface ChartTheme {
+  key: string;
   backgroundColor?: string;
   grid?: {
     color?: string;
@@ -101,6 +97,7 @@ export interface ChartTheme {
 }
 
 export const defaultLightTheme: DeepConcrete<ChartTheme> = {
+  key: "light",
   backgroundColor: "#FFFFFF",
   grid: {
     color: "#F2F3F3",
@@ -175,6 +172,7 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
 };
 
 export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
+  key: "dark",
   backgroundColor: "#161A25",
   grid: {
     color: "#232632",

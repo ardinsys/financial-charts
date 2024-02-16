@@ -68,7 +68,7 @@ export class AreaController extends SimpleController {
         0,
         0,
         0,
-        this.chart.getLogicalCanvas("main").height
+        this.chart.getDrawingSize().height
       );
       for (const stop of this.options.theme.area.fill) {
         gradient.addColorStop(stop[0], stop[1]);
