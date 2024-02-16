@@ -1,5 +1,6 @@
 import { ChartController } from "../controllers/controller";
 import { DataExtent } from "../extents/data-extent";
+import { Indicator } from "../indicators/indicator";
 import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";
@@ -55,7 +56,13 @@ export class FinancialChart {
     this.controllers.set(controllerClass.ID, controllerClass);
   }
 
-  private readonly types = ["main", "crosshair", "x-label", "y-label"] as const;
+  private readonly types = [
+    "main",
+    "crosshair",
+    "x-label",
+    "y-label",
+    "indicator",
+  ] as const;
   private controller: ChartController;
   protected outsideContainer: HTMLElement;
   protected container: HTMLElement;
@@ -70,6 +77,8 @@ export class FinancialChart {
   protected timeRange: TimeRange;
   protected dataExtent!: DataExtent;
   protected visibleExtent: DataExtent;
+
+  protected indicators: Indicator<any, any>[] = [];
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
@@ -106,6 +115,24 @@ export class FinancialChart {
     return this.panOffset;
   }
 
+  getController() {
+    return this.controller;
+  }
+
+  getOptions() {
+    return this.options;
+  }
+
+  getData() {
+    return this.data;
+  }
+
+  private redraw() {
+    this.controller.draw();
+    this.drawIndicators();
+    this.drawCrosshair();
+  }
+
   public changeType(type: ControllerType) {
     this.options.type = type;
     const ControllerClass = FinancialChart.controllers.get(
@@ -128,10 +155,7 @@ export class FinancialChart {
 
     this.recalculateVisibleExtent();
 
-    requestAnimationFrame(() => {
-      this.controller.draw();
-      this.drawCrosshair();
-    });
+    requestAnimationFrame(() => this.redraw());
   }
 
   private processXLabels(): XAxisLabel[] {
@@ -294,9 +318,9 @@ export class FinancialChart {
       });
     });
     this.resizeObserver = new ResizeObserver(() => {
-      const oldCanvasSize = this.getLogicalCanvas("main").width;
+      const oldCanvasSize = this.getDrawingSize().width;
       this.resizeCanvases();
-      const newCanvasSize = this.getLogicalCanvas("main").width;
+      const newCanvasSize = this.getDrawingSize().width;
 
       if (this.data.length > 0) {
         requestAnimationFrame(() => {
@@ -312,7 +336,7 @@ export class FinancialChart {
             Math.min(newPanOffset, this.getMaxPanOffset())
           );
 
-          this.controller.draw();
+          this.redraw();
         });
       }
     });
@@ -323,10 +347,7 @@ export class FinancialChart {
     this.options.theme = mergeThemes(this.options.theme, theme);
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     if (this.data.length > 0) {
-      requestAnimationFrame(() => {
-        this.controller.draw();
-        this.drawCrosshair();
-      });
+      requestAnimationFrame(() => this.redraw());
     }
   }
 
@@ -367,10 +388,7 @@ export class FinancialChart {
       this.xLabelDates.push(new Date(d.time));
     }
 
-    requestAnimationFrame(() => {
-      this.controller.draw();
-      this.drawCrosshair();
-    });
+    requestAnimationFrame(() => this.redraw());
   }
 
   public updateLocale(locale: string) {
@@ -382,10 +400,7 @@ export class FinancialChart {
       if (d.time < this.timeRange.start) continue;
       this.xLabelDates.push(new Date(d.time));
     }
-    requestAnimationFrame(() => {
-      this.controller.draw();
-      this.drawCrosshair();
-    });
+    requestAnimationFrame(() => this.redraw());
   }
 
   private onMouseDown = (event: PointerEvent) => {
@@ -418,7 +433,7 @@ export class FinancialChart {
   protected timeToPixel(time: number): number {
     const duration = this.dataExtent.getXMax() - this.dataExtent.getXMin();
     const relativeTime = time - this.timeRange.start;
-    const canvasWidth = this.getLogicalCanvas("main").width;
+    const canvasWidth = this.getDrawingSize().width;
     return (relativeTime / duration) * canvasWidth;
   }
 
@@ -430,7 +445,7 @@ export class FinancialChart {
    */
   getPixelPerMs(): number {
     return (
-      (this.getLogicalCanvas("main").width /
+      (this.getDrawingSize().width /
         (this.timeRange.end - this.timeRange.start)) *
       this.zoomLevel
     );
@@ -461,7 +476,10 @@ export class FinancialChart {
         0,
         Math.min(newPanOffset, this.getMaxPanOffset())
       );
-      requestAnimationFrame(() => this.controller.draw());
+      requestAnimationFrame(() => {
+        this.controller.draw();
+        this.drawIndicators();
+      });
       this.lastPointerPosition = { x: event.clientX };
     } else {
       this.isPanning = false;
@@ -520,6 +538,7 @@ export class FinancialChart {
 
     requestAnimationFrame(() => {
       this.controller.draw();
+      this.drawIndicators();
       this.onZoom();
     });
   };
@@ -619,6 +638,7 @@ export class FinancialChart {
         const rect =
           this.getContext("crosshair").canvas.getBoundingClientRect();
         this.controller.draw();
+        this.drawIndicators();
         if (!this.isTouchCrosshair) return;
         this.pointerMove({
           x: event.touches[0].clientX - rect.left,
@@ -644,11 +664,14 @@ export class FinancialChart {
         0,
         Math.min(
           newPanOffset,
-          this.getLogicalCanvas("main").width * (this.zoomLevel - 1)
+          this.getDrawingSize().width * (this.zoomLevel - 1)
         )
       );
       this.adjustZoomLevel(zoomFactor);
-      requestAnimationFrame(() => this.controller.draw());
+      requestAnimationFrame(() => {
+        this.controller.draw();
+        this.drawIndicators();
+      });
       this.lastTouchDistance = distance;
     } else {
       const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
@@ -665,12 +688,18 @@ export class FinancialChart {
   ) {
     const devicePixelRatio = window.devicePixelRatio || 1;
     canvas.style.userSelect = "none";
+    // @ts-ignore
+    canvas.style.webkitTapHighlightColor = "transparent";
 
     if (type === "y-label") {
       canvas.style.right = "0px";
       canvas.width = this.yLabelWidth * devicePixelRatio;
       canvas.style.width = this.yLabelWidth + "px";
-    } else if (type === "x-label" || type === "crosshair") {
+    } else if (
+      type === "x-label" ||
+      type === "crosshair" ||
+      type === "indicator"
+    ) {
       canvas.width = this.container.offsetWidth * devicePixelRatio;
       canvas.style.width = this.container.offsetWidth + "px";
     } else {
@@ -684,7 +713,7 @@ export class FinancialChart {
       canvas.style.bottom = "0px";
       canvas.height = this.xLabelHeight * devicePixelRatio;
       canvas.style.height = this.xLabelHeight + "px";
-    } else if (type === "crosshair") {
+    } else if (type === "crosshair" || type === "indicator") {
       canvas.height = this.container.offsetHeight * devicePixelRatio;
       canvas.style.height = this.container.offsetHeight + "px";
     } else {
@@ -702,7 +731,8 @@ export class FinancialChart {
 
     if (!this.canvases.has(type)) {
       canvas.style.position = "absolute";
-      canvas.style.zIndex = type === "crosshair" ? "2" : "1";
+      canvas.style.zIndex =
+        type === "crosshair" ? "100" : type === "indicator" ? "50" : "1";
       this.container.appendChild(canvas);
       this.canvases.set(type, canvas);
     }
@@ -793,12 +823,30 @@ export class FinancialChart {
   }
 
   /**
+   * Gets the true drawing size.
+   *
+   * @returns the logical size of the main canvas
+   */
+  getDrawingSize() {
+    return this.getLogicalCanvas("main");
+  }
+
+  /**
+   * Gets the full drawing size including axis label areas.
+   *
+   * @returns the logical size of the full drawing area
+   */
+  getFullSize() {
+    return this.getLogicalCanvas("crosshair");
+  }
+
+  /**
    * Get the currently visible time range.
    * This is the time range that is visible on the screen.
    *
    * @returns the currently visible time range
    */
-  protected getVisibleTimeRange(): TimeRange {
+  public getVisibleTimeRange(): TimeRange {
     const pixelPerMs = this.getPixelPerMs() / this.zoomLevel;
 
     const timeRange = this.dataExtent.getXMax() - this.dataExtent.getXMin();
@@ -831,7 +879,7 @@ export class FinancialChart {
       this.xLabelDates.push(new Date(d.time));
     }
 
-    requestAnimationFrame(() => this.controller.draw());
+    requestAnimationFrame(() => this.redraw());
   }
 
   /**
@@ -845,10 +893,75 @@ export class FinancialChart {
     this.originalData.push(data);
     this.transformNewData(data);
 
-    requestAnimationFrame(() => {
-      this.controller.draw();
-      this.drawCrosshair();
+    requestAnimationFrame(() => this.redraw());
+  }
+
+  /**
+   * Adds and draws a new indicator.
+   *
+   * @param indicator indicator to draw
+   */
+  public addIndicator(indicator: Indicator<any, any>) {
+    indicator.setChart(this);
+    this.indicators.push(indicator);
+    requestAnimationFrame(() => this.drawIndicators());
+  }
+
+  /**
+   * Removes an indicator from the chart and redraws the indicators
+   * to reflect the changes.
+   *
+   * @param indicator indicator to remove
+   */
+  public removeIndicator(indicator: string): void;
+  public removeIndicator(indicator: Indicator<any, any>): void;
+  public removeIndicator(indicator: any): void {
+    if (typeof indicator === "string") {
+      this.indicators = this.indicators.filter(
+        (i) => Object.getPrototypeOf(i).ID !== indicator
+      );
+    } else {
+      this.indicators = this.indicators.filter((i) => i !== indicator);
+    }
+    requestAnimationFrame(() => this.drawIndicators());
+  }
+
+  /**
+   * Removes all indicators from the chart that has the same type
+   * as the provided new indicator, then adds the new indicator to the top.
+   * This is useful if user wants to change the options of the indicator.
+   *
+   * @param indicator new indicator
+   */
+  public replaceIndicator(indicator: Indicator<any, any>) {
+    indicator.setChart(this);
+    this.indicators = this.indicators.filter((i) => {
+      return (
+        Object.getPrototypeOf(i).ID !== Object.getPrototypeOf(indicator).ID
+      );
     });
+    this.indicators.push(indicator);
+    requestAnimationFrame(() => this.drawIndicators());
+  }
+
+  /**
+   * Removes the old indicator and adds the new indicator to the top.
+   * Will compare by reference.
+   * This is useful if user wants to change the options of the indicator.
+   *
+   * @param oldIndicator indicator reference to remove
+   * @param newIndicator new indicator to add
+   */
+  public replaceIndicatorByInstance(
+    oldIndicator: Indicator<any, any>,
+    newIndicator: Indicator<any, any>
+  ) {
+    newIndicator.setChart(this);
+    this.indicators = this.indicators.filter((i) => {
+      return i !== oldIndicator;
+    });
+    this.indicators.push(newIndicator);
+    requestAnimationFrame(() => this.drawIndicators());
   }
 
   protected pointerMove(e: { x: number; y: number }) {
@@ -864,8 +977,17 @@ export class FinancialChart {
     if (!closestDataPoint) return;
     this.crosshairDataPoint = closestDataPoint;
     this.pointerTime = closestDataPoint.time;
-    this.pointerY = Math.min(e.y, this.getLogicalCanvas("main").height);
+    this.pointerY = Math.min(e.y, this.getDrawingSize().height);
     this.drawCrosshair();
+  }
+
+  private drawIndicators() {
+    if (this.data.length == 0) return;
+    const ctx = this.getContext("indicator");
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    for (const indicator of this.indicators) {
+      indicator.draw();
+    }
   }
 
   private drawCrosshair(): void {
@@ -876,12 +998,12 @@ export class FinancialChart {
     if (this.pointerY === -1) return;
     if (this.isTouchCapable && !this.isTouchCrosshair) return;
 
-    if (this.pointerY >= this.getLogicalCanvas("main").height) {
+    if (this.pointerY >= this.getDrawingSize().height) {
       this.getContext("crosshair").clearRect(
         0,
         0,
-        this.getLogicalCanvas("crosshair").width,
-        this.getLogicalCanvas("crosshair").height
+        this.getFullSize().width,
+        this.getFullSize().height
       );
       return;
     }
@@ -900,15 +1022,15 @@ export class FinancialChart {
     ctx.setLineDash(this.options.theme.crosshair.lineDash);
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, this.getLogicalCanvas("main").height);
+    ctx.lineTo(x, this.getDrawingSize().height);
     ctx.moveTo(0, this.pointerY);
-    ctx.lineTo(this.getLogicalCanvas("main").width, this.pointerY);
+    ctx.lineTo(this.getDrawingSize().width, this.pointerY);
     ctx.stroke();
     const text = this.options.formatter.formatTooltipDate(this.pointerTime);
     const textWidth = ctx.measureText(text).width;
     const textPadding = 10;
     const rectWidth = textWidth + textPadding * 2;
-    const maxRectX = this.getLogicalCanvas("crosshair").width - rectWidth;
+    const maxRectX = this.getFullSize().width - rectWidth;
     const rectX = Math.min(
       Math.max(x - textWidth / 2 - textPadding, 0),
       maxRectX
@@ -921,7 +1043,7 @@ export class FinancialChart {
     ctx.fillStyle = this.options.theme.crosshair.tooltip.backgroundColor;
     ctx.rect(
       rectX,
-      this.getLogicalCanvas("main").height,
+      this.getDrawingSize().height,
       rectWidth,
       textPadding * 2 + 12
     );
@@ -953,11 +1075,7 @@ export class FinancialChart {
 
     ctx.font = `${this.options.theme.crosshair.tooltip.fontSize}px ${this.options.theme.crosshair.tooltip.font}, monospace`;
     ctx.fillStyle = this.options.theme.crosshair.tooltip.color;
-    ctx.fillText(
-      text,
-      textX,
-      this.getLogicalCanvas("main").height + textPadding * 2
-    );
+    ctx.fillText(text, textX, this.getDrawingSize().height + textPadding * 2);
     ctx.fillText(
       priceText,
       priceTextX,
@@ -988,10 +1106,7 @@ export class FinancialChart {
 
       const labelWidth = ctx.measureText(labels[i]).width;
       const valueWidth = ctx.measureText(ohlcText).width;
-      if (
-        ohlcTextX + labelWidth + valueWidth >
-        this.getLogicalCanvas("main").width
-      )
+      if (ohlcTextX + labelWidth + valueWidth > this.getDrawingSize().width)
         break;
 
       ctx.fillStyle = this.options.theme.crosshair.infoLine.color;
@@ -1046,9 +1161,7 @@ export class FinancialChart {
   protected estimatePriceLabelDecimalPlaces(labelSpacing: number) {
     const priceRange =
       this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
-    const maxLabels = Math.floor(
-      this.getLogicalCanvas("main").height / labelSpacing
-    );
+    const maxLabels = Math.floor(this.getDrawingSize().height / labelSpacing);
     const stepSize = priceRange / maxLabels;
 
     // Estimate decimal places based on step size
@@ -1327,8 +1440,11 @@ export class FinancialChart {
     });
   }
 
+  private lastVisibleDataPoints: ChartData[] = [];
+
   recalculateVisibleExtent() {
     const visibleTimeRange = this.getVisibleTimeRange();
+
     let firstPointIndex = 0;
     let lastPointIndex = this.data.length - 1;
 
@@ -1354,6 +1470,11 @@ export class FinancialChart {
     // but we need to adjust yMin and yMax to the visible data points
     this.visibleExtent.recalculate(visibleDataPoints, this.timeRange);
 
+    this.lastVisibleDataPoints = visibleDataPoints;
     return visibleDataPoints;
+  }
+
+  getLastVisibleDataPoints() {
+    return this.lastVisibleDataPoints;
   }
 }
