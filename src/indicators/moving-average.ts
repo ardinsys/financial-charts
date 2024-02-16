@@ -20,7 +20,7 @@ export class MovingAverageIndicator extends Indicator<
     return { period: 5, source: "close" };
   }
 
-  public getDefaultThemes() {
+  public getDefaultThemes(): Record<string, MovingAverageTheme> {
     return {
       light: {
         color: "#2962FF",
