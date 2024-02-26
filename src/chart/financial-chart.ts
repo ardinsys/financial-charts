@@ -1385,35 +1385,30 @@ export class FinancialChart {
   }
 
   private calculateStepSize(range: number, maxLabels: number) {
-    // Determine the step size based on the range and maximum number of labels
-    const rawStep = range / maxLabels;
+    // Step 1: Determine the initial raw step size
+    let rawStep = range / maxLabels;
 
-    // Adjust the step size based on the magnitude of the range
-    let magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    if (magnitude === 0) {
-      magnitude = 0.1; // Adjust for very small ranges
-    }
+    // Step 2: Adjust for precision based on the range's magnitude
+    let scale = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    let normalizedStep = rawStep / scale; // Normalize step size to [1, 10)
 
-    let normalizedStep = rawStep / magnitude;
-    let stepSize;
-
+    // Step 3: Round to a nice value
+    let roundedStep;
     if (normalizedStep < 1.5) {
-      stepSize = 1 * magnitude;
+      roundedStep = 1;
     } else if (normalizedStep < 3) {
-      stepSize = 2 * magnitude;
+      roundedStep = 2;
     } else if (normalizedStep < 7.5) {
-      stepSize = 5 * magnitude;
+      roundedStep = 5;
     } else {
-      stepSize = 10 * magnitude;
+      roundedStep = 10;
     }
 
-    // Ensure that step size is not smaller than the smallest significant digit
-    let decimalPlaces;
-    if (range < 10) {
-      decimalPlaces = Math.ceil(Math.log10(range));
-    } else {
-      decimalPlaces = Math.max(-Math.floor(Math.log10(range)), 0);
-    }
+    // Calculate final step size
+    let stepSize = roundedStep * scale;
+
+    // Step 4: Adjust decimal places for the step size to ensure precision
+    let decimalPlaces = Math.max(-Math.floor(Math.log10(stepSize)), 0);
     return parseFloat(stepSize.toFixed(decimalPlaces));
   }
 
