@@ -41,10 +41,12 @@ fiveYear.setFullYear(fiveYear.getFullYear() - 5);
 onMounted(() => {
   controller = new FinancialChart(
     chartContainer.value!,
-    {
-      start: nineam.getTime(),
-      end: fivepm.getTime(),
-    },
+    "auto",
+    // {
+    //   start: nineam.getTime(),
+    //   end: fivepm.getTime(),
+    //   // end: nineam.getTime() + 1000 * 60 * 180,
+    // },
     {
       type: "candle",
       theme: defaultDarkTheme,
@@ -165,6 +167,26 @@ onMounted(() => {
         low: 10,
         open: 11,
       });
+
+      setTimeout(() => {
+        controller.drawNextPoint({
+          time: nineam.getTime() + 1000 * 60 * 190,
+          close: 14,
+          high: 16,
+          low: 11,
+          open: 13,
+        });
+
+        setTimeout(() => {
+          controller.drawNextPoint({
+            time: nineam.getTime() + 1000 * 60 * 205,
+            close: 12,
+            high: 15,
+            low: 8,
+            open: 14,
+          });
+        }, 2000);
+      }, 2000);
     }, 2000);
   }, 2000);
 });

@@ -74,7 +74,8 @@ export class FinancialChart {
   protected options: DeepConcrete<ChartOptions>;
   protected zoomLevel = 1;
   protected panOffset = 0;
-  protected timeRange: TimeRange;
+  protected timeRange!: TimeRange;
+  protected autoTimeRange = false;
   protected dataExtent!: DataExtent;
   protected visibleExtent: DataExtent;
 
@@ -95,7 +96,9 @@ export class FinancialChart {
 
   private isTouchCrosshair = false;
   private isTouchCrosshairTimeout?: NodeJS.Timeout;
+
   private isTouchCapable = "ontouchstart" in window;
+
   private xLabelDates: Date[] = [];
   private xLabelCache: Map<number, XAxisLabel> = new Map();
 
@@ -253,7 +256,7 @@ export class FinancialChart {
 
   constructor(
     container: HTMLElement,
-    timeRange: TimeRange,
+    timeRange: TimeRange | "auto",
     options: ChartOptions
   ) {
     this.options = options as DeepConcrete<ChartOptions>;
@@ -270,7 +273,15 @@ export class FinancialChart {
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     this.outsideContainer.appendChild(this.container);
 
-    this.timeRange = timeRange;
+    if (timeRange === "auto") {
+      this.timeRange = {
+        start: 0,
+        end: 0,
+      };
+      this.autoTimeRange = true;
+    } else {
+      this.timeRange = timeRange;
+    }
 
     const ControllerClass = FinancialChart.controllers.get(
       this.options.type
@@ -324,6 +335,10 @@ export class FinancialChart {
 
       if (this.data.length > 0) {
         requestAnimationFrame(() => {
+          if (this.autoTimeRange) {
+            this.updateAutoTimeRange(true);
+          }
+
           // Calculate scale factor
           const scaleFactor = newCanvasSize / oldCanvasSize;
 
@@ -341,6 +356,26 @@ export class FinancialChart {
       }
     });
     this.resizeObserver.observe(this.container);
+  }
+
+  private updateAutoTimeRange(recalc = false) {
+    const proportionalFactor = 1 / 50;
+    let dynamicStepWidth = this.getDrawingSize().width * proportionalFactor;
+    dynamicStepWidth = Math.max(15, Math.min(30, dynamicStepWidth));
+    const stepCount = Math.floor(
+      this.getDrawingSize().width / dynamicStepWidth
+    );
+    const endTime = Math.max(
+      this.data[this.data.length - 1].time + this.options.stepSize,
+      this.data[0].time + stepCount * this.options.stepSize
+    );
+    this.timeRange = {
+      start: this.data[0].time,
+      end: endTime,
+    };
+    if (recalc) {
+      this.dataExtent.recalculate(this.data, this.timeRange);
+    }
   }
 
   public updateTheme(theme: ChartTheme) {
@@ -695,11 +730,7 @@ export class FinancialChart {
       canvas.style.right = "0px";
       canvas.width = this.yLabelWidth * devicePixelRatio;
       canvas.style.width = this.yLabelWidth + "px";
-    } else if (
-      type === "x-label" ||
-      type === "crosshair" ||
-      type === "indicator"
-    ) {
+    } else if (type === "x-label" || type === "crosshair") {
       canvas.width = this.container.offsetWidth * devicePixelRatio;
       canvas.style.width = this.container.offsetWidth + "px";
     } else {
@@ -713,7 +744,7 @@ export class FinancialChart {
       canvas.style.bottom = "0px";
       canvas.height = this.xLabelHeight * devicePixelRatio;
       canvas.style.height = this.xLabelHeight + "px";
-    } else if (type === "crosshair" || type === "indicator") {
+    } else if (type === "crosshair") {
       canvas.height = this.container.offsetHeight * devicePixelRatio;
       canvas.style.height = this.container.offsetHeight + "px";
     } else {
@@ -864,13 +895,18 @@ export class FinancialChart {
    * @param data chart data to draw
    */
   public draw(data: ChartData[]) {
+    if (data.length == 0) return;
+    this.originalData = data;
+    this.data = this.mapDataToStepSize(data, this.options.stepSize);
+
+    if (this.autoTimeRange) {
+      this.updateAutoTimeRange(false);
+    }
+
     this.dataExtent = this.controller.createDataExtent(
       this.data,
       this.timeRange
     );
-    if (data.length == 0) return;
-    this.originalData = data;
-    this.data = this.mapDataToStepSize(data, this.options.stepSize);
 
     this.xLabelDates = [];
 
@@ -890,8 +926,38 @@ export class FinancialChart {
    * @param data chart data to draw
    */
   public drawNextPoint(data: ChartData) {
+    // Capture previos state before updating the time range
+    const oldPixelPerMs = this.getPixelPerMs();
+    const oldTimeRange = { ...this.timeRange };
+
     this.originalData.push(data);
-    this.transformNewData(data);
+    const isNewData = this.transformNewData(data);
+
+    if (this.autoTimeRange) {
+      // Update the time range to include the new data point
+      this.updateAutoTimeRange(true);
+
+      if (this.zoomLevel > 1 && this.panOffset > 0) {
+        // Adjust zoomLevel based on the ratio of old and new total time range sizes
+        const oldRangeSize = oldTimeRange.end - oldTimeRange.start;
+        const newRangeSize = this.timeRange.end - this.timeRange.start;
+        const rangeSizeRatio = newRangeSize / oldRangeSize;
+        const oldZoomLevel = this.zoomLevel;
+        this.zoomLevel = Math.max(1, this.zoomLevel * rangeSizeRatio);
+
+        const panOffset = (this.panOffset * oldZoomLevel) / oldPixelPerMs;
+        this.panOffset = (panOffset * this.getPixelPerMs()) / this.zoomLevel;
+        if (
+          this.getVisibleTimeRange().end ===
+          this.timeRange.end - this.options.stepSize
+        ) {
+          this.panOffset =
+            (panOffset * this.getPixelPerMs() +
+              (isNewData ? this.options.stepSize * this.getPixelPerMs() : 0)) /
+            this.zoomLevel;
+        }
+      }
+    }
 
     requestAnimationFrame(() => this.redraw());
   }
@@ -1222,7 +1288,7 @@ export class FinancialChart {
     return mergedData;
   }
 
-  protected transformNewData(data: ChartData) {
+  protected transformNewData(data: ChartData): boolean {
     const d =
       data.time % this.options.stepSize === 0
         ? data
@@ -1232,7 +1298,7 @@ export class FinancialChart {
     if (this.data.length === 0) {
       this.data.push(d);
       this.dataExtent.addDataPoint(d);
-      return;
+      return true;
     }
 
     const lastData = this.data[this.data.length - 1];
@@ -1248,11 +1314,12 @@ export class FinancialChart {
       };
       this.data[this.data.length - 1] = td;
       this.dataExtent.addDataPoint(td);
+      return false;
     } else {
       this.data.push(d);
       this.dataExtent.addDataPoint(d);
       this.xLabelDates.push(new Date(d.time));
-      return d;
+      return true;
     }
   }
 
