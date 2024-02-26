@@ -1408,7 +1408,12 @@ export class FinancialChart {
     }
 
     // Ensure that step size is not smaller than the smallest significant digit
-    const decimalPlaces = Math.max(-Math.floor(Math.log10(range)), 0);
+    let decimalPlaces;
+    if (range < 10) {
+      decimalPlaces = Math.ceil(Math.log10(range));
+    } else {
+      decimalPlaces = Math.max(-Math.floor(Math.log10(range)), 0);
+    }
     return parseFloat(stepSize.toFixed(decimalPlaces));
   }
 
