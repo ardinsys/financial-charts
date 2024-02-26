@@ -387,13 +387,13 @@ export class FinancialChart {
   }
 
   public updateCoreOptions(
-    timeRange: TimeRange,
+    timeRange: TimeRange | "auto",
     stepSize: number,
     maxZoom: number
   ) {
     this.options.maxZoom = maxZoom;
     this.options.stepSize = stepSize;
-    this.timeRange = timeRange;
+
     this.zoomLevel = 1;
     this.panOffset = 0;
     this.isPanning = false;
@@ -403,6 +403,10 @@ export class FinancialChart {
     this.lastPointerPosition = undefined;
     this.isTouchCrosshair = false;
     this.isTouchCrosshairTimeout = undefined;
+    if (timeRange !== "auto") {
+      this.autoTimeRange = false;
+      this.timeRange = timeRange;
+    }
     this.dataExtent = this.controller.createDataExtent(
       this.data,
       this.timeRange
@@ -414,9 +418,17 @@ export class FinancialChart {
     this.xLabelCache.clear();
     this.xLabelDates = [];
 
-    if (this.originalData.length == 0) return;
+    if (this.originalData.length == 0) {
+      this.autoTimeRange = timeRange === "auto";
+      return;
+    }
 
     this.data = this.mapDataToStepSize(this.originalData, stepSize);
+
+    if (timeRange === "auto") {
+      this.autoTimeRange = true;
+      this.updateAutoTimeRange(true);
+    }
 
     for (const d of this.data) {
       if (d.time < this.timeRange.start) continue;
