@@ -64,7 +64,7 @@ export class MovingAverageIndicator extends Indicator<
       return (
         point.time >=
           visibleTimeRange.start - this.chart.getOptions().stepSize &&
-        point.time <= visibleTimeRange.end + this.chart.getOptions().stepSize
+        point.time < visibleTimeRange.end
       );
     });
 
