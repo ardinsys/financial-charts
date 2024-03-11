@@ -102,6 +102,7 @@ export class FinancialChart {
 
   private xLabelDates: Date[] = [];
   private xLabelCache: Map<number, XAxisLabel> = new Map();
+  private allRedrawParts = ["controller", "indicators", "crosshair"] as const;
 
   getTimeRange() {
     return this.timeRange;
@@ -132,9 +133,15 @@ export class FinancialChart {
   }
 
   private redraw() {
-    this.drawController();
-    this.drawIndicators();
-    this.drawCrosshair();
+    if (this.redrawParts.has("controller")) {
+      this.drawController();
+    }
+    if (this.redrawParts.has("indicators")) {
+      this.drawIndicators();
+    }
+    if (this.redrawParts.has("crosshair")) {
+      this.drawCrosshair();
+    }
   }
 
   public changeType(type: ControllerType) {
@@ -159,7 +166,7 @@ export class FinancialChart {
 
     this.recalculateVisibleExtent();
 
-    requestAnimationFrame(() => this.redraw());
+    this.requestRedraw(this.allRedrawParts);
   }
 
   private processXLabels(): XAxisLabel[] {
@@ -344,25 +351,24 @@ export class FinancialChart {
       const newCanvasSize = this.getDrawingSize().width;
 
       if (this.data.length > 0) {
-        requestAnimationFrame(() => {
-          if (this.autoTimeRange) {
-            this.updateAutoTimeRange(true);
-          }
+        // requestAnimationFrame(() => {
+        if (this.autoTimeRange) {
+          this.updateAutoTimeRange(true);
+        }
 
-          // Calculate scale factor
-          const scaleFactor = newCanvasSize / oldCanvasSize;
+        // Calculate scale factor
+        const scaleFactor = newCanvasSize / oldCanvasSize;
 
-          // Adjust panOffset based on the scale factor
-          const newPanOffset = this.panOffset * scaleFactor;
+        // Adjust panOffset based on the scale factor
+        const newPanOffset = this.panOffset * scaleFactor;
 
-          // Constrain newPanOffset within bounds
-          this.panOffset = Math.max(
-            0,
-            Math.min(newPanOffset, this.getMaxPanOffset())
-          );
+        // Constrain newPanOffset within bounds
+        this.panOffset = Math.max(
+          0,
+          Math.min(newPanOffset, this.getMaxPanOffset())
+        );
 
-          this.redraw();
-        });
+        this.requestRedraw(this.allRedrawParts);
       }
     });
     this.resizeObserver.observe(this.container);
@@ -392,13 +398,13 @@ export class FinancialChart {
     this.options.theme = mergeThemes(this.options.theme, theme);
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     if (this.data.length > 0) {
-      requestAnimationFrame(() => this.redraw());
+      this.requestRedraw(this.allRedrawParts);
     }
   }
 
   public setVolumeDraw(draw: boolean) {
     this.options.volume = draw;
-    requestAnimationFrame(() => this.redraw());
+    this.requestRedraw(this.allRedrawParts);
   }
 
   public updateCoreOptions(
@@ -450,7 +456,7 @@ export class FinancialChart {
       this.xLabelDates.push(new Date(d.time));
     }
 
-    requestAnimationFrame(() => this.redraw());
+    this.requestRedraw(this.allRedrawParts);
   }
 
   public updateLocale(locale: string) {
@@ -462,7 +468,8 @@ export class FinancialChart {
       if (d.time < this.timeRange.start) continue;
       this.xLabelDates.push(new Date(d.time));
     }
-    requestAnimationFrame(() => this.redraw());
+
+    this.requestRedraw(this.allRedrawParts);
   }
 
   private onMouseDown = (event: PointerEvent) => {
@@ -538,21 +545,18 @@ export class FinancialChart {
         0,
         Math.min(newPanOffset, this.getMaxPanOffset())
       );
-      requestAnimationFrame(() => {
-        this.drawController();
-        this.drawIndicators();
-      });
+      this.requestRedraw(["controller", "indicators"]);
       this.lastPointerPosition = { x: event.clientX };
     } else {
       this.isPanning = false;
     }
-    requestAnimationFrame(() => {
-      const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
-      this.pointerMove({
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-      });
+    // requestAnimationFrame(() => {
+    const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
+    this.pointerMove({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
     });
+    // });
   };
 
   private adjustZoomLevel(zoomFactor: number) {
@@ -598,11 +602,7 @@ export class FinancialChart {
       )
     );
 
-    requestAnimationFrame(() => {
-      this.drawController();
-      this.drawIndicators();
-      this.onZoom();
-    });
+    this.requestRedraw(this.allRedrawParts);
   };
 
   private drawController() {
@@ -641,13 +641,12 @@ export class FinancialChart {
             x: event.touches[0].clientX - rect.left,
             y: event.touches[0].clientY - rect.top,
           });
-          this.drawCrosshair();
         } else {
           this.lastPointerPosition = undefined;
           this.lastTouchDistance = undefined;
           this.pointerY = -1;
           this.pointerTime = -1;
-          this.drawCrosshair();
+          this.requestRedraw("crosshair");
         }
       }, 500);
     } else if (event.touches.length === 2) {
@@ -700,7 +699,6 @@ export class FinancialChart {
             x: event.touches[0].clientX - rect.left,
             y: event.touches[0].clientY - rect.top,
           });
-          this.drawCrosshair();
         });
         return;
       }
@@ -957,7 +955,7 @@ export class FinancialChart {
       this.xLabelDates.push(new Date(d.time));
     }
 
-    requestAnimationFrame(() => this.redraw());
+    this.requestRedraw(this.allRedrawParts);
   }
 
   /**
@@ -1001,7 +999,7 @@ export class FinancialChart {
       }
     }
 
-    requestAnimationFrame(() => this.redraw());
+    this.requestRedraw(this.allRedrawParts);
   }
 
   /**
@@ -1012,7 +1010,7 @@ export class FinancialChart {
   public addIndicator(indicator: Indicator<any, any>) {
     indicator.setChart(this);
     this.indicators.push(indicator);
-    requestAnimationFrame(() => this.drawIndicators());
+    this.requestRedraw("indicators");
   }
 
   /**
@@ -1031,7 +1029,8 @@ export class FinancialChart {
     } else {
       this.indicators = this.indicators.filter((i) => i !== indicator);
     }
-    requestAnimationFrame(() => this.drawIndicators());
+
+    this.requestRedraw("indicators");
   }
 
   /**
@@ -1049,7 +1048,8 @@ export class FinancialChart {
       );
     });
     this.indicators.push(indicator);
-    requestAnimationFrame(() => this.drawIndicators());
+
+    this.requestRedraw("indicators");
   }
 
   /**
@@ -1069,7 +1069,8 @@ export class FinancialChart {
       return i !== oldIndicator;
     });
     this.indicators.push(newIndicator);
-    requestAnimationFrame(() => this.drawIndicators());
+
+    this.requestRedraw("indicators");
   }
 
   protected pointerMove(e: { x: number; y: number }) {
@@ -1086,10 +1087,10 @@ export class FinancialChart {
     this.crosshairDataPoint = closestDataPoint;
     this.pointerTime = closestDataPoint.time;
     this.pointerY = Math.min(e.y, this.getDrawingSize().height);
-    this.drawCrosshair();
+
+    this.requestRedraw("crosshair");
   }
 
-  // TODO: volume
   private drawVolumeBars() {
     const ctx = this.getContext("main");
     const spacing = 0.1;
@@ -1632,5 +1633,46 @@ export class FinancialChart {
 
   getLastVisibleDataPoints() {
     return this.lastVisibleDataPoints;
+  }
+
+  private redrawScheduled = false;
+  private redrawParts = new Set<"controller" | "crosshair" | "indicators">();
+
+  private requestRedraw(
+    part:
+      | "controller"
+      | "crosshair"
+      | "indicators"
+      | ReadonlyArray<"controller" | "crosshair" | "indicators">
+  ) {
+    if (Array.isArray(part)) {
+      for (const p of part) {
+        this.requestRedraw(p);
+      }
+    } else {
+      this.redrawParts.add(part as any);
+    }
+
+    if (this.redrawScheduled) {
+      // A redraw is already scheduled, the parts to redraw are accumulated
+      return;
+    }
+
+    this.redrawScheduled = true;
+
+    requestAnimationFrame(() => {
+      // Perform the redraw for the requested parts
+      this.redraw();
+
+      // Reset for the next redraw cycle
+      this.redrawScheduled = false;
+      this.redrawParts.clear();
+
+      // If additional parts were requested for redraw while the current frame was being processed,
+      // They are already added to redrawParts, so we can immediately schedule another redraw if needed
+      if (this.redrawParts.size > 0) {
+        this.requestRedraw(part); // This recursive call ensures we don't ignore recent requests
+      }
+    });
   }
 }
