@@ -8,13 +8,6 @@ export class AreaController extends SimpleController {
 
     const visibleDataPoints = this.chart.recalculateVisibleExtent();
 
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.fillStyle = this.options.theme.backgroundColor;
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    this.chart.drawYAxis();
-    this.chart.drawXAxis();
-
     ctx.lineWidth = this.options.theme.area.width;
     const linePath = new Path2D();
     ctx.strokeStyle = this.options.theme.area.color;

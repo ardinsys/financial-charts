@@ -30,13 +30,6 @@ export class HLCAreaController extends OHLCController {
 
     const visibleDataPoints = this.chart.recalculateVisibleExtent();
 
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.fillStyle = this.options.theme.backgroundColor;
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    this.chart.drawYAxis();
-    this.chart.drawXAxis();
-
     const timeRange = this.chart.getTimeRange();
     const visibleExtent = this.chart.getVisibleExtent();
     const zoomLevel = this.chart.getZoomLevel();
