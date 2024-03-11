@@ -163,8 +163,16 @@ export class FinancialChart {
 
   private processXLabels(): XAxisLabel[] {
     // Calculate the range of the data in days
-    const rangeInDays =
-      (this.timeRange.end - this.timeRange.start) / (1000 * 3600 * 24);
+    let rangeInDays = 0;
+
+    if (this.autoTimeRange && this.data.length > 0) {
+      rangeInDays =
+        (this.data[this.data.length - 1].time - this.data[0].time) /
+        (1000 * 3600 * 24);
+    } else {
+      rangeInDays =
+        (this.timeRange.end - this.timeRange.start) / (1000 * 3600 * 24);
+    }
 
     return this.xLabelDates.map((date, index, array) => {
       const prevDate = index > 0 ? array[index - 1] : null;
@@ -1164,7 +1172,7 @@ export class FinancialChart {
 
     const p = this.crosshairDataPoint!;
 
-    const ohlc = [p.open, p.high, p.low, p.close];
+    const ohlcv = [p.open, p.high, p.low, p.close, p.volume];
     const labels =
       this.options.theme.crosshair.infoLine.labels[this.options.locale] ||
       this.options.theme.crosshair.infoLine.labels["*"];
@@ -1173,14 +1181,14 @@ export class FinancialChart {
     let ohlcTextX = 10;
     const spacing = 10;
 
-    for (let i = 0; i < ohlc.length; i++) {
+    for (let i = 0; i < ohlcv.length; i++) {
       if (!visibleLabels[i]) continue;
-      const price = ohlc[i];
+      const price = ohlcv[i];
       if (price == undefined) continue;
-      const ohlcText = this.options.formatter.formatTooltipPrice(
-        price,
-        decimals
-      );
+      let ohlcText = this.options.formatter.formatTooltipPrice(price, decimals);
+      if (ohlcv.length - 1 === i) {
+        ohlcText = this.options.formatter.formatVolume(price, p.close || 1);
+      }
 
       const labelWidth = ctx.measureText(labels[i]).width;
       const valueWidth = ctx.measureText(ohlcText).width;
@@ -1288,6 +1296,7 @@ export class FinancialChart {
           high: Math.max(lastData.high!, d.high!),
           low: Math.min(lastData.low!, d.low!),
           close: d.close!,
+          volume: lastData.volume! + d.volume!,
         };
       } else {
         mergedData.push(lastData);

@@ -28,7 +28,7 @@ export abstract class ChartController {
 }
 
 export abstract class SimpleController extends ChartController {
-  private simpleCrosshairValues = [false, false, false, true];
+  private simpleCrosshairValues = [false, false, false, true, true];
 
   createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
     return new SimpleDataExtent(data, timeRange);
@@ -50,7 +50,7 @@ export abstract class SimpleController extends ChartController {
 }
 
 export abstract class OHLCController extends ChartController {
-  private ohlcCrosshairValues = [true, true, true, true];
+  private ohlcCrosshairValues = [true, true, true, true, true];
 
   createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
     return new OHLCDataExtent(data, timeRange);

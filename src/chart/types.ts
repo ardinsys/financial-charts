@@ -4,6 +4,7 @@ export interface ChartData {
   high?: number | null;
   low?: number | null;
   close?: number | null;
+  volume?: number | null;
 }
 
 export interface TimeRange {
