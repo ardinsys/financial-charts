@@ -6,6 +6,7 @@ export interface Formatter {
   formatPrice(price: number): string;
   formatTooltipPrice(price: number, decimals: number): string;
   formatTooltipDate(timestamp: number): string;
+  formatVolume(volume: number, price: number): string;
   setLocale(locale: string): void;
   getLocale(): string;
 }
@@ -37,6 +38,14 @@ export class DefaultFormatter implements Formatter {
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
+    }
+  );
+
+  private volumeFormatter = new Intl.NumberFormat(
+    navigator.language || "en-US",
+    {
+      notation: "compact",
+      compactDisplay: "short",
     }
   );
 
@@ -73,6 +82,24 @@ export class DefaultFormatter implements Formatter {
     return this.tooltipDateFormatter.format(timestamp);
   }
 
+  formatVolume(volume: number, price: number): string {
+    // Calculate the total value of the transaction
+    const totalValue = volume * price;
+    // Calculate the value of the fractional part of the volume
+    const fractionalPartValue = (volume - Math.floor(volume)) * price;
+    // Define the threshold for significance (e.g., 0.01% of the total value)
+    const threshold = totalValue * 0.01; // Adjust this percentage as needed
+
+    // Check if the fractional part's value is below the threshold
+    if (fractionalPartValue < threshold) {
+      // If the fractional part is not significant, format as volume
+      return this.volumeFormatter.format(volume);
+    } else {
+      // If the fractional part is significant, perhaps format based on its value
+      return this.priceFormatter.format(volume);
+    }
+  }
+
   setLocale(locale: string): void {
     this.locale = locale;
     this.yearFormatter = new Intl.DateTimeFormat(locale, { year: "numeric" });
@@ -90,6 +117,10 @@ export class DefaultFormatter implements Formatter {
       minute: "2-digit",
     });
     this.priceFormatter = new Intl.NumberFormat(locale);
+    this.volumeFormatter = new Intl.NumberFormat(locale, {
+      notation: "compact",
+      compactDisplay: "short",
+    });
   }
 
   getLocale() {

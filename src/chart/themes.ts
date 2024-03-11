@@ -160,7 +160,7 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
       fontSize: 12,
       font: "Roboto Mono",
       color: "#000000",
-      labels: { "*": ["O: ", "H: ", "L: ", "C: "] },
+      labels: { "*": ["O: ", "H: ", "L: ", "C: ", "V: "] },
     },
     tooltip: {
       backgroundColor: "#131722",
@@ -235,7 +235,7 @@ export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
       fontSize: 12,
       font: "Roboto Mono",
       color: "#FFFFFF",
-      labels: { "*": ["O: ", "H: ", "L: ", "C: "] },
+      labels: { "*": ["O: ", "H: ", "L: ", "C: ", "V: "] },
     },
     tooltip: {
       backgroundColor: "#363A45",
