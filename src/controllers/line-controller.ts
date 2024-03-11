@@ -8,13 +8,6 @@ export class LineController extends SimpleController {
 
     const visibleDataPoints = this.chart.recalculateVisibleExtent();
 
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.fillStyle = this.options.theme.backgroundColor;
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    this.chart.drawYAxis();
-    this.chart.drawXAxis();
-
     ctx.fillStyle = this.options.theme.line.color;
     ctx.lineWidth = this.options.theme.line.width;
     ctx.beginPath();

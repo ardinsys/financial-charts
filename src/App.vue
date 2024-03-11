@@ -53,10 +53,22 @@ onMounted(() => {
       // locale: "HU",
       maxZoom: 100,
       stepSize: 15 * 60 * 1000,
+      volume: true,
     }
   );
 
-  controller.addIndicator(new MovingAverageIndicator());
+  controller.addIndicator(
+    new MovingAverageIndicator({
+      light: {
+        color: "gray",
+        strokeWidth: 2,
+      },
+      dark: {
+        color: "wheat",
+        strokeWidth: 2,
+      },
+    })
+  );
 
   controller.setEventListener("click", (_: MouseEvent, data) => {
     clickedData.value = data;
@@ -74,7 +86,7 @@ onMounted(() => {
       high: 15,
       low: 9,
       close: 12,
-      volume: 48.5,
+      volume: 100_000,
     },
     {
       time: nineam.getTime() + 1000 * 60 * 15,

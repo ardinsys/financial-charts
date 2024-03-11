@@ -10,13 +10,6 @@ export class HollowCandleController extends OHLCController {
     const pixelPerMs = this.chart.getPixelPerMs();
     const visibleDataPoints = this.chart.recalculateVisibleExtent();
 
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.fillStyle = this.options.theme.backgroundColor;
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    this.chart.drawYAxis();
-    this.chart.drawXAxis();
-
     const candleSpacing = this.options.stepSize * pixelPerMs * this.spacing;
     const candleWidth = this.options.stepSize * pixelPerMs - candleSpacing;
 

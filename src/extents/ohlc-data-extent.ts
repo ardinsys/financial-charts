@@ -7,10 +7,12 @@ export class OHLCDataExtent extends DataExtent {
     this.xMax = timeRange.end;
     this.yMin = Infinity;
     this.yMax = -Infinity;
+    this.volMax = -Infinity;
 
     for (const data of dataset) {
       this.yMin = Math.min(this.yMin, data.low!);
       this.yMax = Math.max(this.yMax, data.high!);
+      this.volMax = Math.max(this.volMax, data.volume!);
     }
     const yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
     const yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
@@ -42,6 +44,9 @@ export class OHLCDataExtent extends DataExtent {
     if (data.high !== null && data.high !== undefined) {
       changed = changed || high > yMax;
     }
+    if (data.volume !== null && data.volume !== undefined) {
+      changed = changed || data.volume > this.volMax;
+    }
 
     this.yMin = Math.min(yMin, low);
     this.yMax = Math.max(yMax, high);
@@ -51,6 +56,8 @@ export class OHLCDataExtent extends DataExtent {
 
     this.yMin = yMin;
     this.yMax = yMax;
+
+    this.volMax = Math.max(this.volMax, data.volume!);
 
     return changed;
   }

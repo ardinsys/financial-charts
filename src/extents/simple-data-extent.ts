@@ -7,10 +7,12 @@ export class SimpleDataExtent extends DataExtent {
     this.xMax = timeRange.end;
     this.yMin = Infinity;
     this.yMax = -Infinity;
+    this.volMax = -Infinity;
 
     for (const data of dataset) {
       this.yMin = Math.min(this.yMin, data.close!);
       this.yMax = Math.max(this.yMax, data.close!);
+      this.volMax = Math.max(this.volMax, data.volume!);
     }
 
     const yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
@@ -45,6 +47,12 @@ export class SimpleDataExtent extends DataExtent {
       this.yMin = yMin;
       this.yMax = yMax;
     }
+
+    if (data.volume !== null && data.volume !== undefined) {
+      changed = changed || data.volume > this.volMax;
+    }
+
+    this.volMax = Math.max(this.volMax, data.volume!);
 
     return changed;
   }

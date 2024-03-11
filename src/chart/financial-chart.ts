@@ -25,6 +25,7 @@ export interface ChartOptions {
   type: ControllerType;
   stepSize: number;
   maxZoom: number;
+  volume: boolean;
   locale?: string;
   formatter?: Formatter;
   theme?: ChartTheme;
@@ -131,7 +132,7 @@ export class FinancialChart {
   }
 
   private redraw() {
-    this.controller.draw();
+    this.drawController();
     this.drawIndicators();
     this.drawCrosshair();
   }
@@ -269,6 +270,7 @@ export class FinancialChart {
   ) {
     this.options = options as DeepConcrete<ChartOptions>;
 
+    this.options.volume = this.options.volume || false;
     this.options.locale = this.options.locale || navigator.language || "en-US";
     this.options.formatter = this.options.formatter || new DefaultFormatter();
     this.options.formatter.setLocale(this.options.locale);
@@ -392,6 +394,11 @@ export class FinancialChart {
     if (this.data.length > 0) {
       requestAnimationFrame(() => this.redraw());
     }
+  }
+
+  public setVolumeDraw(draw: boolean) {
+    this.options.volume = draw;
+    requestAnimationFrame(() => this.redraw());
   }
 
   public updateCoreOptions(
@@ -532,7 +539,7 @@ export class FinancialChart {
         Math.min(newPanOffset, this.getMaxPanOffset())
       );
       requestAnimationFrame(() => {
-        this.controller.draw();
+        this.drawController();
         this.drawIndicators();
       });
       this.lastPointerPosition = { x: event.clientX };
@@ -592,11 +599,26 @@ export class FinancialChart {
     );
 
     requestAnimationFrame(() => {
-      this.controller.draw();
+      this.drawController();
       this.drawIndicators();
       this.onZoom();
     });
   };
+
+  private drawController() {
+    const ctx = this.getContext("main");
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillStyle = this.options.theme.backgroundColor;
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    this.drawYAxis();
+    this.drawXAxis();
+
+    if (this.options.volume) {
+      this.drawVolumeBars();
+    }
+    this.controller.draw();
+  }
 
   protected onZoom() {
     this.drawCrosshair();
@@ -692,7 +714,7 @@ export class FinancialChart {
       requestAnimationFrame(() => {
         const rect =
           this.getContext("crosshair").canvas.getBoundingClientRect();
-        this.controller.draw();
+        this.drawController();
         this.drawIndicators();
         if (!this.isTouchCrosshair) return;
         this.pointerMove({
@@ -724,7 +746,7 @@ export class FinancialChart {
       );
       this.adjustZoomLevel(zoomFactor);
       requestAnimationFrame(() => {
-        this.controller.draw();
+        this.drawController();
         this.drawIndicators();
       });
       this.lastTouchDistance = distance;
@@ -1065,6 +1087,52 @@ export class FinancialChart {
     this.pointerTime = closestDataPoint.time;
     this.pointerY = Math.min(e.y, this.getDrawingSize().height);
     this.drawCrosshair();
+  }
+
+  // TODO: volume
+  private drawVolumeBars() {
+    const ctx = this.getContext("main");
+    const spacing = 0.1;
+    const pixelPerMs = this.getPixelPerMs();
+    const visibleDataPoints = this.recalculateVisibleExtent();
+    const candleSpacing = this.options.stepSize * pixelPerMs * spacing;
+    const candleWidth = this.options.stepSize * pixelPerMs - candleSpacing;
+
+    ctx.lineWidth = Math.min(1, candleWidth / 5);
+
+    const timeRange = this.getTimeRange();
+    const visibleExtent = this.getVisibleExtent();
+    const zoomLevel = this.getZoomLevel();
+    const panOffset = this.getPanOffset();
+
+    for (let i = 0; i < visibleDataPoints.length; i++) {
+      const point = visibleDataPoints[i];
+      if (point.time < timeRange.start) continue;
+      if (point.time > timeRange.end) break;
+
+      const { x, y } = visibleExtent.mapVolToPixel(
+        point.time,
+        point.volume!,
+        ctx.canvas,
+        zoomLevel,
+        panOffset
+      );
+
+      const volumeBarStartY = this.getDrawingSize().height - y;
+
+      ctx.beginPath();
+      ctx.fillStyle =
+        point.close! > point.open!
+          ? this.options.theme.volume.upColor
+          : this.options.theme.volume.downColor;
+      ctx.rect(
+        x + candleSpacing / 2,
+        volumeBarStartY, // This ensures bars grow upwards from the bottom
+        candleWidth,
+        y // Height of the bar
+      );
+      ctx.fill();
+    }
   }
 
   private drawIndicators() {

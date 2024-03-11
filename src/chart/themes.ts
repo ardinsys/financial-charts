@@ -27,6 +27,10 @@ export type Gradient = Array<[number, string]>;
 export interface ChartTheme {
   key: string;
   backgroundColor?: string;
+  volume?: {
+    upColor?: string;
+    downColor?: string;
+  };
   grid?: {
     color?: string;
     width?: number;
@@ -99,6 +103,10 @@ export interface ChartTheme {
 export const defaultLightTheme: DeepConcrete<ChartTheme> = {
   key: "light",
   backgroundColor: "#FFFFFF",
+  volume: {
+    upColor: "rgba(8, 153, 129, 0.35)",
+    downColor: "rgba(242, 54, 69, 0.35)",
+  },
   grid: {
     color: "#F2F3F3",
     width: 1,
@@ -174,6 +182,10 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
 export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
   key: "dark",
   backgroundColor: "#161A25",
+  volume: {
+    upColor: "rgba(8, 153, 129, 0.35)",
+    downColor: "rgba(242, 54, 69, 0.35)",
+  },
   grid: {
     color: "#232632",
     width: 1,
