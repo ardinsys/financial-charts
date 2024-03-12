@@ -17,4 +17,5 @@ export * from "./extents/simple-data-extent";
 export * from "./extents/ohlc-data-extent";
 
 export * from "./indicators/indicator";
+export * from "./indicators/paneled-indicator";
 export * from "./indicators/moving-average";
