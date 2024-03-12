@@ -5,8 +5,6 @@ export abstract class Indicator<
   TTheme extends object,
   TOptions extends object
 > {
-  static ID = "default";
-
   protected themes!: Record<string, TTheme>;
   protected options!: TOptions;
   protected chart!: FinancialChart;
@@ -28,4 +26,17 @@ export abstract class Indicator<
   public abstract getDefaultOptions(): TOptions;
   public abstract getDefaultThemes(): Record<string, TTheme>;
   public abstract draw(): void;
+
+  public updateOptions(options: Partial<TOptions>): void {
+    this.options = mergeThemes(this.options, options);
+    this.chart.requestRedraw(["indicators", "crosshair"]);
+    [
+      {
+        color: "red",
+        font: "12px monospace",
+        text: "Hello",
+        spaceAfter: 10,
+      },
+    ];
+  }
 }

@@ -12,6 +12,7 @@ import { SteplineController } from "./controllers/step-line-controller";
 import { HLCAreaController } from "./controllers/hlc-area-controller";
 import { defaultDarkTheme } from "./chart/themes";
 import { MovingAverageIndicator } from "./indicators/moving-average";
+import { TestIndicator } from "./indicators/test-indicator";
 
 FinancialChart.registerController(AreaController);
 FinancialChart.registerController(LineController);
@@ -57,26 +58,15 @@ onMounted(() => {
     }
   );
 
-  controller.addIndicator(
-    new MovingAverageIndicator({
-      light: {
-        color: "gray",
-        strokeWidth: 2,
-      },
-      dark: {
-        color: "wheat",
-        strokeWidth: 2,
-      },
-    })
-  );
+  controller.addIndicator(new MovingAverageIndicator());
 
-  controller.setEventListener("click", (_: MouseEvent, data) => {
-    clickedData.value = data;
-  });
-  controller.setEventListener("touch-click", (_: TouchEvent, data) => {
-    // @ts-ignore
-    clickedData.value = { ...data, touch: true };
-  });
+  // controller.setEventListener("click", (_: MouseEvent, data) => {
+  //   clickedData.value = data;
+  // });
+  // controller.setEventListener("touch-click", (_: TouchEvent, data) => {
+  //   // @ts-ignore
+  //   clickedData.value = { ...data, touch: true };
+  // });
 
   controller.draw([
     // 1. candle
@@ -173,6 +163,13 @@ onMounted(() => {
     },
   ]);
 
+  const indicator = new TestIndicator();
+  controller.addIndicator(indicator);
+  // controller.addIndicator(new TestIndicator());
+  // controller.addIndicator(new TestIndicator());
+  // controller.addIndicator(new TestIndicator());
+  // controller.addIndicator(new TestIndicator());
+
   // setTimeout(() => {
   //   controller.updateCoreOptions(
   //     {
@@ -248,8 +245,8 @@ watch(chartData, (newVal, oldVal) => {
   >
     <div
       style="
-        width: min(80%, 1200px);
-        height: min(90vh, 600px);
+        width: min(80%, 1600px);
+        height: min(90vh, 800px);
         /* width: 100%;
         height: 100%; */
         position: relative;

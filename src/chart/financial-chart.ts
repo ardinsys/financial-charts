@@ -1,5 +1,6 @@
 import { ChartController } from "../controllers/controller";
 import { DataExtent } from "../extents/data-extent";
+import { PaneledIndicator, InitParams } from "../indicators/paneled-indicator";
 import { Indicator } from "../indicators/indicator";
 import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
@@ -81,6 +82,7 @@ export class FinancialChart {
   protected visibleExtent: DataExtent;
 
   protected indicators: Indicator<any, any>[] = [];
+  protected panaledIndicators: PaneledIndicator<any, any>[] = [];
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
@@ -88,6 +90,8 @@ export class FinancialChart {
   protected pointerTime = -1;
   protected crosshairDataPoint: ChartData | null = null;
   protected pointerY = -1;
+  // -1: chart, 0-n indicator index
+  protected pointerTarget = -1;
 
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
@@ -103,6 +107,15 @@ export class FinancialChart {
   private xLabelDates: Date[] = [];
   private xLabelCache: Map<number, XAxisLabel> = new Map();
   private allRedrawParts = ["controller", "indicators", "crosshair"] as const;
+
+  private chartHeight: number = 0;
+  private indicatorHeight: number = 0;
+
+  private lastXGridCoords: number[] = [];
+
+  getYLabelWidth() {
+    return this.yLabelWidth;
+  }
 
   getTimeRange() {
     return this.timeRange;
@@ -270,6 +283,10 @@ export class FinancialChart {
     return closestDataPoint;
   }
 
+  getOutsideContainer() {
+    return this.outsideContainer;
+  }
+
   constructor(
     container: HTMLElement,
     timeRange: TimeRange | "auto",
@@ -342,12 +359,29 @@ export class FinancialChart {
       requestAnimationFrame(() => {
         this.pointerTime = -1;
         this.pointerY = -1;
+        this.pointerTarget = -1;
         this.drawCrosshair();
       });
     });
+
+    this.calcSpaceDistribution(this.panaledIndicators.length);
+
     this.resizeObserver = new ResizeObserver(() => {
       const oldCanvasSize = this.getDrawingSize().width;
+      this.calcSpaceDistribution(this.panaledIndicators.length);
       this.resizeCanvases();
+
+      for (let i = 0; i < this.panaledIndicators.length; i++) {
+        const indicator = this.panaledIndicators[i];
+        indicator.resizeCanvas({
+          width: this.container.offsetWidth,
+          height: this.indicatorHeight,
+          y: this.chartHeight + this.indicatorHeight * i,
+          devicePixelRatio: window.devicePixelRatio || 1,
+          x: 0,
+        });
+      }
+
       const newCanvasSize = this.getDrawingSize().width;
 
       if (this.data.length > 0) {
@@ -420,6 +454,7 @@ export class FinancialChart {
     this.isPanning = false;
     this.pointerTime = -1;
     this.pointerY = -1;
+    this.pointerTarget = -1;
     this.lastTouchDistance = undefined;
     this.lastPointerPosition = undefined;
     this.isTouchCrosshair = false;
@@ -646,6 +681,7 @@ export class FinancialChart {
           this.lastTouchDistance = undefined;
           this.pointerY = -1;
           this.pointerTime = -1;
+          this.pointerTarget = -1;
           this.requestRedraw("crosshair");
         }
       }, 500);
@@ -788,11 +824,8 @@ export class FinancialChart {
       canvas.height = this.container.offsetHeight * devicePixelRatio;
       canvas.style.height = this.container.offsetHeight + "px";
     } else {
-      canvas.height =
-        this.container.offsetHeight * devicePixelRatio -
-        this.xLabelHeight * devicePixelRatio;
-      canvas.style.height =
-        this.container.offsetHeight - this.xLabelHeight + "px";
+      canvas.height = this.chartHeight * devicePixelRatio;
+      canvas.style.height = this.chartHeight + "px";
     }
   }
 
@@ -936,6 +969,7 @@ export class FinancialChart {
    */
   public draw(data: ChartData[]) {
     if (data.length == 0) return;
+    this.calcSpaceDistribution(this.panaledIndicators.length);
     this.originalData = data;
     this.data = this.mapDataToStepSize(data, this.options.stepSize);
 
@@ -1002,15 +1036,72 @@ export class FinancialChart {
     this.requestRedraw(this.allRedrawParts);
   }
 
+  private recalcPaneledIndicators() {
+    this.calcSpaceDistribution(this.panaledIndicators.length);
+    for (let i = 0; i < this.panaledIndicators.length; i++) {
+      const indicator = this.panaledIndicators[i];
+      indicator.resizeCanvas({
+        width: this.container.offsetWidth,
+        height: this.indicatorHeight,
+        y: this.chartHeight + this.indicatorHeight * i,
+        devicePixelRatio: window.devicePixelRatio || 1,
+        x: 0,
+      });
+    }
+    this.resizeCanvases();
+  }
+
   /**
    * Adds and draws a new indicator.
    *
    * @param indicator indicator to draw
    */
   public addIndicator(indicator: Indicator<any, any>) {
-    indicator.setChart(this);
-    this.indicators.push(indicator);
-    this.requestRedraw("indicators");
+    if (indicator instanceof PaneledIndicator) {
+      // Main chart must have at least 25% of the height
+      // every indicator by default gets 25% of the height
+      // if it is possible. Otherwise they equally get less.
+
+      this.calcSpaceDistribution(this.panaledIndicators.length + 1);
+
+      const params: InitParams = {
+        devicePixelRatio: window.devicePixelRatio || 1,
+        height: this.indicatorHeight,
+        width: this.container.offsetWidth,
+        x: 0,
+        y:
+          this.chartHeight +
+          this.indicatorHeight * this.panaledIndicators.length,
+      };
+
+      indicator.setChart(this);
+      indicator.init(params);
+
+      this.panaledIndicators.push(indicator);
+
+      this.container.appendChild(indicator.getCanvas());
+
+      this.recalcPaneledIndicators();
+
+      this.requestRedraw(this.allRedrawParts);
+    } else {
+      this.indicators.push(indicator);
+      indicator.setChart(this);
+      this.requestRedraw("indicators");
+    }
+  }
+
+  private calcSpaceDistribution(indicatorCount: number) {
+    const height = this.container.offsetHeight - this.xLabelHeight;
+    // If the height of the chart is less than 25% of the height of the indicators
+    const th = height / (indicatorCount + 1) > height * 0.25;
+
+    const indicatorHeight = !th
+      ? (height * 0.75) / indicatorCount
+      : height * 0.25;
+
+    this.chartHeight = height - indicatorHeight * indicatorCount;
+    this.indicatorHeight = indicatorHeight;
   }
 
   /**
@@ -1019,58 +1110,18 @@ export class FinancialChart {
    *
    * @param indicator indicator to remove
    */
-  public removeIndicator(indicator: string): void;
-  public removeIndicator(indicator: Indicator<any, any>): void;
-  public removeIndicator(indicator: any): void {
-    if (typeof indicator === "string") {
-      this.indicators = this.indicators.filter(
-        (i) => Object.getPrototypeOf(i).ID !== indicator
+
+  public removeIndicator(indicator: Indicator<any, any>) {
+    if (indicator instanceof PaneledIndicator) {
+      this.panaledIndicators = this.panaledIndicators.filter(
+        (i) => i !== indicator
       );
+      this.recalcPaneledIndicators();
+      this.requestRedraw(this.allRedrawParts);
     } else {
       this.indicators = this.indicators.filter((i) => i !== indicator);
+      this.requestRedraw("indicators");
     }
-
-    this.requestRedraw("indicators");
-  }
-
-  /**
-   * Removes all indicators from the chart that has the same type
-   * as the provided new indicator, then adds the new indicator to the top.
-   * This is useful if user wants to change the options of the indicator.
-   *
-   * @param indicator new indicator
-   */
-  public replaceIndicator(indicator: Indicator<any, any>) {
-    indicator.setChart(this);
-    this.indicators = this.indicators.filter((i) => {
-      return (
-        Object.getPrototypeOf(i).ID !== Object.getPrototypeOf(indicator).ID
-      );
-    });
-    this.indicators.push(indicator);
-
-    this.requestRedraw("indicators");
-  }
-
-  /**
-   * Removes the old indicator and adds the new indicator to the top.
-   * Will compare by reference.
-   * This is useful if user wants to change the options of the indicator.
-   *
-   * @param oldIndicator indicator reference to remove
-   * @param newIndicator new indicator to add
-   */
-  public replaceIndicatorByInstance(
-    oldIndicator: Indicator<any, any>,
-    newIndicator: Indicator<any, any>
-  ) {
-    newIndicator.setChart(this);
-    this.indicators = this.indicators.filter((i) => {
-      return i !== oldIndicator;
-    });
-    this.indicators.push(newIndicator);
-
-    this.requestRedraw("indicators");
   }
 
   protected pointerMove(e: { x: number; y: number }) {
@@ -1086,7 +1137,17 @@ export class FinancialChart {
     if (!closestDataPoint) return;
     this.crosshairDataPoint = closestDataPoint;
     this.pointerTime = closestDataPoint.time;
-    this.pointerY = Math.min(e.y, this.getDrawingSize().height);
+    this.pointerY = Math.min(
+      e.y,
+      this.container.offsetHeight - this.xLabelHeight
+    );
+    if (e.y <= this.chartHeight) {
+      this.pointerTarget = -1;
+    } else {
+      this.pointerTarget = Math.floor(
+        (e.y - this.chartHeight) / this.indicatorHeight
+      );
+    }
 
     this.requestRedraw("crosshair");
   }
@@ -1143,6 +1204,9 @@ export class FinancialChart {
     for (const indicator of this.indicators) {
       indicator.draw();
     }
+    for (const indicator of this.panaledIndicators) {
+      indicator.draw();
+    }
   }
 
   private drawCrosshair(): void {
@@ -1153,7 +1217,7 @@ export class FinancialChart {
     if (this.pointerY === -1) return;
     if (this.isTouchCapable && !this.isTouchCrosshair) return;
 
-    if (this.pointerY >= this.getDrawingSize().height) {
+    if (this.pointerY >= this.container.offsetHeight - this.xLabelHeight) {
       this.getContext("crosshair").clearRect(
         0,
         0,
@@ -1177,7 +1241,7 @@ export class FinancialChart {
     ctx.setLineDash(this.options.theme.crosshair.lineDash);
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, this.getDrawingSize().height);
+    ctx.lineTo(x, this.container.offsetHeight - this.xLabelHeight);
     ctx.moveTo(0, this.pointerY);
     ctx.lineTo(this.getDrawingSize().width, this.pointerY);
     ctx.stroke();
@@ -1198,7 +1262,7 @@ export class FinancialChart {
     ctx.fillStyle = this.options.theme.crosshair.tooltip.backgroundColor;
     ctx.rect(
       rectX,
-      this.getDrawingSize().height,
+      this.container.offsetHeight - this.xLabelHeight,
       rectWidth,
       textPadding * 2 + 12
     );
@@ -1211,10 +1275,18 @@ export class FinancialChart {
       this.panOffset
     ).price;
     const decimals = this.estimatePriceLabelDecimalPlaces(30);
-    const priceText = this.options.formatter.formatTooltipPrice(
-      price,
-      decimals
-    );
+    let priceText = "";
+
+    if (this.pointerTarget === -1) {
+      priceText = this.options.formatter.formatTooltipPrice(price, decimals);
+    } else {
+      priceText = this.panaledIndicators[this.pointerTarget].getCrosshairValue(
+        this.pointerTime,
+        this.pointerY -
+          this.chartHeight -
+          this.indicatorHeight * this.pointerTarget
+      );
+    }
     const priceRectWidth = this.getLogicalCanvas("y-label").width;
     const priceMaxRectX = this.l(ctx.canvas.width) - priceRectWidth;
     const priceRectX = priceMaxRectX;
@@ -1230,7 +1302,11 @@ export class FinancialChart {
 
     ctx.font = `${this.options.theme.crosshair.tooltip.fontSize}px ${this.options.theme.crosshair.tooltip.font}, monospace`;
     ctx.fillStyle = this.options.theme.crosshair.tooltip.color;
-    ctx.fillText(text, textX, this.getDrawingSize().height + textPadding * 2);
+    ctx.fillText(
+      text,
+      textX,
+      this.container.offsetHeight - this.xLabelHeight + textPadding * 2
+    );
     ctx.fillText(
       priceText,
       priceTextX,
@@ -1533,6 +1609,7 @@ export class FinancialChart {
   }
 
   drawXAxis(): void {
+    this.lastXGridCoords = [];
     const labels = this.processXLabels(); // Assumed to return labels with date, displayLabel, and priority
     const ctx = this.getContext("x-label");
     const mainCtx = this.getContext("main");
@@ -1590,6 +1667,7 @@ export class FinancialChart {
           mainCtx.moveTo(x, 0);
           mainCtx.lineTo(x, mainCtx.canvas.height);
           mainCtx.stroke();
+          this.lastXGridCoords.push(x);
         }
 
         drawnLabels.push(labelPos);
@@ -1635,10 +1713,14 @@ export class FinancialChart {
     return this.lastVisibleDataPoints;
   }
 
+  getLastXGridCoords() {
+    return this.lastXGridCoords;
+  }
+
   private redrawScheduled = false;
   private redrawParts = new Set<"controller" | "crosshair" | "indicators">();
 
-  private requestRedraw(
+  public requestRedraw(
     part:
       | "controller"
       | "crosshair"
