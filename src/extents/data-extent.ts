@@ -22,7 +22,7 @@ export abstract class DataExtent {
   public mapVolToPixel(
     time: number,
     volume: number,
-    canvas: HTMLCanvasElement,
+    canvas: { width: number; height: number },
     zoomLevel: number,
     panOffset: number
   ) {
@@ -50,7 +50,7 @@ export abstract class DataExtent {
   public mapToPixel(
     time: number,
     price: number,
-    canvas: HTMLCanvasElement,
+    canvas: { width: number; height: number },
     zoomLevel: number,
     panOffset: number
   ) {
@@ -65,7 +65,7 @@ export abstract class DataExtent {
   public pixelToPoint(
     x: number,
     y: number,
-    canvas: HTMLCanvasElement,
+    canvas: { width: number; height: number },
     zoomLevel: number,
     panOffset: number
   ) {
