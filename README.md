@@ -77,6 +77,7 @@ const chart = new FinancialChart(
   document.getElementById("my-container"),
   {
     // Time range that will be visible
+    // can be "auto" instead of an object (more on that later in the documentation)
     start: nineam.getTime(),
     end: fivepm.getTime(),
   },
@@ -88,6 +89,8 @@ const chart = new FinancialChart(
     maxZoom: 100,
     // step size in millis
     stepSize: 15 * 60 * 1000,
+    // Should it draw the volume chart as well?
+    volume: true,
   }
 );
 ```
@@ -106,6 +109,7 @@ chart.draw([
     high: 15,
     low: 10,
     close: 10,
+    volume: 1_200_000,
   },
   {
     time: nineam.getTime() + 1000 * 60 * 15,
@@ -113,6 +117,7 @@ chart.draw([
     high: 15,
     low: 8,
     close: 15,
+    volume: 1_500_000,
   },
   {
     time: nineam.getTime() + 1000 * 60 * 30,
@@ -120,6 +125,7 @@ chart.draw([
     high: 17,
     low: 11,
     close: 12,
+    volume: 1_400_000,
   },
 ]);
 
@@ -130,6 +136,7 @@ chart.drawNextPoint({
   high: 14,
   low: 10,
   open: 11,
+  volume: 1_600_000,
 });
 ```
 
@@ -143,6 +150,12 @@ chart.changeType("candle");
 ```ts
 // Chart will hold its state
 chart.updateTheme(yourTheme);
+```
+
+```ts
+// Chart will hold its state
+// Enable or disable volume drawing
+chart.setVolumeDraw(true);
 ```
 
 ```ts
