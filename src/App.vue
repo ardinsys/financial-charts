@@ -11,8 +11,8 @@ import { CandlestickController } from "./controllers/candle-controller";
 import { SteplineController } from "./controllers/step-line-controller";
 import { HLCAreaController } from "./controllers/hlc-area-controller";
 import { defaultDarkTheme } from "./chart/themes";
-import { MovingAverageIndicator } from "./indicators/moving-average";
-import { TestIndicator } from "./indicators/test-indicator";
+import { MovingAverageIndicator } from "./indicators/simple/moving-average";
+import { TestIndicator } from "./indicators/paneled/test-indicator";
 
 FinancialChart.registerController(AreaController);
 FinancialChart.registerController(LineController);
@@ -269,3 +269,4 @@ body {
   margin: 0;
 }
 </style>
+./indicators/paneled/test-indicator./indicators/simple/moving-average
