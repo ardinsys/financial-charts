@@ -10,7 +10,10 @@ export function mergeThemes<T extends object = ChartTheme>(
   for (const key in defaultTheme) {
     if (
       typeof defaultTheme[key] === "object" &&
-      !Array.isArray(defaultTheme[key])
+      // Do not object merge arrays
+      !Array.isArray(defaultTheme[key]) &&
+      // Do not merge classes
+      Object.getPrototypeOf(defaultTheme[key]).constructor == Object
     ) {
       // @ts-ignore
       theme[key] = mergeThemes(defaultTheme[key], providedTheme[key]);
