@@ -1,4 +1,4 @@
-import { PaneledIndicator } from "./paneled-indicator";
+import { PaneledIndicator } from "../paneled-indicator";
 
 export class TestIndicator extends PaneledIndicator<{}, {}> {
   static ID = "test";

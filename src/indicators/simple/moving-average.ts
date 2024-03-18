@@ -1,4 +1,4 @@
-import { Indicator } from "..";
+import { Indicator } from "../..";
 
 export interface MovingAverageTheme {
   color: string;
