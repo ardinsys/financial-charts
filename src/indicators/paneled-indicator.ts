@@ -59,10 +59,7 @@ export abstract class PaneledIndicator<
 
   public resizeCanvases(params: InitParams) {
     this.adjustCanvas(params);
-    this.context.scale(params.devicePixelRatio, params.devicePixelRatio);
-
     this.adjustYAxisCanvas(params);
-    this.axisContext.scale(params.devicePixelRatio, params.devicePixelRatio);
   }
 
   public getCanvas() {
