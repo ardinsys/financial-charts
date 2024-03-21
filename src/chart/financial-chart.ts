@@ -1566,8 +1566,7 @@ export class FinancialChart {
 
     const ctx = this.getContext("y-label");
     ctx.fillStyle = this.options.theme.yAxis.backgroundColor;
-    ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.fill();
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
     ctx.fillStyle = this.options.theme.yAxis.color;
     ctx.font =

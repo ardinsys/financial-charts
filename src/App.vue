@@ -58,7 +58,7 @@ onMounted(() => {
     }
   );
 
-  controller.addIndicator(new MovingAverageIndicator());
+  // controller.addIndicator(new MovingAverageIndicator());
 
   // controller.setEventListener("click", (_: MouseEvent, data) => {
   //   clickedData.value = data;
@@ -164,7 +164,7 @@ onMounted(() => {
   ]);
 
   const indicator = new TestIndicator();
-  controller.addIndicator(indicator);
+  // controller.addIndicator(indicator);
   // controller.addIndicator(new TestIndicator());
   // controller.addIndicator(new TestIndicator());
   // controller.addIndicator(new TestIndicator());
