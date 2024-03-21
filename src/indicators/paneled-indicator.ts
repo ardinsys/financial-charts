@@ -58,27 +58,11 @@ export abstract class PaneledIndicator<
   }
 
   public resizeCanvases(params: InitParams) {
-    const img = this.context.getImageData(
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height
-    );
-
     this.adjustCanvas(params);
     this.context.scale(params.devicePixelRatio, params.devicePixelRatio);
-    this.context.putImageData(img, 0, 0);
-
-    const axisImg = this.axisContext.getImageData(
-      0,
-      0,
-      this.axisCanvas.width,
-      this.axisCanvas.height
-    );
 
     this.adjustYAxisCanvas(params);
     this.axisContext.scale(params.devicePixelRatio, params.devicePixelRatio);
-    this.axisContext.putImageData(axisImg, 0, 0);
   }
 
   public getCanvas() {
