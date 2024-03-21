@@ -402,7 +402,7 @@ export class FinancialChart {
           Math.min(newPanOffset, this.getMaxPanOffset())
         );
 
-        this.requestRedraw(this.allRedrawParts);
+        this.requestRedraw(this.allRedrawParts, true);
       }
     });
     this.resizeObserver.observe(this.container);
@@ -861,18 +861,10 @@ export class FinancialChart {
       if (!canvas) return;
 
       if (this.contexts.has(type)) {
-        const img = this.contexts
-          .get(type)!
-          .getImageData(0, 0, canvas.width, canvas.height);
-
         this.adjustCanvas(type, canvas);
         const ctx = this.getContext(type);
         const devicePixelRatio = window.devicePixelRatio || 1;
         ctx.scale(devicePixelRatio, devicePixelRatio);
-
-        if (this.contexts.has(type)) {
-          this.getContext(type).putImageData(img!, 0, 0);
-        }
       } else {
         this.adjustCanvas(type, canvas);
         const ctx = this.getContext(type);
@@ -1728,14 +1720,20 @@ export class FinancialChart {
       | "controller"
       | "crosshair"
       | "indicators"
-      | ReadonlyArray<"controller" | "crosshair" | "indicators">
+      | ReadonlyArray<"controller" | "crosshair" | "indicators">,
+    immediate = false
   ) {
     if (Array.isArray(part)) {
       for (const p of part) {
-        this.requestRedraw(p);
+        this.redrawParts.add(p);
       }
     } else {
       this.redrawParts.add(part as any);
+    }
+
+    if (immediate) {
+      this.redraw();
+      return;
     }
 
     if (this.redrawScheduled) {
