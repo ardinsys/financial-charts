@@ -14,7 +14,9 @@ export abstract class PaneledIndicator<
 > extends Indicator<TTheme, TOptions> {
   protected container!: HTMLElement;
   protected canvas!: HTMLCanvasElement;
+  protected axisCanvas!: HTMLCanvasElement;
   protected context!: CanvasRenderingContext2D;
+  protected axisContext!: CanvasRenderingContext2D;
 
   private adjustCanvas(params: InitParams) {
     this.canvas.style.userSelect = "none";
@@ -23,20 +25,39 @@ export abstract class PaneledIndicator<
     this.canvas.style.position = "absolute";
     this.canvas.style.left = params.x + "px";
     this.canvas.style.top = params.y + "px";
-    this.canvas.style.width = params.width + "px";
+    this.canvas.style.width = params.width - this.chart.getYLabelWidth() + "px";
     this.canvas.style.height = params.height + "px";
-    this.canvas.width = params.width * params.devicePixelRatio;
+    this.canvas.width =
+      (params.width - this.chart.getYLabelWidth()) * params.devicePixelRatio;
     this.canvas.height = params.height * params.devicePixelRatio;
     this.context = this.canvas.getContext("2d")!;
     this.context.scale(params.devicePixelRatio, params.devicePixelRatio);
   }
 
-  public init(params: InitParams): void {
-    this.canvas = document.createElement("canvas");
-    this.adjustCanvas(params);
+  private adjustYAxisCanvas(params: InitParams) {
+    this.axisCanvas.style.userSelect = "none";
+    // @ts-ignore
+    this.axisCanvas.style.webkitTapHighlightColor = "transparent";
+    this.axisCanvas.style.position = "absolute";
+    this.axisCanvas.style.left = this.width() + "px";
+    this.axisCanvas.style.top = params.y + "px";
+    this.axisCanvas.style.width = this.chart.getYLabelWidth() + "px";
+    this.axisCanvas.style.height = params.height + "px";
+    this.axisCanvas.width =
+      this.chart.getYLabelWidth() * params.devicePixelRatio;
+    this.axisCanvas.height = params.height * params.devicePixelRatio;
+    this.axisContext = this.axisCanvas.getContext("2d")!;
+    this.axisContext.scale(params.devicePixelRatio, params.devicePixelRatio);
   }
 
-  public resizeCanvas(params: InitParams) {
+  public init(params: InitParams): void {
+    this.canvas = document.createElement("canvas");
+    this.axisCanvas = document.createElement("canvas");
+    this.adjustCanvas(params);
+    this.adjustYAxisCanvas(params);
+  }
+
+  public resizeCanvases(params: InitParams) {
     const img = this.context.getImageData(
       0,
       0,
@@ -47,10 +68,25 @@ export abstract class PaneledIndicator<
     this.adjustCanvas(params);
     this.context.scale(params.devicePixelRatio, params.devicePixelRatio);
     this.context.putImageData(img, 0, 0);
+
+    const axisImg = this.axisContext.getImageData(
+      0,
+      0,
+      this.axisCanvas.width,
+      this.axisCanvas.height
+    );
+
+    this.adjustYAxisCanvas(params);
+    this.axisContext.scale(params.devicePixelRatio, params.devicePixelRatio);
+    this.axisContext.putImageData(axisImg, 0, 0);
   }
 
   public getCanvas() {
     return this.canvas;
+  }
+
+  public getYAxisCanvas() {
+    return this.axisCanvas;
   }
 
   public abstract getCrosshairValue(time: number, relativeY: number): string;
@@ -73,20 +109,10 @@ export abstract class PaneledIndicator<
   }
 
   protected initYAxis() {
-    const ctx = this.context;
+    const ctx = this.axisContext;
     ctx.fillStyle = this.chart.getOptions().theme.backgroundColor;
-    ctx.clearRect(
-      this.width() - this.chart.getYLabelWidth(),
-      0,
-      this.chart.getYLabelWidth(),
-      this.height()
-    );
-    ctx.fillRect(
-      this.width() - this.chart.getYLabelWidth(),
-      0,
-      this.chart.getYLabelWidth(),
-      this.height()
-    );
+    ctx.clearRect(0, 0, this.chart.getYLabelWidth(), this.height());
+    ctx.fillRect(0, 0, this.chart.getYLabelWidth(), this.height());
   }
 
   protected width() {

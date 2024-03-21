@@ -31,6 +31,9 @@ export class TestIndicator extends PaneledIndicator<{}, {}> {
 
     // Draw y axis
     this.initYAxis();
+
+    this.axisContext.fillStyle = "white";
+    this.axisContext.fillRect(0, 0, this.chart.getYLabelWidth(), this.height());
   }
 
   public getDefaultOptions(): {} {
