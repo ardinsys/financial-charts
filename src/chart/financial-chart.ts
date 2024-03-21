@@ -373,7 +373,7 @@ export class FinancialChart {
 
       for (let i = 0; i < this.panaledIndicators.length; i++) {
         const indicator = this.panaledIndicators[i];
-        indicator.resizeCanvas({
+        indicator.resizeCanvases({
           width: this.container.offsetWidth,
           height: this.indicatorHeight,
           y: this.chartHeight + this.indicatorHeight * i,
@@ -1040,7 +1040,7 @@ export class FinancialChart {
     this.calcSpaceDistribution(this.panaledIndicators.length);
     for (let i = 0; i < this.panaledIndicators.length; i++) {
       const indicator = this.panaledIndicators[i];
-      indicator.resizeCanvas({
+      indicator.resizeCanvases({
         width: this.container.offsetWidth,
         height: this.indicatorHeight,
         y: this.chartHeight + this.indicatorHeight * i,
@@ -1080,6 +1080,7 @@ export class FinancialChart {
       this.panaledIndicators.push(indicator);
 
       this.container.appendChild(indicator.getCanvas());
+      this.container.appendChild(indicator.getYAxisCanvas());
 
       this.recalcPaneledIndicators();
 
@@ -1113,6 +1114,8 @@ export class FinancialChart {
 
   public removeIndicator(indicator: Indicator<any, any>) {
     if (indicator instanceof PaneledIndicator) {
+      this.container.removeChild(indicator.getCanvas());
+      this.container.removeChild(indicator.getYAxisCanvas());
       this.panaledIndicators = this.panaledIndicators.filter(
         (i) => i !== indicator
       );
