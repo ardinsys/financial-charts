@@ -12,21 +12,20 @@ export class TestIndicator extends PaneledIndicator<{}, {}> {
     this.initMain();
 
     this.context.fillStyle = "white";
+    const size = 10;
 
     for (const data of this.chart.getLastVisibleDataPoints()) {
       const point = this.chart.getVisibleExtent().mapToPixel(
         data.time + this.chart.getController().getXLabelOffset(),
         data.close!,
         {
-          width:
-            this.canvas.width -
-            (this.chart.getYLabelWidth() * window.devicePixelRatio || 1),
+          width: this.canvas.width * (window.devicePixelRatio || 1),
           height: this.canvas.height,
         },
         this.chart.getZoomLevel(),
         this.chart.getPanOffset()
       );
-      this.context.fillRect(point.x, point.y, 10, 10);
+      this.context.fillRect(point.x - size / 2, point.y, size, size);
     }
 
     // Draw y axis
