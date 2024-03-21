@@ -15,16 +15,15 @@ export class TestIndicator extends PaneledIndicator<{}, {}> {
     const size = 10;
 
     for (const data of this.chart.getLastVisibleDataPoints()) {
-      const point = this.chart.getVisibleExtent().mapToPixel(
-        data.time + this.chart.getController().getXLabelOffset(),
-        data.close!,
-        {
-          width: this.canvas.width * (window.devicePixelRatio || 1),
-          height: this.canvas.height,
-        },
-        this.chart.getZoomLevel(),
-        this.chart.getPanOffset()
-      );
+      const point = this.chart
+        .getVisibleExtent()
+        .mapToPixel(
+          data.time + this.chart.getController().getXLabelOffset(),
+          data.close!,
+          this.canvas,
+          this.chart.getZoomLevel(),
+          this.chart.getPanOffset()
+        );
       this.context.fillRect(point.x - size / 2, point.y, size, size);
     }
 
