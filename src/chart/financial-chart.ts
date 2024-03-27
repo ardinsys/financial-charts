@@ -5,6 +5,7 @@ import { Indicator } from "../indicators/indicator";
 import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";
+import { EventEmitter } from "./event-emitter";
 
 export type DeepConcrete<T> = T extends Function
   ? T
@@ -22,6 +23,26 @@ export type ControllerID =
   | "hlc-area";
 export type ControllerType = ControllerID | Omit<string, ControllerID>;
 
+export interface LocaleValues {
+  common: {
+    sources: {
+      open: string;
+      high: string;
+      low: string;
+      close: string;
+      volume: string;
+    };
+  };
+  indicators: {
+    actions: {
+      show: string;
+      hide: string;
+      settings: string;
+      remove: string;
+    };
+  };
+}
+
 export interface ChartOptions {
   type: ControllerType;
   stepSize: number;
@@ -30,6 +51,9 @@ export interface ChartOptions {
   locale?: string;
   formatter?: Formatter;
   theme?: ChartTheme;
+  localeValues?: {
+    [key: string]: LocaleValues;
+  };
 }
 
 type AxisLabel = {
@@ -43,7 +67,7 @@ interface XAxisLabel {
   priority: number;
 }
 
-export class FinancialChart {
+export class FinancialChart extends EventEmitter {
   private static controllers: Map<ControllerType, new () => ChartController> =
     new Map();
 
@@ -68,6 +92,7 @@ export class FinancialChart {
   private controller: ChartController;
   protected outsideContainer: HTMLElement;
   protected container: HTMLElement;
+  protected indicatorLabelContainer: HTMLElement;
   protected canvases: Map<string, HTMLCanvasElement> = new Map();
   protected contexts: Map<string, CanvasRenderingContext2D> = new Map();
   protected isPanning: boolean = false;
@@ -292,6 +317,7 @@ export class FinancialChart {
     timeRange: TimeRange | "auto",
     options: ChartOptions
   ) {
+    super();
     this.options = options as DeepConcrete<ChartOptions>;
 
     this.options.volume = this.options.volume || false;
@@ -299,13 +325,35 @@ export class FinancialChart {
     this.options.formatter = this.options.formatter || new DefaultFormatter();
     this.options.formatter.setLocale(this.options.locale);
     this.options.theme = mergeThemes(defaultLightTheme, this.options.theme);
+    this.options.localeValues = {
+      ...this.getDefaultLocaleValues(),
+      ...this.options.localeValues,
+    };
+
     this.outsideContainer = container;
     this.container = document.createElement("div");
+    this.container.style.overflow = "hidden";
+    this.container.classList.add(
+      "financial-charts",
+      `financial-charts-${this.options.theme.key}`
+    );
+
     this.container.style.position = "relative";
     this.container.style.width = "100%";
     this.container.style.height = "100%";
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     this.outsideContainer.appendChild(this.container);
+
+    this.indicatorLabelContainer = document.createElement("div");
+    this.indicatorLabelContainer.style.zIndex = "101";
+
+    this.indicatorLabelContainer.style.overflow = "auto";
+    this.indicatorLabelContainer.style.position = "absolute";
+    this.indicatorLabelContainer.style.top =
+      this.options.theme.crosshair.infoLine.fontSize + 20 + "px";
+    this.indicatorLabelContainer.style.left = "10px";
+    this.indicatorLabelContainer.style.width = "fit-content";
+    this.container.appendChild(this.indicatorLabelContainer);
 
     if (timeRange === "auto") {
       this.timeRange = {
@@ -373,7 +421,7 @@ export class FinancialChart {
 
       for (let i = 0; i < this.panaledIndicators.length; i++) {
         const indicator = this.panaledIndicators[i];
-        indicator.resizeCanvases({
+        indicator.resize({
           width: this.container.offsetWidth,
           height: this.indicatorHeight,
           y: this.chartHeight + this.indicatorHeight * i,
@@ -404,8 +452,44 @@ export class FinancialChart {
 
         this.requestRedraw(this.allRedrawParts, true);
       }
+      this.indicatorLabelContainer.style.maxHeight =
+        this.getLogicalCanvas("main").height -
+        this.options.theme.crosshair.infoLine.fontSize -
+        30 +
+        "px";
     });
     this.resizeObserver.observe(this.container);
+  }
+
+  private getDefaultLocaleValues() {
+    return {
+      default: {
+        indicators: {
+          actions: {
+            show: "Show",
+            hide: "Hide",
+            settings: "Settings",
+            remove: "Remove",
+          },
+        },
+        common: {
+          sources: {
+            open: "open",
+            high: "high",
+            low: "low",
+            close: "close",
+            volume: "volume",
+          },
+        },
+      },
+    };
+  }
+
+  public getLocaleValues() {
+    return (
+      this.options.localeValues[this.options.locale] ||
+      this.options.localeValues.default
+    );
   }
 
   private updateAutoTimeRange(recalc = false) {
@@ -429,11 +513,13 @@ export class FinancialChart {
   }
 
   public updateTheme(theme: ChartTheme) {
+    this.container.classList.remove(`financial-charts-${theme.key}`);
     this.options.theme = mergeThemes(this.options.theme, theme);
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     if (this.data.length > 0) {
       this.requestRedraw(this.allRedrawParts);
     }
+    this.container.classList.add(`financial-charts-${this.options.theme.key}`);
   }
 
   public setVolumeDraw(draw: boolean) {
@@ -494,7 +580,12 @@ export class FinancialChart {
     this.requestRedraw(this.allRedrawParts);
   }
 
-  public updateLocale(locale: string) {
+  public updateLocale(
+    locale: string,
+    values?: {
+      [key: string]: LocaleValues;
+    }
+  ) {
     this.options.locale = locale;
     this.options.formatter.setLocale(locale);
     this.xLabelCache.clear();
@@ -502,6 +593,20 @@ export class FinancialChart {
     for (const d of this.data) {
       if (d.time < this.timeRange.start) continue;
       this.xLabelDates.push(new Date(d.time));
+    }
+
+    if (values) {
+      this.options.localeValues = {
+        ...this.getDefaultLocaleValues(),
+        ...values,
+      };
+    }
+
+    for (const indicator of this.indicators) {
+      indicator.updateLocale();
+    }
+    for (const indicator of this.panaledIndicators) {
+      indicator.updateLocale();
     }
 
     this.requestRedraw(this.allRedrawParts);
@@ -936,6 +1041,10 @@ export class FinancialChart {
     return this.getLogicalCanvas("crosshair");
   }
 
+  getFormatter() {
+    return this.options.formatter;
+  }
+
   /**
    * Get the currently visible time range.
    * This is the time range that is visible on the screen.
@@ -1032,7 +1141,7 @@ export class FinancialChart {
     this.calcSpaceDistribution(this.panaledIndicators.length);
     for (let i = 0; i < this.panaledIndicators.length; i++) {
       const indicator = this.panaledIndicators[i];
-      indicator.resizeCanvases({
+      indicator.resize({
         width: this.container.offsetWidth,
         height: this.indicatorHeight,
         y: this.chartHeight + this.indicatorHeight * i,
@@ -1071,16 +1180,18 @@ export class FinancialChart {
 
       this.panaledIndicators.push(indicator);
 
-      this.container.appendChild(indicator.getCanvas());
-      this.container.appendChild(indicator.getYAxisCanvas());
+      this.container.appendChild(indicator.getContainer());
 
       this.recalcPaneledIndicators();
 
       this.requestRedraw(this.allRedrawParts);
+      indicator.updateLabel();
     } else {
       this.indicators.push(indicator);
       indicator.setChart(this);
       this.requestRedraw("indicators");
+      this.indicatorLabelContainer.appendChild(indicator.getLabelContainer());
+      indicator.updateLabel();
     }
   }
 
@@ -1106,14 +1217,14 @@ export class FinancialChart {
 
   public removeIndicator(indicator: Indicator<any, any>) {
     if (indicator instanceof PaneledIndicator) {
-      this.container.removeChild(indicator.getCanvas());
-      this.container.removeChild(indicator.getYAxisCanvas());
+      this.container.removeChild(indicator.getContainer());
       this.panaledIndicators = this.panaledIndicators.filter(
         (i) => i !== indicator
       );
       this.recalcPaneledIndicators();
       this.requestRedraw(this.allRedrawParts);
     } else {
+      this.indicatorLabelContainer.removeChild(indicator.getLabelContainer());
       this.indicators = this.indicators.filter((i) => i !== indicator);
       this.requestRedraw("indicators");
     }
@@ -1355,6 +1466,13 @@ export class FinancialChart {
         this.options.theme.crosshair.tooltip.fontSize + 10
       );
       ohlcTextX += valueWidth + spacing;
+    }
+
+    for (const indicator of this.panaledIndicators) {
+      indicator.updateLabel(this.pointerTime);
+    }
+    for (const indicator of this.indicators) {
+      indicator.updateLabel(this.pointerTime);
     }
   }
 

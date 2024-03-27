@@ -1,0 +1,115 @@
+.financial-charts-light .financial-indicator,
+.financial-charts-dark .financial-indicator {
+  font: 14px system-ui, sans-serif;
+  transition: all 0.1s ease-in-out;
+
+  border-radius: 4px;
+  border: 1px solid transparent;
+  margin-bottom: 2px;
+}
+
+.financial-charts .financial-indicator .fci-wrapper {
+  display: flex;
+  gap: 4px;
+}
+
+.financial-charts .financial-indicator .fci-label {
+  padding: 4px;
+}
+
+.financial-charts-light .financial-indicator {
+  color: black;
+}
+
+.financial-charts-dark .financial-indicator {
+  color: white;
+}
+
+.financial-charts-dark .financial-indicator .fci-actions {
+  color: white;
+}
+
+.financial-charts .financial-indicator .fci-actions {
+  display: none;
+}
+
+.financial-charts .financial-indicator:hover .fci-actions {
+  display: flex;
+}
+
+.financial-charts-light .financial-indicator {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.financial-charts-dark .financial-indicator {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.financial-charts-light .financial-indicator:hover {
+  border: 1px solid lightgrey;
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.financial-charts-dark .financial-indicator:hover {
+  border: 1px solid #3d3d3d;
+  background-color: rgba(0, 0, 0, 1);
+}
+
+.financial-charts-light .financial-indicator .fci-value {
+  color: black;
+}
+
+.financial-charts-light .financial-indicator .fci-name {
+  color: rgba(0, 0, 0, 0.8);
+}
+
+.financial-charts-dark .financial-indicator .fci-value {
+  color: white;
+}
+
+.financial-charts-dark .financial-indicator .fci-name {
+  color: lightgray;
+}
+
+.financial-charts .financial-indicator .fci-actions {
+  gap: 8px;
+  align-items: center;
+  height: 100%;
+  padding: 5px;
+}
+
+.financial-charts .financial-indicator .fci-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.financial-charts-light .financial-indicator .fci-btn {
+  color: black;
+}
+
+.financial-charts-dark .financial-indicator .fci-btn {
+  color: white;
+}
+
+.financial-charts .financial-indicator .fci-hide {
+  display: none;
+}
+
+.financial-charts-light .financial-indicator .fci-hidden {
+  opacity: 0.8;
+}
+
+.financial-charts-dark .financial-indicator .fci-hidden {
+  opacity: 0.6;
+}
+
+.financial-charts .financial-indicator .fci-extra {
+  opacity: 0.6;
+}

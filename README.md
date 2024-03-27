@@ -2,12 +2,14 @@
 
 **Still in BETA.**
 
+**Documentation is work in progress. This is just a basic outline, what you can do and how can you use the basic features.**
+
 Canvas based charting library for price charts with a dead simple API, which supports themes, custom locales or even a full custom formatter for dates and prices.
 
 ## Features
 
 - more than fast enough
-- small (9.4 kB gzipped) (no 3rd party dependencies)
+- small (16.5 kB gzipped) (no 3rd party dependencies)
 - framework agnostic
 - touch support
 - zooming, panning
@@ -15,14 +17,8 @@ Canvas based charting library for price charts with a dead simple API, which sup
 - extendable with your own controllers (library is built to support financial charts, time based X axis with number based Y, keep this in mind while we are talking about extensibility)
 - you can make custom themes, or use the default light/dark theme
 - you can change the locale or you can even replace the whole formatter
-
-## Planned features
-
-- detailed documentation
-- non interactive indicators (only API, UI needs to be made separately)
-- interactive drawing (only API, UI needs to be made separately)
-- support for use case when you do not want to display a fixed timerange, rather some infite time like trading view does. (will also support realtime moving when new data arrives)
-- sync between multiple charts if applicable
+- indicators (currently there isn't any premade indicator, just a test SMA)
+- paneled indicators (WIP)
 
 ## Quick start
 
@@ -56,6 +52,8 @@ import {
   mergeThemes,
   type ChartTheme,
 } from "@ardinsys/financial-charts";
+// If you want to use indicators, import the default css for it. (more on that later)
+import "@ardinsys/financial-charts/dist/styles.css";
 
 const myTheme: ChartTheme = {
   /* provide the values you want to override */
@@ -91,6 +89,12 @@ const chart = new FinancialChart(
     stepSize: 15 * 60 * 1000,
     // Should it draw the volume chart as well?
     volume: true,
+    localeValues: {
+      // some basic localization strings, mainly for indicators right now.
+      EN: {
+        // You have to speicify here everything that the intellisense tells you
+      },
+    },
   }
 );
 ```
