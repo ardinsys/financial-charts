@@ -34,13 +34,13 @@ const nineam = new Date();
 nineam.setHours(9, 0, 0, 0);
 
 const chartData = ref<ChartData[]>([]);
-let controller: FinancialChart;
+let chart: FinancialChart;
 
 const fiveYear = new Date();
 fiveYear.setFullYear(fiveYear.getFullYear() - 5);
 
 onMounted(() => {
-  controller = new FinancialChart(
+  chart = new FinancialChart(
     chartContainer.value!,
     "auto",
     // {
@@ -51,14 +51,48 @@ onMounted(() => {
     {
       type: "candle",
       theme: defaultDarkTheme,
-      // locale: "HU",
+      locale: "hu-HU",
       maxZoom: 100,
       stepSize: 15 * 60 * 1000,
       volume: true,
+      localeValues: {
+        "hu-HU": {
+          indicators: {
+            actions: {
+              hide: "Elrejtés",
+              settings: "Beállítások",
+              remove: "Törlés",
+              show: "Megjelenítés",
+            },
+          },
+          common: {
+            sources: {
+              close: "záró",
+              high: "magas",
+              low: "alacsony",
+              open: "nyitó",
+              volume: "volumen",
+            },
+          },
+        },
+      },
     }
   );
 
-  // controller.addIndicator(new MovingAverageIndicator());
+  const unsub = chart.on("indicator-settings-open", (data) => {
+    console.log("indicator-settings-open", data.indicator.getKey());
+    unsub();
+  });
+
+  setTimeout(() => {
+    chart.addIndicator(new MovingAverageIndicator({ dark: { color: "lime" } }));
+    chart.addIndicator(
+      new MovingAverageIndicator(
+        { dark: { color: "wheat" } },
+        { period: 3, source: "open" }
+      )
+    );
+  }, 100);
 
   // controller.setEventListener("click", (_: MouseEvent, data) => {
   //   clickedData.value = data;
@@ -68,7 +102,7 @@ onMounted(() => {
   //   clickedData.value = { ...data, touch: true };
   // });
 
-  controller.draw([
+  chart.draw([
     // 1. candle
     {
       time: nineam.getTime(),
@@ -164,7 +198,12 @@ onMounted(() => {
   ]);
 
   const indicator = new TestIndicator();
-  // controller.addIndicator(indicator);
+  chart.addIndicator(indicator);
+
+  setTimeout(() => {
+    chart.updateLocale("en-US");
+  }, 5000);
+
   // controller.addIndicator(new TestIndicator());
   // controller.addIndicator(new TestIndicator());
   // controller.addIndicator(new TestIndicator());
@@ -223,11 +262,11 @@ onMounted(() => {
 });
 
 watch(chartData, (newVal, oldVal) => {
-  if (!controller) return;
+  if (!chart) return;
   if (oldVal.length > 0 && newVal.length > 0) {
-    controller.drawNextPoint(newVal[newVal.length - 1]);
+    chart.drawNextPoint(newVal[newVal.length - 1]);
   } else {
-    controller.draw(newVal);
+    chart.draw(newVal);
   }
 });
 </script>
@@ -246,7 +285,7 @@ watch(chartData, (newVal, oldVal) => {
     <div
       style="
         width: min(80%, 1600px);
-        height: min(90vh, 800px);
+        height: min(80vh, 800px);
         /* width: 100%;
         height: 100%; */
         position: relative;
@@ -269,4 +308,3 @@ body {
   margin: 0;
 }
 </style>
-./indicators/paneled/test-indicator./indicators/simple/moving-average

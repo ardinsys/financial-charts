@@ -1,7 +1,16 @@
+import { DefaultIndicatorOptions, indicatorLabelTemplate } from "../indicator";
 import { PaneledIndicator } from "../paneled-indicator";
 
-export class TestIndicator extends PaneledIndicator<{}, {}> {
-  static ID = "test";
+export class TestIndicator extends PaneledIndicator<
+  {},
+  DefaultIndicatorOptions
+> {
+  public updateLabel(dataTime?: number): void {
+    this.labelContainer.querySelector("[data-id=name]")!.textContent =
+      this.options.names[this.chart.getOptions().locale] ||
+      this.options.names.default ||
+      this.options.key;
+  }
 
   public getCrosshairValue(time: number, relativeY: number): string {
     return "Hello";
@@ -10,6 +19,7 @@ export class TestIndicator extends PaneledIndicator<{}, {}> {
   public draw() {
     // Draw main
     this.initMain();
+    if (!this.visible) return;
 
     this.context.fillStyle = "white";
     const size = 10;
@@ -34,8 +44,14 @@ export class TestIndicator extends PaneledIndicator<{}, {}> {
     this.axisContext.fillRect(0, 0, this.chart.getYLabelWidth(), this.height());
   }
 
-  public getDefaultOptions(): {} {
-    return {};
+  public getDefaultOptions(): DefaultIndicatorOptions {
+    return {
+      labelTemplate: indicatorLabelTemplate,
+      key: "test",
+      names: {
+        default: "Test",
+      },
+    };
   }
 
   public getDefaultThemes(): Record<string, {}> {

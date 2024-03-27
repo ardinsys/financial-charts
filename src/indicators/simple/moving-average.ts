@@ -1,11 +1,15 @@
-import { Indicator } from "../..";
+import {
+  DefaultIndicatorOptions,
+  Indicator,
+  indicatorLabelTemplate,
+} from "../indicator";
 
 export interface MovingAverageTheme {
   color: string;
   strokeWidth: number;
 }
 
-export interface MovingAverageOptions {
+export interface MovingAverageOptions extends DefaultIndicatorOptions {
   period: number;
   source: "open" | "high" | "low" | "close";
 }
@@ -14,10 +18,20 @@ export class MovingAverageIndicator extends Indicator<
   MovingAverageTheme,
   MovingAverageOptions
 > {
-  static ID = "SMA";
+  private cache = new Map<number, number>();
 
   public getDefaultOptions(): MovingAverageOptions {
-    return { period: 5, source: "close" };
+    return {
+      period: 5,
+      source: "close",
+      labelTemplate: indicatorLabelTemplate,
+      key: "SMA",
+      names: {
+        default: "Simple Moving Average",
+        "en-US": "Simple Moving Average",
+        "hu-HU": "Egyszerű mozgó átlag",
+      },
+    };
   }
 
   public getDefaultThemes(): Record<string, MovingAverageTheme> {
@@ -31,6 +45,44 @@ export class MovingAverageIndicator extends Indicator<
         strokeWidth: 2,
       },
     };
+  }
+
+  public updateLabel(dataTime?: number): void {
+    this.labelContainer.querySelector("[data-id=name]")!.textContent =
+      this.options.names[this.chart.getOptions().locale] ||
+      this.options.names.default ||
+      this.options.key;
+
+    this.labelContainer.querySelector("[data-id=extra]")!.textContent =
+      this.options.period +
+      " " +
+      this.chart.getLocaleValues().common.sources[this.options.source];
+    let time: number = dataTime!;
+
+    if (time == undefined) {
+      const lastPoints = this.chart.getLastVisibleDataPoints();
+      const allPoints = this.chart.getData();
+
+      if (lastPoints.length > 0) {
+        time = lastPoints.at(-1)!.time;
+      } else if (allPoints.length > 0) {
+        time = allPoints.at(-1)!.time;
+      } else {
+        return;
+      }
+    }
+
+    const sma = this.cache.get(time);
+    if (sma == undefined) return;
+
+    const valueContainer = this.labelContainer.querySelector(
+      "[data-id=value]"
+    ) as HTMLElement;
+
+    if (valueContainer) {
+      valueContainer.style.color = this.theme.color;
+      valueContainer.textContent = this.chart.getFormatter().formatPrice(sma);
+    }
   }
 
   public draw(): void {
@@ -68,30 +120,38 @@ export class MovingAverageIndicator extends Indicator<
       );
     });
 
-    // Setup drawing context
-    ctx.beginPath();
-    ctx.strokeStyle = this.theme.color;
-    ctx.lineWidth = this.theme.strokeWidth;
+    if (this.visible) {
+      // Setup drawing context
+      ctx.beginPath();
+      ctx.strokeStyle = this.theme.color;
+      ctx.lineWidth = this.theme.strokeWidth;
 
-    visibleDataPoints.forEach((point, index) => {
-      const { x, y } = this.chart
-        .getVisibleExtent()
-        .mapToPixel(
-          point.time + this.chart.getController().getXLabelOffset(),
-          point.movingAverage,
-          this.chart.getContext("main").canvas,
-          this.chart.getZoomLevel(),
-          this.chart.getPanOffset()
-        );
+      visibleDataPoints.forEach((point, index) => {
+        this.cache.set(point.time, point.movingAverage);
 
-      // Move to the first point or draw line to subsequent points
-      if (index === 0) {
-        ctx.moveTo(x, y);
-      } else {
-        ctx.lineTo(x, y);
-      }
-    });
+        const { x, y } = this.chart
+          .getVisibleExtent()
+          .mapToPixel(
+            point.time + this.chart.getController().getXLabelOffset(),
+            point.movingAverage,
+            this.chart.getContext("main").canvas,
+            this.chart.getZoomLevel(),
+            this.chart.getPanOffset()
+          );
 
-    ctx.stroke();
+        // Move to the first point or draw line to subsequent points
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+
+      ctx.stroke();
+    } else {
+      visibleDataPoints.forEach((point) => {
+        this.cache.set(point.time, point.movingAverage);
+      });
+    }
   }
 }

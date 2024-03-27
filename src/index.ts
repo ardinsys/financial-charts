@@ -19,3 +19,4 @@ export * from "./extents/ohlc-data-extent";
 export * from "./indicators/indicator";
 export * from "./indicators/paneled-indicator";
 export * from "./indicators/simple/moving-average";
+import "./styles.css";
