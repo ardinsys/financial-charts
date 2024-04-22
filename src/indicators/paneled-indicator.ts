@@ -1,4 +1,4 @@
-import { DefaultIndicatorOptions, Indicator } from "..";
+import { DefaultIndicatorOptions, Indicator } from "./indicator";
 
 export interface InitParams {
   width: number;
