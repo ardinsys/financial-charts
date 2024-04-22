@@ -3,9 +3,10 @@ import { FinancialChart } from "../chart/financial-chart";
 
 export const indicatorLabelTemplate = {
   light: /* html */ `
-    <div class="fci-wrapper">
+      <div class="fci-wrapper">
       <div class="fci-label" data-id="label">
         <span class="fci-name" data-id="name"></span>
+        <span class="fci-extra" data-id="extra"></span>
         <span class="fci-value" data-id="value"></span>
       </div>
       <div class="fci-actions">
