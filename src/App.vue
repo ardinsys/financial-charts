@@ -42,12 +42,12 @@ fiveYear.setFullYear(fiveYear.getFullYear() - 5);
 onMounted(() => {
   chart = new FinancialChart(
     chartContainer.value!,
-    "auto",
-    // {
-    //   start: nineam.getTime(),
-    //   end: fivepm.getTime(),
-    //   // end: nineam.getTime() + 1000 * 60 * 180,
-    // },
+    // "auto",
+    {
+      start: nineam.getTime(),
+      end: fivepm.getTime(),
+      // end: nineam.getTime() + 1000 * 60 * 180,
+    },
     {
       type: "candle",
       theme: defaultDarkTheme,
@@ -84,15 +84,15 @@ onMounted(() => {
     unsub();
   });
 
-  setTimeout(() => {
-    chart.addIndicator(new MovingAverageIndicator({ dark: { color: "lime" } }));
-    chart.addIndicator(
-      new MovingAverageIndicator(
-        { dark: { color: "wheat" } },
-        { period: 3, source: "open" }
-      )
-    );
-  }, 100);
+  // setTimeout(() => {
+  //   chart.addIndicator(new MovingAverageIndicator({ dark: { color: "lime" } }));
+  //   chart.addIndicator(
+  //     new MovingAverageIndicator(
+  //       { dark: { color: "wheat" } },
+  //       { period: 3, source: "open" }
+  //     )
+  //   );
+  // }, 100);
 
   // controller.setEventListener("click", (_: MouseEvent, data) => {
   //   clickedData.value = data;
@@ -197,12 +197,12 @@ onMounted(() => {
     },
   ]);
 
-  const indicator = new TestIndicator();
-  chart.addIndicator(indicator);
+  // const indicator = new TestIndicator();
+  // chart.addIndicator(indicator);
 
-  setTimeout(() => {
-    chart.updateLocale("en-US");
-  }, 5000);
+  // setTimeout(() => {
+  //   chart.updateLocale("en-US");
+  // }, 5000);
 
   // controller.addIndicator(new TestIndicator());
   // controller.addIndicator(new TestIndicator());

@@ -557,6 +557,8 @@ export class FinancialChart extends EventEmitter {
       start: 0,
       end: 0,
     });
+    this.recalculateVisibleExtent();
+
     this.xLabelCache.clear();
     this.xLabelDates = [];
 
@@ -1082,6 +1084,8 @@ export class FinancialChart extends EventEmitter {
       this.data,
       this.timeRange
     );
+
+    this.recalculateVisibleExtent();
 
     this.xLabelDates = [];
 
