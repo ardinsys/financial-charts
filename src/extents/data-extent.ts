@@ -39,9 +39,8 @@ export abstract class DataExtent extends Extent {
   public mapVolToPixel(
     time: number,
     volume: number,
-    canvas: { width: number; height: number } = this.chart.getLogicalCanvas(
-      "main"
-    ),
+    canvas: { width: number; height: number } = this.chart.getContext("main")
+      .canvas,
     zoomLevel: number = this.chart.getZoomLevel(),
     panOffset: number = this.chart.getPanOffset()
   ) {
