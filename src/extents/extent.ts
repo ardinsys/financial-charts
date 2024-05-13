@@ -16,9 +16,8 @@ export abstract class Extent {
   public mapToPixel(
     time: number,
     value: number,
-    canvas: { width: number; height: number } = this.chart.getLogicalCanvas(
-      "main"
-    ),
+    canvas: { width: number; height: number } = this.chart.getContext("main")
+      .canvas,
     zoomLevel: number = this.chart.getZoomLevel(),
     panOffset: number = this.chart.getPanOffset()
   ) {
@@ -33,9 +32,8 @@ export abstract class Extent {
   public pixelToPoint(
     x: number,
     y: number,
-    canvas: { width: number; height: number } = this.chart.getLogicalCanvas(
-      "main"
-    ),
+    canvas: { width: number; height: number } = this.chart.getContext("main")
+      .canvas,
     zoomLevel: number = this.chart.getZoomLevel(),
     panOffset: number = this.chart.getPanOffset()
   ) {
