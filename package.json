@@ -27,7 +27,7 @@
   },
   "scripts": {
     "dev": "vite --host",
-    "build": "vite build && tsc src/index.ts --declaration --emitDeclarationOnly --esModuleInterop --outDir dist",
+    "build": "vite build && tsc src/index.ts --declaration --emitDeclarationOnly --esModuleInterop --outDir dist --target es2020 --moduleResolution bundler",
     "preview": "vite preview",
     "prepublishOnly": "npm run build"
   },
