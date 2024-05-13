@@ -199,7 +199,8 @@ onMounted(() => {
 
   const indicator = new TestIndicator();
   chart.addIndicator(indicator);
-  chart.addIndicator(new MovingAverageIndicator());
+  const ind = new MovingAverageIndicator();
+  chart.addIndicator(ind);
 
   // setTimeout(() => {
   //   chart.updateLocale("en-US");

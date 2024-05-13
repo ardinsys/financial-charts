@@ -1,5 +1,7 @@
 import { mergeThemes } from "../chart/themes";
 import { FinancialChart } from "../chart/financial-chart";
+import { ExtentModifier } from "../extents/data-extent";
+import { TimeRange } from "../chart/types";
 
 export const indicatorLabelTemplate = {
   light: /* html */ `
@@ -112,7 +114,7 @@ export abstract class Indicator<
       hide.classList.add("fci-hide");
       label.classList.remove("fci-hidden");
       this.visible = true;
-      this.chart.requestRedraw("indicators");
+      this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
       this.chart.emit("indicator-visibility-changed", {
         indicator: this,
         visible: true,
@@ -124,7 +126,7 @@ export abstract class Indicator<
       show.classList.add("fci-hide");
       label.classList.add("fci-hidden");
       this.visible = false;
-      this.chart.requestRedraw("indicators");
+      this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
       this.chart.emit("indicator-visibility-changed", {
         indicator: this,
         visible: false,
@@ -143,6 +145,10 @@ export abstract class Indicator<
         indicator: this,
       });
     });
+  }
+
+  public getModifier(visibleTimeRange: TimeRange): ExtentModifier | null {
+    return null;
   }
 
   public updateLocale() {

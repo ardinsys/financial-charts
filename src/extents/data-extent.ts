@@ -2,9 +2,17 @@ import { FinancialChart } from "../chart/financial-chart";
 import { ChartData, TimeRange } from "../chart/types";
 import { Extent } from "./extent";
 
+export interface ExtentModifier {
+  yMin?: number;
+  yMax?: number;
+  actor: any;
+  enabled: boolean;
+}
+
 export abstract class DataExtent extends Extent {
   protected volMax!: number;
   protected timeRange!: TimeRange;
+  protected modifiers = new Map<any, ExtentModifier>();
 
   constructor(
     chart: FinancialChart,
@@ -17,6 +25,14 @@ export abstract class DataExtent extends Extent {
   }
 
   public abstract recalculate(dataset: ChartData[], timeRange: TimeRange): void;
+
+  public addModifier(modifier: ExtentModifier) {
+    this.modifiers.set(modifier.actor, modifier);
+  }
+
+  public removeModifier(actor: any) {
+    this.modifiers.delete(actor);
+  }
 
   public abstract addDataPoint(data: ChartData): boolean;
 

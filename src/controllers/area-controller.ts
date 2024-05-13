@@ -6,7 +6,7 @@ export class AreaController extends SimpleController {
   draw(): void {
     const ctx = this.chart.getContext("main");
 
-    const visibleDataPoints = this.chart.recalculateVisibleExtent();
+    const visibleDataPoints = this.chart.getLastVisibleDataPoints();
 
     ctx.lineWidth = this.options.theme.area.width;
     const linePath = new Path2D();

@@ -743,6 +743,8 @@ export class FinancialChart extends EventEmitter {
     ctx.fillStyle = this.options.theme.backgroundColor;
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+    this.recalculateVisibleExtent();
+
     this.drawYAxis();
     this.drawXAxis();
 
@@ -1217,9 +1219,10 @@ export class FinancialChart extends EventEmitter {
       this.recalcPaneledIndicators();
       this.requestRedraw(this.allRedrawParts);
     } else {
+      this.visibleExtent.removeModifier(indicator);
       this.indicatorLabelContainer.removeChild(indicator.getLabelContainer());
       this.indicators = this.indicators.filter((i) => i !== indicator);
-      this.requestRedraw("indicators");
+      this.requestRedraw(this.allRedrawParts);
     }
   }
 
@@ -1806,6 +1809,14 @@ export class FinancialChart extends EventEmitter {
       firstPointIndex,
       Math.min(lastPointIndex + 1 + 1, this.data.length)
     );
+
+    for (const indicator of this.indicators) {
+      const modifier = indicator.getModifier(visibleTimeRange);
+      if (modifier) {
+        this.visibleExtent.addModifier(modifier);
+      }
+    }
+
     // Do not recalc xMin and xMax to preserve x positions
     // but we need to adjust yMin and yMax to the visible data points
     this.visibleExtent.recalculate(visibleDataPoints, this.timeRange);
