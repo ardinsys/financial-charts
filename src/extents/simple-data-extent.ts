@@ -19,9 +19,15 @@ export class SimpleDataExtent extends DataExtent {
     this.volMax = -Infinity;
 
     for (const data of dataset) {
-      this.yMin = Math.min(this.yMin, data.close!);
-      this.yMax = Math.max(this.yMax, data.close!);
-      this.volMax = Math.max(this.volMax, data.volume!);
+      this.yMin = Math.min(this.yMin, data.close || Infinity);
+      this.yMax = Math.max(this.yMax, data.close || -Infinity);
+      this.volMax = Math.max(this.volMax, data.volume || -Infinity);
+    }
+
+    for (const modifier of this.modifiers.values()) {
+      if (!modifier.enabled) continue;
+      this.yMin = Math.min(this.yMin, modifier.yMin || Infinity);
+      this.yMax = Math.max(this.yMax, modifier.yMax || -Infinity);
     }
 
     const yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;

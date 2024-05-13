@@ -8,7 +8,7 @@ export class BarController extends OHLCController {
   draw(): void {
     const ctx = this.chart.getContext("main");
     const pixelPerMs = this.chart.getPixelPerMs();
-    const visibleDataPoints = this.chart.recalculateVisibleExtent();
+    const visibleDataPoints = this.chart.getLastVisibleDataPoints();
 
     const barSpacing = this.options.stepSize * pixelPerMs * this.spacing;
     const barWidth = this.options.stepSize * pixelPerMs - barSpacing;

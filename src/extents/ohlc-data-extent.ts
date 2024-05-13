@@ -19,10 +19,17 @@ export class OHLCDataExtent extends DataExtent {
     this.volMax = -Infinity;
 
     for (const data of dataset) {
-      this.yMin = Math.min(this.yMin, data.low!);
-      this.yMax = Math.max(this.yMax, data.high!);
-      this.volMax = Math.max(this.volMax, data.volume!);
+      this.yMin = Math.min(this.yMin, data.low || Infinity);
+      this.yMax = Math.max(this.yMax, data.high || -Infinity);
+      this.volMax = Math.max(this.volMax, data.volume || -Infinity);
     }
+
+    for (const modifier of this.modifiers.values()) {
+      if (!modifier.enabled) continue;
+      this.yMin = Math.min(this.yMin, modifier.yMin || Infinity);
+      this.yMax = Math.max(this.yMax, modifier.yMax || -Infinity);
+    }
+
     const yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
     const yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
 
@@ -41,21 +48,25 @@ export class OHLCDataExtent extends DataExtent {
     let yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
     let yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
 
-    const low = data.low!;
-    const high = data.high!;
+    const low = data.low;
+    const high = data.high;
 
-    if (data.low !== null && data.low !== undefined) {
+    if (low != null && data.low !== undefined) {
       changed = changed || low < yMin;
     }
-    if (data.high !== null && data.high !== undefined) {
+    if (high != null && data.high !== undefined) {
       changed = changed || high > yMax;
     }
     if (data.volume !== null && data.volume !== undefined) {
       changed = changed || data.volume > this.volMax;
     }
 
-    this.yMin = Math.min(yMin, low);
-    this.yMax = Math.max(yMax, high);
+    if (low != null) {
+      this.yMin = Math.min(yMin, low);
+    }
+    if (high != null) {
+      this.yMax = Math.max(yMax, high);
+    }
 
     yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
     yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
@@ -63,7 +74,7 @@ export class OHLCDataExtent extends DataExtent {
     this.yMin = yMin;
     this.yMax = yMax;
 
-    this.volMax = Math.max(this.volMax, data.volume!);
+    this.volMax = Math.max(this.volMax, data.volume || -Infinity);
 
     return changed;
   }

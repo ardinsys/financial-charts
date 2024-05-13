@@ -19,7 +19,7 @@ export class SteplineController extends OHLCController {
   draw(): void {
     const ctx = this.chart.getContext("main");
 
-    const visibleDataPoints = this.chart.recalculateVisibleExtent();
+    const visibleDataPoints = this.chart.getLastVisibleDataPoints();
 
     ctx.beginPath();
     ctx.strokeStyle = this.options.theme.line.color;

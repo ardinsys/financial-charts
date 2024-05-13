@@ -6,7 +6,7 @@ export class LineController extends SimpleController {
   draw(): void {
     const ctx = this.chart.getContext("main");
 
-    const visibleDataPoints = this.chart.recalculateVisibleExtent();
+    const visibleDataPoints = this.chart.getLastVisibleDataPoints();
 
     ctx.fillStyle = this.options.theme.line.color;
     ctx.lineWidth = this.options.theme.line.width;
