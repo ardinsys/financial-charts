@@ -18,8 +18,6 @@ export class AreaController extends SimpleController {
 
     const timeRange = this.chart.getTimeRange();
     const visibleExtent = this.chart.getVisibleExtent();
-    const zoomLevel = this.chart.getZoomLevel();
-    const panOffset = this.chart.getPanOffset();
 
     for (let i = 0; i < visibleDataPoints.length; i++) {
       const point = visibleDataPoints[i];
@@ -28,13 +26,7 @@ export class AreaController extends SimpleController {
 
       if (point.close == undefined) continue;
 
-      const { x, y } = visibleExtent.mapToPixel(
-        point.time,
-        point.close!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      );
+      const { x, y } = visibleExtent.mapToPixel(point.time, point.close!);
 
       if (firstPoint) {
         linePath.moveTo(x, y);

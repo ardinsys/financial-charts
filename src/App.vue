@@ -49,7 +49,7 @@ onMounted(() => {
       // end: nineam.getTime() + 1000 * 60 * 180,
     },
     {
-      type: "candle",
+      type: "line",
       theme: defaultDarkTheme,
       locale: "hu-HU",
       maxZoom: 100,
@@ -197,17 +197,13 @@ onMounted(() => {
     },
   ]);
 
-  // const indicator = new TestIndicator();
-  // chart.addIndicator(indicator);
+  const indicator = new TestIndicator();
+  chart.addIndicator(indicator);
+  chart.addIndicator(new MovingAverageIndicator());
 
   // setTimeout(() => {
   //   chart.updateLocale("en-US");
   // }, 5000);
-
-  // controller.addIndicator(new TestIndicator());
-  // controller.addIndicator(new TestIndicator());
-  // controller.addIndicator(new TestIndicator());
-  // controller.addIndicator(new TestIndicator());
 
   // setTimeout(() => {
   //   controller.updateCoreOptions(

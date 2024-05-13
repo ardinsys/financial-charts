@@ -15,60 +15,22 @@ export class BarController extends OHLCController {
 
     ctx.lineWidth = Math.min(1, barWidth / 5);
 
-    const timeRange = this.chart.getTimeRange();
     const visibleExtent = this.chart.getVisibleExtent();
-    const zoomLevel = this.chart.getZoomLevel();
-    const panOffset = this.chart.getPanOffset();
 
     for (let i = 0; i < visibleDataPoints.length; i++) {
       const point = visibleDataPoints[i];
-      if (point.time < timeRange.start) continue;
-      if (point.time > timeRange.end) break;
 
       if (point.close == undefined) continue;
       if (point.open == undefined) continue;
       if (point.high == undefined) continue;
       if (point.low == undefined) continue;
 
-      const x = visibleExtent.mapToPixel(
-        point.time,
-        point.close!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      ).x;
+      const x = visibleExtent.mapToPixel(point.time, point.close!).x;
 
-      const high = visibleExtent.mapToPixel(
-        point.time,
-        point.high!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      ).y;
-
-      const low = visibleExtent.mapToPixel(
-        point.time,
-        point.low!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      ).y;
-
-      const open = visibleExtent.mapToPixel(
-        point.time,
-        point.open!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      ).y;
-
-      const close = visibleExtent.mapToPixel(
-        point.time,
-        point.close!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      ).y;
+      const high = visibleExtent.mapToPixel(point.time, point.high!).y;
+      const low = visibleExtent.mapToPixel(point.time, point.low!).y;
+      const open = visibleExtent.mapToPixel(point.time, point.open!).y;
+      const close = visibleExtent.mapToPixel(point.time, point.close!).y;
 
       const centralX = x + (barWidth / 2 + barSpacing / 2);
 

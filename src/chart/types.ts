@@ -11,3 +11,8 @@ export interface TimeRange {
   start: number;
   end: number;
 }
+
+export type AxisLabel = {
+  value: number;
+  position: number;
+};

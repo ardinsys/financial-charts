@@ -4,7 +4,7 @@ import { PaneledIndicator, InitParams } from "../indicators/paneled-indicator";
 import { Indicator } from "../indicators/indicator";
 import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
-import { ChartData, TimeRange } from "./types";
+import { AxisLabel, ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
 
 export type DeepConcrete<T> = T extends Function
@@ -55,11 +55,6 @@ export interface ChartOptions {
     [key: string]: LocaleValues;
   };
 }
-
-type AxisLabel = {
-  value: number;
-  position: number;
-};
 
 interface XAxisLabel {
   date: Date;
@@ -121,8 +116,6 @@ export class FinancialChart extends EventEmitter {
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
   private resizeObserver: ResizeObserver;
-  private eventListeners: Map<string, (e: Event, data: ChartData) => any> =
-    new Map();
 
   private isTouchCrosshair = false;
   private isTouchCrosshairTimeout?: NodeJS.Timeout;
@@ -168,6 +161,10 @@ export class FinancialChart extends EventEmitter {
 
   getData() {
     return this.data;
+  }
+
+  getTheme() {
+    return this.options.theme;
   }
 
   private redraw() {
@@ -287,13 +284,6 @@ export class FinancialChart extends EventEmitter {
       this.xLabelCache.set(date.getTime(), ret);
       return ret;
     });
-  }
-
-  public setEventListener<E extends Event>(
-    event: "click" | "touch-click",
-    callback: (e: E, data: ChartData) => any
-  ) {
-    this.eventListeners.set(event, callback as any);
   }
 
   private findClosestDataPoint(rawPoint: ChartData): ChartData | undefined {
@@ -621,7 +611,7 @@ export class FinancialChart extends EventEmitter {
 
   private onMouseUp = (e: PointerEvent) => {
     if (e.pointerType === "touch") return;
-    if (!this.isPanning && this.eventListeners.has("click")) {
+    if (!this.isPanning) {
       const topCanvas = this.getContext("crosshair").canvas;
       const rect = topCanvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -635,7 +625,7 @@ export class FinancialChart extends EventEmitter {
       );
       const closestDataPoint = this.findClosestDataPoint(rawPoint);
       if (!closestDataPoint) return;
-      this.eventListeners.get("click")?.(e, closestDataPoint);
+      this.emit("click", { event: e, point: closestDataPoint });
     }
     this.lastPointerPosition = undefined;
     this.isPanning = false;
@@ -808,18 +798,17 @@ export class FinancialChart extends EventEmitter {
       if (this.isTouchCrosshair && e.changedTouches.length === 1) {
         const rect =
           this.getContext("crosshair").canvas.getBoundingClientRect();
-        this.eventListeners.get("touch-click")?.(
-          e,
-          this.findClosestDataPoint(
-            this.visibleExtent.pixelToPoint(
-              e.changedTouches[0].clientX - rect.left,
-              e.changedTouches[0].clientY - rect.top,
-              this.getContext("main").canvas,
-              this.zoomLevel,
-              this.panOffset
-            )
-          )!
+        const point = this.findClosestDataPoint(
+          this.visibleExtent.pixelToPoint(
+            e.changedTouches[0].clientX - rect.left,
+            e.changedTouches[0].clientY - rect.top,
+            this.getContext("main").canvas,
+            this.zoomLevel,
+            this.panOffset
+          )
         );
+        if (!point) return;
+        this.emit("touch-click", { event: e, point });
       }
       clearTimeout(this.isTouchCrosshairTimeout);
       this.isTouchCrosshairTimeout = undefined;

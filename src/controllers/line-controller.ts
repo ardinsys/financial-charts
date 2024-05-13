@@ -15,25 +15,14 @@ export class LineController extends SimpleController {
     ctx.lineWidth = this.options.theme.line.width;
     let firstPoint = true;
 
-    const timeRange = this.chart.getTimeRange();
     const visibleExtent = this.chart.getVisibleExtent();
-    const zoomLevel = this.chart.getZoomLevel();
-    const panOffset = this.chart.getPanOffset();
 
     for (let i = 0; i < visibleDataPoints.length; i++) {
       const point = visibleDataPoints[i];
-      if (point.time < timeRange.start) continue;
-      if (point.time > timeRange.end) break;
 
       if (point.close == undefined) continue;
 
-      const { x, y } = visibleExtent.mapToPixel(
-        point.time,
-        point.close!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      );
+      const { x, y } = visibleExtent.mapToPixel(point.time, point.close!);
 
       if (firstPoint) {
         ctx.moveTo(x, y);

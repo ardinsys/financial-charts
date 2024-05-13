@@ -6,14 +6,14 @@ import { OHLCController } from "./controller";
 export class SteplineController extends OHLCController {
   static ID = "stepline";
 
-  private crosshairValues = [false, false, false, true];
+  private crosshairValues = [false, false, false, true, true];
 
   getEffectiveCrosshairValues(): boolean[] {
     return this.crosshairValues;
   }
 
   createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
-    return new SimpleDataExtent(data, timeRange);
+    return new SimpleDataExtent(this.chart, data, timeRange);
   }
 
   draw(): void {
@@ -25,10 +25,7 @@ export class SteplineController extends OHLCController {
     ctx.strokeStyle = this.options.theme.line.color;
     ctx.lineWidth = this.options.theme.line.width;
 
-    const timeRange = this.chart.getTimeRange();
     const visibleExtent = this.chart.getVisibleExtent();
-    const zoomLevel = this.chart.getZoomLevel();
-    const panOffset = this.chart.getPanOffset();
 
     // Start from the first data point
     let lastX = null;
@@ -36,18 +33,10 @@ export class SteplineController extends OHLCController {
 
     for (let i = 0; i < visibleDataPoints.length; i++) {
       const point = visibleDataPoints[i];
-      if (point.time < timeRange.start) continue;
-      if (point.time > timeRange.end) break;
 
       if (point.close == undefined) continue;
 
-      const { x, y } = visibleExtent.mapToPixel(
-        point.time,
-        point.close!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      );
+      const { x, y } = visibleExtent.mapToPixel(point.time, point.close!);
 
       if (lastX === null || lastY === null) {
         ctx.moveTo(x, y);

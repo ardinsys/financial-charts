@@ -30,10 +30,7 @@ export class HLCAreaController extends OHLCController {
 
     const visibleDataPoints = this.chart.recalculateVisibleExtent();
 
-    const timeRange = this.chart.getTimeRange();
     const visibleExtent = this.chart.getVisibleExtent();
-    const zoomLevel = this.chart.getZoomLevel();
-    const panOffset = this.chart.getPanOffset();
 
     // Paths for the lines
     const highPath = new Path2D();
@@ -55,25 +52,11 @@ export class HLCAreaController extends OHLCController {
     let foundFirst = false;
     for (let i = 0; i < visibleDataPoints.length; i++) {
       const point = visibleDataPoints[i];
-      if (point.time < timeRange.start) continue;
-      if (point.time > timeRange.end) break;
 
       if (point.high == undefined || point.low == undefined) continue;
 
-      const high = visibleExtent.mapToPixel(
-        point.time,
-        point.high!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      );
-      const low = visibleExtent.mapToPixel(
-        point.time,
-        point.low!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      );
+      const high = visibleExtent.mapToPixel(point.time, point.high!);
+      const low = visibleExtent.mapToPixel(point.time, point.low!);
 
       if (!foundFirst) {
         firstHigh = high;
@@ -95,18 +78,9 @@ export class HLCAreaController extends OHLCController {
 
     for (let i = visibleDataPoints.length - 1; i >= 0; i--) {
       const point = visibleDataPoints[i];
-      if (point.time < timeRange.start) break;
-      if (point.time > timeRange.end) continue;
-
       if (point.close == undefined) continue;
 
-      const close = visibleExtent.mapToPixel(
-        point.time,
-        point.close!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      );
+      const close = visibleExtent.mapToPixel(point.time, point.close!);
 
       if (!foundFirst) {
         firstClose = close;

@@ -31,7 +31,7 @@ export abstract class SimpleController extends ChartController {
   private simpleCrosshairValues = [false, false, false, true, true];
 
   createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
-    return new SimpleDataExtent(data, timeRange);
+    return new SimpleDataExtent(this.chart, data, timeRange);
   }
 
   getXLabelOffset(): number {
@@ -53,7 +53,7 @@ export abstract class OHLCController extends ChartController {
   private ohlcCrosshairValues = [true, true, true, true, true];
 
   createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
-    return new OHLCDataExtent(data, timeRange);
+    return new OHLCDataExtent(this.chart, data, timeRange);
   }
 
   getXLabelOffset(): number {
