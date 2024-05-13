@@ -1,18 +1,19 @@
+import { FinancialChart } from "../chart/financial-chart";
 import { ChartData, TimeRange } from "../chart/types";
+import { Extent } from "./extent";
 
-export abstract class DataExtent {
-  protected xMin!: number;
-  protected xMax!: number;
-  protected yMin!: number;
-  protected yMax!: number;
+export abstract class DataExtent extends Extent {
   protected volMax!: number;
-  protected timeRange: TimeRange;
-  protected topOffset = 0.15;
-  protected bottomOffset = 0.2;
+  protected timeRange!: TimeRange;
 
-  constructor(dataset: ChartData[], timeRange: TimeRange) {
-    this.recalculate(dataset, timeRange);
+  constructor(
+    chart: FinancialChart,
+    dataset: ChartData[],
+    timeRange: TimeRange
+  ) {
+    super(chart);
     this.timeRange = timeRange;
+    this.recalculate(dataset, timeRange);
   }
 
   public abstract recalculate(dataset: ChartData[], timeRange: TimeRange): void;
@@ -22,9 +23,11 @@ export abstract class DataExtent {
   public mapVolToPixel(
     time: number,
     volume: number,
-    canvas: { width: number; height: number },
-    zoomLevel: number,
-    panOffset: number
+    canvas: { width: number; height: number } = this.chart.getLogicalCanvas(
+      "main"
+    ),
+    zoomLevel: number = this.chart.getZoomLevel(),
+    panOffset: number = this.chart.getPanOffset()
   ) {
     const width = canvas.width / window.devicePixelRatio || 1;
     const height = canvas.height / window.devicePixelRatio || 1;
@@ -47,49 +50,7 @@ export abstract class DataExtent {
     return { x, y };
   }
 
-  public mapToPixel(
-    time: number,
-    price: number,
-    canvas: { width: number; height: number },
-    zoomLevel: number,
-    panOffset: number
-  ) {
-    const width = canvas.width / window.devicePixelRatio || 1;
-    const height = canvas.height / window.devicePixelRatio || 1;
-    // prettier-ignore
-    const x = (((time - this.xMin) / (this.xMax - this.xMin)) * width - panOffset) * zoomLevel
-    const y = (1 - (price - this.yMin) / (this.yMax - this.yMin)) * height;
-    return { x, y };
-  }
-
-  public pixelToPoint(
-    x: number,
-    y: number,
-    canvas: { width: number; height: number },
-    zoomLevel: number,
-    panOffset: number
-  ) {
-    const width = canvas.width / window.devicePixelRatio || 1;
-    const height = canvas.height / window.devicePixelRatio || 1;
-    // prettier-ignore
-    const time = ((x / zoomLevel + panOffset) / width) * (this.xMax - this.xMin) + this.xMin;
-    const price = (1 - y / height) * (this.yMax - this.yMin) + this.yMin;
-    return { time, price };
-  }
-
-  getYMin() {
-    return this.yMin;
-  }
-
-  getYMax() {
-    return this.yMax;
-  }
-
-  getXMin() {
-    return this.xMin;
-  }
-
-  getXMax() {
-    return this.xMax;
+  getVolMax() {
+    return this.volMax;
   }
 }

@@ -1,4 +1,5 @@
 import { Indicator } from "../indicators/indicator";
+import { ChartData } from "./types";
 
 interface IndicatorVisibilityChangedEvent {
   indicator: Indicator<any, any>;
@@ -17,6 +18,8 @@ interface EventMap {
   "indicator-visibility-changed": IndicatorVisibilityChangedEvent;
   "indicator-settings-open": IndicatorSettingsOpenEvent;
   "indicator-remove": IndicatorRemoveEvent;
+  click: { event: PointerEvent; point: ChartData };
+  "touch-click": { event: TouchEvent; point: ChartData };
 }
 
 export class EventEmitter {

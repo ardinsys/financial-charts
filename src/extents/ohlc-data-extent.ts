@@ -1,7 +1,16 @@
 import { DataExtent } from "./data-extent";
 import { ChartData, TimeRange } from "../chart/types";
+import { FinancialChart } from "../chart/financial-chart";
 
 export class OHLCDataExtent extends DataExtent {
+  constructor(
+    chart: FinancialChart,
+    dataset: ChartData[],
+    timeRange: TimeRange
+  ) {
+    super(chart, dataset, timeRange);
+  }
+
   public recalculate(dataset: ChartData[], timeRange: TimeRange): void {
     this.xMin = timeRange.start;
     this.xMax = timeRange.end;
@@ -19,9 +28,6 @@ export class OHLCDataExtent extends DataExtent {
 
     this.yMin = yMin;
     this.yMax = yMax;
-  }
-  constructor(dataset: ChartData[], timeRange: TimeRange) {
-    super(dataset, timeRange);
   }
 
   public addDataPoint(data: ChartData) {

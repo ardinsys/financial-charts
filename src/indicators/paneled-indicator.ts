@@ -1,3 +1,5 @@
+import { AxisLabel } from "../chart/types";
+import { Extent } from "../extents/extent";
 import { DefaultIndicatorOptions, Indicator } from "./indicator";
 
 export interface InitParams {
@@ -17,6 +19,9 @@ export abstract class PaneledIndicator<
   protected axisCanvas!: HTMLCanvasElement;
   protected context!: CanvasRenderingContext2D;
   protected axisContext!: CanvasRenderingContext2D;
+  protected extent!: Extent;
+
+  public abstract createExtent(): Extent;
 
   private adjustCanvas(
     canvas: HTMLCanvasElement,
@@ -43,10 +48,15 @@ export abstract class PaneledIndicator<
       this.axisContext.scale(params.devicePixelRatio, params.devicePixelRatio);
     }
   }
+
   public init(params: InitParams): void {
+    this.extent = this.createExtent();
     this.container = document.createElement("div");
     this.container.style.overflow = "hidden";
     this.container.style.userSelect = "none";
+    this.container.style.borderTop = `2px solid ${
+      this.chart.getTheme().grid.color
+    }`;
     // @ts-ignore
     this.container.style.webkitTapHighlightColor = "transparent";
     this.container.style.position = "absolute";
@@ -87,7 +97,7 @@ export abstract class PaneledIndicator<
 
   public abstract getCrosshairValue(time: number, relativeY: number): string;
 
-  protected initMain() {
+  protected initDrawing() {
     const ctx = this.context;
     ctx.clearRect(0, 0, this.width(), this.height());
     ctx.fillStyle = this.chart.getOptions().theme.backgroundColor;
@@ -102,13 +112,16 @@ export abstract class PaneledIndicator<
       ctx.lineTo(x, this.height());
       ctx.stroke();
     }
+
+    this.initYAxis();
   }
 
-  protected initYAxis() {
+  private initYAxis() {
     const ctx = this.axisContext;
-    ctx.fillStyle = this.chart.getOptions().theme.backgroundColor;
+    ctx.fillStyle = this.chart.getTheme().yAxis.backgroundColor;
     ctx.clearRect(0, 0, this.chart.getYLabelWidth(), this.height());
     ctx.fillRect(0, 0, this.chart.getYLabelWidth(), this.height());
+    this.drawYAxis();
   }
 
   protected width() {
@@ -117,5 +130,102 @@ export abstract class PaneledIndicator<
 
   protected height() {
     return this.canvas.height / (window.devicePixelRatio || 1);
+  }
+
+  protected calculateYAxisLabels(fontSize: number, labelSpacing: number) {
+    const textHeight = fontSize * 1.2; // Estimated height of text
+    const canvasHeight = this.axisCanvas.height;
+
+    let range = this.extent.getYMax() - this.extent.getYMin();
+    range = Math.max(range, 0.0001); // Ensure a minimum range to avoid division by zero
+
+    const maxPossibleLabels = Math.floor(
+      canvasHeight / (textHeight + labelSpacing)
+    );
+    const stepSize = this.calculateStepSize(range, maxPossibleLabels);
+
+    const firstLabel = Math.ceil(this.extent.getYMin() / stepSize) * stepSize;
+    const labels: AxisLabel[] = [];
+
+    for (
+      let value = firstLabel;
+      value <= this.extent.getYMax();
+      value += stepSize
+    ) {
+      const position =
+        canvasHeight - ((value - this.extent.getYMin()) / range) * canvasHeight;
+      labels.push({ value: parseFloat(value.toFixed(10)), position });
+    }
+
+    return labels;
+  }
+
+  protected calculateStepSize(range: number, maxLabels: number) {
+    // Step 1: Determine the initial raw step size
+    let rawStep = range / maxLabels;
+
+    // Step 2: Adjust for precision based on the range's magnitude
+    let scale = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    let normalizedStep = rawStep / scale; // Normalize step size to [1, 10)
+
+    // Step 3: Round to a nice value
+    let roundedStep;
+    if (normalizedStep < 1.5) {
+      roundedStep = 1;
+    } else if (normalizedStep < 3) {
+      roundedStep = 2;
+    } else if (normalizedStep < 7.5) {
+      roundedStep = 5;
+    } else {
+      roundedStep = 10;
+    }
+
+    // Calculate final step size
+    let stepSize = roundedStep * scale;
+
+    // Step 4: Adjust decimal places for the step size to ensure precision
+    let decimalPlaces = Math.max(-Math.floor(Math.log10(stepSize)), 0);
+    return parseFloat(stepSize.toFixed(decimalPlaces));
+  }
+
+  protected drawYAxis(): void {
+    const theme = this.chart.getTheme();
+    const yAxisValues = this.calculateYAxisLabels(theme.xAxis.fontSize, 30);
+
+    const ctx = this.axisContext;
+
+    ctx.fillStyle = theme.yAxis.color;
+    ctx.font =
+      ctx.font = `${theme.yAxis.fontSize}px ${theme.xAxis.font}, monospace`;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+
+    for (let i = 0; i < yAxisValues.length; i++) {
+      const value = yAxisValues[i];
+      const y = value.position;
+      if (y - theme.yAxis.fontSize < 0) continue;
+      if (
+        y + theme.yAxis.fontSize >
+        this.axisCanvas.height / window.devicePixelRatio
+      )
+        continue;
+      const text = this.chart.getFormatter().formatPrice(value.value);
+      const textWidth = ctx.measureText(text).width;
+
+      ctx.fillText(
+        text,
+        (ctx.canvas.width / window.devicePixelRatio - textWidth) / 2 +
+          textWidth,
+        y
+      );
+      const mainCtx = this.context;
+
+      mainCtx.lineWidth = theme.grid.width;
+      mainCtx.strokeStyle = theme.grid.color;
+      mainCtx.beginPath();
+      mainCtx.moveTo(0, y);
+      mainCtx.lineTo(mainCtx.canvas.width, y);
+      mainCtx.stroke();
+    }
   }
 }

@@ -1,3 +1,4 @@
+import { Extent } from "../../extents/extent";
 import { DefaultIndicatorOptions, indicatorLabelTemplate } from "../indicator";
 import { PaneledIndicator } from "../paneled-indicator";
 
@@ -5,6 +6,10 @@ export class TestIndicator extends PaneledIndicator<
   {},
   DefaultIndicatorOptions
 > {
+  public createExtent(): Extent {
+    return this.chart.getVisibleExtent();
+  }
+
   public updateLabel(dataTime?: number): void {
     this.labelContainer.querySelector("[data-id=name]")!.textContent =
       this.options.names[this.chart.getOptions().locale] ||
@@ -18,7 +23,7 @@ export class TestIndicator extends PaneledIndicator<
 
   public draw() {
     // Draw main
-    this.initMain();
+    this.initDrawing();
     if (!this.visible) return;
 
     this.context.fillStyle = "white";
@@ -36,12 +41,6 @@ export class TestIndicator extends PaneledIndicator<
         );
       this.context.fillRect(point.x - size / 2, point.y, size, size);
     }
-
-    // Draw y axis
-    this.initYAxis();
-
-    this.axisContext.fillStyle = "white";
-    this.axisContext.fillRect(0, 0, this.chart.getYLabelWidth(), this.height());
   }
 
   public getDefaultOptions(): DefaultIndicatorOptions {
