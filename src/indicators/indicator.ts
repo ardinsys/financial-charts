@@ -191,4 +191,8 @@ export abstract class Indicator<
   public getKey() {
     return this.options.key;
   }
+
+  public getOptions() {
+    return this.options;
+  }
 }
