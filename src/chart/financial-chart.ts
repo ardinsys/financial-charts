@@ -1184,7 +1184,7 @@ export class FinancialChart extends EventEmitter {
     } else {
       this.indicators.push(indicator);
       indicator.setChart(this);
-      this.requestRedraw("indicators");
+      this.requestRedraw(this.allRedrawParts);
       this.indicatorLabelContainer.appendChild(indicator.getLabelContainer());
       indicator.updateLabel();
     }
