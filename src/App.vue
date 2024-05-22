@@ -201,6 +201,9 @@ onMounted(() => {
   chart.addIndicator(indicator);
   const ind = new MovingAverageIndicator();
   chart.addIndicator(ind);
+  setTimeout(() => {
+    ind.updateOptions({ period: 10, source: "open" });
+  }, 5000);
 
   // setTimeout(() => {
   //   chart.updateLocale("en-US");

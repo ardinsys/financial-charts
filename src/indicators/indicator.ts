@@ -182,6 +182,7 @@ export abstract class Indicator<
     this.options = mergeThemes(this.options, options);
     if (!this.chart) return;
     this.chart.requestRedraw(["indicators", "crosshair"]);
+    this.updateLabel();
   }
 
   public getLabelContainer(): HTMLElement {
