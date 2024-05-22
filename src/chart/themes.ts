@@ -18,8 +18,17 @@ export function mergeThemes<T extends object = ChartTheme>(
       // @ts-ignore
       theme[key] = mergeThemes(defaultTheme[key], providedTheme[key]);
     } else {
-      // @ts-ignore
-      theme[key] = providedTheme[key] || defaultTheme[key];
+      // To handle falsy values like 0 and false
+      if (
+        typeof providedTheme[key] === "boolean" ||
+        typeof providedTheme[key] === "number"
+      ) {
+        // @ts-ignore
+        theme[key] = providedTheme[key];
+      } else {
+        // @ts-ignore
+        theme[key] = providedTheme[key] || defaultTheme[key];
+      }
     }
   }
   return theme;
