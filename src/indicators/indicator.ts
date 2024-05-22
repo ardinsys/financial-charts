@@ -181,7 +181,7 @@ export abstract class Indicator<
   public updateOptions(options: Partial<TOptions>): void {
     this.options = mergeThemes(this.options, options);
     if (!this.chart) return;
-    this.chart.requestRedraw(["indicators", "crosshair"]);
+    this.chart.requestRedraw(["indicators", "crosshair", "controller"]);
     this.updateLabel();
   }
 
