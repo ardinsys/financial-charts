@@ -39,6 +39,7 @@ export type Gradient = Array<[number, string]>;
 export interface ChartTheme {
   key: string;
   backgroundColor?: string;
+  randomColors?: string[];
   volume?: {
     upColor?: string;
     downColor?: string;
@@ -115,6 +116,16 @@ export interface ChartTheme {
 export const defaultLightTheme: DeepConcrete<ChartTheme> = {
   key: "light",
   backgroundColor: "#FFFFFF",
+  randomColors: [
+    "#7841FF",
+    "#AE32FF",
+    "#FF2BEE",
+    "#FF4BA6",
+    "#FF6B6B",
+    "#FF9047",
+    "#FFBC2D",
+    "#2BFF3E",
+  ],
   volume: {
     upColor: "rgba(8, 153, 129, 0.35)",
     downColor: "rgba(242, 54, 69, 0.35)",
@@ -194,6 +205,16 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
 export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
   key: "dark",
   backgroundColor: "#161A25",
+  randomColors: [
+    "#7841FF",
+    "#AE32FF",
+    "#FF2BEE",
+    "#FF4BA6",
+    "#FF6B6B",
+    "#FF9047",
+    "#FFBC2D",
+    "#2BFF3E",
+  ],
   volume: {
     upColor: "rgba(8, 153, 129, 0.35)",
     downColor: "rgba(242, 54, 69, 0.35)",
