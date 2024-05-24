@@ -167,6 +167,18 @@ export class FinancialChart extends EventEmitter {
     return this.options.theme;
   }
 
+  getIndicators() {
+    return this.indicators;
+  }
+
+  getPaneledIndicators() {
+    return this.panaledIndicators;
+  }
+
+  getAllIndicators() {
+    return [...this.indicators, ...this.panaledIndicators];
+  }
+
   private redraw() {
     if (this.redrawParts.has("controller")) {
       this.drawController();

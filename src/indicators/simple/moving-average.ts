@@ -1,3 +1,4 @@
+import { randomColor } from "../../utils/color";
 import {
   DefaultIndicatorOptions,
   Indicator,
@@ -28,8 +29,6 @@ export class MovingAverageIndicator extends Indicator<
       key: "SMA",
       names: {
         default: "Simple Moving Average",
-        "en-US": "Simple Moving Average",
-        "hu-HU": "Egyszerű mozgó átlag",
       },
     };
   }
@@ -57,6 +56,9 @@ export class MovingAverageIndicator extends Indicator<
       this.options.period +
       " " +
       this.chart.getLocaleValues().common.sources[this.options.source];
+
+    if (dataTime == undefined) return;
+
     let time: number = dataTime!;
 
     if (time == undefined) {
@@ -122,8 +124,11 @@ export class MovingAverageIndicator extends Indicator<
 
     if (this.visible) {
       // Setup drawing context
+      const count = Math.max(this.chart.getIndicators().indexOf(this), 0);
+
       ctx.beginPath();
-      ctx.strokeStyle = this.theme.color;
+
+      ctx.strokeStyle = randomColor(this.chart, count);
       ctx.lineWidth = this.theme.strokeWidth;
 
       visibleDataPoints.forEach((point, index) => {

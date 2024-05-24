@@ -3,6 +3,8 @@ export * from "./chart/formatter";
 export * from "./chart/themes";
 export * from "./chart/types";
 
+export * from "./utils/color";
+
 export * from "./controllers/controller";
 export * from "./controllers/area-controller";
 export * from "./controllers/candle-controller";
