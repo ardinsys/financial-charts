@@ -6,6 +6,7 @@ import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { AxisLabel, ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
+import { pixelRatio } from "../utils/screen";
 
 export type DeepConcrete<T> = T extends Function
   ? T
@@ -427,7 +428,7 @@ export class FinancialChart extends EventEmitter {
           width: this.container.offsetWidth,
           height: this.indicatorHeight,
           y: this.chartHeight + this.indicatorHeight * i,
-          devicePixelRatio: window.devicePixelRatio || 1,
+          devicePixelRatio: pixelRatio(),
           x: 0,
         });
       }
@@ -907,7 +908,7 @@ export class FinancialChart extends EventEmitter {
     type: (typeof this.types)[number],
     canvas: HTMLCanvasElement
   ) {
-    const devicePixelRatio = window.devicePixelRatio || 1;
+    const devicePixelRatio = pixelRatio();
     canvas.style.userSelect = "none";
     // @ts-ignore
     canvas.style.webkitTapHighlightColor = "transparent";
@@ -970,15 +971,15 @@ export class FinancialChart extends EventEmitter {
       const canvas = this.canvases.get(type);
       if (!canvas) return;
 
+      const devicePixelRatio = pixelRatio();
+
       if (this.contexts.has(type)) {
         this.adjustCanvas(type, canvas);
         const ctx = this.getContext(type);
-        const devicePixelRatio = window.devicePixelRatio || 1;
         ctx.scale(devicePixelRatio, devicePixelRatio);
       } else {
         this.adjustCanvas(type, canvas);
         const ctx = this.getContext(type);
-        const devicePixelRatio = window.devicePixelRatio || 1;
         ctx.scale(devicePixelRatio, devicePixelRatio);
       }
     });
@@ -991,8 +992,7 @@ export class FinancialChart extends EventEmitter {
    * @returns number in device pixels
    */
   protected p(num: number) {
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    return num * devicePixelRatio;
+    return num * pixelRatio();
   }
 
   /**
@@ -1002,8 +1002,7 @@ export class FinancialChart extends EventEmitter {
    * @returns number in logical pixels
    */
   protected l(num: number) {
-    const devicePixelRatio = window.devicePixelRatio || 1;
-    return num / devicePixelRatio;
+    return num / pixelRatio();
   }
 
   getContext(type: (typeof this.types)[number]): CanvasRenderingContext2D {
@@ -1022,9 +1021,9 @@ export class FinancialChart extends EventEmitter {
    * @returns    the logical canvas size
    */
   getLogicalCanvas(type: (typeof this.types)[number]) {
-    const width = this.getContext(type).canvas.width / window.devicePixelRatio;
-    const height =
-      this.getContext(type).canvas.height / window.devicePixelRatio;
+    const ratio = pixelRatio();
+    const width = this.getContext(type).canvas.width / ratio;
+    const height = this.getContext(type).canvas.height / ratio;
     return { width, height };
   }
 
@@ -1152,7 +1151,7 @@ export class FinancialChart extends EventEmitter {
         width: this.container.offsetWidth,
         height: this.indicatorHeight,
         y: this.chartHeight + this.indicatorHeight * i,
-        devicePixelRatio: window.devicePixelRatio || 1,
+        devicePixelRatio: pixelRatio(),
         x: 0,
       });
     }
@@ -1173,7 +1172,7 @@ export class FinancialChart extends EventEmitter {
       this.calcSpaceDistribution(this.panaledIndicators.length + 1);
 
       const params: InitParams = {
-        devicePixelRatio: window.devicePixelRatio || 1,
+        devicePixelRatio: pixelRatio(),
         height: this.indicatorHeight,
         width: this.container.offsetWidth,
         x: 0,
