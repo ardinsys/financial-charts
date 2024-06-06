@@ -1,5 +1,6 @@
 import { FinancialChart } from "../chart/financial-chart";
 import { ChartData, TimeRange } from "../chart/types";
+import { pixelRatio } from "../utils/screen";
 import { Extent } from "./extent";
 
 export interface ExtentModifier {
@@ -44,8 +45,9 @@ export abstract class DataExtent extends Extent {
     zoomLevel: number = this.chart.getZoomLevel(),
     panOffset: number = this.chart.getPanOffset()
   ) {
-    const width = canvas.width / window.devicePixelRatio || 1;
-    const height = canvas.height / window.devicePixelRatio || 1;
+    const ratio = pixelRatio();
+    const width = canvas.width / ratio;
+    const height = canvas.height / ratio;
 
     // Define the maximum column height as 20% of the canvas height
     const maxColumnHeight = height * 0.2;

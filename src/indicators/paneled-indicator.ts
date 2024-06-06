@@ -1,5 +1,6 @@
 import { AxisLabel } from "../chart/types";
 import { Extent } from "../extents/extent";
+import { pixelRatio } from "../utils/screen";
 import { DefaultIndicatorOptions, Indicator } from "./indicator";
 
 export interface InitParams {
@@ -125,11 +126,11 @@ export abstract class PaneledIndicator<
   }
 
   protected width() {
-    return this.canvas.width / (window.devicePixelRatio || 1);
+    return this.canvas.width / pixelRatio();
   }
 
   protected height() {
-    return this.canvas.height / (window.devicePixelRatio || 1);
+    return this.canvas.height / pixelRatio();
   }
 
   protected calculateYAxisLabels(fontSize: number, labelSpacing: number) {
@@ -193,6 +194,7 @@ export abstract class PaneledIndicator<
     const yAxisValues = this.calculateYAxisLabels(theme.xAxis.fontSize, 30);
 
     const ctx = this.axisContext;
+    const ratio = pixelRatio();
 
     ctx.fillStyle = theme.yAxis.color;
     ctx.font =
@@ -204,18 +206,13 @@ export abstract class PaneledIndicator<
       const value = yAxisValues[i];
       const y = value.position;
       if (y - theme.yAxis.fontSize < 0) continue;
-      if (
-        y + theme.yAxis.fontSize >
-        this.axisCanvas.height / window.devicePixelRatio
-      )
-        continue;
+      if (y + theme.yAxis.fontSize > this.axisCanvas.height / ratio) continue;
       const text = this.chart.getFormatter().formatPrice(value.value);
       const textWidth = ctx.measureText(text).width;
 
       ctx.fillText(
         text,
-        (ctx.canvas.width / window.devicePixelRatio - textWidth) / 2 +
-          textWidth,
+        (ctx.canvas.width / ratio - textWidth) / 2 + textWidth,
         y
       );
       const mainCtx = this.context;
