@@ -49,7 +49,7 @@ onMounted(() => {
       // end: nineam.getTime() + 1000 * 60 * 180,
     },
     {
-      type: "line",
+      type: "stepline",
       theme: defaultDarkTheme,
       locale: "hu-HU",
       maxZoom: 100,

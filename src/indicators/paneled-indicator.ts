@@ -120,8 +120,18 @@ export abstract class PaneledIndicator<
   private initYAxis() {
     const ctx = this.axisContext;
     ctx.fillStyle = this.chart.getTheme().yAxis.backgroundColor;
-    ctx.clearRect(0, 0, this.chart.getYLabelWidth(), this.height());
-    ctx.fillRect(0, 0, this.chart.getYLabelWidth(), this.height());
+    ctx.clearRect(
+      0,
+      0,
+      this.chart.getYLabelWidth() / pixelRatio(),
+      this.height()
+    );
+    ctx.fillRect(
+      0,
+      0,
+      this.chart.getYLabelWidth() / pixelRatio(),
+      this.height()
+    );
     this.drawYAxis();
   }
 
@@ -221,7 +231,7 @@ export abstract class PaneledIndicator<
       mainCtx.strokeStyle = theme.grid.color;
       mainCtx.beginPath();
       mainCtx.moveTo(0, y);
-      mainCtx.lineTo(mainCtx.canvas.width, y);
+      mainCtx.lineTo(mainCtx.canvas.width / ratio, y);
       mainCtx.stroke();
     }
   }
