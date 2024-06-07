@@ -40,21 +40,18 @@ export class AreaController extends SimpleController {
 
     ctx.stroke(linePath);
 
+    const sizes = this.chart.getLogicalCanvas("main");
+
     ctx.strokeStyle = "transparent";
     ctx.lineWidth = 0;
-    linePath.lineTo(lastX, ctx.canvas.height); // Down to the bottom of the chart
-    linePath.lineTo(firstX, ctx.canvas.height); // Line to the start along the bottom
+    linePath.lineTo(lastX, sizes.height); // Down to the bottom of the chart
+    linePath.lineTo(firstX, sizes.height); // Line to the start along the bottom
     linePath.closePath();
 
     if (typeof this.options.theme.area.fill === "string") {
       ctx.fillStyle = this.options.theme.area.fill;
     } else {
-      const gradient = ctx.createLinearGradient(
-        0,
-        0,
-        0,
-        this.chart.getDrawingSize().height
-      );
+      const gradient = ctx.createLinearGradient(0, 0, 0, sizes.height);
       for (const stop of this.options.theme.area.fill) {
         gradient.addColorStop(stop[0], stop[1]);
       }
