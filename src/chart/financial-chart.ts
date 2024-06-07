@@ -63,6 +63,11 @@ interface XAxisLabel {
   priority: number;
 }
 
+type Resizer = {
+  resize: (force: boolean) => void;
+  ratioResize: () => void;
+};
+
 export class FinancialChart extends EventEmitter {
   private static controllers: Map<ControllerType, new () => ChartController> =
     new Map();
@@ -101,6 +106,7 @@ export class FinancialChart extends EventEmitter {
   protected autoTimeRange = false;
   protected dataExtent!: DataExtent;
   protected visibleExtent: DataExtent;
+  private resizer!: Resizer;
 
   protected indicators: Indicator<any, any>[] = [];
   protected panaledIndicators: PaneledIndicator<any, any>[] = [];
@@ -417,50 +423,77 @@ export class FinancialChart extends EventEmitter {
 
     this.calcSpaceDistribution(this.panaledIndicators.length);
 
-    this.resizeObserver = new ResizeObserver(() => {
-      const oldCanvasSize = this.getDrawingSize().width;
-      this.calcSpaceDistribution(this.panaledIndicators.length);
-      this.resizeCanvases();
+    const createResizers = (): Resizer => {
+      let alreadyResized = false;
+      let oldRatio = pixelRatio();
 
-      for (let i = 0; i < this.panaledIndicators.length; i++) {
-        const indicator = this.panaledIndicators[i];
-        indicator.resize({
-          width: this.container.offsetWidth,
-          height: this.indicatorHeight,
-          y: this.chartHeight + this.indicatorHeight * i,
-          devicePixelRatio: pixelRatio(),
-          x: 0,
-        });
-      }
+      const resizer = (force: boolean) => {
+        if (alreadyResized && !force) {
+          alreadyResized = false;
+          return;
+        }
+        const oldCanvasSize = this.getDrawingSize().width;
+        this.calcSpaceDistribution(this.panaledIndicators.length);
+        this.resizeCanvases();
 
-      const newCanvasSize = this.getDrawingSize().width;
-
-      if (this.data.length > 0) {
-        // requestAnimationFrame(() => {
-        if (this.autoTimeRange) {
-          this.updateAutoTimeRange(true);
+        for (let i = 0; i < this.panaledIndicators.length; i++) {
+          const indicator = this.panaledIndicators[i];
+          indicator.resize({
+            width: this.container.offsetWidth,
+            height: this.indicatorHeight,
+            y: this.chartHeight + this.indicatorHeight * i,
+            devicePixelRatio: pixelRatio(),
+            x: 0,
+          });
         }
 
-        // Calculate scale factor
-        const scaleFactor = newCanvasSize / oldCanvasSize;
+        const newCanvasSize = this.getDrawingSize().width;
 
-        // Adjust panOffset based on the scale factor
-        const newPanOffset = this.panOffset * scaleFactor;
+        this.indicatorLabelContainer.style.maxHeight =
+          this.getLogicalCanvas("main").height -
+          this.options.theme.crosshair.infoLine.fontSize -
+          30 +
+          "px";
 
-        // Constrain newPanOffset within bounds
-        this.panOffset = Math.max(
-          0,
-          Math.min(newPanOffset, this.getMaxPanOffset())
-        );
+        if (this.data.length > 0) {
+          // requestAnimationFrame(() => {
+          if (this.autoTimeRange) {
+            this.updateAutoTimeRange(true);
+          }
 
-        this.requestRedraw(this.allRedrawParts, true);
-      }
-      this.indicatorLabelContainer.style.maxHeight =
-        this.getLogicalCanvas("main").height -
-        this.options.theme.crosshair.infoLine.fontSize -
-        30 +
-        "px";
-    });
+          // Calculate scale factor
+          const scaleFactor = newCanvasSize / oldCanvasSize;
+
+          // Adjust panOffset based on the scale factor
+          const newPanOffset = this.panOffset * scaleFactor;
+
+          // Constrain newPanOffset within bounds
+          this.panOffset = Math.max(
+            0,
+            Math.min(newPanOffset, this.getMaxPanOffset())
+          );
+
+          this.requestRedraw(this.allRedrawParts, true);
+        }
+      };
+
+      return {
+        resize: resizer,
+        ratioResize: () => {
+          const newRatio = pixelRatio();
+          if (oldRatio === newRatio) return;
+          oldRatio = newRatio;
+          resizer(true);
+          alreadyResized = true;
+        },
+      };
+    };
+
+    this.resizer = createResizers();
+
+    window.addEventListener("resize", this.resizer.ratioResize);
+
+    this.resizeObserver = new ResizeObserver(() => this.resizer.resize(false));
     this.resizeObserver.observe(this.container);
   }
 
@@ -752,9 +785,10 @@ export class FinancialChart extends EventEmitter {
 
   private drawController() {
     const ctx = this.getContext("main");
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const sizes = this.getLogicalCanvas("main");
+    ctx.clearRect(0, 0, sizes.width, sizes.height);
     ctx.fillStyle = this.options.theme.backgroundColor;
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillRect(0, 0, sizes.width, sizes.height);
 
     this.recalculateVisibleExtent();
 
@@ -1313,7 +1347,10 @@ export class FinancialChart extends EventEmitter {
   private drawIndicators() {
     if (this.data.length == 0) return;
     const ctx = this.getContext("indicator");
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const sizes = this.getLogicalCanvas("indicator");
+
+    ctx.clearRect(0, 0, sizes.width, sizes.height);
+
     for (const indicator of this.indicators) {
       indicator.draw();
     }
@@ -1324,19 +1361,15 @@ export class FinancialChart extends EventEmitter {
 
   private drawCrosshair(): void {
     const ctx = this.getContext("crosshair");
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    const sizes = this.getLogicalCanvas("crosshair");
+    ctx.clearRect(0, 0, sizes.width, sizes.height);
 
     if (this.pointerTime === -1) return;
     if (this.pointerY === -1) return;
     if (this.isTouchCapable && !this.isTouchCrosshair) return;
 
     if (this.pointerY >= this.container.offsetHeight - this.xLabelHeight) {
-      this.getContext("crosshair").clearRect(
-        0,
-        0,
-        this.getFullSize().width,
-        this.getFullSize().height
-      );
+      this.getContext("crosshair").clearRect(0, 0, sizes.width, sizes.height);
       return;
     }
 
@@ -1484,7 +1517,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   /**
-   * Properly dispose the chart controller.
+   * Properly dispose the chart.
    */
   public dispose() {
     const topCanvas = this.getCanvas("crosshair");
@@ -1499,6 +1532,7 @@ export class FinancialChart extends EventEmitter {
     this.canvases.forEach((canvas) => canvas.remove());
     this.container.remove();
     this.canvases.clear();
+    window.removeEventListener("resize", this.resizer.ratioResize);
   }
 
   /**
@@ -1690,8 +1724,9 @@ export class FinancialChart extends EventEmitter {
     const yAxisValues = this.calculateYAxisLabels(30);
 
     const ctx = this.getContext("y-label");
+    const sizes = this.getLogicalCanvas("y-label");
     ctx.fillStyle = this.options.theme.yAxis.backgroundColor;
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.fillRect(0, 0, sizes.width, sizes.height);
 
     ctx.fillStyle = this.options.theme.yAxis.color;
     ctx.font =
@@ -1703,11 +1738,7 @@ export class FinancialChart extends EventEmitter {
       const value = yAxisValues[i];
       const y = value.position;
       if (y - this.options.theme.yAxis.fontSize < 0) continue;
-      if (
-        y + this.options.theme.yAxis.fontSize >
-        this.getLogicalCanvas("y-label").height
-      )
-        continue;
+      if (y + this.options.theme.yAxis.fontSize > sizes.height) continue;
       const text = this.options.formatter.formatPrice(value.value);
       const textWidth = ctx.measureText(text).width;
 
@@ -1722,14 +1753,14 @@ export class FinancialChart extends EventEmitter {
       mainCtx.strokeStyle = this.options.theme.grid.color;
       mainCtx.beginPath();
       mainCtx.moveTo(0, y);
-      mainCtx.lineTo(mainCtx.canvas.width, y);
+      mainCtx.lineTo(this.getLogicalCanvas("main").width, y);
       mainCtx.stroke();
     }
   }
 
   drawXAxis(): void {
     this.lastXGridCoords = [];
-    const labels = this.processXLabels(); // Assumed to return labels with date, displayLabel, and priority
+    const labels = this.processXLabels();
     const ctx = this.getContext("x-label");
     const mainCtx = this.getContext("main");
     const sizes = this.getLogicalCanvas("x-label");
@@ -1750,7 +1781,7 @@ export class FinancialChart extends EventEmitter {
     ctx.font = `${this.options.theme.xAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
     ctx.textBaseline = "middle";
     const canvasWidth = ctx.canvas.width - this.p(this.yLabelWidth);
-    const padding = this.p(20);
+    const padding = 20;
 
     let drawnLabels: { start: number; end: number }[] = [];
 
@@ -1775,7 +1806,7 @@ export class FinancialChart extends EventEmitter {
           labelPos.end > drawnLabel.start - padding
       );
 
-      if (!overlaps && labelPos.end < canvasWidth) {
+      if (!overlaps && labelPos.end < this.l(canvasWidth)) {
         if (labelPos.start >= 0) {
           ctx.fillText(label.displayLabel, labelPos.start, sizes.height - 15);
 
@@ -1784,7 +1815,7 @@ export class FinancialChart extends EventEmitter {
           mainCtx.strokeStyle = this.options.theme.grid.color;
           mainCtx.beginPath();
           mainCtx.moveTo(x, 0);
-          mainCtx.lineTo(x, mainCtx.canvas.height);
+          mainCtx.lineTo(x, this.l(mainCtx.canvas.height));
           mainCtx.stroke();
           this.lastXGridCoords.push(x);
         }
