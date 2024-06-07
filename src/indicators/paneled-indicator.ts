@@ -145,7 +145,7 @@ export abstract class PaneledIndicator<
 
   protected calculateYAxisLabels(fontSize: number, labelSpacing: number) {
     const textHeight = fontSize * 1.2; // Estimated height of text
-    const canvasHeight = this.axisCanvas.height;
+    const canvasHeight = this.axisCanvas.height / pixelRatio();
 
     let range = this.extent.getYMax() - this.extent.getYMin();
     range = Math.max(range, 0.0001); // Ensure a minimum range to avoid division by zero
