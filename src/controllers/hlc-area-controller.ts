@@ -29,6 +29,7 @@ export class HLCAreaController extends OHLCController {
     const ctx = this.chart.getContext("main");
 
     const visibleDataPoints = this.chart.getLastVisibleDataPoints();
+    if (visibleDataPoints.length === 0) return;
 
     const visibleExtent = this.chart.getVisibleExtent();
 
