@@ -54,7 +54,7 @@ onMounted(() => {
       locale: "hu-HU",
       maxZoom: 100,
       stepSize: 15 * 60 * 1000,
-      volume: true,
+      volume: false,
       localeValues: {
         "hu-HU": {
           indicators: {
