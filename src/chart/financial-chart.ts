@@ -1474,6 +1474,9 @@ export class FinancialChart extends EventEmitter {
 
     for (let i = 0; i < ohlcv.length; i++) {
       if (!visibleLabels[i]) continue;
+      if (ohlcv.length - 1 === i && !this.options.volume) {
+        continue; // Skip volume if not enabled
+      }
       const price = ohlcv[i];
       if (price == undefined) continue;
       let ohlcText = this.options.formatter.formatTooltipPrice(price, decimals);
