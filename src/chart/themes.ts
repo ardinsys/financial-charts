@@ -7,7 +7,11 @@ export function mergeThemes<T extends object = ChartTheme>(
   if (providedTheme == undefined) return { ...defaultTheme };
   // @ts-ignore
   const theme: T = {};
-  for (const key in defaultTheme) {
+  const allKeys = new Set([
+    ...Object.keys(defaultTheme),
+    ...Object.keys(providedTheme),
+  ]);
+  for (const key in allKeys) {
     if (
       typeof defaultTheme[key] === "object" &&
       // Do not object merge arrays
