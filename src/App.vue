@@ -10,7 +10,7 @@ import { HollowCandleController } from "./controllers/hollow-candle-controller";
 import { CandlestickController } from "./controllers/candle-controller";
 import { SteplineController } from "./controllers/step-line-controller";
 import { HLCAreaController } from "./controllers/hlc-area-controller";
-import { defaultDarkTheme } from "./chart/themes";
+import { defaultDarkTheme, mergeThemes } from "./chart/themes";
 import { MovingAverageIndicator } from "./indicators/simple/moving-average";
 import { TestIndicator } from "./indicators/paneled/test-indicator";
 
@@ -39,6 +39,38 @@ let chart: FinancialChart;
 const fiveYear = new Date();
 fiveYear.setFullYear(fiveYear.getFullYear() - 5);
 
+const darkTheme = mergeThemes(defaultDarkTheme, {
+  backgroundColor: "rgb(53, 55, 60)",
+  xAxis: {
+    backgroundColor: "rgb(53, 55, 60)",
+    separatorColor: "rgb(50, 50, 50)",
+  },
+  yAxis: {
+    backgroundColor: "rgb(53, 55, 60)",
+  },
+  grid: {
+    color: "rgb(70, 72, 77)",
+  },
+  area: {
+    color: "#ededed",
+    fill: [
+      [0, "rgba(255, 215, 0, 0.5)"],
+      [0.3, "rgba(255, 211, 0, 0.4)"],
+      [1, "rgba(255, 211, 0, 0.1)"],
+    ],
+  },
+  crosshair: {
+    infoLine: {
+      labels: {
+        EN: ["O: ", "H: ", "L: ", "P: ", "V: "],
+        "hu-HU": ["O: ", "H: ", "L: ", "Á: ", "V: "],
+      },
+    },
+  },
+});
+
+console.log(darkTheme);
+
 onMounted(() => {
   chart = new FinancialChart(
     chartContainer.value!,
@@ -50,7 +82,7 @@ onMounted(() => {
     },
     {
       type: "stepline",
-      theme: defaultDarkTheme,
+      theme: darkTheme,
       locale: "hu-HU",
       maxZoom: 100,
       stepSize: 15 * 60 * 1000,

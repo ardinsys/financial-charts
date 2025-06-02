@@ -11,30 +11,31 @@ export function mergeThemes<T extends object = ChartTheme>(
     ...Object.keys(defaultTheme),
     ...Object.keys(providedTheme),
   ]);
-  for (const key in allKeys) {
+  for (const key of allKeys) {
+    const defaultVal = defaultTheme[key];
+    const providedVal = providedTheme[key];
+
     if (
-      typeof defaultTheme[key] === "object" &&
-      // Do not object merge arrays
-      !Array.isArray(defaultTheme[key]) &&
-      // Do not merge classes
-      Object.getPrototypeOf(defaultTheme[key]).constructor == Object
+      typeof defaultVal === "object" &&
+      typeof providedVal === "object" &&
+      !Array.isArray(defaultVal) &&
+      Object.getPrototypeOf(defaultVal)?.constructor === Object &&
+      Object.getPrototypeOf(providedVal)?.constructor === Object
     ) {
       // @ts-ignore
-      theme[key] = mergeThemes(defaultTheme[key], providedTheme[key]);
+      theme[key] = mergeThemes(defaultVal, providedVal);
     } else {
-      // To handle falsy values like 0 and false
-      if (
-        typeof providedTheme[key] === "boolean" ||
-        typeof providedTheme[key] === "number"
-      ) {
+      if (typeof providedVal === "boolean" || typeof providedVal === "number") {
         // @ts-ignore
-        theme[key] = providedTheme[key];
+        theme[key] = providedVal;
       } else {
+        // Fallback to default if provided is falsy (null/undefined/empty string), except 0/false
         // @ts-ignore
-        theme[key] = providedTheme[key] || defaultTheme[key];
+        theme[key] = providedVal ?? defaultVal;
       }
     }
   }
+
   return theme;
 }
 
