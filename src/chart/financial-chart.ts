@@ -1550,7 +1550,9 @@ export class FinancialChart extends EventEmitter {
     const stepSize = priceRange / maxLabels;
 
     // Estimate decimal places based on step size
-    if (stepSize < 0.0001) {
+    if (stepSize < 0.00001) {
+      return 6; // very small step size
+    } else if (stepSize < 0.0001) {
       return 5; // very small step size
     } else if (stepSize < 0.001) {
       return 4;
