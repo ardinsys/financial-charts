@@ -549,13 +549,13 @@ export class FinancialChart extends EventEmitter {
   }
 
   public updateTheme(theme: ChartTheme) {
-    this.container.classList.remove(`financial-charts-${theme.key}`);
+    this.container.classList.remove(`financial-charts-${this.options.theme.key}`);
     this.options.theme = mergeThemes(this.options.theme, theme);
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     if (this.data.length > 0) {
       this.requestRedraw(this.allRedrawParts);
     }
-    this.container.classList.add(`financial-charts-${this.options.theme.key}`);
+    this.container.classList.add(`financial-charts-${theme.key}`);
   }
 
   public setVolumeDraw(draw: boolean) {
