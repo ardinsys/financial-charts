@@ -10,7 +10,7 @@ import { HollowCandleController } from "./controllers/hollow-candle-controller";
 import { CandlestickController } from "./controllers/candle-controller";
 import { SteplineController } from "./controllers/step-line-controller";
 import { HLCAreaController } from "./controllers/hlc-area-controller";
-import { defaultDarkTheme, mergeThemes } from "./chart/themes";
+import { defaultDarkTheme, defaultLightTheme, mergeThemes } from "./chart/themes";
 import { MovingAverageIndicator } from "./indicators/simple/moving-average";
 import { TestIndicator } from "./indicators/paneled/test-indicator";
 
