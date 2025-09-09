@@ -11,8 +11,8 @@ import { pixelRatio } from "../utils/screen";
 export type DeepConcrete<T> = T extends Function
   ? T
   : T extends object
-  ? { [P in keyof T]-?: DeepConcrete<T[P]> }
-  : T;
+    ? { [P in keyof T]-?: DeepConcrete<T[P]> }
+    : T;
 
 export type ControllerID =
   | "area"
@@ -125,7 +125,7 @@ export class FinancialChart extends EventEmitter {
   private resizeObserver: ResizeObserver;
 
   private isTouchCrosshair = false;
-  private isTouchCrosshairTimeout?: NodeJS.Timeout;
+  private isTouchCrosshairTimeout?: number;
 
   private isTouchCapable = "ontouchstart" in window;
 
@@ -549,7 +549,9 @@ export class FinancialChart extends EventEmitter {
   }
 
   public updateTheme(theme: ChartTheme) {
-    this.container.classList.remove(`financial-charts-${this.options.theme.key}`);
+    this.container.classList.remove(
+      `financial-charts-${this.options.theme.key}`
+    );
     this.options.theme = mergeThemes(this.options.theme, theme);
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     if (this.data.length > 0) {
