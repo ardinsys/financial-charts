@@ -14,6 +14,7 @@ export default defineConfig({
       name: "financial-charts",
       formats: ["es"],
       fileName: () => "index.js",
+      cssFileName: "style",
     },
   },
 });

@@ -125,7 +125,7 @@ export class FinancialChart extends EventEmitter {
   private resizeObserver: ResizeObserver;
 
   private isTouchCrosshair = false;
-  private isTouchCrosshairTimeout?: number;
+  private isTouchCrosshairTimeout?: any;
 
   private isTouchCapable = "ontouchstart" in window;
 
