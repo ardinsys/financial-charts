@@ -30,6 +30,9 @@
     "dev": "vite --host",
     "build": "vite build && tsc src/index.ts --declaration --emitDeclarationOnly --esModuleInterop --outDir dist --target es2022 --moduleResolution bundler",
     "preview": "vite preview",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
@@ -38,6 +41,7 @@
     "prettier": "^3.6.2",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
+    "vitepress": "^1.4.2",
     "vue": "^3.3.11",
     "vue-tsc": "^2.2.12"
   }
