@@ -53,7 +53,7 @@ import {
   type ChartTheme,
 } from "@ardinsys/financial-charts";
 // If you want to use indicators, import the default css for it. (more on that later)
-import "@ardinsys/financial-charts/dist/styles.css";
+import "@ardinsys/financial-charts/dist/style.css";
 
 const myTheme: ChartTheme = {
   /* provide the values you want to override */
@@ -90,9 +90,24 @@ const chart = new FinancialChart(
     // Should it draw the volume chart as well?
     volume: true,
     localeValues: {
-      // some basic localization strings, mainly for indicators right now.
       EN: {
-        // You have to speicify here everything that the intellisense tells you
+        common: {
+          sources: {
+            open: "Open",
+            high: "High",
+            low: "Low",
+            close: "Close",
+            volume: "Volume",
+          },
+        },
+        indicators: {
+          actions: {
+            show: "Show",
+            hide: "Hide",
+            settings: "Settings",
+            remove: "Remove",
+          },
+        },
       },
     },
   }
@@ -165,7 +180,7 @@ chart.setVolumeDraw(true);
 ```ts
 // Chart will NOT hold its state
 // It will be redrawn with default state
-// zoom will be set to 1, panOffset will be set to 0
-// data will be remapped to the new stepSize
+// Zoom resets to 1
+// Data will be remapped to the new stepSize
 chart.updateCoreOptions(timeRange, stepSize, maxZoom);
 ```

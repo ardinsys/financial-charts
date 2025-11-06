@@ -19,7 +19,7 @@ features:
   - title: Framework agnostic
     details: Works with vanilla JS, React, Vue, or any library that can supply an element reference.
   - title: Customizable
-    details: Use built-in themes or supply your own formatters, locales, and controllers.
+    details: Use built-in themes or supply your own formatter, locales, and controllers.
 ---
 
 ## Overview

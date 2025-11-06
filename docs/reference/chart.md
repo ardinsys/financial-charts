@@ -20,24 +20,25 @@ new FinancialChart(
 
 ```ts
 type ChartOptions = {
-  type: string;
+  type: ControllerType;
+  stepSize: number;
+  maxZoom: number;
+  volume: boolean;
   theme?: ChartTheme;
   locale?: string;
-  localeValues?: Record<string, Record<string, unknown>>;
-  maxZoom?: number;
-  stepSize?: number;
-  volume?: boolean;
-  formatters?: {
-    price?: (value: number) => string;
-    time?: (value: number) => string;
-  };
+  formatter?: Formatter;
+  localeValues?: Record<string, LocaleValues>;
 };
 ```
 
 - `type` — Identifier for the registered controller (for example `"candlestick"` or `"hlc-area"`).
-- `theme` — Theme object or merged theme returned from `mergeThemes`.
 - `stepSize` — Time frame granularity in milliseconds.
+- `maxZoom` — Maximum zoom factor the user may reach before data remapping is triggered.
 - `volume` — Enables a volume histogram under the main chart.
+- `theme` — Theme object or merged theme returned from `mergeThemes`.
+- `locale` — Locale code forwarded to the formatter.
+- `formatter` — Custom formatter instance. Defaults to `DefaultFormatter`.
+- `localeValues` — Localized indicator labels keyed by locale. Merged with the defaults internally.
 
 ## Data methods
 
@@ -58,7 +59,7 @@ chart.setVolumeDraw(enabled: boolean): void;
 chart.updateCoreOptions(
   timeRange: { start: number; end: number } | "auto",
   stepSize: number,
-  maxZoom?: number
+  maxZoom: number
 ): void;
 ```
 

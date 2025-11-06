@@ -10,7 +10,7 @@ Call `updateCoreOptions` to replace the visible time range, step size, and maxim
 chart.updateCoreOptions(
   {
     start: Date.UTC(2024, 0, 2),
-    end: Date.UTC(2024, 0, 6)
+    end: Date.UTC(2024, 0, 6),
   },
   30 * 60 * 1000,
   120
@@ -28,7 +28,7 @@ chart.updateCoreOptions("auto", 15 * 60 * 1000, 150);
 ## Interactions
 
 - **Zooming:** Pinch or scroll to zoom. Combine with programmatic calls to `updateCoreOptions` for custom zoom controls.
-- **Panning:** Drag the chart to move in time, or update the `panOffset` via your own UI by calling `setPanOffset`.
+- **Panning:** Drag the chart to move in time. To shift the window programmatically, call `updateCoreOptions` with an adjusted time range.
 - **Overlays:** Register additional controllers to display indicators or custom drawings.
 
 ## Switching controllers
@@ -49,14 +49,28 @@ chart.setVolumeDraw(true);
 
 ## Updating the locale
 
-Provide locale strings during instantiation or with `updateLocale`. Combine with custom formatters for full control over labels.
+Provide locale strings during instantiation or with `updateLocale`. Combine with custom formatter implementations for full control over labels.
 
 ```ts
 chart.updateLocale("EN", {
   EN: {
-    indicator: {
-      sma: "Simple Moving Average"
-    }
-  }
+    common: {
+      sources: {
+        open: "Open price",
+        high: "High",
+        low: "Low",
+        close: "Close",
+        volume: "Volume",
+      },
+    },
+    indicators: {
+      actions: {
+        show: "Show",
+        hide: "Hide",
+        settings: "Settings",
+        remove: "Remove",
+      },
+    },
+  },
 });
 ```

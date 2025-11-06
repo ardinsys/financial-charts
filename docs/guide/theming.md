@@ -10,22 +10,22 @@ Use `mergeThemes` to layer overrides on top of the defaults. Only override the p
 import {
   defaultLightTheme,
   defaultDarkTheme,
-  mergeThemes
+  mergeThemes,
 } from "@ardinsys/financial-charts";
 
 const baseTheme = mergeThemes(defaultLightTheme, {
   background: {
-    color: "#ffffff"
+    color: "#ffffff",
   },
   grid: {
-    color: "#cccccc"
-  }
+    color: "#cccccc",
+  },
 });
 
 const darkTheme = mergeThemes(defaultDarkTheme, {
   background: {
-    color: "#141414"
-  }
+    color: "#141414",
+  },
 });
 ```
 
@@ -41,19 +41,26 @@ While the chart can operate with a single theme, providing both light and dark v
 
 ## Locale and formatter overrides
 
-Varying locale strings and number formatting often goes hand in hand with theming. Supply custom formatters for prices and timestamps via the chart options.
+Varying locale strings and number formatting often goes hand in hand with theming. Provide a custom formatter instance that implements the `Formatter` interface (for example by extending `DefaultFormatter`).
 
 ```ts
-const formatters = {
-  price: (value: number) => `${value.toFixed(2)} USD`,
-  time: (value: number) => new Date(value).toLocaleString("en-US")
-};
+import { DefaultFormatter, FinancialChart } from "@ardinsys/financial-charts";
+
+class CustomFormatter extends DefaultFormatter {
+  formatPrice(value: number): string {
+    return `${value.toFixed(2)} USD`;
+  }
+
+  formatTooltipDate(value: number): string {
+    return new Date(value).toLocaleString("en-US");
+  }
+}
 
 const chart = new FinancialChart(root, "auto", {
   type: "candlestick",
   theme: baseTheme,
   locale: "EN",
-  formatters
+  formatter: new CustomFormatter(),
 });
 ```
 
