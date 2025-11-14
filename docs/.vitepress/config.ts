@@ -9,7 +9,7 @@ export default defineConfig({
     nav: [
       { text: "Guide", link: "/guide/getting-started" },
       { text: "Reference", link: "/reference/chart" },
-      { text: "GitHub", link: "https://github.com/ardinsys/financial-charts" },
+      { text: "GitHub", link: "https://github.com/ardinsys/financial-charts" }
     ],
     sidebar: {
       "/guide/": [
@@ -18,19 +18,22 @@ export default defineConfig({
           items: [
             { text: "Getting Started", link: "/guide/getting-started" },
             { text: "Configuration", link: "/guide/configuration" },
-            { text: "Theming", link: "/guide/theming" },
-          ],
-        },
+            { text: "Theming", link: "/guide/theming" }
+          ]
+        }
       ],
       "/reference/": [
         {
           text: "API Reference",
-          items: [{ text: "FinancialChart", link: "/reference/chart" }],
-        },
-      ],
+          items: [
+            { text: "FinancialChart", link: "/reference/chart" },
+            { text: "Indicators", link: "/reference/indicators" }
+          ]
+        }
+      ]
     },
     socialLinks: [
-      { icon: "github", link: "https://github.com/ardinsys/financial-charts" },
-    ],
-  },
+      { icon: "github", link: "https://github.com/ardinsys/financial-charts" }
+    ]
+  }
 });
