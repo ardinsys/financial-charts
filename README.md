@@ -4,7 +4,7 @@
 
 **Documentation is work in progress. This is just a basic outline, what you can do and how can you use the basic features.**
 
-Canvas based charting library for price charts with a dead simple API, which supports themes, custom locales or even a full custom formatter for dates and prices.
+Canvas based charting library for price charts with a dead simple API, which supports themes, custom locales or even a full custom formatter for dates and prices. Still optimized for trading applications, keeping the bundle tiny (16.5 kB gzipped, no third party dependencies) and exposing hooks for controllers, themes, locales and formatters.
 
 ## Features
 
@@ -20,19 +20,33 @@ Canvas based charting library for price charts with a dead simple API, which sup
 - indicators (currently there isn't any premade indicator, just a test SMA)
 - paneled indicators (WIP)
 
-## Quick start
+## Installation
 
-### Import and register the controllers you will use
+```bash
+npm install @ardinsys/financial-charts
+```
+
+The package ships as an ES module and works with bundlers such as Vite, Webpack, Rollup, or any environment that can consume modern JavaScript. When using indicators, remember to include the distributed stylesheet.
 
 ```ts
-import { FinancialChart } from "@ardinsys/financial-charts";
-import { AreaController } from "@ardinsys/financial-charts";
-import { LineController } from "@ardinsys/financial-charts";
-import { BarController } from "@ardinsys/financial-charts";
-import { HollowCandleController } from "@ardinsys/financial-charts";
-import { CandlestickController } from "@ardinsys/financial-charts";
-import { SteplineController } from "@ardinsys/financial-charts";
-import { HLCAreaController } from "@ardinsys/financial-charts";
+import "@ardinsys/financial-charts/dist/style.css";
+```
+
+## Usage overview
+
+### 1. Register the controllers you plan to use
+
+```ts
+import {
+  FinancialChart,
+  AreaController,
+  LineController,
+  BarController,
+  HollowCandleController,
+  CandlestickController,
+  SteplineController,
+  HLCAreaController
+} from "@ardinsys/financial-charts";
 
 FinancialChart.registerController(AreaController);
 FinancialChart.registerController(LineController);
@@ -43,144 +57,182 @@ FinancialChart.registerController(SteplineController);
 FinancialChart.registerController(HLCAreaController);
 ```
 
-### Import the default themes, or create your own
+### 2. Import or extend a theme
 
 ```ts
 import {
-  defaultDarkTheme,
   defaultLightTheme,
+  defaultDarkTheme,
   mergeThemes,
-  type ChartTheme,
+  type ChartTheme
 } from "@ardinsys/financial-charts";
-// If you want to use indicators, import the default css for it. (more on that later)
-import "@ardinsys/financial-charts/dist/style.css";
 
-const myTheme: ChartTheme = {
-  /* provide the values you want to override */
+const customTheme: ChartTheme = {
+  grid: {
+    color: "#282b38",
+    width: 1
+  }
 };
 
-// Use the utility function to merge your theme.
-// If you only want to use the light theme then you can skip this step
-// since by default your theme will be merged with the light theme
-const fullTheme = mergeThemes(defaultDarkTheme, myTheme);
+const theme = mergeThemes(defaultLightTheme, customTheme);
+const darkTheme = mergeThemes(defaultDarkTheme, customTheme);
 ```
 
-### Create your chart
+### 3. Create a chart instance
 
 ```ts
-import { FinancialChart } from "@ardinsys/financial-charts";
-
 const chart = new FinancialChart(
-  // this can be a react/vue ref or anything. It should be a HTMLElement.
-  document.getElementById("my-container"),
+  document.getElementById("my-container")!,
   {
-    // Time range that will be visible
-    // can be "auto" instead of an object (more on that later in the documentation)
-    start: nineam.getTime(),
-    end: fivepm.getTime(),
+    start: Date.UTC(2024, 0, 1, 9, 0),
+    end: Date.UTC(2024, 0, 1, 17, 0)
   },
   {
-    type: "hlc-area",
-    theme: myTheme,
-    // default is the navigator language
-    locale: "EN",
-    maxZoom: 100,
-    // step size in millis
+    type: "candlestick",
     stepSize: 15 * 60 * 1000,
-    // Should it draw the volume chart as well?
+    maxZoom: 150,
     volume: true,
-    localeValues: {
-      EN: {
-        common: {
-          sources: {
-            open: "Open",
-            high: "High",
-            low: "Low",
-            close: "Close",
-            volume: "Volume",
-          },
-        },
-        indicators: {
-          actions: {
-            show: "Show",
-            hide: "Hide",
-            settings: "Settings",
-            remove: "Remove",
-          },
-        },
-      },
-    },
+    theme,
+    locale: "EN"
   }
 );
 ```
 
-### Draw / Update your chart
-
-**Your data must be sorted beforehand!**
+### 4. Draw data
 
 ```ts
-// Initial draw
-// If you want to use completely new and different data, also use this method
 chart.draw([
   {
-    time: nineam.getTime(),
+    time: Date.UTC(2024, 0, 1, 9, 0),
     open: 11,
     high: 15,
     low: 10,
     close: 10,
-    volume: 1_200_000,
+    volume: 1_200_000
   },
   {
-    time: nineam.getTime() + 1000 * 60 * 15,
+    time: Date.UTC(2024, 0, 1, 9, 15),
     open: 10,
     high: 15,
     low: 8,
     close: 15,
-    volume: 1_500_000,
-  },
-  {
-    time: nineam.getTime() + 1000 * 60 * 30,
-    open: 15,
-    high: 17,
-    low: 11,
-    close: 12,
-    volume: 1_400_000,
-  },
+    volume: 1_500_000
+  }
 ]);
+```
 
-// Update with next point
+### 5. Stream real-time updates
+
+```ts
 chart.drawNextPoint({
-  time: nineam.getTime() + 1000 * 60 * 45,
-  close: 13,
+  time: Date.UTC(2024, 0, 1, 9, 30),
+  open: 11,
   high: 14,
   low: 10,
-  open: 11,
-  volume: 1_600_000,
+  close: 13,
+  volume: 1_600_000
 });
 ```
 
-### Change chart type, options, theme, locale etc.
+## Data requirements
 
 ```ts
-// Chart will hold its state
-chart.changeType("candle");
+type Candle = {
+  time: number; // UNIX timestamp in milliseconds
+  open?: number | null;
+  high?: number | null;
+  low?: number | null;
+  close?: number | null;
+  volume?: number | null;
+};
 ```
 
-```ts
-// Chart will hold its state
-chart.updateTheme(yourTheme);
-```
+- Data **must** be sorted ascending by `time`.
+- The library automatically snaps timestamps to the configured `stepSize` and merges duplicates for you.
+- Supply the full OHLCV tuple whenever possible so candle bodies, wicks, and volume bars render correctly.
+- Call `draw` when you replace the entire dataset, call `drawNextPoint` only for the newest bar.
+
+## Runtime configuration
 
 ```ts
-// Chart will hold its state
-// Enable or disable volume drawing
+// Replace the visible window or adjust the granularity
+chart.updateCoreOptions(
+  "auto",
+  5 * 60 * 1000,
+  200 // max zoom factor
+);
+
+// Switch controllers (state is preserved)
+chart.changeType("hlc-area");
+
+// Toggle the secondary volume histogram
 chart.setVolumeDraw(true);
+
+// Merge theme changes at runtime
+chart.updateTheme({ crosshair: { color: "#FF6B6B" } });
+
+// Update locale and labels
+chart.updateLocale("HU", {
+  HU: {
+    common: {
+      sources: {
+        open: "Nyitó",
+        high: "Max",
+        low: "Min",
+        close: "Záró",
+        volume: "Forgalom"
+      }
+    },
+    indicators: {
+      actions: {
+        show: "Megjelenítés",
+        hide: "Elrejtés",
+        settings: "Beállítás",
+        remove: "Törlés"
+      }
+    }
+  }
+});
 ```
 
+`FinancialChart` exposes getters for the current theme, data set, zoom level, and visible time range, which makes it straightforward to drive external UI or persist state.
+
+## Events and interactions
+
+`FinancialChart` extends a small event emitter. Listen for user actions or indicator UI interactions:
+
 ```ts
-// Chart will NOT hold its state
-// It will be redrawn with default state
-// Zoom resets to 1
-// Data will be remapped to the new stepSize
-chart.updateCoreOptions(timeRange, stepSize, maxZoom);
+const offClick = chart.on("click", ({ point }) => {
+  console.log("Clicked candle", point);
+});
+
+chart.on("indicator-settings-open", ({ indicator }) => {
+  openSettingsModal(indicator.getOptions());
+});
+
+chart.on("indicator-remove", ({ indicator }) => {
+  console.log("Removed indicator", indicator.getKey());
+});
 ```
+
+The library exposes `click`, `touch-click`, `indicator-visibility-changed`, `indicator-settings-open`, and `indicator-remove` events out of the box.
+
+## Indicators and extensions
+
+Overlay indicators can be rendered on the main canvas, while paneled indicators get their own mini chart plus axis. Use `chart.addIndicator`/`chart.removeIndicator` to manage them dynamically.
+
+```ts
+import { MovingAverageIndicator } from "@ardinsys/financial-charts";
+
+const ma = new MovingAverageIndicator();
+chart.addIndicator(ma);
+
+// Later:
+chart.removeIndicator(ma);
+```
+
+For custom overlays, extend `Indicator` or `PaneledIndicator` and register new controllers that fit your data. Controllers can read zoom level, pan offset, and the mapped `DataExtent` so you have full control over the drawing lifecycle.
+
+## Documentation
+
+The full guide and API reference live in `/docs`. Run `npm run docs:dev` locally or open the published docs site (if available) for in-depth tutorials on configuration, theming, indicators, and the controller API.
