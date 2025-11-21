@@ -14,9 +14,9 @@ new FinancialChart(
 
 ### Parameters
 
-- `container` — Element that hosts the chart canvases. The chart observes its size via `ResizeObserver`.
-- `timeRange` — Initial visible span. Pass `"auto"` to derive it from incoming data.
-- `options` — Controller, theme, and locale configuration (details below).
+- `container` – Element that hosts the chart canvases. The chart observes its size via `ResizeObserver`.
+- `timeRange` – Initial visible span. Pass `"auto"` to derive it from incoming data.
+- `options` – Controller, theme, and locale configuration (details below).
 
 ### ChartOptions
 

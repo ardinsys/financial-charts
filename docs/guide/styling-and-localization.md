@@ -1,10 +1,10 @@
-# Theming
+# Styling and localization
 
-Themes control colors, typography, and surface styling. Combine the shipped light and dark themes with your overrides to match your brand.
+Themes, locales, and formatters let you align the chart with your brand and language requirements without touching the rendering core.
 
 ## Theme anatomy
 
-The `ChartTheme` type exposes the following sections:
+`ChartTheme` is split into predictable sections:
 
 | Key          | Description                                                                 |
 | ------------ | --------------------------------------------------------------------------- |
@@ -16,7 +16,7 @@ The `ChartTheme` type exposes the following sections:
 | `crosshair`  | Line color/dash plus tooltip styling and info-line labels.                  |
 | `randomColors` | Palette used when multiple indicators request auto colors.                |
 
-Any missing property falls back to the defaults, which makes partial overrides straightforward.
+Merge your overrides with the shipped themes – missing values are backfilled automatically.
 
 ```ts
 import {
@@ -41,33 +41,21 @@ const baseTheme = mergeThemes(defaultLightTheme, {
     }
   }
 });
-
-const darkTheme = mergeThemes(defaultDarkTheme, {
-  grid: { color: "#222637" },
-  candle: {
-    upColor: "#3CCF91",
-    downColor: "#FF6B6B"
-  }
-});
 ```
 
-## Applying themes
-
-Pass the theme when creating a chart or later with `updateTheme`.
+Apply themes on creation or at runtime:
 
 ```ts
-chart.updateTheme(darkTheme);
+chart.updateTheme(baseTheme);
 ```
 
-While the chart can operate with a single theme, providing both light and dark variants allows you to respond to user preferences easily.
+## Responding to user preference
 
-### Responding to user preference
-
-Use `matchMedia` to select a default palette and keep a reference for later toggles.
+Detect the active color scheme and switch themes live.
 
 ```ts
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-const theme = prefersDark ? darkTheme : baseTheme;
+const theme = prefersDark ? defaultDarkTheme : baseTheme;
 
 const chart = new FinancialChart(root, "auto", {
   type: "hlc-area",
@@ -80,13 +68,39 @@ const chart = new FinancialChart(root, "auto", {
 window
   .matchMedia("(prefers-color-scheme: dark)")
   .addEventListener("change", (event) => {
-    chart.updateTheme(event.matches ? darkTheme : baseTheme);
+    chart.updateTheme(event.matches ? defaultDarkTheme : baseTheme);
   });
 ```
 
 ## Locale and formatter overrides
 
-Varying locale strings and number formatting often goes hand in hand with theming. Provide a custom formatter instance that implements the `Formatter` interface (for example by extending `DefaultFormatter`).
+Provide locale strings when constructing the chart or later with `updateLocale`. Missing values merge into built-in English defaults, so you only override what changes.
+
+```ts
+chart.updateLocale("EN", {
+  EN: {
+    common: {
+      sources: {
+        open: "Open price",
+        high: "High",
+        low: "Low",
+        close: "Close",
+        volume: "Volume"
+      }
+    },
+    indicators: {
+      actions: {
+        show: "Show",
+        hide: "Hide",
+        settings: "Settings",
+        remove: "Remove"
+      }
+    }
+  }
+});
+```
+
+For completely custom label formatting, extend the `Formatter` interface (or `DefaultFormatter`) and pass an instance to the chart:
 
 ```ts
 import { DefaultFormatter, FinancialChart } from "@ardinsys/financial-charts";
@@ -109,4 +123,4 @@ const chart = new FinancialChart(root, "auto", {
 });
 ```
 
-Remember to include the distributed stylesheet (`@ardinsys/financial-charts/dist/style.css`) when using indicators so the UI elements inherit the expected baseline styles. You can extend the CSS classes that start with `.fci-` to further customize indicator labels and action buttons.
+Remember to import `@ardinsys/financial-charts/dist/style.css` when using indicators so the UI labels inherit the base styling.
