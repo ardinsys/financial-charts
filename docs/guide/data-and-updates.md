@@ -53,3 +53,17 @@ You can always read the current values with `chart.getOptions()` and `chart.getV
 ## Reading mapped data
 
 `chart.getData()` returns the dataset **after** it has been mapped to the active `stepSize`. Use it to hydrate UI lists, run calculations, or persist state without reprocessing your raw feed.
+
+## Handling late or out-of-order data
+
+`drawNextPoint` assumes new data belongs to the newest time slot. If you receive corrections for older candles, re-run `draw` with the full (sorted) array so the remapping step can rebuild the series correctly.
+
+- New points that land in the same `stepSize` bucket as the last candle are merged: high/low extend, close is replaced.
+- Timestamps are snapped **down** to the nearest `stepSize` boundary; if that is not desired, align them before calling `drawNextPoint`.
+- Keep feeds sorted ascending by `time` to avoid “holes” or duplicated labels.
+
+## Troubleshooting gaps and jumps
+
+- **Gaps after switching step size:** the chart remaps data on `updateCoreOptions`; zoom/pan reset is expected when `stepSize` changes.
+- **Live chart stops scrolling:** when auto range is on, the view only follows the right edge if you haven’t panned away; reset with `updateCoreOptions("auto", ...)` or clear `panOffset`.
+- **Mixed timezones:** pass UTC timestamps (number) rather than `Date` instances to keep snapping consistent across locales.
