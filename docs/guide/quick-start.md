@@ -78,6 +78,35 @@ const chart = new FinancialChart(
 );
 ```
 
+### Optional: wire in your i18n bundle
+
+If you already use `@ardinsys/intl`, pass the same locale code and strings to the chart so indicator labels match the rest of the UI.
+
+```ts
+import { createIntl } from "@ardinsys/intl";
+
+const { locale, setLocale, t } = createIntl("en", {
+  en: { messages: { indicators: { actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" } } } },
+  hu: { messages: { indicators: { actions: { show: "Megjelenítés", hide: "Elrejtés", settings: "Beállítás", remove: "Törlés" } } } }
+});
+
+chart.updateLocale(locale, {
+  [locale]: {
+    indicators: { actions: {
+      show: t("indicators.actions.show"),
+      hide: t("indicators.actions.hide"),
+      settings: t("indicators.actions.settings"),
+      remove: t("indicators.actions.remove")
+    }},
+    common: { sources: {
+      open: "Open", high: "High", low: "Low", close: "Close", volume: "Volume"
+    }}
+  }
+});
+```
+
+Call `setLocale("hu")` (or any supported code) and rerun `updateLocale` with the matching translation block to refresh labels and tooltips.
+
 ## 5. Push data
 
 Use the `Candle` shape – values are optional so you can stream partial updates.
