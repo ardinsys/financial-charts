@@ -44,6 +44,13 @@ type Props = { data: Candle[]; latest?: Candle };
 export function Chart({ data, latest }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<FinancialChart | null>(null);
+  const appLocale = "en"; // wire this to your i18n store
+  const localeValues = {
+    en: {
+      indicators: { actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" } },
+      common: { sources: { open: "Open", high: "High", low: "Low", close: "Close", volume: "Volume" } }
+    }
+  };
 
   useEffect(() => {
     registerControllers();
@@ -66,6 +73,10 @@ export function Chart({ data, latest }: Props) {
   useEffect(() => {
     chartRef.current?.draw(data);
   }, [data]);
+
+  useEffect(() => {
+    chartRef.current?.updateLocale(appLocale, localeValues);
+  }, [appLocale]);
 
   useEffect(() => {
     if (latest) chartRef.current?.drawNextPoint(latest);

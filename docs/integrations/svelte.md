@@ -43,6 +43,13 @@ export function registerControllers() {
 
   export let data: Candle[] = [];
   export let latest?: Candle;
+  export let locale: string = "en";
+  const localeValues = {
+    en: {
+      indicators: { actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" } },
+      common: { sources: { open: "Open", high: "High", low: "Low", close: "Close", volume: "Volume" } }
+    }
+  };
 
   let container: HTMLDivElement | null = null;
   let chart: FinancialChart | null = null;
@@ -59,11 +66,16 @@ export function registerControllers() {
     });
 
     chart.draw(data);
+    chart.updateLocale(locale, localeValues);
   });
 
   $: if (chart) {
     chart.draw(data);
     if (latest) chart.drawNextPoint(latest);
+  }
+
+  $: if (chart) {
+    chart.updateLocale(locale, localeValues);
   }
 
   onDestroy(() => chart?.dispose());

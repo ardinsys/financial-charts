@@ -14,6 +14,13 @@ import "@ardinsys/financial-charts/dist/style.css";
 import { registerControllers } from "./controllers";
 
 const props = defineProps<{ data: Candle[]; latest?: Candle }>();
+const appLocale = ref("en"); // replace with your i18n store value
+const localeValues = {
+  en: {
+    indicators: { actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" } },
+    common: { sources: { open: "Open", high: "High", low: "Low", close: "Close", volume: "Volume" } }
+  }
+};
 
 const container = ref<HTMLElement | null>(null);
 const chart = ref<FinancialChart | null>(null);
@@ -31,6 +38,8 @@ onMounted(() => {
 
   instance.draw(props.data);
   chart.value = instance;
+
+  chart.value.updateLocale(appLocale.value, localeValues);
 });
 
 watch(
@@ -43,6 +52,10 @@ watch(
   () => props.latest,
   (point) => point && chart.value?.drawNextPoint(point)
 );
+
+watch(appLocale, (locale) => {
+  chart.value?.updateLocale(locale, localeValues);
+});
 
 onBeforeUnmount(() => chart.value?.dispose());
 </script>
