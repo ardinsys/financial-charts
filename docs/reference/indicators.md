@@ -39,6 +39,15 @@ The base class automatically wires the template buttons:
 - `getModifier(visibleTimeRange)` lets you modify the Y-axis extent. Return an `ExtentModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).
 - `updateOptions(partial)` merges new options, requests a redraw, and re-renders the label.
 
+### Label templates
+
+Ensure your template includes these `data-id` hooks so the base class can wire events and localization:
+
+- `label`, `name`, `extra`, `value`
+- `show`, `hide`, `settings`, `remove`
+
+Templates are chosen by `chart.getOptions().theme.key` (default `"light"` / `"dark"`). Provide matching entries for each theme key you support to avoid missing buttons.
+
 ## Paneled indicators
 
 `PaneledIndicator` extends `Indicator` and supplies its own container plus two canvases (main chart and Y axis). Implement the following methods:

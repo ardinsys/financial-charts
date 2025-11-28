@@ -44,6 +44,12 @@ type ChartOptions = {
 | `formatter`   | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.              |
 | `localeValues`| Localized indicator labels keyed by locale. Merged with built-in English strings.                |
 
+#### Localization options
+
+- `locale` keeps the formatter and indicator UI in sync. `updateLocale(nextLocale, values?)` recomputes labels and rerenders the chart.
+- `localeValues` is merged with the internal `default` block (`Show/Hide/Settings/Remove` + OHLCV names). Supply only the locales you need; missing entries fall back to `default`.
+- `formatter` can extend `DefaultFormatter` to reuse axis formatting while customizing tooltip dates/prices.
+
 ## Data contracts
 
 ```ts
@@ -91,6 +97,11 @@ type LocaleValues = {
 | `draw(data)`          | Replaces the full dataset and redraws the chart. Call this when symbols or timeframes change.   |
 | `drawNextPoint(point)`| Adds or updates the latest candle. Keeps zoom/pan when possible, ideal for real-time feeds.     |
 | `getData()`           | Returns the current dataset after it has been mapped to the active `stepSize`.                  |
+
+`drawNextPoint` behavior:
+- Timestamps are snapped down to the nearest `stepSize`.
+- If the new point lands in the same slot as the last candle, high/low extend and close is replaced; otherwise it appends.
+- With auto range enabled, the window expands and keeps the right edge in view unless you have panned away.
 
 ### View and styling
 
