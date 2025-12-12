@@ -5,7 +5,7 @@ Charts stay predictable when the incoming feed matches the expected shape and ca
 ## Candle shape and ordering
 
 ```ts
-type Candle = {
+type ChartData = {
   time: number; // UNIX timestamp in milliseconds
   open?: number | null;
   high?: number | null;
@@ -24,7 +24,7 @@ type Candle = {
 Use `draw(data)` to replace the full dataset. Provide either a concrete range or `"auto"` when constructing the chart:
 
 - **Explicit range:** the view starts at `{ start, end }` and zooms relative to that base window.
-- **Auto:** the chart derives the window from the first and last candle plus one extra `stepSize`.
+- **Auto:** the window starts at the first candle and extends to either the last candle plus one `stepSize` or a viewport-sized span (roughly 30-50 steps), whichever is larger.
 
 When the range is `"auto"`, subsequent `draw` calls recompute the visible span automatically.
 
@@ -65,5 +65,5 @@ You can always read the current values with `chart.getOptions()` and `chart.getV
 ## Troubleshooting gaps and jumps
 
 - **Gaps after switching step size:** the chart remaps data on `updateCoreOptions`; zoom/pan reset is expected when `stepSize` changes.
-- **Live chart stops scrolling:** when auto range is on, the view only follows the right edge if you haven’t panned away; reset with `updateCoreOptions("auto", ...)` or clear `panOffset`.
+- **Live chart stops scrolling:** when auto range is on, the view only follows the right edge if you haven’t panned away; reset with `updateCoreOptions("auto", ...)` to re-anchor to the latest data.
 - **Mixed timezones:** pass UTC timestamps (number) rather than `Date` instances to keep snapping consistent across locales.

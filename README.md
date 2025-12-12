@@ -88,7 +88,7 @@ const chart = new FinancialChart(
     end: Date.UTC(2024, 0, 1, 17, 0)
   },
   {
-    type: "candlestick",
+    type: "candle",
     stepSize: 15 * 60 * 1000,
     maxZoom: 150,
     volume: true,
@@ -137,7 +137,7 @@ chart.drawNextPoint({
 ## Data requirements
 
 ```ts
-type Candle = {
+type ChartData = {
   time: number; // UNIX timestamp in milliseconds
   open?: number | null;
   high?: number | null;

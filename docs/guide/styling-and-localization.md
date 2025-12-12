@@ -105,6 +105,7 @@ For completely custom label formatting, extend the `Formatter` interface (or `De
 ```ts
 import { DefaultFormatter, FinancialChart } from "@ardinsys/financial-charts";
 
+// Example: user formatter (not shipped with the library)
 class CustomFormatter extends DefaultFormatter {
   formatPrice(value: number): string {
     return `${value.toFixed(2)} USD`;
@@ -116,7 +117,7 @@ class CustomFormatter extends DefaultFormatter {
 }
 
 const chart = new FinancialChart(root, "auto", {
-  type: "candlestick",
+  type: "candle",
   theme: baseTheme,
   locale: "EN",
   formatter: new CustomFormatter()
@@ -157,7 +158,7 @@ const { locale, setLocale, t } = createIntl("en", {
 });
 
 const chart = new FinancialChart(root, "auto", {
-  type: "candlestick",
+  type: "candle",
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
   volume: true,
@@ -212,6 +213,7 @@ const intl = createIntl("en", {
   hu: { numberFormats: { money: { style: "currency", currency: "HUF" } } }
 });
 
+// Example: user formatter (not shipped with the library)
 class IntlFormatter extends DefaultFormatter implements Formatter {
   formatTooltipPrice(price: number, decimals: number): string {
     return intl.n("money", Number(price.toFixed(decimals)));
@@ -228,7 +230,7 @@ class IntlFormatter extends DefaultFormatter implements Formatter {
 }
 
 const chart = new FinancialChart(root, "auto", {
-  type: "candlestick",
+  type: "candle",
   stepSize: 5 * 60 * 1000,
   maxZoom: 200,
   formatter: new IntlFormatter(),

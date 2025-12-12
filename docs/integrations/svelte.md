@@ -35,14 +35,14 @@ export function registerControllers() {
 ```svelte
 <!-- Chart.svelte -->
 <script lang="ts">
-  import type { Candle } from "@ardinsys/financial-charts";
+  import type { ChartData } from "@ardinsys/financial-charts";
   import { FinancialChart } from "@ardinsys/financial-charts";
   import "@ardinsys/financial-charts/dist/style.css";
   import { onDestroy, onMount } from "svelte";
   import { registerControllers } from "./controllers";
 
-  export let data: Candle[] = [];
-  export let latest?: Candle;
+  export let data: ChartData[] = [];
+  export let latest?: ChartData;
   export let locale: string = "en";
   const localeValues = {
     en: {

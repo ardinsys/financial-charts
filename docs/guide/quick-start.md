@@ -68,7 +68,7 @@ const chart = new FinancialChart(
   document.getElementById("chart-root")!,
   "auto",
   {
-    type: "candlestick",
+    type: "candle",
     theme,
     locale: "EN",
     maxZoom: 100,
@@ -109,10 +109,10 @@ Call `setLocale("hu")` (or any supported code) and rerun `updateLocale` with the
 
 ## 5. Push data
 
-Use the `Candle` shape – values are optional so you can stream partial updates.
+Use the exported `ChartData` shape – values are optional so you can stream partial updates.
 
 ```ts
-type Candle = {
+type ChartData = {
   time: number;
   open?: number | null;
   high?: number | null;

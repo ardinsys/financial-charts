@@ -9,11 +9,11 @@ Use refs plus `onMounted`/`onBeforeUnmount` to manage the chart. Reuse the contr
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { FinancialChart, type Candle } from "@ardinsys/financial-charts";
+import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
 import "@ardinsys/financial-charts/dist/style.css";
 import { registerControllers } from "./controllers";
 
-const props = defineProps<{ data: Candle[]; latest?: Candle }>();
+const props = defineProps<{ data: ChartData[]; latest?: ChartData }>();
 const appLocale = ref("en"); // replace with your i18n store value
 const localeValues = {
   en: {

@@ -35,11 +35,11 @@ export function registerControllers() {
 ```tsx
 // Chart.tsx
 import { useEffect, useRef } from "react";
-import { FinancialChart, type Candle } from "@ardinsys/financial-charts";
+import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
 import "@ardinsys/financial-charts/dist/style.css";
 import { registerControllers } from "./controllers";
 
-type Props = { data: Candle[]; latest?: Candle };
+type Props = { data: ChartData[]; latest?: ChartData };
 
 export function Chart({ data, latest }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -57,7 +57,7 @@ export function Chart({ data, latest }: Props) {
     if (!containerRef.current) return;
 
     const chart = new FinancialChart(containerRef.current, "auto", {
-      type: "candlestick",
+      type: "candle",
       stepSize: 15 * 60 * 1000,
       maxZoom: 150,
       volume: true,

@@ -35,7 +35,7 @@ type ChartOptions = {
 
 | Option        | Description                                                                                      |
 | ------------- | ------------------------------------------------------------------------------------------------ |
-| `type`        | Identifier for a registered controller such as `"candlestick"`, `"bar"`, or custom IDs.          |
+| `type`        | Identifier for a registered controller such as `"candle"`, `"bar"`, or custom IDs.               |
 | `stepSize`    | Time frame granularity in milliseconds. Incoming candles are snapped to this size.               |
 | `maxZoom`     | Highest zoom factor before clamping user input.                                                  |
 | `volume`      | Enables a histogram below the price chart.                                                       |
@@ -53,7 +53,8 @@ type ChartOptions = {
 ## Data contracts
 
 ```ts
-type Candle = {
+// Exported as `ChartData` from "@ardinsys/financial-charts"
+type ChartData = {
   time: number;     // UNIX timestamp in milliseconds
   open?: number | null;
   high?: number | null;
@@ -86,7 +87,7 @@ type LocaleValues = {
 ```
 
 - Data **must** be sorted ascending by `time`.
-- When `timeRange` is `"auto"`, the chart calculates the visible window from the first data point to the last point plus one extra `stepSize`.
+- When `timeRange` is `"auto"`, the window starts at the first data point and extends to either the last point plus one `stepSize` or a viewport-sized span (about 30-50 steps), whichever is larger.
 
 ## Methods
 
@@ -137,7 +138,7 @@ Use overlays for drawings on top of price data and `PaneledIndicator` implementa
 
 | Method        | Description                                                                                                                           |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `dispose()`   | Tears down event listeners, intersection/resize observers, and removes paneled indicator containers. Call this before removing the DOM node. |
+| `dispose()`   | Tears down event listeners, the resize observer, and removes canvases plus paneled indicator containers. Call this before removing the DOM node. |
 | `requestRedraw(parts, immediate?)` | Schedules a render pass for the specified parts (`"controller"`, `"indicators"`, `"crosshair"`). Useful for advanced integrations or custom controllers. |
 
 Because `FinancialChart` extends an event emitter, the usual `on(event, handler)` and `off(event, handler)` helpers are also available.
@@ -148,8 +149,8 @@ Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 
 | Event                         | Payload                                         | When it fires                                 |
 | ----------------------------- | ----------------------------------------------- | --------------------------------------------- |
-| `click`                       | `{ event: PointerEvent, point: Candle }`        | User clicks the chart on desktop.             |
-| `touch-click`                 | `{ event: TouchEvent, point: Candle }`          | User taps the chart on touch devices.         |
+| `click`                       | `{ event: PointerEvent, point: ChartData }`     | User clicks the chart on desktop.             |
+| `touch-click`                 | `{ event: TouchEvent, point: ChartData }`       | User taps the chart on touch devices.         |
 | `indicator-visibility-changed` | `{ indicator, visible }`                       | Indicator show/hide buttons are toggled.      |
 | `indicator-settings-open`     | `{ indicator }`                                 | Settings button next to an indicator is used. |
 | `indicator-remove`            | `{ indicator }`                                 | Indicator remove button is pressed.           |
