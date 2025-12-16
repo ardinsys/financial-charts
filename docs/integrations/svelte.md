@@ -42,7 +42,6 @@ export function registerControllers() {
   import { registerControllers } from "./controllers";
 
   export let data: ChartData[] = [];
-  export let latest?: ChartData;
   export let locale: string = "en";
   const localeValues = {
     en: {
@@ -53,6 +52,7 @@ export function registerControllers() {
 
   let container: HTMLDivElement | null = null;
   let chart: FinancialChart | null = null;
+  let lastTimestamp: number | null = null;
 
   onMount(() => {
     registerControllers();
@@ -66,12 +66,20 @@ export function registerControllers() {
     });
 
     chart.draw(data);
+    lastTimestamp = data.at(-1)?.time ?? null;
     chart.updateLocale(locale, localeValues);
   });
 
   $: if (chart) {
-    chart.draw(data);
-    if (latest) chart.drawNextPoint(latest);
+    const next = data.at(-1);
+
+    if (next && lastTimestamp && next.time > lastTimestamp) {
+      chart.drawNextPoint(next);
+    } else {
+      chart.draw(data);
+    }
+
+    lastTimestamp = next?.time ?? null;
   }
 
   $: if (chart) {
@@ -85,4 +93,5 @@ export function registerControllers() {
 ```
 
 - Svelte's reactive statements let you push new data or stream updates when props change.
+- Keep one `data` array. If you derive it upstream, keep it memoized to avoid redundant `draw` calls on unchanged feeds.
 - Keep the container in the DOM – if the component is hidden or unmounted, dispose the chart to release observers.

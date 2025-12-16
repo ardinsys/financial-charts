@@ -13,7 +13,7 @@ import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
 import "@ardinsys/financial-charts/dist/style.css";
 import { registerControllers } from "./controllers";
 
-const props = defineProps<{ data: ChartData[]; latest?: ChartData }>();
+const props = defineProps<{ data: ChartData[] }>();
 const appLocale = ref("en"); // replace with your i18n store value
 const localeValues = {
   en: {
@@ -24,6 +24,7 @@ const localeValues = {
 
 const container = ref<HTMLElement | null>(null);
 const chart = ref<FinancialChart | null>(null);
+const lastTimestamp = ref<number | null>(null);
 
 onMounted(() => {
   registerControllers();
@@ -37,6 +38,7 @@ onMounted(() => {
   });
 
   instance.draw(props.data);
+  lastTimestamp.value = props.data.at(-1)?.time ?? null;
   chart.value = instance;
 
   chart.value.updateLocale(appLocale.value, localeValues);
@@ -44,13 +46,20 @@ onMounted(() => {
 
 watch(
   () => props.data,
-  (data) => chart.value?.draw(data),
-  { deep: true }
-);
+  (data) => {
+    if (!chart.value) return;
+    const next = data.at(-1);
+    const prev = lastTimestamp.value;
 
-watch(
-  () => props.latest,
-  (point) => point && chart.value?.drawNextPoint(point)
+    if (next && prev && next.time > prev) {
+      chart.value.drawNextPoint(next);
+    } else {
+      chart.value.draw(data);
+    }
+
+    lastTimestamp.value = next?.time ?? null;
+  },
+  { deep: true }
 );
 
 watch(appLocale, (locale) => {
@@ -69,4 +78,5 @@ onBeforeUnmount(() => chart.value?.dispose());
 
 - Avoid creating the chart before the container is measurable (e.g. inside collapsed tabs).
 - Keep the `FinancialChart` instance outside of reactive renders to prevent re-creation.
+- Prefer one `data` array. Memoize or compute it in the parent so identical feeds don't trigger redundant `draw` calls.
 - Drive theme or controller changes via methods on `chart.value` in event handlers.

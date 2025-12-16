@@ -55,7 +55,7 @@ type ChartOptions = {
 ```ts
 // Exported as `ChartData` from "@ardinsys/financial-charts"
 type ChartData = {
-  time: number;     // UNIX timestamp in milliseconds
+  time: number; // UNIX timestamp in milliseconds
   open?: number | null;
   high?: number | null;
   low?: number | null;
@@ -93,15 +93,17 @@ type LocaleValues = {
 
 ### Data lifecycle
 
-| Method                | Description                                                                                     |
-| --------------------- | ----------------------------------------------------------------------------------------------- |
-| `draw(data)`          | Replaces the full dataset and redraws the chart. Call this when symbols or timeframes change.   |
-| `drawNextPoint(point)`| Adds or updates the latest candle. Keeps zoom/pan when possible, ideal for real-time feeds.     |
-| `getData()`           | Returns the current dataset after it has been mapped to the active `stepSize`.                  |
+| Method                 | Description                                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `draw(data)`           | Replaces the full dataset and redraws the chart. Call this when symbols or timeframes change.                                                           |
+| `drawNextPoint(point)` | Streams data: appends a new candle or merges into the latest slot when the timestamp falls in the same `stepSize` bucket. Keeps zoom/pan when possible. |
+| `getData()`            | Returns the current dataset after it has been mapped to the active `stepSize`.                                                                          |
 
 `drawNextPoint` behavior:
+
 - Timestamps are snapped down to the nearest `stepSize`.
-- If the new point lands in the same slot as the last candle, high/low extend and close is replaced; otherwise it appends.
+- If the new point lands after the last candle's slot, a new candle is appended.
+- If the new point lands in the same slot as the last candle, high/low extend and close is replaced.
 - With auto range enabled, the window expands and keeps the right edge in view unless you have panned away.
 
 ### View and styling

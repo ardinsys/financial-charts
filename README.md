@@ -45,7 +45,7 @@ import {
   HollowCandleController,
   CandlestickController,
   SteplineController,
-  HLCAreaController
+  HLCAreaController,
 } from "@ardinsys/financial-charts";
 
 FinancialChart.registerController(AreaController);
@@ -64,14 +64,14 @@ import {
   defaultLightTheme,
   defaultDarkTheme,
   mergeThemes,
-  type ChartTheme
+  type ChartTheme,
 } from "@ardinsys/financial-charts";
 
 const customTheme: ChartTheme = {
   grid: {
     color: "#282b38",
-    width: 1
-  }
+    width: 1,
+  },
 };
 
 const theme = mergeThemes(defaultLightTheme, customTheme);
@@ -85,7 +85,7 @@ const chart = new FinancialChart(
   document.getElementById("my-container")!,
   {
     start: Date.UTC(2024, 0, 1, 9, 0),
-    end: Date.UTC(2024, 0, 1, 17, 0)
+    end: Date.UTC(2024, 0, 1, 17, 0),
   },
   {
     type: "candle",
@@ -93,7 +93,7 @@ const chart = new FinancialChart(
     maxZoom: 150,
     volume: true,
     theme,
-    locale: "EN"
+    locale: "en",
   }
 );
 ```
@@ -108,7 +108,7 @@ chart.draw([
     high: 15,
     low: 10,
     close: 10,
-    volume: 1_200_000
+    volume: 1_200_000,
   },
   {
     time: Date.UTC(2024, 0, 1, 9, 15),
@@ -116,8 +116,8 @@ chart.draw([
     high: 15,
     low: 8,
     close: 15,
-    volume: 1_500_000
-  }
+    volume: 1_500_000,
+  },
 ]);
 ```
 
@@ -130,7 +130,7 @@ chart.drawNextPoint({
   high: 14,
   low: 10,
   close: 13,
-  volume: 1_600_000
+  volume: 1_600_000,
 });
 ```
 
@@ -180,18 +180,18 @@ chart.updateLocale("HU", {
         high: "Max",
         low: "Min",
         close: "Záró",
-        volume: "Forgalom"
-      }
+        volume: "Forgalom",
+      },
     },
     indicators: {
       actions: {
         show: "Megjelenítés",
         hide: "Elrejtés",
         settings: "Beállítás",
-        remove: "Törlés"
-      }
-    }
-  }
+        remove: "Törlés",
+      },
+    },
+  },
 });
 ```
 

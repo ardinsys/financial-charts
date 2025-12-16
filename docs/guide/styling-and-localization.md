@@ -6,15 +6,15 @@ Themes, locales, and formatters let you align the chart with your brand and lang
 
 `ChartTheme` is split into predictable sections:
 
-| Key          | Description                                                                 |
-| ------------ | --------------------------------------------------------------------------- |
-| `backgroundColor` | Canvas background color.                                               |
-| `grid`       | `{ color, width }` controlling horizontal and vertical guides.              |
-| `candle`, `bar`, `line`, `area`, `hlcArea` | Style specific controller types.              |
-| `volume`     | Up/down fill colors for the histogram.                                      |
-| `xAxis`, `yAxis` | Typography, colors, and separators for labels.                          |
-| `crosshair`  | Line color/dash plus tooltip styling and info-line labels.                  |
-| `randomColors` | Palette used when multiple indicators request auto colors.                |
+| Key                                        | Description                                                    |
+| ------------------------------------------ | -------------------------------------------------------------- |
+| `backgroundColor`                          | Canvas background color.                                       |
+| `grid`                                     | `{ color, width }` controlling horizontal and vertical guides. |
+| `candle`, `bar`, `line`, `area`, `hlcArea` | Style specific controller types.                               |
+| `volume`                                   | Up/down fill colors for the histogram.                         |
+| `xAxis`, `yAxis`                           | Typography, colors, and separators for labels.                 |
+| `crosshair`                                | Line color/dash plus tooltip styling and info-line labels.     |
+| `randomColors`                             | Palette used when multiple indicators request auto colors.     |
 
 Merge your overrides with the shipped themes – missing values are backfilled automatically.
 
@@ -22,7 +22,7 @@ Merge your overrides with the shipped themes – missing values are backfilled a
 import {
   defaultLightTheme,
   defaultDarkTheme,
-  mergeThemes
+  mergeThemes,
 } from "@ardinsys/financial-charts";
 
 const baseTheme = mergeThemes(defaultLightTheme, {
@@ -31,15 +31,15 @@ const baseTheme = mergeThemes(defaultLightTheme, {
     color: "#2d7dff",
     fill: [
       [0, "rgba(45, 125, 255, 0.35)"],
-      [1, "rgba(45, 125, 255, 0)"]
-    ]
+      [1, "rgba(45, 125, 255, 0)"],
+    ],
   },
   crosshair: {
     color: "#727cf5",
     tooltip: {
-      backgroundColor: "#0f111b"
-    }
-  }
+      backgroundColor: "#0f111b",
+    },
+  },
 });
 ```
 
@@ -62,7 +62,7 @@ const chart = new FinancialChart(root, "auto", {
   theme,
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
-  volume: true
+  volume: true,
 });
 
 window
@@ -77,7 +77,7 @@ window
 Provide locale strings when constructing the chart or later with `updateLocale`. Missing values merge into built-in English defaults, so you only override what changes.
 
 ```ts
-chart.updateLocale("EN", {
+chart.updateLocale("en", {
   EN: {
     common: {
       sources: {
@@ -85,18 +85,18 @@ chart.updateLocale("EN", {
         high: "High",
         low: "Low",
         close: "Close",
-        volume: "Volume"
-      }
+        volume: "Volume",
+      },
     },
     indicators: {
       actions: {
         show: "Show",
         hide: "Hide",
         settings: "Settings",
-        remove: "Remove"
-      }
-    }
-  }
+        remove: "Remove",
+      },
+    },
+  },
 });
 ```
 
@@ -119,8 +119,8 @@ class CustomFormatter extends DefaultFormatter {
 const chart = new FinancialChart(root, "auto", {
   type: "candle",
   theme: baseTheme,
-  locale: "EN",
-  formatter: new CustomFormatter()
+  locale: "en",
+  formatter: new CustomFormatter(),
 });
 ```
 
@@ -138,23 +138,45 @@ const { locale, setLocale, t } = createIntl("en", {
   en: {
     messages: {
       common: {
-        sources: { open: "Open", high: "High", low: "Low", close: "Close", volume: "Volume" }
+        sources: {
+          open: "Open",
+          high: "High",
+          low: "Low",
+          close: "Close",
+          volume: "Volume",
+        },
       },
       indicators: {
-        actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" }
-      }
-    }
+        actions: {
+          show: "Show",
+          hide: "Hide",
+          settings: "Settings",
+          remove: "Remove",
+        },
+      },
+    },
   },
   hu: {
     messages: {
       common: {
-        sources: { open: "Nyitó", high: "Max", low: "Min", close: "Záró", volume: "Forgalom" }
+        sources: {
+          open: "Nyitó",
+          high: "Max",
+          low: "Min",
+          close: "Záró",
+          volume: "Forgalom",
+        },
       },
       indicators: {
-        actions: { show: "Megjelenítés", hide: "Elrejtés", settings: "Beállítás", remove: "Törlés" }
-      }
-    }
-  }
+        actions: {
+          show: "Megjelenítés",
+          hide: "Elrejtés",
+          settings: "Beállítás",
+          remove: "Törlés",
+        },
+      },
+    },
+  },
 });
 
 const chart = new FinancialChart(root, "auto", {
@@ -165,10 +187,25 @@ const chart = new FinancialChart(root, "auto", {
   locale: "en",
   localeValues: {
     default: {
-      indicators: { actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" } },
-      common: { sources: { open: "Open", high: "High", low: "Low", close: "Close", volume: "Volume" } }
-    }
-  }
+      indicators: {
+        actions: {
+          show: "Show",
+          hide: "Hide",
+          settings: "Settings",
+          remove: "Remove",
+        },
+      },
+      common: {
+        sources: {
+          open: "Open",
+          high: "High",
+          low: "Low",
+          close: "Close",
+          volume: "Volume",
+        },
+      },
+    },
+  },
 });
 
 // Keep chart labels in sync with the active app locale
@@ -181,8 +218,8 @@ function switchLocale(nextLocale: string) {
           show: t("indicators.actions.show"),
           hide: t("indicators.actions.hide"),
           settings: t("indicators.actions.settings"),
-          remove: t("indicators.actions.remove")
-        }
+          remove: t("indicators.actions.remove"),
+        },
       },
       common: {
         sources: {
@@ -190,31 +227,140 @@ function switchLocale(nextLocale: string) {
           high: t("common.sources.high"),
           low: t("common.sources.low"),
           close: t("common.sources.close"),
-          volume: t("common.sources.volume")
-        }
-      }
-    }
+          volume: t("common.sources.volume"),
+        },
+      },
+    },
   });
 }
 ```
 
 The chart will pick the matching locale key or fall back to the `default` block when a translation is missing.
 
+### Vue example: rebuild the chart locale bundle when the app locale changes
+
+Use a computed value to regenerate the chart's locale bundle whenever your i18n store locale flips. This avoids relying on whichever locale was active at import time.
+
+```vue
+<script setup lang="ts">
+import { computed, onMounted, onBeforeUnmount, ref, watchEffect } from "vue";
+import { FinancialChart } from "@ardinsys/financial-charts";
+import "@ardinsys/financial-charts/dist/style.css";
+import { createIntl } from "@ardinsys/intl";
+import { registerControllers } from "./controllers";
+
+const { locale, setLocale, t } = createIntl("en", {
+  en: {
+    messages: {
+      common: {
+        sources: {
+          open: "Open",
+          high: "High",
+          low: "Low",
+          close: "Close",
+          volume: "Volume",
+        },
+      },
+      indicators: {
+        actions: {
+          show: "Show",
+          hide: "Hide",
+          settings: "Settings",
+          remove: "Remove",
+        },
+      },
+    },
+  },
+  hu: {
+    messages: {
+      common: {
+        sources: {
+          open: "Nyitó",
+          high: "Max",
+          low: "Min",
+          close: "Záró",
+          volume: "Forgalom",
+        },
+      },
+      indicators: {
+        actions: {
+          show: "Megjelenítés",
+          hide: "Elrejtés",
+          settings: "Beállítás",
+          remove: "Törlés",
+        },
+      },
+    },
+  },
+});
+
+const container = ref<HTMLElement | null>(null);
+const chart = ref<FinancialChart | null>(null);
+
+const chartLocaleBundle = computed(() => ({
+  [locale.value.toUpperCase()]: {
+    common: {
+      sources: {
+        open: t("common.sources.open"),
+        high: t("common.sources.high"),
+        low: t("common.sources.low"),
+        close: t("common.sources.close"),
+        volume: t("common.sources.volume"),
+      },
+    },
+    indicators: {
+      actions: {
+        show: t("indicators.actions.show"),
+        hide: t("indicators.actions.hide"),
+        settings: t("indicators.actions.settings"),
+        remove: t("indicators.actions.remove"),
+      },
+    },
+  },
+}));
+
+onMounted(() => {
+  registerControllers();
+  if (!container.value) return;
+
+  const instance = new FinancialChart(container.value, "auto", {
+    type: "candle",
+    stepSize: 15 * 60 * 1000,
+    maxZoom: 150,
+    volume: true,
+    locale: locale.value.toUpperCase(),
+  });
+
+  chart.value = instance;
+});
+
+watchEffect(() => {
+  if (!chart.value) return;
+  const nextLocale = locale.value.toUpperCase();
+  chart.value.updateLocale(nextLocale, chartLocaleBundle.value);
+});
+
+onBeforeUnmount(() => chart.value?.dispose());
+</script>
+```
+
+Switch the intl store with `setLocale("hu")` (or any supported code) and the chart picks up the rebuilt bundle automatically.
+
 ## Custom formatter that delegates to your i18n toolkit
 
 `Formatter` methods control every label rendered by the chart. You can forward formatting calls to your own toolkit to share currency and date rules across the app.
 
 ```ts
-import { DefaultFormatter, type Formatter } from "@ardinsys/financial-charts";
+import { DefaultFormatter } from "@ardinsys/financial-charts";
 import { createIntl } from "@ardinsys/intl";
 
 const intl = createIntl("en", {
   en: { numberFormats: { money: { style: "currency", currency: "USD" } } },
-  hu: { numberFormats: { money: { style: "currency", currency: "HUF" } } }
+  hu: { numberFormats: { money: { style: "currency", currency: "HUF" } } },
 });
 
 // Example: user formatter (not shipped with the library)
-class IntlFormatter extends DefaultFormatter implements Formatter {
+class IntlFormatter extends DefaultFormatter {
   formatTooltipPrice(price: number, decimals: number): string {
     return intl.n("money", Number(price.toFixed(decimals)));
   }
@@ -234,7 +380,7 @@ const chart = new FinancialChart(root, "auto", {
   stepSize: 5 * 60 * 1000,
   maxZoom: 200,
   formatter: new IntlFormatter(),
-  locale: "en"
+  locale: "en",
 });
 ```
 

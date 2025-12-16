@@ -30,8 +30,9 @@ When the range is `"auto"`, subsequent `draw` calls recompute the visible span a
 
 ## Streaming with `drawNextPoint`
 
-`drawNextPoint(point)` updates only the newest candle:
+`drawNextPoint(point)` appends a new candle or merges into the newest slot:
 
+- If the timestamp falls after the last candle's slot, a new candle is appended.
 - If the incoming timestamp falls into the same slot as the last candle (based on `stepSize`), the data is merged.
 - The current zoom and pan are preserved where possible so live feeds do not jump unexpectedly.
 - If the viewport is anchored at the right edge, the newest candle scrolls into view automatically.
@@ -59,11 +60,12 @@ You can always read the current values with `chart.getOptions()` and `chart.getV
 `drawNextPoint` assumes new data belongs to the newest time slot. If you receive corrections for older candles, re-run `draw` with the full (sorted) array so the remapping step can rebuild the series correctly.
 
 - New points that land in the same `stepSize` bucket as the last candle are merged: high/low extend, close is replaced.
-- Timestamps are snapped **down** to the nearest `stepSize` boundary; if that is not desired, align them before calling `drawNextPoint`.
+- Timestamps are snapped **down** to the nearest `stepSize` boundary. If that is not desired, align them before calling `drawNextPoint`.
 - Keep feeds sorted ascending by `time` to avoid “holes” or duplicated labels.
+- When a duplicate timestamp merges into the latest slot, send full OHLCV values so the merge math does not produce `NaN`.
 
 ## Troubleshooting gaps and jumps
 
-- **Gaps after switching step size:** the chart remaps data on `updateCoreOptions`; zoom/pan reset is expected when `stepSize` changes.
-- **Live chart stops scrolling:** when auto range is on, the view only follows the right edge if you haven’t panned away; reset with `updateCoreOptions("auto", ...)` to re-anchor to the latest data.
+- **Gaps after switching step size:** the chart remaps data on `updateCoreOptions`, so zoom/pan reset is expected when `stepSize` changes.
+- **Live chart stops scrolling:** when auto range is on, the view only follows the right edge if you haven't panned away. Reset with `updateCoreOptions("auto", ...)` to re-anchor to the latest data.
 - **Mixed timezones:** pass UTC timestamps (number) rather than `Date` instances to keep snapping consistent across locales.

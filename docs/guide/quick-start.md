@@ -27,7 +27,7 @@ import {
   HollowCandleController,
   CandlestickController,
   SteplineController,
-  HLCAreaController
+  HLCAreaController,
 } from "@ardinsys/financial-charts";
 
 FinancialChart.registerController(AreaController);
@@ -48,12 +48,12 @@ import {
   defaultDarkTheme,
   defaultLightTheme,
   mergeThemes,
-  type ChartTheme
+  type ChartTheme,
 } from "@ardinsys/financial-charts";
 
 const customTheme: ChartTheme = {
   grid: { color: "#333333" },
-  crosshair: { color: "#FF6B6B" }
+  crosshair: { color: "#FF6B6B" },
 };
 
 const theme = mergeThemes(defaultDarkTheme, customTheme);
@@ -70,46 +70,19 @@ const chart = new FinancialChart(
   {
     type: "candle",
     theme,
-    locale: "EN",
+    locale: "en",
     maxZoom: 100,
     stepSize: 15 * 60 * 1000,
-    volume: true
+    volume: true,
   }
 );
 ```
 
-### Optional: wire in your i18n bundle
-
-If you already use `@ardinsys/intl`, pass the same locale code and strings to the chart so indicator labels match the rest of the UI.
-
-```ts
-import { createIntl } from "@ardinsys/intl";
-
-const { locale, setLocale, t } = createIntl("en", {
-  en: { messages: { indicators: { actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" } } } },
-  hu: { messages: { indicators: { actions: { show: "Megjelenítés", hide: "Elrejtés", settings: "Beállítás", remove: "Törlés" } } } }
-});
-
-chart.updateLocale(locale, {
-  [locale]: {
-    indicators: { actions: {
-      show: t("indicators.actions.show"),
-      hide: t("indicators.actions.hide"),
-      settings: t("indicators.actions.settings"),
-      remove: t("indicators.actions.remove")
-    }},
-    common: { sources: {
-      open: "Open", high: "High", low: "Low", close: "Close", volume: "Volume"
-    }}
-  }
-});
-```
-
-Call `setLocale("hu")` (or any supported code) and rerun `updateLocale` with the matching translation block to refresh labels and tooltips.
+Localization is configurable via `updateLocale`. See [Guide > Styling and localization](/guide/styling-and-localization) for a full example that rebuilds the chart's locale bundle when the active locale changes.
 
 ## 5. Push data
 
-Use the exported `ChartData` shape – values are optional so you can stream partial updates.
+Use the exported `ChartData` shape. Fields are optional because not every controller needs every value, but send the complete tuple whenever you have it.
 
 ```ts
 type ChartData = {
@@ -122,6 +95,8 @@ type ChartData = {
 };
 ```
 
+- Use `null` for missing values. Optional fields exist so controllers can ignore what they don't use.
+
 Call `draw` with sorted candles. The chart snaps timestamps to `stepSize` and merges duplicates.
 
 ```ts
@@ -132,7 +107,7 @@ chart.draw([
     high: 15,
     low: 10,
     close: 10,
-    volume: 1200000
+    volume: 1200000,
   },
   {
     time: Date.UTC(2024, 0, 1, 9, 15),
@@ -140,14 +115,14 @@ chart.draw([
     high: 15,
     low: 8,
     close: 15,
-    volume: 1500000
-  }
+    volume: 1500000,
+  },
 ]);
 ```
 
 ## 6. Stream updates and dispose
 
-`drawNextPoint` lets you update the latest candle in real time without rebuilding the dataset.
+Use `drawNextPoint` for streaming data: it appends a new candle by default, and only merges into the latest one when the timestamp lands in the same `stepSize` bucket. That keeps the live feed smooth without rebuilding the whole dataset.
 
 ```ts
 chart.drawNextPoint({
@@ -156,7 +131,7 @@ chart.drawNextPoint({
   high: 14,
   low: 10,
   close: 13,
-  volume: 1600000
+  volume: 1600000,
 });
 ```
 
@@ -168,7 +143,7 @@ chart.dispose();
 
 ## Next steps
 
-- `Guide > Data and updates` explains how `draw`/`drawNextPoint` interact with step size and auto ranges.
-- `Guide > View and interactions` covers zooming, panning, and core runtime options.
-- `Guide > Styling and localization` walks through themes, custom formatters, and locales.
-- The API Reference lists every method signature and event payload.
+- [Guide > Data and updates](/guide/data-and-updates) explains how `draw`/`drawNextPoint` interact with step size and auto ranges.
+- [Guide > View and interactions](/guide/view-and-interactions) covers zooming, panning, and core runtime options.
+- [Guide > Styling and localization](/guide/styling-and-localization) walks through themes, custom formatters, and locales.
+- The [API Reference](/reference/chart) lists every method signature and event payload.

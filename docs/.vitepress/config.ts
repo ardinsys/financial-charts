@@ -2,7 +2,7 @@ import { defineConfig } from "vitepress";
 
 export default defineConfig({
   lang: "en-US",
-  title: "@ardinsys/financial-charts",
+  title: "Financial charts",
   description: "Canvas-based financial charting library with a simple API.",
   lastUpdated: true,
   themeConfig: {

@@ -39,11 +39,12 @@ import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
 import "@ardinsys/financial-charts/dist/style.css";
 import { registerControllers } from "./controllers";
 
-type Props = { data: ChartData[]; latest?: ChartData };
+type Props = { data: ChartData[] };
 
-export function Chart({ data, latest }: Props) {
+export function Chart({ data }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<FinancialChart | null>(null);
+  const lastTimestampRef = useRef<number | null>(null);
   const appLocale = "en"; // wire this to your i18n store
   const localeValues = {
     en: {
@@ -61,26 +62,35 @@ export function Chart({ data, latest }: Props) {
       stepSize: 15 * 60 * 1000,
       maxZoom: 150,
       volume: true,
-      locale: "EN",
+      locale: "en",
     });
 
     chart.draw(data);
+    lastTimestampRef.current = data.at(-1)?.time ?? null;
     chartRef.current = chart;
 
     return () => chart.dispose();
   }, []);
 
   useEffect(() => {
-    chartRef.current?.draw(data);
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const next = data.at(-1);
+    const lastSeen = lastTimestampRef.current;
+
+    if (next && lastSeen && next.time > lastSeen) {
+      chart.drawNextPoint(next);
+    } else {
+      chart.draw(data);
+    }
+
+    lastTimestampRef.current = next?.time ?? null;
   }, [data]);
 
   useEffect(() => {
     chartRef.current?.updateLocale(appLocale, localeValues);
   }, [appLocale]);
-
-  useEffect(() => {
-    if (latest) chartRef.current?.drawNextPoint(latest);
-  }, [latest]);
 
   return <div ref={containerRef} style={{ height: 400 }} />;
 }
@@ -88,4 +98,5 @@ export function Chart({ data, latest }: Props) {
 
 - Keep the container height stable via inline styles or CSS.
 - Store the `FinancialChart` instance outside render to avoid re-instantiation.
+- Favor a single `data` array. Wrap expensive transforms with `useMemo` so identical feeds don't trigger redundant `draw` calls.
 - Call `chart.updateTheme` or `chart.changeType` from event handlers as needed.
