@@ -37,7 +37,7 @@ pipeline {
           '''
 
           echo "📦 Running versioning for packages"
-          nsh("pnpm exec bumpp -r --no-push --yes --no-print-commits --commit \"chore: release v\" ${params.BUMP} --preid ${params.PREID}")
+          nsh("pnpm exec bumpp --no-push --yes --no-print-commits --commit \"chore: release v\" ${params.BUMP} --preid ${params.PREID}")
         }
       }
     }
