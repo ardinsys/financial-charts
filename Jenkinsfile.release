@@ -1,0 +1,130 @@
+@Library('nodejs') _
+
+pipeline {
+  agent { label 'JBS-NodeJS' }
+
+  options {
+    buildDiscarder(logRotator(artifactDaysToKeepStr: '30', daysToKeepStr: '30', numToKeepStr: '5'))
+    ansiColor('xterm')
+  }
+
+  environment {
+    GIT_CREDENTIALS_ID = 'dd9216fb-464b-49d9-b6ba-778a68af4f91'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        git branch: "${refName()}", url: "https://github.com/ardinsys/financial-charts.git", credentialsId: "${GIT_CREDENTIALS_ID}"
+      }
+	}
+
+    stage('Install') {
+      steps {
+        nsh('pnpm install --frozen-lockfile')
+      }
+    }
+
+    stage('Version Packages') {
+      when {
+        expression { !params.DOCS_ONLY && !params.DRY_RUN }
+      }
+      steps {
+        script {
+          sh '''
+            git config user.name "jenkins"
+            git config user.email "dev@ardinsys.eu"
+          '''
+
+          echo "📦 Running versioning for packages"
+          nsh("pnpm exec bumpp -r --no-push --yes --no-print-commits --commit \"chore: release v\" ${params.BUMP} --preid ${params.PREID}")
+        }
+      }
+    }
+
+
+    stage('Build') {
+      steps {
+        script {
+          nsh('''
+            pnpm build
+            pnpm docs:build
+          ''')
+        }
+      }
+    }
+
+    stage('Publish') {
+      when {
+        expression { !params.DOCS_ONLY }
+      }
+      steps {
+        script {
+          def dryRunFlag = params.DRY_RUN ? '--dry-run' : ''
+          nsh("pnpm publish --no-git-checks ${dryRunFlag}")
+        }
+        
+      }
+    }
+
+    stage('Publish documentation') {
+      when {
+        expression { !params.DRY_RUN }
+      }
+      steps {
+        sshPublisher(
+          publishers: [
+            sshPublisherDesc(
+              configName: 'docs.ardinsys.hu', 
+              transfers: [
+                sshTransfer(
+                  cleanRemote: true, 
+                  execTimeout: 120000, 
+                  makeEmptyDirs: true, 
+                  noDefaultExcludes: true,
+                  remoteDirectory: 'financial-charts',
+                  removePrefix: 'docs/.vitepress/dist', 
+                  sourceFiles: 'docs/.vitepress/dist/**'
+                )
+              ]
+            ),
+            sshPublisherDesc(
+              configName: 'docs.ardinsys.eu', 
+              transfers: [
+                sshTransfer(
+                  cleanRemote: true, 
+                  execTimeout: 120000, 
+                  makeEmptyDirs: true, 
+                  noDefaultExcludes: true,
+                  remoteDirectory: 'financial-charts',
+                  removePrefix: 'docs/.vitepress/dist', 
+                  sourceFiles: 'docs/.vitepress/dist/**'
+                )
+              ]
+            )
+          ]
+        )
+      }
+    }
+
+    stage('Push Changes') {
+      when {
+        expression { !params.DOCS_ONLY && !params.DRY_RUN }
+      }
+      steps {
+        withCredentials([usernamePassword(credentialsId: "${GIT_CREDENTIALS_ID}", usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
+          sh '''
+            git remote set-url origin https://${GIT_USER}:${GIT_PASS}@github.com/ardinsys/financial-charts.git
+            git push origin HEAD --follow-tags
+          '''
+        }
+      }
+    }
+  }
+
+  post {
+    cleanup {
+      cleanWs()
+    }
+  }
+}
