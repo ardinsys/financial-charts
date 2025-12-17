@@ -4,6 +4,7 @@ export default defineConfig({
   lang: "en-US",
   title: "Financial charts",
   description: "Canvas-based financial charting library with a simple API.",
+  base: "/financial-charts",
   lastUpdated: true,
   themeConfig: {
     nav: [
