@@ -1,0 +1,102 @@
+# React (16.8+)
+
+Use refs and effects to manage the chart lifecycle. Register controllers once at module scope to avoid duplicate registrations during hot reload.
+
+```ts
+// controllers.ts
+import {
+  FinancialChart,
+  AreaController,
+  LineController,
+  BarController,
+  HollowCandleController,
+  CandlestickController,
+  SteplineController,
+  HLCAreaController,
+} from "@ardinsys/financial-charts";
+
+let controllersRegistered = false;
+
+export function registerControllers() {
+  if (controllersRegistered) return;
+
+  FinancialChart.registerController(AreaController);
+  FinancialChart.registerController(LineController);
+  FinancialChart.registerController(BarController);
+  FinancialChart.registerController(HollowCandleController);
+  FinancialChart.registerController(CandlestickController);
+  FinancialChart.registerController(SteplineController);
+  FinancialChart.registerController(HLCAreaController);
+
+  controllersRegistered = true;
+}
+```
+
+```tsx
+// Chart.tsx
+import { useEffect, useRef } from "react";
+import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
+import "@ardinsys/financial-charts/dist/style.css";
+import { registerControllers } from "./controllers";
+
+type Props = { data: ChartData[] };
+
+export function Chart({ data }: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<FinancialChart | null>(null);
+  const lastTimestampRef = useRef<number | null>(null);
+  const appLocale = "en"; // wire this to your i18n store
+  const localeValues = {
+    en: {
+      indicators: { actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" } },
+      common: { sources: { open: "Open", high: "High", low: "Low", close: "Close", volume: "Volume" } }
+    }
+  };
+
+  useEffect(() => {
+    registerControllers();
+    if (!containerRef.current) return;
+
+    const chart = new FinancialChart(containerRef.current, "auto", {
+      type: "candle",
+      stepSize: 15 * 60 * 1000,
+      maxZoom: 150,
+      volume: true,
+      locale: "en",
+    });
+
+    chart.draw(data);
+    lastTimestampRef.current = data.at(-1)?.time ?? null;
+    chartRef.current = chart;
+
+    return () => chart.dispose();
+  }, []);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const next = data.at(-1);
+    const lastSeen = lastTimestampRef.current;
+
+    if (next && lastSeen && next.time > lastSeen) {
+      chart.drawNextPoint(next);
+    } else {
+      chart.draw(data);
+    }
+
+    lastTimestampRef.current = next?.time ?? null;
+  }, [data]);
+
+  useEffect(() => {
+    chartRef.current?.updateLocale(appLocale, localeValues);
+  }, [appLocale]);
+
+  return <div ref={containerRef} style={{ height: 400 }} />;
+}
+```
+
+- Keep the container height stable via inline styles or CSS.
+- Store the `FinancialChart` instance outside render to avoid re-instantiation.
+- Favor a single `data` array. Wrap expensive transforms with `useMemo` so identical feeds don't trigger redundant `draw` calls.
+- Call `chart.updateTheme` or `chart.changeType` from event handlers as needed.
