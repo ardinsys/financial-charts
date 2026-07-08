@@ -34,13 +34,9 @@ export class TestIndicator extends PaneledIndicator<
         canvas: this.canvas,
         zoomLevel: this.chart.getZoomLevel(),
         panOffset: this.chart.getPanOffset(),
+        barAlignment: "center" as const
       };
-      const x = this.chart
-        .getTimeScale()
-        .project(
-          data.time + this.chart.getController().getXLabelOffset(),
-          scaleOptions
-        );
+      const x = this.chart.getTimeScale().project(data.time, scaleOptions);
       const y = this.chart.getPriceScale().project(data.close!, scaleOptions);
       this.context.fillRect(x - size / 2, y, size, size);
     }
@@ -51,8 +47,8 @@ export class TestIndicator extends PaneledIndicator<
       labelTemplate: indicatorLabelTemplate,
       key: "test",
       names: {
-        default: "Test",
-      },
+        default: "Test"
+      }
     };
   }
 

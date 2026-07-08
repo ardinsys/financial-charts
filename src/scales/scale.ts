@@ -10,6 +10,7 @@ export interface ScaleProjectOptions {
   devicePixelRatio?: number;
   zoomLevel?: number;
   panOffset?: number;
+  barAlignment?: "center" | "edge";
 }
 
 export interface ScaleTick {

@@ -1,4 +1,5 @@
 import { ChartData } from "../chart/types";
+import type { BarAlignment } from "../scales/time-scale";
 import { OHLCController } from "./controller";
 
 type Point = {
@@ -15,8 +16,8 @@ export class HLCAreaController extends OHLCController {
     return this.crosshairValues;
   }
 
-  getXLabelOffset(): number {
-    return 0;
+  getBarAlignment(): BarAlignment {
+    return "center";
   }
 
   getTimeFromRawDataPoint(rawPoint: ChartData): number {
@@ -36,7 +37,7 @@ export class HLCAreaController extends OHLCController {
     const scaleOptions = {
       canvas: ctx.canvas,
       zoomLevel: this.chart.getZoomLevel(),
-      panOffset: this.chart.getPanOffset(),
+      panOffset: this.chart.getPanOffset()
     };
 
     // Paths for the lines
@@ -64,11 +65,11 @@ export class HLCAreaController extends OHLCController {
 
       const high = {
         x: timeScale.project(point.time, scaleOptions),
-        y: priceScale.project(point.high!, scaleOptions),
+        y: priceScale.project(point.high!, scaleOptions)
       };
       const low = {
         x: timeScale.project(point.time, scaleOptions),
-        y: priceScale.project(point.low!, scaleOptions),
+        y: priceScale.project(point.low!, scaleOptions)
       };
 
       if (!foundFirst) {
@@ -95,7 +96,7 @@ export class HLCAreaController extends OHLCController {
 
       const close = {
         x: timeScale.project(point.time, scaleOptions),
-        y: priceScale.project(point.close!, scaleOptions),
+        y: priceScale.project(point.close!, scaleOptions)
       };
 
       if (!foundFirst) {

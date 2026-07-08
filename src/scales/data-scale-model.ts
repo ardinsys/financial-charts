@@ -1,6 +1,6 @@
 import type { ChartData, TimeRange } from "../chart/types";
 import { PriceScale } from "./price-scale";
-import { TimeScale } from "./time-scale";
+import { BarAlignment, TimeScale, TimeScaleRange } from "./time-scale";
 
 export interface ScaleRangeModifier {
   yMin?: number;
@@ -11,6 +11,12 @@ export interface ScaleRangeModifier {
 
 export type DataScaleSource = "simple" | "ohlc";
 
+export interface DataScaleTimeOptions {
+  barAlignment?: BarAlignment;
+  indexRange?: TimeScaleRange;
+  timeValues?: readonly number[];
+}
+
 export class DataScaleModel {
   private xMin!: number;
   private xMax!: number;
@@ -20,6 +26,9 @@ export class DataScaleModel {
   private readonly topOffset = 0.15;
   private readonly bottomOffset = 0.2;
   private modifiers = new Map<any, ScaleRangeModifier>();
+  private barAlignment: BarAlignment;
+  private indexRange: TimeScaleRange;
+  private timeValues: readonly number[];
 
   private readonly timeScale: TimeScale;
   private readonly priceScale: PriceScale;
@@ -28,20 +37,31 @@ export class DataScaleModel {
   constructor(
     private readonly source: DataScaleSource,
     dataset: ChartData[],
-    timeRange: TimeRange
+    timeRange: TimeRange,
+    timeOptions: DataScaleTimeOptions = {}
   ) {
-    this.timeScale = new TimeScale({
-      start: timeRange.start,
-      end: timeRange.end,
+    this.barAlignment = timeOptions.barAlignment ?? "center";
+    this.indexRange =
+      timeOptions.indexRange ?? this.getDefaultIndexRange(dataset);
+    this.timeValues =
+      timeOptions.timeValues ?? dataset.map((data) => data.time);
+    this.timeScale = new TimeScale(this.indexRange, {
+      barAlignment: this.barAlignment,
+      times: this.timeValues
     });
     this.priceScale = new PriceScale({ min: 0, max: 1 });
     this.volumeScale = new PriceScale({ min: 0, max: 1 });
-    this.recalculate(dataset, timeRange);
+    this.recalculate(dataset, timeRange, timeOptions);
   }
 
-  recalculate(dataset: ChartData[], timeRange: TimeRange): void {
+  recalculate(
+    dataset: ChartData[],
+    timeRange: TimeRange,
+    timeOptions: DataScaleTimeOptions = {}
+  ): void {
     this.xMin = timeRange.start;
     this.xMax = timeRange.end;
+    this.configureTimeScale(timeOptions);
     this.yMin = Infinity;
     this.yMax = -Infinity;
     this.volMax = -Infinity;
@@ -65,6 +85,16 @@ export class DataScaleModel {
 
     this.applyOffsets();
     this.syncScales();
+  }
+
+  configureTimeScale(timeOptions: DataScaleTimeOptions) {
+    this.barAlignment = timeOptions.barAlignment ?? this.barAlignment;
+    this.indexRange = timeOptions.indexRange ?? this.indexRange;
+    this.timeValues = timeOptions.timeValues ?? this.timeValues;
+
+    this.timeScale.setBarAlignment(this.barAlignment);
+    this.timeScale.setRange(this.indexRange);
+    this.timeScale.setTimes(this.timeValues);
   }
 
   addModifier(modifier: ScaleRangeModifier) {
@@ -91,7 +121,7 @@ export class DataScaleModel {
     const options = { canvas, zoomLevel, panOffset };
     return {
       x: this.timeScale.project(time, options),
-      y: this.priceScale.project(value, options),
+      y: this.priceScale.project(value, options)
     };
   }
 
@@ -105,7 +135,7 @@ export class DataScaleModel {
     const options = { canvas, zoomLevel, panOffset };
     return {
       time: this.timeScale.unproject(x, options),
-      price: this.priceScale.unproject(y, options),
+      price: this.priceScale.unproject(y, options)
     };
   }
 
@@ -119,7 +149,7 @@ export class DataScaleModel {
     const options = { canvas, zoomLevel, panOffset };
     return {
       x: this.timeScale.project(time, options),
-      y: this.volumeScale.projectVolume(volume, options),
+      y: this.volumeScale.projectVolume(volume, options)
     };
   }
 
@@ -164,9 +194,19 @@ export class DataScaleModel {
   }
 
   private syncScales() {
-    this.timeScale.setRange({ start: this.xMin, end: this.xMax });
+    this.timeScale.setRange(this.indexRange);
+    this.timeScale.setTimes(this.timeValues);
+    this.timeScale.setBarAlignment(this.barAlignment);
     this.priceScale.setRange({ min: this.yMin, max: this.yMax });
     this.volumeScale.setRange({ min: 0, max: this.volMax });
+  }
+
+  private getDefaultIndexRange(dataset: ChartData[]): TimeScaleRange {
+    return {
+      from: 0,
+      to: Math.max(dataset.length, 1),
+      rightOffset: 0
+    };
   }
 
   private addSimpleDataPoint(data: ChartData) {

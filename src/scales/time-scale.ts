@@ -3,16 +3,33 @@ import {
   ScaleProjectOptions,
   ScaleTick,
   ScaleTickOptions,
-  resolveDevicePixelRatio,
+  resolveDevicePixelRatio
 } from "./scale";
 
 export interface TimeScaleRange {
-  start: number;
-  end: number;
+  from: number;
+  to: number;
+  rightOffset?: number;
+}
+
+export type BarAlignment = "center" | "edge";
+
+export interface TimeScaleOptions {
+  barAlignment?: BarAlignment;
+  times?: readonly number[];
 }
 
 export class TimeScale implements Scale {
-  constructor(private range: TimeScaleRange) {}
+  private times: readonly number[];
+  private barAlignment: BarAlignment;
+
+  constructor(
+    private range: TimeScaleRange,
+    options: TimeScaleOptions = {}
+  ) {
+    this.times = options.times ?? [];
+    this.barAlignment = options.barAlignment ?? "center";
+  }
 
   setRange(range: TimeScaleRange) {
     this.range = range;
@@ -22,34 +39,86 @@ export class TimeScale implements Scale {
     return this.range;
   }
 
-  project(time: number, options: ScaleProjectOptions): number {
+  setTimes(times: readonly number[]) {
+    this.times = times;
+  }
+
+  setBarAlignment(alignment: BarAlignment) {
+    this.barAlignment = alignment;
+  }
+
+  project(value: number, options: ScaleProjectOptions): number {
     const ratio = resolveDevicePixelRatio(options);
     const width = options.canvas.width / ratio;
-    const zoomLevel = options.zoomLevel ?? 1;
-    const panOffset = options.panOffset ?? 0;
+    const span = this.getSpan();
+    const index = this.indexForValue(value);
+    const coordinate =
+      index + this.alignmentOffset(options.barAlignment ?? this.barAlignment);
 
-    return (
-      (((time - this.range.start) / (this.range.end - this.range.start)) *
-        width -
-        panOffset) *
-      zoomLevel
-    );
+    return ((coordinate - this.range.from) / span) * width;
   }
 
   unproject(pixel: number, options: ScaleProjectOptions): number {
     const ratio = resolveDevicePixelRatio(options);
     const width = options.canvas.width / ratio;
-    const zoomLevel = options.zoomLevel ?? 1;
-    const panOffset = options.panOffset ?? 0;
+    const span = this.getSpan();
+    const coordinate = this.range.from + (pixel / width) * span;
+    const alignment = options.barAlignment ?? this.barAlignment;
+    const index =
+      alignment === "edge"
+        ? Math.floor(coordinate)
+        : Math.round(coordinate - this.alignmentOffset(alignment));
 
-    return (
-      ((pixel / zoomLevel + panOffset) / width) *
-        (this.range.end - this.range.start) +
-      this.range.start
-    );
+    return this.valueForIndex(index);
   }
 
   getTicks(_options: ScaleTickOptions): ScaleTick[] {
     return [];
+  }
+
+  private getSpan() {
+    return Math.max(this.range.to - this.range.from, Number.EPSILON);
+  }
+
+  private alignmentOffset(alignment: BarAlignment) {
+    return alignment === "center" ? 0.5 : 0;
+  }
+
+  private indexForValue(value: number) {
+    if (this.times.length === 0) return value;
+
+    const index = this.lowerBound(value);
+    if (index >= this.times.length) return this.times.length - 1;
+    if (this.times[index] === value || index === 0) return index;
+
+    const previousIndex = index - 1;
+    const previousDistance = Math.abs(value - this.times[previousIndex]);
+    const nextDistance = Math.abs(this.times[index] - value);
+
+    return previousDistance <= nextDistance ? previousIndex : index;
+  }
+
+  private valueForIndex(index: number) {
+    if (this.times.length === 0) return index;
+
+    const clampedIndex = Math.max(0, Math.min(index, this.times.length - 1));
+
+    return this.times[clampedIndex];
+  }
+
+  private lowerBound(value: number): number {
+    let low = 0;
+    let high = this.times.length;
+
+    while (low < high) {
+      const mid = Math.floor((low + high) / 2);
+      if (this.times[mid] < value) {
+        low = mid + 1;
+      } else {
+        high = mid;
+      }
+    }
+
+    return low;
   }
 }

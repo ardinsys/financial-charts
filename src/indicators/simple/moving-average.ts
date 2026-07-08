@@ -1,7 +1,7 @@
 import {
   DefaultIndicatorOptions,
   Indicator,
-  indicatorLabelTemplate,
+  indicatorLabelTemplate
 } from "../indicator";
 
 export interface MovingAverageTheme {
@@ -27,8 +27,8 @@ export class MovingAverageIndicator extends Indicator<
       labelTemplate: indicatorLabelTemplate,
       key: "SMA",
       names: {
-        default: "Simple Moving Average",
-      },
+        default: "Simple Moving Average"
+      }
     };
   }
 
@@ -36,12 +36,12 @@ export class MovingAverageIndicator extends Indicator<
     return {
       light: {
         color: "#2962FF",
-        strokeWidth: 2,
+        strokeWidth: 2
       },
       dark: {
         color: "#2962FF",
-        strokeWidth: 2,
-      },
+        strokeWidth: 2
+      }
     };
   }
 
@@ -105,7 +105,7 @@ export class MovingAverageIndicator extends Indicator<
       const movingAverage = sum / divisor;
       movingAveragePoints.push({
         time: data[i].time,
-        movingAverage: movingAverage,
+        movingAverage: movingAverage
       });
 
       // Once enough points are available, start removing the oldest data point from the sum
@@ -137,13 +137,9 @@ export class MovingAverageIndicator extends Indicator<
           canvas: this.chart.getContext("main").canvas,
           zoomLevel: this.chart.getZoomLevel(),
           panOffset: this.chart.getPanOffset(),
+          barAlignment: "center" as const
         };
-        const x = this.chart
-          .getTimeScale()
-          .project(
-            point.time + this.chart.getController().getXLabelOffset(),
-            scaleOptions
-          );
+        const x = this.chart.getTimeScale().project(point.time, scaleOptions);
         const y = this.chart
           .getPriceScale()
           .project(point.movingAverage, scaleOptions);

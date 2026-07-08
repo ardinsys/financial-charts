@@ -2,10 +2,14 @@ import { ChartController } from "../controllers/controller";
 import { DataStore } from "../data/data-store";
 import { PaneledIndicator, InitParams } from "../indicators/paneled-indicator";
 import { Indicator } from "../indicators/indicator";
-import { DataScaleModel } from "../scales/data-scale-model";
+import {
+  DataScaleModel,
+  DataScaleTimeOptions
+} from "../scales/data-scale-model";
+import { TimeScaleRange } from "../scales/time-scale";
 import {
   calculateStepSize as calculatePriceStepSize,
-  calculateYAxisLabels as calculatePriceYAxisLabels,
+  calculateYAxisLabels as calculatePriceYAxisLabels
 } from "../scales/ticks/price-ticks";
 import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
@@ -93,7 +97,7 @@ export class FinancialChart extends EventEmitter {
     "crosshair",
     "x-label",
     "y-label",
-    "indicator",
+    "indicator"
   ] as const;
   private controller: ChartController;
   protected outsideContainer: HTMLElement;
@@ -105,8 +109,8 @@ export class FinancialChart extends EventEmitter {
   protected dataStore = new DataStore();
   private originalDataStore = new DataStore();
   protected options: DeepConcrete<ChartOptions>;
-  protected zoomLevel = 1;
-  protected panOffset = 0;
+  protected visibleIndexRange: TimeScaleRange = { from: 0, to: 1 };
+  private indexBounds: TimeScaleRange = { from: 0, to: 1 };
   protected timeRange!: TimeRange;
   protected autoTimeRange = false;
   protected dataScale!: DataScaleModel;
@@ -168,11 +172,11 @@ export class FinancialChart extends EventEmitter {
   }
 
   getZoomLevel() {
-    return this.zoomLevel;
+    return this.getIndexBoundsSpan() / this.getVisibleIndexSpan();
   }
 
   getPanOffset() {
-    return this.panOffset;
+    return 0;
   }
 
   getController() {
@@ -185,6 +189,162 @@ export class FinancialChart extends EventEmitter {
 
   getData() {
     return this.dataStore.toArray();
+  }
+
+  private getTimeScaleOptions(): DataScaleTimeOptions {
+    return {
+      barAlignment: this.controller.getBarAlignment(),
+      indexRange: this.visibleIndexRange,
+      timeValues: this.dataStore.times()
+    };
+  }
+
+  private syncTimeScales() {
+    const options = this.getTimeScaleOptions();
+    this.visibleScale.configureTimeScale(options);
+    if (this.dataScale) {
+      this.dataScale.configureTimeScale(options);
+    }
+  }
+
+  private getMinimumVisibleIndexSlots() {
+    const proportionalFactor = 1 / 50;
+    const width = Math.max(this.getDrawingSize().width, 1);
+    let dynamicStepWidth = width * proportionalFactor;
+    dynamicStepWidth = Math.max(15, Math.min(30, dynamicStepWidth));
+    return Math.max(1, Math.floor(width / dynamicStepWidth));
+  }
+
+  private calculateIndexBounds(): TimeScaleRange {
+    if (this.dataStore.length === 0) {
+      return { from: 0, to: 1, rightOffset: 0 };
+    }
+
+    if (this.autoTimeRange) {
+      const slotCount = Math.max(
+        this.dataStore.length,
+        this.getMinimumVisibleIndexSlots()
+      );
+
+      return {
+        from: 0,
+        to: slotCount,
+        rightOffset: Math.max(0, slotCount - this.dataStore.length)
+      };
+    }
+
+    const range = this.dataStore.indexRangeForTimeRange(
+      this.timeRange.start,
+      this.timeRange.end
+    );
+
+    return {
+      from: range.from,
+      to: range.to,
+      rightOffset: Math.max(0, range.to - this.dataStore.length)
+    };
+  }
+
+  private getIndexBoundsSpan() {
+    return Math.max(this.indexBounds.to - this.indexBounds.from, 1);
+  }
+
+  private getVisibleIndexSpan() {
+    return Math.max(this.visibleIndexRange.to - this.visibleIndexRange.from, 1);
+  }
+
+  private getPixelPerIndex() {
+    return this.getDrawingSize().width / this.getVisibleIndexSpan();
+  }
+
+  private isPinnedToRightEdge() {
+    return Math.abs(this.visibleIndexRange.to - this.indexBounds.to) < 1e-6;
+  }
+
+  private resetVisibleIndexRange() {
+    this.refreshIndexBounds({ reset: true });
+  }
+
+  private refreshIndexBounds(
+    options: {
+      reset?: boolean;
+      preserveRightEdge?: boolean;
+      span?: number;
+    } = {}
+  ) {
+    const span = options.span ?? this.getVisibleIndexSpan();
+    this.indexBounds = this.calculateIndexBounds();
+
+    if (options.reset) {
+      this.visibleIndexRange = {
+        ...this.indexBounds
+      };
+    } else if (options.preserveRightEdge) {
+      const clampedSpan = Math.min(span, this.getIndexBoundsSpan());
+      this.visibleIndexRange = {
+        from: this.indexBounds.to - clampedSpan,
+        to: this.indexBounds.to
+      };
+    }
+
+    this.clampVisibleIndexRange();
+    this.syncTimeScales();
+  }
+
+  private setVisibleIndexRange(range: TimeScaleRange) {
+    this.visibleIndexRange = range;
+    this.clampVisibleIndexRange();
+    this.syncTimeScales();
+  }
+
+  private clampVisibleIndexRange() {
+    const boundsSpan = this.getIndexBoundsSpan();
+    const span = Math.min(this.getVisibleIndexSpan(), boundsSpan);
+    let from = this.visibleIndexRange.from;
+    let to = from + span;
+
+    if (to > this.indexBounds.to) {
+      to = this.indexBounds.to;
+      from = to - span;
+    }
+
+    if (from < this.indexBounds.from) {
+      from = this.indexBounds.from;
+      to = from + span;
+    }
+
+    this.visibleIndexRange = {
+      from,
+      to,
+      rightOffset: Math.max(0, to - this.dataStore.length)
+    };
+  }
+
+  private panVisibleIndexRange(dx: number) {
+    const pixelPerIndex = this.getPixelPerIndex();
+    if (pixelPerIndex <= 0) return;
+
+    const delta = dx / pixelPerIndex;
+    this.setVisibleIndexRange({
+      from: this.visibleIndexRange.from - delta,
+      to: this.visibleIndexRange.to - delta
+    });
+  }
+
+  private zoomVisibleIndexRangeAtPixel(pixel: number, zoomFactor: number) {
+    const width = Math.max(this.getDrawingSize().width, 1);
+    const boundsSpan = this.getIndexBoundsSpan();
+    const oldSpan = this.getVisibleIndexSpan();
+    const minSpan = Math.max(1, boundsSpan / this.options.maxZoom);
+    const newSpan = Math.max(
+      minSpan,
+      Math.min(boundsSpan, oldSpan / zoomFactor)
+    );
+    const anchorRatio = Math.max(0, Math.min(1, pixel / width));
+    const anchorIndex = this.visibleIndexRange.from + anchorRatio * oldSpan;
+    const from = anchorIndex - anchorRatio * newSpan;
+
+    this.setVisibleIndexRange({ from, to: from + newSpan });
   }
 
   getTheme() {
@@ -232,8 +392,9 @@ export class FinancialChart extends EventEmitter {
     );
     this.visibleScale = this.controller.createDataScale([], {
       start: 0,
-      end: 0,
+      end: 0
     });
+    this.syncTimeScales();
 
     this.recalculateVisibleExtent();
 
@@ -247,8 +408,7 @@ export class FinancialChart extends EventEmitter {
     if (this.autoTimeRange && this.dataStore.length > 0) {
       const firstPoint = this.dataStore.get(0)!;
       const lastPoint = this.dataStore.get(this.dataStore.length - 1)!;
-      rangeInDays =
-        (lastPoint.time - firstPoint.time) / (1000 * 3600 * 24);
+      rangeInDays = (lastPoint.time - firstPoint.time) / (1000 * 3600 * 24);
     } else {
       rangeInDays =
         (this.timeRange.end - this.timeRange.start) / (1000 * 3600 * 24);
@@ -267,19 +427,19 @@ export class FinancialChart extends EventEmitter {
           ret = {
             date,
             displayLabel: this.options.formatter.formatYear(date.getTime()),
-            priority: 4,
+            priority: 4
           };
         } else if (prevDate && date.getMonth() !== prevDate.getMonth()) {
           ret = {
             date,
             displayLabel: this.options.formatter.formatMonth(date.getTime()),
-            priority: 3,
+            priority: 3
           };
         } else {
           ret = {
             date,
             displayLabel: this.options.formatter.formatDay(date.getTime()),
-            priority: 2,
+            priority: 2
           };
         }
       } else if (rangeInDays > 30) {
@@ -287,33 +447,33 @@ export class FinancialChart extends EventEmitter {
           ret = {
             date,
             displayLabel: this.options.formatter.formatMonth(date.getTime()),
-            priority: 3,
+            priority: 3
           };
         } else {
           ret = {
             date,
             displayLabel: this.options.formatter.formatDay(date.getTime()),
-            priority: 2,
+            priority: 2
           };
         }
       } else if (rangeInDays > 1) {
         ret = {
           date,
           displayLabel: this.options.formatter.formatDay(date.getTime()),
-          priority: 2,
+          priority: 2
         };
       } else {
         if (prevDate && date.getDate() !== prevDate?.getDate()) {
           ret = {
             date,
             displayLabel: this.options.formatter.formatDay(date.getTime()),
-            priority: 1,
+            priority: 1
           };
         } else {
           ret = {
             date,
             displayLabel: this.options.formatter.formatHour(date.getTime()),
-            priority: 1,
+            priority: 1
           };
         }
       }
@@ -348,7 +508,7 @@ export class FinancialChart extends EventEmitter {
     this.options.theme = mergeThemes(defaultLightTheme, this.options.theme);
     this.options.localeValues = {
       ...this.getDefaultLocaleValues(),
-      ...this.options.localeValues,
+      ...this.options.localeValues
     };
 
     this.outsideContainer = container;
@@ -379,7 +539,7 @@ export class FinancialChart extends EventEmitter {
     if (timeRange === "auto") {
       this.timeRange = {
         start: 0,
-        end: 0,
+        end: 0
       };
       this.autoTimeRange = true;
     } else {
@@ -397,7 +557,7 @@ export class FinancialChart extends EventEmitter {
     this.controller = new ControllerClass(this, this.options);
     this.visibleScale = this.controller.createDataScale([], {
       start: 0,
-      end: 0,
+      end: 0
     });
     // Init and scale canveses
     this.types.forEach((type) => this.getCanvas(type));
@@ -406,16 +566,16 @@ export class FinancialChart extends EventEmitter {
     topCanvas.addEventListener("pointerup", this.onMouseUp);
     topCanvas.addEventListener("mousemove", this.onMouseMove);
     topCanvas.addEventListener("wheel", this.onWheel, {
-      passive: false,
+      passive: false
     });
     topCanvas.addEventListener("touchstart", this.onTouchStart, {
-      passive: false,
+      passive: false
     });
     topCanvas.addEventListener("touchend", this.onTouchEnd, {
-      passive: false,
+      passive: false
     });
     topCanvas.addEventListener("touchmove", this.onTouchMove, {
-      passive: false,
+      passive: false
     });
     topCanvas.addEventListener("contextmenu", (e) => {
       e.preventDefault();
@@ -444,7 +604,6 @@ export class FinancialChart extends EventEmitter {
           alreadyResized = false;
           return;
         }
-        const oldCanvasSize = this.getDrawingSize().width;
         this.calcSpaceDistribution(this.panaledIndicators.length);
         this.resizeCanvases();
 
@@ -455,11 +614,9 @@ export class FinancialChart extends EventEmitter {
             height: this.indicatorHeight,
             y: this.chartHeight + this.indicatorHeight * i,
             devicePixelRatio: pixelRatio(),
-            x: 0,
+            x: 0
           });
         }
-
-        const newCanvasSize = this.getDrawingSize().width;
 
         this.indicatorLabelContainer.style.maxHeight =
           this.getLogicalCanvas("main").height -
@@ -469,21 +626,17 @@ export class FinancialChart extends EventEmitter {
 
         if (this.dataStore.length > 0) {
           // requestAnimationFrame(() => {
+          const preserveRightEdge = this.isPinnedToRightEdge();
+          const span = this.getVisibleIndexSpan();
           if (this.autoTimeRange) {
             this.updateAutoTimeRange(true);
           }
 
-          // Calculate scale factor
-          const scaleFactor = newCanvasSize / oldCanvasSize;
-
-          // Adjust panOffset based on the scale factor
-          const newPanOffset = this.panOffset * scaleFactor;
-
-          // Constrain newPanOffset within bounds
-          this.panOffset = Math.max(
-            0,
-            Math.min(newPanOffset, this.getMaxPanOffset())
-          );
+          this.refreshIndexBounds({
+            reset: span === this.getIndexBoundsSpan(),
+            preserveRightEdge,
+            span
+          });
 
           this.requestRedraw(this.allRedrawParts, true);
         }
@@ -497,7 +650,7 @@ export class FinancialChart extends EventEmitter {
           oldRatio = newRatio;
           resizer(true);
           alreadyResized = true;
-        },
+        }
       };
     };
 
@@ -517,8 +670,8 @@ export class FinancialChart extends EventEmitter {
             show: "Show",
             hide: "Hide",
             settings: "Settings",
-            remove: "Remove",
-          },
+            remove: "Remove"
+          }
         },
         common: {
           sources: {
@@ -526,10 +679,10 @@ export class FinancialChart extends EventEmitter {
             high: "high",
             low: "low",
             close: "close",
-            volume: "volume",
-          },
-        },
-      },
+            volume: "volume"
+          }
+        }
+      }
     };
   }
 
@@ -543,22 +696,21 @@ export class FinancialChart extends EventEmitter {
   private updateAutoTimeRange(recalc = false) {
     const firstPoint = this.dataStore.get(0)!;
     const lastPoint = this.dataStore.get(this.dataStore.length - 1)!;
-    const proportionalFactor = 1 / 50;
-    let dynamicStepWidth = this.getDrawingSize().width * proportionalFactor;
-    dynamicStepWidth = Math.max(15, Math.min(30, dynamicStepWidth));
-    const stepCount = Math.floor(
-      this.getDrawingSize().width / dynamicStepWidth
-    );
+    const stepCount = this.getMinimumVisibleIndexSlots();
     const endTime = Math.max(
       lastPoint.time + this.options.stepSize,
       firstPoint.time + stepCount * this.options.stepSize
     );
     this.timeRange = {
       start: firstPoint.time,
-      end: endTime,
+      end: endTime
     };
     if (recalc) {
-      this.dataScale.recalculate(this.dataStore.toArray(), this.timeRange);
+      this.dataScale.recalculate(
+        this.dataStore.toArray(),
+        this.timeRange,
+        this.getTimeScaleOptions()
+      );
     }
   }
 
@@ -587,8 +739,8 @@ export class FinancialChart extends EventEmitter {
     this.options.maxZoom = maxZoom;
     this.options.stepSize = stepSize;
 
-    this.zoomLevel = 1;
-    this.panOffset = 0;
+    this.visibleIndexRange = { from: 0, to: 1 };
+    this.indexBounds = { from: 0, to: 1 };
     this.isPanning = false;
     this.pointerTime = -1;
     this.pointerY = -1;
@@ -610,8 +762,9 @@ export class FinancialChart extends EventEmitter {
       this.dataScale = this.controller.createDataScale([], this.timeRange);
       this.visibleScale = this.controller.createDataScale([], {
         start: 0,
-        end: 0,
+        end: 0
       });
+      this.resetVisibleIndexRange();
       return;
     }
 
@@ -630,8 +783,9 @@ export class FinancialChart extends EventEmitter {
     );
     this.visibleScale = this.controller.createDataScale([], {
       start: 0,
-      end: 0,
+      end: 0
     });
+    this.resetVisibleIndexRange();
     this.recalculateVisibleExtent();
 
     for (const d of this.dataStore.toArray()) {
@@ -660,7 +814,7 @@ export class FinancialChart extends EventEmitter {
     if (values) {
       this.options.localeValues = {
         ...this.getDefaultLocaleValues(),
-        ...values,
+        ...values
       };
     }
 
@@ -689,9 +843,7 @@ export class FinancialChart extends EventEmitter {
       const rawPoint = this.dataScale.pixelToPoint(
         x,
         y,
-        this.getContext("main").canvas,
-        this.zoomLevel,
-        this.panOffset
+        this.getContext("main").canvas
       );
       const closestDataPoint = this.findClosestDataPoint(rawPoint);
       if (!closestDataPoint) return;
@@ -702,31 +854,12 @@ export class FinancialChart extends EventEmitter {
   };
 
   /**
-   * Get the number of pixels per millisecond.
-   * Zoom level is taken into account.
+   * Get the number of pixels per millisecond-sized bar slot.
    *
-   * @returns pixels per millisecond
+   * @returns pixels per millisecond-sized bar slot
    */
   getPixelPerMs(): number {
-    return (
-      (this.getDrawingSize().width /
-        (this.timeRange.end - this.timeRange.start)) *
-      this.zoomLevel
-    );
-  }
-
-  /**
-   * Get the maximum pan offset in pixels.
-   *
-   * @returns maximum pan offset in pixels
-   */
-  private getMaxPanOffset(): number {
-    const timeRange = this.dataScale.getXMax() - this.dataScale.getXMin();
-    const visibleTimeRange = timeRange / this.zoomLevel;
-    const endTime = this.dataScale.getXMin() + visibleTimeRange;
-    const pixelPerMs = this.getPixelPerMs();
-
-    return ((this.timeRange.end - endTime) * pixelPerMs) / this.zoomLevel;
+    return this.getPixelPerIndex() / this.options.stepSize;
   }
 
   private onMouseMove = (event: MouseEvent) => {
@@ -734,12 +867,7 @@ export class FinancialChart extends EventEmitter {
     if (this.lastPointerPosition) {
       this.isPanning = true;
       const dx = event.clientX - this.lastPointerPosition.x;
-      const newPanOffset = this.panOffset - dx / this.zoomLevel;
-
-      this.panOffset = Math.max(
-        0,
-        Math.min(newPanOffset, this.getMaxPanOffset())
-      );
+      this.panVisibleIndexRange(dx);
       this.requestRedraw(["controller", "indicators"]);
       this.lastPointerPosition = { x: event.clientX };
     } else {
@@ -749,16 +877,15 @@ export class FinancialChart extends EventEmitter {
     const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
     this.pointerMove({
       x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
+      y: event.clientY - rect.top
     });
     // });
   };
 
-  private adjustZoomLevel(zoomFactor: number) {
-    this.zoomLevel *= zoomFactor;
-    this.zoomLevel = Math.max(
-      Math.min(this.zoomLevel, this.options.maxZoom),
-      1
+  private adjustZoomLevel(zoomFactor: number, anchorPixel?: number) {
+    this.zoomVisibleIndexRangeAtPixel(
+      anchorPixel ?? this.getDrawingSize().width / 2,
+      zoomFactor
     );
   }
 
@@ -769,33 +896,7 @@ export class FinancialChart extends EventEmitter {
 
     const offsetX = event.clientX - this.container.getBoundingClientRect().left;
 
-    const oldPoint = this.dataScale.pixelToPoint(
-      offsetX,
-      0,
-      this.getContext("main").canvas,
-      this.zoomLevel,
-      this.panOffset
-    );
-
-    this.adjustZoomLevel(zoomFactor);
-
-    const newPixelPoint = this.dataScale.mapToPixel(
-      oldPoint.time,
-      oldPoint.price,
-      this.getContext("main").canvas,
-      this.zoomLevel,
-      this.panOffset
-    );
-
-    const newPanOffset = Math.abs(offsetX - newPixelPoint.x) / this.zoomLevel;
-
-    this.panOffset = Math.max(
-      0,
-      Math.min(
-        this.panOffset + newPanOffset * (event.deltaY < 0 ? 1 : -1),
-        this.getMaxPanOffset()
-      )
-    );
+    this.adjustZoomLevel(zoomFactor, offsetX);
 
     this.requestRedraw(this.allRedrawParts);
   };
@@ -827,7 +928,7 @@ export class FinancialChart extends EventEmitter {
 
     if (event.touches.length === 1) {
       this.lastPointerPosition = {
-        x: event.touches[0].clientX,
+        x: event.touches[0].clientX
       };
       this.isTouchCrosshairTimeout = setTimeout(() => {
         this.isTouchCrosshair = !this.isTouchCrosshair;
@@ -837,7 +938,7 @@ export class FinancialChart extends EventEmitter {
             this.getContext("crosshair").canvas.getBoundingClientRect();
           this.pointerMove({
             x: event.touches[0].clientX - rect.left,
-            y: event.touches[0].clientY - rect.top,
+            y: event.touches[0].clientY - rect.top
           });
         } else {
           this.lastPointerPosition = undefined;
@@ -868,9 +969,7 @@ export class FinancialChart extends EventEmitter {
           this.visibleScale.pixelToPoint(
             e.changedTouches[0].clientX - rect.left,
             e.changedTouches[0].clientY - rect.top,
-            this.getContext("main").canvas,
-            this.zoomLevel,
-            this.panOffset
+            this.getContext("main").canvas
           )
         );
         if (!point) return;
@@ -895,18 +994,13 @@ export class FinancialChart extends EventEmitter {
 
           this.pointerMove({
             x: event.touches[0].clientX - rect.left,
-            y: event.touches[0].clientY - rect.top,
+            y: event.touches[0].clientY - rect.top
           });
         });
         return;
       }
       const dx = event.touches[0].clientX - this.lastPointerPosition.x;
-      const newPanOffset = this.panOffset - dx / this.zoomLevel;
-      // Limit panOffset to the range [0, canvas.width * (zoomLevel - 1)]
-      this.panOffset = Math.max(
-        0,
-        Math.min(newPanOffset, this.getMaxPanOffset())
-      );
+      this.panVisibleIndexRange(dx);
       requestAnimationFrame(() => {
         const rect =
           this.getContext("crosshair").canvas.getBoundingClientRect();
@@ -915,11 +1009,11 @@ export class FinancialChart extends EventEmitter {
         if (!this.isTouchCrosshair) return;
         this.pointerMove({
           x: event.touches[0].clientX - rect.left,
-          y: event.touches[0].clientY - rect.top,
+          y: event.touches[0].clientY - rect.top
         });
       });
       this.lastPointerPosition = {
-        x: event.touches[0].clientX,
+        x: event.touches[0].clientX
       };
     } else if (event.touches.length === 2 && this.lastTouchDistance) {
       if (this.isTouchCrosshair) return;
@@ -928,19 +1022,10 @@ export class FinancialChart extends EventEmitter {
       const dy = event.touches[0].clientY - event.touches[1].clientY;
       const distance = Math.sqrt(dx * dx + dy * dy);
       const zoomFactor = distance / this.lastTouchDistance; // calculate zoom factor based on change in distance
+      const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
       const offsetX =
-        (event.touches[0].clientX + event.touches[1].clientX) / 2 -
-        this.container.offsetWidth / 2;
-      const newPanOffset =
-        this.panOffset - (offsetX * (zoomFactor - 1)) / this.zoomLevel;
-      this.panOffset = Math.max(
-        0,
-        Math.min(
-          newPanOffset,
-          this.getDrawingSize().width * (this.zoomLevel - 1)
-        )
-      );
-      this.adjustZoomLevel(zoomFactor);
+        (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left;
+      this.adjustZoomLevel(zoomFactor, offsetX);
       requestAnimationFrame(() => {
         this.drawController();
         this.drawIndicators();
@@ -950,7 +1035,7 @@ export class FinancialChart extends EventEmitter {
       const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
       this.pointerMove({
         x: event.touches[0].clientX - rect.left,
-        y: event.touches[0].clientY - rect.top,
+        y: event.touches[0].clientY - rect.top
       });
     }
   };
@@ -1107,13 +1192,29 @@ export class FinancialChart extends EventEmitter {
    * @returns the currently visible time range
    */
   public getVisibleTimeRange(): TimeRange {
-    const pixelPerMs = this.getPixelPerMs() / this.zoomLevel;
+    if (this.dataStore.length === 0) return this.timeRange;
 
-    const timeRange = this.dataScale.getXMax() - this.dataScale.getXMin();
-    const visibleTimeRange = timeRange / this.zoomLevel;
-    const startTime = this.dataScale.getXMin() + this.panOffset / pixelPerMs;
-    const endTime = startTime + visibleTimeRange;
-    return { start: startTime, end: endTime };
+    const startIndex = Math.max(
+      0,
+      Math.min(
+        Math.floor(this.visibleIndexRange.from),
+        this.dataStore.length - 1
+      )
+    );
+    const endIndex = Math.max(
+      startIndex,
+      Math.min(
+        Math.ceil(this.visibleIndexRange.to) - 1,
+        this.dataStore.length - 1
+      )
+    );
+    const startPoint = this.dataStore.get(startIndex)!;
+    const endPoint = this.dataStore.get(endIndex)!;
+
+    return {
+      start: startPoint.time,
+      end: endPoint.time + this.options.stepSize
+    };
   }
 
   /**
@@ -1140,6 +1241,7 @@ export class FinancialChart extends EventEmitter {
       this.timeRange
     );
 
+    this.resetVisibleIndexRange();
     this.recalculateVisibleExtent();
 
     this.xLabelDates = [];
@@ -1160,39 +1262,17 @@ export class FinancialChart extends EventEmitter {
    * @param data chart data to draw
    */
   public drawNextPoint(data: ChartData) {
-    // Capture previos state before updating the time range
-    const oldPixelPerMs = this.getPixelPerMs();
-    const oldTimeRange = { ...this.timeRange };
+    const preserveRightEdge = this.isPinnedToRightEdge();
+    const span = this.getVisibleIndexSpan();
 
     this.originalDataStore.append(data);
-    const isNewData = this.transformNewData(data);
+    this.transformNewData(data);
 
     if (this.autoTimeRange) {
-      // Update the time range to include the new data point
       this.updateAutoTimeRange(true);
-
-      if (this.zoomLevel > 1 && this.panOffset > 0) {
-        // Adjust zoomLevel based on the ratio of old and new total time range sizes
-        const oldRangeSize = oldTimeRange.end - oldTimeRange.start;
-        const newRangeSize = this.timeRange.end - this.timeRange.start;
-        const rangeSizeRatio = newRangeSize / oldRangeSize;
-        const oldZoomLevel = this.zoomLevel;
-        this.zoomLevel = Math.max(1, this.zoomLevel * rangeSizeRatio);
-
-        const panOffset = (this.panOffset * oldZoomLevel) / oldPixelPerMs;
-        this.panOffset = (panOffset * this.getPixelPerMs()) / this.zoomLevel;
-        if (
-          this.getVisibleTimeRange().end ===
-          this.timeRange.end - this.options.stepSize
-        ) {
-          this.panOffset =
-            (panOffset * this.getPixelPerMs() +
-              (isNewData ? this.options.stepSize * this.getPixelPerMs() : 0)) /
-            this.zoomLevel;
-        }
-      }
     }
 
+    this.refreshIndexBounds({ preserveRightEdge, span });
     this.requestRedraw(this.allRedrawParts);
   }
 
@@ -1205,7 +1285,7 @@ export class FinancialChart extends EventEmitter {
         height: this.indicatorHeight,
         y: this.chartHeight + this.indicatorHeight * i,
         devicePixelRatio: pixelRatio(),
-        x: 0,
+        x: 0
       });
     }
     this.resizeCanvases();
@@ -1231,7 +1311,7 @@ export class FinancialChart extends EventEmitter {
         x: 0,
         y:
           this.chartHeight +
-          this.indicatorHeight * this.panaledIndicators.length,
+          this.indicatorHeight * this.panaledIndicators.length
       };
 
       indicator.setChart(this);
@@ -1295,9 +1375,7 @@ export class FinancialChart extends EventEmitter {
     const rawPoint = this.visibleScale.pixelToPoint(
       e.x,
       e.y,
-      this.getContext("main").canvas,
-      this.zoomLevel,
-      this.panOffset
+      this.getContext("main").canvas
     );
     const closestDataPoint = this.findClosestDataPoint(rawPoint);
     if (!closestDataPoint) return;
@@ -1335,6 +1413,7 @@ export class FinancialChart extends EventEmitter {
       canvas: ctx.canvas,
       zoomLevel: this.getZoomLevel(),
       panOffset: this.getPanOffset(),
+      barAlignment: "edge" as const
     };
 
     for (let i = 0; i < visibleDataPoints.length; i++) {
@@ -1391,12 +1470,9 @@ export class FinancialChart extends EventEmitter {
       return;
     }
 
-    const xOffset = this.controller.getXLabelOffset();
-
-    const x = this.getTimeScale().project(this.pointerTime + xOffset, {
+    const x = this.getTimeScale().project(this.pointerTime, {
       canvas: this.getContext("main").canvas,
-      zoomLevel: this.zoomLevel,
-      panOffset: this.panOffset,
+      barAlignment: "center"
     });
     ctx.strokeStyle = this.options.theme.crosshair.color;
     ctx.lineWidth = this.options.theme.crosshair.width;
@@ -1432,9 +1508,7 @@ export class FinancialChart extends EventEmitter {
     const price = this.visibleScale.pixelToPoint(
       0,
       this.pointerY,
-      this.getContext("main").canvas,
-      this.zoomLevel,
-      this.panOffset
+      this.getContext("main").canvas
     ).price;
     const decimals = this.estimatePriceLabelDecimalPlaces(30);
     let priceText = "";
@@ -1618,7 +1692,7 @@ export class FinancialChart extends EventEmitter {
       yMax: this.visibleScale.getYMax(),
       canvasHeight: this.getLogicalCanvas("y-label").height,
       fontSize: this.options.theme.yAxis.fontSize,
-      labelSpacing,
+      labelSpacing
     });
   }
 
@@ -1694,14 +1768,10 @@ export class FinancialChart extends EventEmitter {
     labels.sort((a, b) => b.priority - a.priority);
 
     labels.forEach((label) => {
-      const x = this.dataScale.getTimeScale().project(
-        label.date.getTime() + this.controller.getXLabelOffset(),
-        {
-          canvas: { width: canvasWidth, height: 0 },
-          zoomLevel: this.zoomLevel,
-          panOffset: this.panOffset,
-        }
-      );
+      const x = this.dataScale.getTimeScale().project(label.date.getTime(), {
+        canvas: { width: canvasWidth, height: 0 },
+        barAlignment: "center"
+      });
 
       const textWidth = ctx.measureText(label.displayLabel).width;
       const labelPos = { start: x - textWidth / 2, end: x + textWidth / 2 };
@@ -1735,10 +1805,11 @@ export class FinancialChart extends EventEmitter {
   private lastVisibleDataPoints: ChartData[] = [];
 
   recalculateVisibleExtent() {
+    this.refreshIndexBounds();
     const visibleTimeRange = this.getVisibleTimeRange();
-    const visibleDataPoints = this.dataStore.visibleSlice(
-      visibleTimeRange.start - this.options.stepSize,
-      visibleTimeRange.end + this.options.stepSize
+    const visibleDataPoints = this.dataStore.visibleIndexSlice(
+      this.visibleIndexRange.from - 1,
+      this.visibleIndexRange.to + 1
     );
 
     for (const indicator of this.indicators) {
@@ -1750,7 +1821,11 @@ export class FinancialChart extends EventEmitter {
 
     // Do not recalc xMin and xMax to preserve x positions
     // but we need to adjust yMin and yMax to the visible data points
-    this.visibleScale.recalculate(visibleDataPoints, this.timeRange);
+    this.visibleScale.recalculate(
+      visibleDataPoints,
+      this.timeRange,
+      this.getTimeScaleOptions()
+    );
 
     this.lastVisibleDataPoints = visibleDataPoints;
     return visibleDataPoints;

@@ -12,7 +12,9 @@ export class SteplineController extends OHLCController {
   }
 
   createDataScale(data: ChartData[], timeRange: TimeRange): DataScaleModel {
-    return new DataScaleModel("simple", data, timeRange);
+    return new DataScaleModel("simple", data, timeRange, {
+      barAlignment: this.getBarAlignment()
+    });
   }
 
   draw(): void {
@@ -29,7 +31,7 @@ export class SteplineController extends OHLCController {
     const scaleOptions = {
       canvas: ctx.canvas,
       zoomLevel: this.chart.getZoomLevel(),
-      panOffset: this.chart.getPanOffset(),
+      panOffset: this.chart.getPanOffset()
     };
 
     // Start from the first data point

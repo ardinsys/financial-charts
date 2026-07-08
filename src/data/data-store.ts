@@ -19,6 +19,10 @@ export class DataStore {
     return [...this.data];
   }
 
+  times(): number[] {
+    return this.data.map((point) => point.time);
+  }
+
   indexOfTime(time: number): number {
     const index = this.lowerBound(time);
     if (index >= this.data.length) return -1;
@@ -67,6 +71,29 @@ export class DataStore {
     const startIndex = this.lowerBound(from);
     const endIndex = this.upperBound(to);
     return this.data.slice(startIndex, endIndex);
+  }
+
+  visibleIndexSlice(from: number, to: number): ChartData[] {
+    if (this.data.length === 0 || from > to) return [];
+
+    const startIndex = Math.max(0, Math.floor(from));
+    const endIndex = Math.min(this.data.length, Math.ceil(to));
+    return this.data.slice(startIndex, endIndex);
+  }
+
+  indexRangeForTimeRange(from: number, to: number) {
+    if (this.data.length === 0 || from > to) {
+      return { from: 0, to: 1 };
+    }
+
+    const startIndex = this.lowerBound(from);
+    const endIndex = this.upperBound(to);
+    const clampedStart = Math.min(startIndex, this.data.length - 1);
+
+    return {
+      from: clampedStart,
+      to: Math.max(endIndex, clampedStart + 1)
+    };
   }
 
   static merge(data: ChartData[], stepSize: number): ChartData[] {
@@ -121,7 +148,7 @@ export class DataStore {
       high: Math.max(current.high!, next.high!),
       low: Math.min(current.low!, next.low!),
       close: next.close!,
-      volume: current.volume! + next.volume!,
+      volume: current.volume! + next.volume!
     };
   }
 }

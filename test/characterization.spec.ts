@@ -44,7 +44,7 @@ function createChart(
     maxZoom: 10,
     volume: false,
     locale: "en-US",
-    ...overrides,
+    ...overrides
   });
 
   chart.draw(data);
@@ -55,7 +55,7 @@ function createChart(
 function roundedLabels(labels: AxisLabel[]) {
   return labels.map((label) => ({
     value: label.value,
-    position: Number(label.position.toFixed(6)),
+    position: Number(label.position.toFixed(6))
   }));
 }
 
@@ -65,7 +65,7 @@ describe("current price tick calculations", () => {
     const chart = createChart(
       [
         { time: start, close: 10 },
-        { time: start + 60_000, close: 15 },
+        { time: start + 60_000, close: 15 }
       ],
       { start, end: start + 60_000 }
     );
@@ -84,7 +84,7 @@ describe("current price tick calculations", () => {
         { time: start + 60_000, close: 12 },
         { time: start + 120_000, close: 9 },
         { time: start + 180_000, close: 15 },
-        { time: start + 240_000, close: 11 },
+        { time: start + 240_000, close: 11 }
       ],
       { start, end: start + 240_000 }
     );
@@ -97,7 +97,7 @@ describe("current price tick calculations", () => {
       { value: 12, position: 178.148148 },
       { value: 13, position: 132.469136 },
       { value: 14, position: 86.790123 },
-      { value: 15, position: 41.111111 },
+      { value: 15, position: 41.111111 }
     ]);
   });
 
@@ -107,7 +107,7 @@ describe("current price tick calculations", () => {
     const largeRangeChart = createChart(
       [
         { time: start, close: 10 },
-        { time: start + 60_000, close: 1_000 },
+        { time: start + 60_000, close: 1_000 }
       ],
       { start, end: start + 60_000 }
     );
@@ -116,7 +116,7 @@ describe("current price tick calculations", () => {
     const mediumRangeChart = createChart(
       [
         { time: start, close: 10 },
-        { time: start + 60_000, close: 15 },
+        { time: start + 60_000, close: 15 }
       ],
       { start, end: start + 60_000 }
     );
@@ -125,7 +125,7 @@ describe("current price tick calculations", () => {
     const tinyRangeChart = createChart(
       [
         { time: start, close: 1.00001 },
-        { time: start + 60_000, close: 1.00002 },
+        { time: start + 60_000, close: 1.00002 }
       ],
       { start, end: start + 60_000 }
     );
@@ -142,20 +142,20 @@ describe("current scale coordinate mapping", () => {
         { time: start + 60_000, close: 12 },
         { time: start + 120_000, close: 9 },
         { time: start + 180_000, close: 15 },
-        { time: start + 240_000, close: 11 },
+        { time: start + 240_000, close: 11 }
       ],
       { start, end: start + 240_000 }
     );
     const visibleScale = chart.getVisibleExtent();
     const canvas = chart.getContext("main").canvas;
 
-    const pixel = visibleScale.mapToPixel(start + 60_000, 12, canvas, 2, 30);
+    const pixel = visibleScale.mapToPixel(start + 60_000, 12, canvas);
     expect({
       x: Number(pixel.x.toFixed(6)),
-      y: Number(pixel.y.toFixed(6)),
-    }).toEqual({ x: 300, y: 178.148148 });
+      y: Number(pixel.y.toFixed(6))
+    }).toEqual({ x: 216, y: 178.148148 });
 
-    const point = visibleScale.pixelToPoint(pixel.x, pixel.y, canvas, 2, 30);
+    const point = visibleScale.pixelToPoint(pixel.x, pixel.y, canvas);
     expect(point.time).toBeCloseTo(start + 60_000, 6);
     expect(point.price).toBeCloseTo(12, 10);
   });
@@ -172,9 +172,7 @@ describe("current default formatter output", () => {
     expect(formatter.formatMonth(timestamp)).toBe("Jan");
     expect(formatter.formatDay(timestamp)).toBe("2");
     expect(formatter.formatHour(timestamp)).toBe("3:04 AM");
-    expect(formatter.formatTooltipDate(timestamp)).toBe(
-      "Jan 2, 2024, 3:04 AM"
-    );
+    expect(formatter.formatTooltipDate(timestamp)).toBe("Jan 2, 2024, 3:04 AM");
     expect(formatter.formatPrice(1_234_567.89)).toBe("1,234,567.89");
     expect(formatter.formatTooltipPrice(12.34567, 3)).toBe("12.346");
     expect(formatter.formatVolume(1_234_567, 10)).toBe("1.2M");
@@ -189,7 +187,7 @@ describe("current X-label selection", () => {
       [
         { time: start, close: 10 },
         { time: start + 60 * 60_000, close: 11 },
-        { time: start + 2 * 60 * 60_000, close: 12 },
+        { time: start + 2 * 60 * 60_000, close: 12 }
       ],
       { start, end: start + 2 * 60 * 60_000 },
       { stepSize: 60 * 60_000 }
@@ -198,12 +196,12 @@ describe("current X-label selection", () => {
     expect(
       chart.processXLabels().map((label) => ({
         displayLabel: label.displayLabel,
-        priority: label.priority,
+        priority: label.priority
       }))
     ).toEqual([
       { displayLabel: "11:00 PM", priority: 1 },
       { displayLabel: "2", priority: 1 },
-      { displayLabel: "1:00 AM", priority: 1 },
+      { displayLabel: "1:00 AM", priority: 1 }
     ]);
   });
 
@@ -214,7 +212,7 @@ describe("current X-label selection", () => {
         { time: start, close: 10 },
         { time: Date.UTC(2024, 0, 1), close: 11 },
         { time: Date.UTC(2024, 1, 1), close: 12 },
-        { time: Date.UTC(2024, 1, 2), close: 13 },
+        { time: Date.UTC(2024, 1, 2), close: 13 }
       ],
       { start, end: Date.UTC(2025, 6, 1) },
       { stepSize: 24 * 60 * 60_000 }
@@ -223,13 +221,13 @@ describe("current X-label selection", () => {
     expect(
       chart.processXLabels().map((label) => ({
         displayLabel: label.displayLabel,
-        priority: label.priority,
+        priority: label.priority
       }))
     ).toEqual([
       { displayLabel: "31", priority: 2 },
       { displayLabel: "2024", priority: 4 },
       { displayLabel: "Feb", priority: 3 },
-      { displayLabel: "2", priority: 2 },
+      { displayLabel: "2", priority: 2 }
     ]);
   });
 });

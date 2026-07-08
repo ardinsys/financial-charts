@@ -1,10 +1,11 @@
 import {
   FinancialChart,
   ChartOptions,
-  DeepConcrete,
+  DeepConcrete
 } from "../chart/financial-chart";
 import { ChartData, TimeRange } from "../chart/types";
 import { DataScaleModel } from "../scales/data-scale-model";
+import type { BarAlignment } from "../scales/time-scale";
 
 export abstract class ChartController {
   static ID = "default";
@@ -20,7 +21,7 @@ export abstract class ChartController {
   ): DataScaleModel;
 
   abstract getEffectiveCrosshairValues(): boolean[];
-  abstract getXLabelOffset(): number;
+  abstract getBarAlignment(): BarAlignment;
   abstract getTimeFromRawDataPoint(rawPoint: ChartData): number;
   abstract draw(): void;
 }
@@ -29,11 +30,13 @@ export abstract class SimpleController extends ChartController {
   private simpleCrosshairValues = [false, false, false, true, true];
 
   createDataScale(data: ChartData[], timeRange: TimeRange): DataScaleModel {
-    return new DataScaleModel("simple", data, timeRange);
+    return new DataScaleModel("simple", data, timeRange, {
+      barAlignment: this.getBarAlignment()
+    });
   }
 
-  getXLabelOffset(): number {
-    return 0;
+  getBarAlignment(): BarAlignment {
+    return "center";
   }
 
   getTimeFromRawDataPoint(rawPoint: ChartData): number {
@@ -51,11 +54,13 @@ export abstract class OHLCController extends ChartController {
   private ohlcCrosshairValues = [true, true, true, true, true];
 
   createDataScale(data: ChartData[], timeRange: TimeRange): DataScaleModel {
-    return new DataScaleModel("ohlc", data, timeRange);
+    return new DataScaleModel("ohlc", data, timeRange, {
+      barAlignment: this.getBarAlignment()
+    });
   }
 
-  getXLabelOffset(): number {
-    return this.options.stepSize / 2;
+  getBarAlignment(): BarAlignment {
+    return "edge";
   }
 
   getTimeFromRawDataPoint(rawPoint: ChartData): number {
