@@ -1,4 +1,5 @@
 import { ChartController } from "../controllers/controller";
+import { DataStore } from "../data/data-store";
 import { PaneledIndicator, InitParams } from "../indicators/paneled-indicator";
 import { Indicator } from "../indicators/indicator";
 import { DataScaleModel } from "../scales/data-scale-model";
@@ -101,8 +102,8 @@ export class FinancialChart extends EventEmitter {
   protected canvases: Map<string, HTMLCanvasElement> = new Map();
   protected contexts: Map<string, CanvasRenderingContext2D> = new Map();
   protected isPanning: boolean = false;
-  protected data: ChartData[] = [];
-  private originalData: ChartData[] = [];
+  protected dataStore = new DataStore();
+  private originalDataStore = new DataStore();
   protected options: DeepConcrete<ChartOptions>;
   protected zoomLevel = 1;
   protected panOffset = 0;
@@ -183,7 +184,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   getData() {
-    return this.data;
+    return this.dataStore.toArray();
   }
 
   getTheme() {
@@ -226,7 +227,7 @@ export class FinancialChart extends EventEmitter {
 
     this.controller = new ControllerClass(this, this.options);
     this.dataScale = this.controller.createDataScale(
-      this.data,
+      this.dataStore.toArray(),
       this.timeRange
     );
     this.visibleScale = this.controller.createDataScale([], {
@@ -243,10 +244,11 @@ export class FinancialChart extends EventEmitter {
     // Calculate the range of the data in days
     let rangeInDays = 0;
 
-    if (this.autoTimeRange && this.data.length > 0) {
+    if (this.autoTimeRange && this.dataStore.length > 0) {
+      const firstPoint = this.dataStore.get(0)!;
+      const lastPoint = this.dataStore.get(this.dataStore.length - 1)!;
       rangeInDays =
-        (this.data[this.data.length - 1].time - this.data[0].time) /
-        (1000 * 3600 * 24);
+        (lastPoint.time - firstPoint.time) / (1000 * 3600 * 24);
     } else {
       rangeInDays =
         (this.timeRange.end - this.timeRange.start) / (1000 * 3600 * 24);
@@ -323,14 +325,8 @@ export class FinancialChart extends EventEmitter {
 
   private findClosestDataPoint(rawPoint: ChartData): ChartData | undefined {
     const time = this.controller.getTimeFromRawDataPoint(rawPoint);
-    // Find the closest data point
-    const closestDataPoint = this.data.reduce(
-      (prev, curr) =>
-        Math.abs(curr.time - time) < Math.abs(prev.time - time) ? curr : prev,
-      { time: 0 }
-    );
-    if (closestDataPoint.time === 0) return;
-    return closestDataPoint;
+    const closestIndex = this.dataStore.nearestIndex(time);
+    return closestIndex === -1 ? undefined : this.dataStore.get(closestIndex);
   }
 
   getOutsideContainer() {
@@ -471,7 +467,7 @@ export class FinancialChart extends EventEmitter {
           30 +
           "px";
 
-        if (this.data.length > 0) {
+        if (this.dataStore.length > 0) {
           // requestAnimationFrame(() => {
           if (this.autoTimeRange) {
             this.updateAutoTimeRange(true);
@@ -545,6 +541,8 @@ export class FinancialChart extends EventEmitter {
   }
 
   private updateAutoTimeRange(recalc = false) {
+    const firstPoint = this.dataStore.get(0)!;
+    const lastPoint = this.dataStore.get(this.dataStore.length - 1)!;
     const proportionalFactor = 1 / 50;
     let dynamicStepWidth = this.getDrawingSize().width * proportionalFactor;
     dynamicStepWidth = Math.max(15, Math.min(30, dynamicStepWidth));
@@ -552,15 +550,15 @@ export class FinancialChart extends EventEmitter {
       this.getDrawingSize().width / dynamicStepWidth
     );
     const endTime = Math.max(
-      this.data[this.data.length - 1].time + this.options.stepSize,
-      this.data[0].time + stepCount * this.options.stepSize
+      lastPoint.time + this.options.stepSize,
+      firstPoint.time + stepCount * this.options.stepSize
     );
     this.timeRange = {
-      start: this.data[0].time,
+      start: firstPoint.time,
       end: endTime,
     };
     if (recalc) {
-      this.dataScale.recalculate(this.data, this.timeRange);
+      this.dataScale.recalculate(this.dataStore.toArray(), this.timeRange);
     }
   }
 
@@ -570,7 +568,7 @@ export class FinancialChart extends EventEmitter {
     );
     this.options.theme = mergeThemes(this.options.theme, theme);
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
-    if (this.data.length > 0) {
+    if (this.dataStore.length > 0) {
       this.requestRedraw(this.allRedrawParts);
     }
     this.container.classList.add(`financial-charts-${theme.key}`);
@@ -603,8 +601,31 @@ export class FinancialChart extends EventEmitter {
       this.autoTimeRange = false;
       this.timeRange = timeRange;
     }
+
+    this.xLabelCache.clear();
+    this.xLabelDates = [];
+
+    if (this.originalDataStore.length == 0) {
+      this.autoTimeRange = timeRange === "auto";
+      this.dataScale = this.controller.createDataScale([], this.timeRange);
+      this.visibleScale = this.controller.createDataScale([], {
+        start: 0,
+        end: 0,
+      });
+      return;
+    }
+
+    this.dataStore = new DataStore(
+      this.mapDataToStepSize(this.originalDataStore.toArray(), stepSize)
+    );
+
+    if (timeRange === "auto") {
+      this.autoTimeRange = true;
+      this.updateAutoTimeRange(false);
+    }
+
     this.dataScale = this.controller.createDataScale(
-      this.data,
+      this.dataStore.toArray(),
       this.timeRange
     );
     this.visibleScale = this.controller.createDataScale([], {
@@ -613,22 +634,7 @@ export class FinancialChart extends EventEmitter {
     });
     this.recalculateVisibleExtent();
 
-    this.xLabelCache.clear();
-    this.xLabelDates = [];
-
-    if (this.originalData.length == 0) {
-      this.autoTimeRange = timeRange === "auto";
-      return;
-    }
-
-    this.data = this.mapDataToStepSize(this.originalData, stepSize);
-
-    if (timeRange === "auto") {
-      this.autoTimeRange = true;
-      this.updateAutoTimeRange(true);
-    }
-
-    for (const d of this.data) {
+    for (const d of this.dataStore.toArray()) {
       if (d.time < this.timeRange.start) continue;
       this.xLabelDates.push(new Date(d.time));
     }
@@ -646,7 +652,7 @@ export class FinancialChart extends EventEmitter {
     this.options.formatter.setLocale(locale);
     this.xLabelCache.clear();
     this.xLabelDates = [];
-    for (const d of this.data) {
+    for (const d of this.dataStore.toArray()) {
       if (d.time < this.timeRange.start) continue;
       this.xLabelDates.push(new Date(d.time));
     }
@@ -724,7 +730,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private onMouseMove = (event: MouseEvent) => {
-    if (this.data.length == 0) return;
+    if (this.dataStore.length == 0) return;
     if (this.lastPointerPosition) {
       this.isPanning = true;
       const dx = event.clientX - this.lastPointerPosition.x;
@@ -757,7 +763,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private onWheel = (event: WheelEvent) => {
-    if (this.data.length == 0) return;
+    if (this.dataStore.length == 0) return;
     event.preventDefault();
     const zoomFactor = event.deltaY < 0 ? 1.1 : 0.9; // adjust these values as needed
 
@@ -817,7 +823,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private onTouchStart = (event: TouchEvent) => {
-    if (this.data.length == 0) return;
+    if (this.dataStore.length == 0) return;
 
     if (event.touches.length === 1) {
       this.lastPointerPosition = {
@@ -876,7 +882,7 @@ export class FinancialChart extends EventEmitter {
   };
 
   private onTouchMove = (event: TouchEvent) => {
-    if (this.data.length == 0) return;
+    if (this.dataStore.length == 0) return;
     if (this.isTouchCrosshairTimeout) {
       clearTimeout(this.isTouchCrosshairTimeout);
       this.isTouchCrosshairTimeout = undefined;
@@ -1120,15 +1126,17 @@ export class FinancialChart extends EventEmitter {
   public draw(data: ChartData[]) {
     if (data.length == 0) return;
     this.calcSpaceDistribution(this.panaledIndicators.length);
-    this.originalData = data;
-    this.data = this.mapDataToStepSize(data, this.options.stepSize);
+    this.originalDataStore = new DataStore(data);
+    this.dataStore = new DataStore(
+      this.mapDataToStepSize(data, this.options.stepSize)
+    );
 
     if (this.autoTimeRange) {
       this.updateAutoTimeRange(false);
     }
 
     this.dataScale = this.controller.createDataScale(
-      this.data,
+      this.dataStore.toArray(),
       this.timeRange
     );
 
@@ -1136,7 +1144,7 @@ export class FinancialChart extends EventEmitter {
 
     this.xLabelDates = [];
 
-    for (const d of this.data) {
+    for (const d of this.dataStore.toArray()) {
       if (d.time < this.timeRange.start) continue;
       this.xLabelDates.push(new Date(d.time));
     }
@@ -1156,7 +1164,7 @@ export class FinancialChart extends EventEmitter {
     const oldPixelPerMs = this.getPixelPerMs();
     const oldTimeRange = { ...this.timeRange };
 
-    this.originalData.push(data);
+    this.originalDataStore.append(data);
     const isNewData = this.transformNewData(data);
 
     if (this.autoTimeRange) {
@@ -1355,7 +1363,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private drawIndicators() {
-    if (this.data.length == 0) return;
+    if (this.dataStore.length == 0) return;
     const ctx = this.getContext("indicator");
     const sizes = this.getLogicalCanvas("indicator");
 
@@ -1582,43 +1590,7 @@ export class FinancialChart extends EventEmitter {
     data: ChartData[],
     stepSize: number
   ): ChartData[] {
-    if (data.length === 0) return data;
-    data = data.map((d) => {
-      return d.time % stepSize === 0
-        ? d
-        : { ...d, time: d.time - (d.time % stepSize) };
-    });
-
-    // merge data points that has the same time
-    const mergedData: ChartData[] = [];
-    let lastData: ChartData | undefined;
-
-    for (const d of data) {
-      if (!lastData) {
-        lastData = d;
-        continue;
-      }
-
-      if (d.time === lastData.time) {
-        // set last data but do not override open!
-        // setup high, low and close
-        lastData = {
-          ...lastData,
-          open: lastData.open!,
-          high: Math.max(lastData.high!, d.high!),
-          low: Math.min(lastData.low!, d.low!),
-          close: d.close!,
-          volume: lastData.volume! + d.volume!,
-        };
-      } else {
-        mergedData.push(lastData);
-        lastData = d;
-      }
-    }
-
-    mergedData.push(lastData!);
-
-    return mergedData;
+    return DataStore.merge(data, stepSize);
   }
 
   protected transformNewData(data: ChartData): boolean {
@@ -1627,33 +1599,17 @@ export class FinancialChart extends EventEmitter {
         ? data
         : { ...data, time: data.time - (data.time % this.options.stepSize) };
 
-    // If there isn't any data yet, just add it
-    if (this.data.length === 0) {
-      this.data.push(d);
-      this.dataScale.addDataPoint(d);
-      return true;
-    }
+    const isNewData = this.dataStore.merge(d, this.options.stepSize);
+    const dataIndex = this.dataStore.indexOfTime(d.time);
+    const storedData = this.dataStore.get(dataIndex)!;
 
-    const lastData = this.data[this.data.length - 1];
+    this.dataScale.addDataPoint(storedData);
 
-    // If the data is the same as the last data, update the last data
-    if (d.time === lastData.time) {
-      const td = {
-        ...lastData,
-        open: lastData.open!,
-        high: Math.max(lastData.high!, d.high!),
-        low: Math.min(lastData.low!, d.low!),
-        close: d.close!,
-      };
-      this.data[this.data.length - 1] = td;
-      this.dataScale.addDataPoint(td);
-      return false;
-    } else {
-      this.data.push(d);
-      this.dataScale.addDataPoint(d);
+    if (isNewData) {
       this.xLabelDates.push(new Date(d.time));
-      return true;
     }
+
+    return isNewData;
   }
 
   private calculateYAxisLabels(labelSpacing: number) {
@@ -1780,27 +1736,9 @@ export class FinancialChart extends EventEmitter {
 
   recalculateVisibleExtent() {
     const visibleTimeRange = this.getVisibleTimeRange();
-
-    let firstPointIndex = 0;
-    let lastPointIndex = this.data.length - 1;
-
-    for (let i = 0; i < this.data.length; i++) {
-      if (this.data[i].time >= visibleTimeRange.start - this.options.stepSize) {
-        firstPointIndex = i;
-        break;
-      }
-    }
-
-    for (let i = this.data.length - 1; i >= 0; i--) {
-      if (this.data[i].time <= visibleTimeRange.end) {
-        lastPointIndex = i;
-        break;
-      }
-    }
-
-    const visibleDataPoints = this.data.slice(
-      firstPointIndex,
-      Math.min(lastPointIndex + 1 + 1, this.data.length)
+    const visibleDataPoints = this.dataStore.visibleSlice(
+      visibleTimeRange.start - this.options.stepSize,
+      visibleTimeRange.end + this.options.stepSize
     );
 
     for (const indicator of this.indicators) {
