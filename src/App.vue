@@ -13,6 +13,12 @@ import { HLCAreaController } from "./controllers/hlc-area-controller";
 import { defaultDarkTheme, defaultLightTheme, mergeThemes } from "./chart/themes";
 import { MovingAverageIndicator } from "./indicators/simple/moving-average";
 import { TestIndicator } from "./indicators/paneled/test-indicator";
+import {
+  DrawingManager,
+  HorizontalLine,
+  TrendLine,
+  type DrawingFactory
+} from "./drawings";
 
 FinancialChart.registerController(AreaController);
 FinancialChart.registerController(LineController);
@@ -24,6 +30,8 @@ FinancialChart.registerController(HLCAreaController);
 
 const chartContainer = ref<HTMLElement>();
 const clickedData = ref<ChartData>();
+type DrawingTool = "trendline" | "horizontal-line";
+const activeDrawingTool = ref<DrawingTool>("trendline");
 
 // Date that represents today 17:00
 const fivepm = new Date();
@@ -35,6 +43,7 @@ nineam.setHours(9, 0, 0, 0);
 
 const chartData = ref<ChartData[]>([]);
 let chart: FinancialChart;
+let drawingManager: DrawingManager | undefined;
 
 const fiveYear = new Date();
 fiveYear.setFullYear(fiveYear.getFullYear() - 5);
@@ -70,6 +79,33 @@ const darkTheme = mergeThemes(defaultDarkTheme, {
 });
 
 console.log(darkTheme);
+
+function createDrawingFactory(tool: DrawingTool): DrawingFactory {
+  return ({ anchors, paneId }) => {
+    if (tool === "horizontal-line") {
+      return new HorizontalLine({
+        anchors,
+        paneId,
+        color: "#5eead4",
+      });
+    }
+
+    return new TrendLine({
+      anchors,
+      paneId,
+      color: "#93c5fd",
+    });
+  };
+}
+
+function setDrawingTool(tool: DrawingTool) {
+  activeDrawingTool.value = tool;
+  drawingManager?.setDrawingFactory(createDrawingFactory(tool));
+}
+
+function deleteSelectedDrawing() {
+  drawingManager?.deleteSelected();
+}
 
 onMounted(() => {
   chart = new FinancialChart(
@@ -110,6 +146,11 @@ onMounted(() => {
       },
     }
   );
+
+  drawingManager = new DrawingManager({
+    drawingFactory: createDrawingFactory(activeDrawingTool.value),
+  });
+  chart.addPlugin(drawingManager);
 
   const unsub = chart.on("indicator-settings-open", (data) => {
     console.log("indicator-settings-open", data.indicator.getKey());
@@ -315,6 +356,23 @@ watch(chartData, (newVal, oldVal) => {
       user-select: none;
     "
   >
+    <div class="drawing-toolbar">
+      <button
+        :class="{ active: activeDrawingTool === 'trendline' }"
+        type="button"
+        @click="setDrawingTool('trendline')"
+      >
+        Trendline
+      </button>
+      <button
+        :class="{ active: activeDrawingTool === 'horizontal-line' }"
+        type="button"
+        @click="setDrawingTool('horizontal-line')"
+      >
+        Horizontal
+      </button>
+      <button type="button" @click="deleteSelectedDrawing">Delete</button>
+    </div>
     <div
       style="
         width: min(80%, 1600px);
@@ -339,5 +397,28 @@ watch(chartData, (newVal, oldVal) => {
 <style>
 body {
   margin: 0;
+}
+
+.drawing-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.drawing-toolbar button {
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #111827;
+  color: #dbeafe;
+  cursor: pointer;
+  font:
+    13px/1.2 system-ui,
+    sans-serif;
+  padding: 8px 12px;
+}
+
+.drawing-toolbar button.active {
+  background: #1d4ed8;
+  border-color: #60a5fa;
 }
 </style>
