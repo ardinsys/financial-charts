@@ -1,5 +1,8 @@
-import { AxisLabel } from "../chart/types";
 import { Extent } from "../extents/extent";
+import {
+  calculateStepSize as calculatePriceStepSize,
+  calculateYAxisLabels as calculatePriceYAxisLabels,
+} from "../scales/ticks/price-ticks";
 import { pixelRatio } from "../utils/screen";
 import { DefaultIndicatorOptions, Indicator } from "./indicator";
 
@@ -144,59 +147,17 @@ export abstract class PaneledIndicator<
   }
 
   protected calculateYAxisLabels(fontSize: number, labelSpacing: number) {
-    const textHeight = fontSize * 1.2; // Estimated height of text
-    const canvasHeight = this.axisCanvas.height / pixelRatio();
-
-    let range = this.extent.getYMax() - this.extent.getYMin();
-    range = Math.max(range, 0.0001); // Ensure a minimum range to avoid division by zero
-
-    const maxPossibleLabels = Math.floor(
-      canvasHeight / (textHeight + labelSpacing)
-    );
-    const stepSize = this.calculateStepSize(range, maxPossibleLabels);
-
-    const firstLabel = Math.ceil(this.extent.getYMin() / stepSize) * stepSize;
-    const labels: AxisLabel[] = [];
-
-    for (
-      let value = firstLabel;
-      value <= this.extent.getYMax();
-      value += stepSize
-    ) {
-      const position =
-        canvasHeight - ((value - this.extent.getYMin()) / range) * canvasHeight;
-      labels.push({ value: parseFloat(value.toFixed(10)), position });
-    }
-
-    return labels;
+    return calculatePriceYAxisLabels({
+      yMin: this.extent.getYMin(),
+      yMax: this.extent.getYMax(),
+      canvasHeight: this.axisCanvas.height / pixelRatio(),
+      fontSize,
+      labelSpacing,
+    });
   }
 
   protected calculateStepSize(range: number, maxLabels: number) {
-    // Step 1: Determine the initial raw step size
-    let rawStep = range / maxLabels;
-
-    // Step 2: Adjust for precision based on the range's magnitude
-    let scale = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    let normalizedStep = rawStep / scale; // Normalize step size to [1, 10)
-
-    // Step 3: Round to a nice value
-    let roundedStep;
-    if (normalizedStep < 1.5) {
-      roundedStep = 1;
-    } else if (normalizedStep < 3) {
-      roundedStep = 2;
-    } else if (normalizedStep < 7.5) {
-      roundedStep = 5;
-    } else {
-      roundedStep = 10;
-    }
-
-    // Calculate final step size
-    let stepSize = roundedStep * scale;
-
-    // Step 4: Adjust decimal places for the step size to ensure precision
-    let decimalPlaces = Math.max(-Math.floor(Math.log10(stepSize)), 0);
-    return parseFloat(stepSize.toFixed(decimalPlaces));
+    return calculatePriceStepSize(range, maxLabels);
   }
 
   protected drawYAxis(): void {

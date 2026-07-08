@@ -2,9 +2,13 @@ import { ChartController } from "../controllers/controller";
 import { DataExtent } from "../extents/data-extent";
 import { PaneledIndicator, InitParams } from "../indicators/paneled-indicator";
 import { Indicator } from "../indicators/indicator";
+import {
+  calculateStepSize as calculatePriceStepSize,
+  calculateYAxisLabels as calculatePriceYAxisLabels,
+} from "../scales/ticks/price-ticks";
 import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
-import { AxisLabel, ChartData, TimeRange } from "./types";
+import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
 import { pixelRatio } from "../utils/screen";
 
@@ -678,13 +682,6 @@ export class FinancialChart extends EventEmitter {
     this.lastPointerPosition = undefined;
     this.isPanning = false;
   };
-
-  protected timeToPixel(time: number): number {
-    const duration = this.dataExtent.getXMax() - this.dataExtent.getXMin();
-    const relativeTime = time - this.timeRange.start;
-    const canvasWidth = this.getDrawingSize().width;
-    return (relativeTime / duration) * canvasWidth;
-  }
 
   /**
    * Get the number of pixels per millisecond.
@@ -1650,81 +1647,18 @@ export class FinancialChart extends EventEmitter {
     }
   }
 
-  protected roundToNiceNumber(number: number) {
-    const orderOfMagnitude = Math.pow(10, Math.floor(Math.log10(number)));
-    const fraction = number / orderOfMagnitude;
-
-    let niceFraction;
-    if (fraction < 1.5) {
-      niceFraction = 1;
-    } else if (fraction < 3) {
-      niceFraction = 2;
-    } else if (fraction < 7) {
-      niceFraction = 5;
-    } else {
-      niceFraction = 10;
-    }
-
-    return niceFraction * orderOfMagnitude;
-  }
-
   private calculateYAxisLabels(labelSpacing: number) {
-    const fontSize = this.options.theme.yAxis.fontSize;
-    const textHeight = fontSize * 1.2; // Estimated height of text
-    const canvasHeight = this.getLogicalCanvas("y-label").height;
-
-    let range = this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
-    range = Math.max(range, 0.0001); // Ensure a minimum range to avoid division by zero
-
-    const maxPossibleLabels = Math.floor(
-      canvasHeight / (textHeight + labelSpacing)
-    );
-    const stepSize = this.calculateStepSize(range, maxPossibleLabels);
-
-    const firstLabel =
-      Math.ceil(this.visibleExtent.getYMin() / stepSize) * stepSize;
-    const labels: AxisLabel[] = [];
-
-    for (
-      let value = firstLabel;
-      value <= this.visibleExtent.getYMax();
-      value += stepSize
-    ) {
-      const position =
-        canvasHeight -
-        ((value - this.visibleExtent.getYMin()) / range) * canvasHeight;
-      labels.push({ value: parseFloat(value.toFixed(10)), position });
-    }
-
-    return labels;
+    return calculatePriceYAxisLabels({
+      yMin: this.visibleExtent.getYMin(),
+      yMax: this.visibleExtent.getYMax(),
+      canvasHeight: this.getLogicalCanvas("y-label").height,
+      fontSize: this.options.theme.yAxis.fontSize,
+      labelSpacing,
+    });
   }
 
-  private calculateStepSize(range: number, maxLabels: number) {
-    // Step 1: Determine the initial raw step size
-    let rawStep = range / maxLabels;
-
-    // Step 2: Adjust for precision based on the range's magnitude
-    let scale = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    let normalizedStep = rawStep / scale; // Normalize step size to [1, 10)
-
-    // Step 3: Round to a nice value
-    let roundedStep;
-    if (normalizedStep < 1.5) {
-      roundedStep = 1;
-    } else if (normalizedStep < 3) {
-      roundedStep = 2;
-    } else if (normalizedStep < 7.5) {
-      roundedStep = 5;
-    } else {
-      roundedStep = 10;
-    }
-
-    // Calculate final step size
-    let stepSize = roundedStep * scale;
-
-    // Step 4: Adjust decimal places for the step size to ensure precision
-    let decimalPlaces = Math.max(-Math.floor(Math.log10(stepSize)), 0);
-    return parseFloat(stepSize.toFixed(decimalPlaces));
+  protected calculateStepSize(range: number, maxLabels: number) {
+    return calculatePriceStepSize(range, maxLabels);
   }
 
   drawYAxis(): void {
