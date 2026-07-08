@@ -1,0 +1,235 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { DefaultFormatter } from "../src/chart/formatter";
+import { FinancialChart } from "../src/chart/financial-chart";
+import type { AxisLabel, ChartData, TimeRange } from "../src/chart/types";
+import { LineController } from "../src/controllers/line-controller";
+
+type CharacterizedChart = {
+  calculateStepSize(range: number, maxLabels: number): number;
+  calculateYAxisLabels(labelSpacing: number): AxisLabel[];
+  estimatePriceLabelDecimalPlaces(labelSpacing: number): number;
+  getContext: FinancialChart["getContext"];
+  getVisibleExtent: FinancialChart["getVisibleExtent"];
+  processXLabels(): Array<{
+    date: Date;
+    displayLabel: string;
+    priority: number;
+  }>;
+};
+
+FinancialChart.registerController(LineController);
+
+const charts: FinancialChart[] = [];
+
+afterEach(() => {
+  while (charts.length > 0) {
+    charts.pop()?.dispose();
+  }
+  document.body.innerHTML = "";
+});
+
+function createChart(
+  data: ChartData[],
+  timeRange: TimeRange,
+  overrides: Partial<ConstructorParameters<typeof FinancialChart>[2]> = {}
+) {
+  const container = document.createElement("div");
+  container.style.width = "800px";
+  container.style.height = "400px";
+  document.body.appendChild(container);
+
+  const chart = new FinancialChart(container, timeRange, {
+    type: "line",
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US",
+    ...overrides,
+  });
+
+  chart.draw(data);
+  charts.push(chart);
+  return chart as unknown as CharacterizedChart;
+}
+
+function roundedLabels(labels: AxisLabel[]) {
+  return labels.map((label) => ({
+    value: label.value,
+    position: Number(label.position.toFixed(6)),
+  }));
+}
+
+describe("current price tick calculations", () => {
+  it("keeps the existing nice step-size rounding", () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart(
+      [
+        { time: start, close: 10 },
+        { time: start + 60_000, close: 15 },
+      ],
+      { start, end: start + 60_000 }
+    );
+
+    expect(chart.calculateStepSize(8.1, 8)).toBe(1);
+    expect(chart.calculateStepSize(0.12, 5)).toBe(0.02);
+    expect(chart.calculateStepSize(0.008, 8)).toBe(0.001);
+    expect(chart.calculateStepSize(982, 6)).toBe(200);
+  });
+
+  it("keeps the existing Y-axis label values and positions", () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart(
+      [
+        { time: start, close: 10 },
+        { time: start + 60_000, close: 12 },
+        { time: start + 120_000, close: 9 },
+        { time: start + 180_000, close: 15 },
+        { time: start + 240_000, close: 11 },
+      ],
+      { start, end: start + 240_000 }
+    );
+
+    expect(roundedLabels(chart.calculateYAxisLabels(30))).toEqual([
+      { value: 8, position: 360.864198 },
+      { value: 9, position: 315.185185 },
+      { value: 10, position: 269.506173 },
+      { value: 11, position: 223.82716 },
+      { value: 12, position: 178.148148 },
+      { value: 13, position: 132.469136 },
+      { value: 14, position: 86.790123 },
+      { value: 15, position: 41.111111 },
+    ]);
+  });
+
+  it("keeps the existing price-label decimal-place thresholds", () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+
+    const largeRangeChart = createChart(
+      [
+        { time: start, close: 10 },
+        { time: start + 60_000, close: 1_000 },
+      ],
+      { start, end: start + 60_000 }
+    );
+    expect(largeRangeChart.estimatePriceLabelDecimalPlaces(30)).toBe(0);
+
+    const mediumRangeChart = createChart(
+      [
+        { time: start, close: 10 },
+        { time: start + 60_000, close: 15 },
+      ],
+      { start, end: start + 60_000 }
+    );
+    expect(mediumRangeChart.estimatePriceLabelDecimalPlaces(30)).toBe(1);
+
+    const tinyRangeChart = createChart(
+      [
+        { time: start, close: 1.00001 },
+        { time: start + 60_000, close: 1.00002 },
+      ],
+      { start, end: start + 60_000 }
+    );
+    expect(tinyRangeChart.estimatePriceLabelDecimalPlaces(30)).toBe(6);
+  });
+});
+
+describe("current extent coordinate mapping", () => {
+  it("round-trips time and price through pixel coordinates", () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart(
+      [
+        { time: start, close: 10 },
+        { time: start + 60_000, close: 12 },
+        { time: start + 120_000, close: 9 },
+        { time: start + 180_000, close: 15 },
+        { time: start + 240_000, close: 11 },
+      ],
+      { start, end: start + 240_000 }
+    );
+    const extent = chart.getVisibleExtent();
+    const canvas = chart.getContext("main").canvas;
+
+    const pixel = extent.mapToPixel(start + 60_000, 12, canvas, 2, 30);
+    expect({
+      x: Number(pixel.x.toFixed(6)),
+      y: Number(pixel.y.toFixed(6)),
+    }).toEqual({ x: 300, y: 178.148148 });
+
+    const point = extent.pixelToPoint(pixel.x, pixel.y, canvas, 2, 30);
+    expect(point.time).toBeCloseTo(start + 60_000, 6);
+    expect(point.price).toBeCloseTo(12, 10);
+  });
+});
+
+describe("current default formatter output", () => {
+  it("formats dates, prices, tooltips, and volumes for en-US in UTC", () => {
+    const formatter = new DefaultFormatter();
+    const timestamp = Date.UTC(2024, 0, 2, 3, 4, 5);
+    formatter.setLocale("en-US");
+
+    expect(formatter.getLocale()).toBe("en-US");
+    expect(formatter.formatYear(timestamp)).toBe("2024");
+    expect(formatter.formatMonth(timestamp)).toBe("Jan");
+    expect(formatter.formatDay(timestamp)).toBe("2");
+    expect(formatter.formatHour(timestamp)).toBe("3:04 AM");
+    expect(formatter.formatTooltipDate(timestamp)).toBe(
+      "Jan 2, 2024, 3:04 AM"
+    );
+    expect(formatter.formatPrice(1_234_567.89)).toBe("1,234,567.89");
+    expect(formatter.formatTooltipPrice(12.34567, 3)).toBe("12.346");
+    expect(formatter.formatVolume(1_234_567, 10)).toBe("1.2M");
+    expect(formatter.formatVolume(10.25, 1_000)).toBe("10.25");
+  });
+});
+
+describe("current X-label selection", () => {
+  it("keeps intraday labels on hours except the first bar after midnight", () => {
+    const start = Date.UTC(2024, 0, 1, 23);
+    const chart = createChart(
+      [
+        { time: start, close: 10 },
+        { time: start + 60 * 60_000, close: 11 },
+        { time: start + 2 * 60 * 60_000, close: 12 },
+      ],
+      { start, end: start + 2 * 60 * 60_000 },
+      { stepSize: 60 * 60_000 }
+    );
+
+    expect(
+      chart.processXLabels().map((label) => ({
+        displayLabel: label.displayLabel,
+        priority: label.priority,
+      }))
+    ).toEqual([
+      { displayLabel: "11:00 PM", priority: 1 },
+      { displayLabel: "2", priority: 1 },
+      { displayLabel: "1:00 AM", priority: 1 },
+    ]);
+  });
+
+  it("keeps long-range labels prioritized by year, then month, then day", () => {
+    const start = Date.UTC(2023, 11, 31);
+    const chart = createChart(
+      [
+        { time: start, close: 10 },
+        { time: Date.UTC(2024, 0, 1), close: 11 },
+        { time: Date.UTC(2024, 1, 1), close: 12 },
+        { time: Date.UTC(2024, 1, 2), close: 13 },
+      ],
+      { start, end: Date.UTC(2025, 6, 1) },
+      { stepSize: 24 * 60 * 60_000 }
+    );
+
+    expect(
+      chart.processXLabels().map((label) => ({
+        displayLabel: label.displayLabel,
+        priority: label.priority,
+      }))
+    ).toEqual([
+      { displayLabel: "31", priority: 2 },
+      { displayLabel: "2024", priority: 4 },
+      { displayLabel: "Feb", priority: 3 },
+      { displayLabel: "2", priority: 2 },
+    ]);
+  });
+});

@@ -1,5 +1,7 @@
 import { vi } from "vitest";
 
+process.env.TZ = "UTC";
+
 class ResizeObserverMock implements ResizeObserver {
   disconnect = vi.fn();
   observe = vi.fn();
