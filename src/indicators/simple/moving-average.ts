@@ -133,15 +133,20 @@ export class MovingAverageIndicator extends Indicator<
       visibleDataPoints.forEach((point, index) => {
         this.cache.set(point.time, point.movingAverage);
 
-        const { x, y } = this.chart
-          .getVisibleExtent()
-          .mapToPixel(
+        const scaleOptions = {
+          canvas: this.chart.getContext("main").canvas,
+          zoomLevel: this.chart.getZoomLevel(),
+          panOffset: this.chart.getPanOffset(),
+        };
+        const x = this.chart
+          .getTimeScale()
+          .project(
             point.time + this.chart.getController().getXLabelOffset(),
-            point.movingAverage,
-            this.chart.getContext("main").canvas,
-            this.chart.getZoomLevel(),
-            this.chart.getPanOffset()
+            scaleOptions
           );
+        const y = this.chart
+          .getPriceScale()
+          .project(point.movingAverage, scaleOptions);
 
         // Move to the first point or draw line to subsequent points
         if (index === 0) {

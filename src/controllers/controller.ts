@@ -1,12 +1,10 @@
-import { OHLCDataExtent } from "../extents/ohlc-data-extent";
-import { DataExtent } from "../extents/data-extent";
-import { SimpleDataExtent } from "../extents/simple-data-extent";
 import {
   FinancialChart,
   ChartOptions,
   DeepConcrete,
 } from "../chart/financial-chart";
 import { ChartData, TimeRange } from "../chart/types";
+import { DataScaleModel } from "../scales/data-scale-model";
 
 export abstract class ChartController {
   static ID = "default";
@@ -16,10 +14,10 @@ export abstract class ChartController {
     protected options: DeepConcrete<ChartOptions>
   ) {}
 
-  abstract createDataExtent(
+  abstract createDataScale(
     data: ChartData[],
     timeRange: TimeRange
-  ): DataExtent;
+  ): DataScaleModel;
 
   abstract getEffectiveCrosshairValues(): boolean[];
   abstract getXLabelOffset(): number;
@@ -30,8 +28,8 @@ export abstract class ChartController {
 export abstract class SimpleController extends ChartController {
   private simpleCrosshairValues = [false, false, false, true, true];
 
-  createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
-    return new SimpleDataExtent(this.chart, data, timeRange);
+  createDataScale(data: ChartData[], timeRange: TimeRange): DataScaleModel {
+    return new DataScaleModel("simple", data, timeRange);
   }
 
   getXLabelOffset(): number {
@@ -52,8 +50,8 @@ export abstract class SimpleController extends ChartController {
 export abstract class OHLCController extends ChartController {
   private ohlcCrosshairValues = [true, true, true, true, true];
 
-  createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
-    return new OHLCDataExtent(this.chart, data, timeRange);
+  createDataScale(data: ChartData[], timeRange: TimeRange): DataScaleModel {
+    return new DataScaleModel("ohlc", data, timeRange);
   }
 
   getXLabelOffset(): number {

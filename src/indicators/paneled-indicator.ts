@@ -1,4 +1,4 @@
-import { Extent } from "../extents/extent";
+import { DataScaleModel } from "../scales/data-scale-model";
 import {
   calculateStepSize as calculatePriceStepSize,
   calculateYAxisLabels as calculatePriceYAxisLabels,
@@ -23,9 +23,9 @@ export abstract class PaneledIndicator<
   protected axisCanvas!: HTMLCanvasElement;
   protected context!: CanvasRenderingContext2D;
   protected axisContext!: CanvasRenderingContext2D;
-  protected extent!: Extent;
+  protected extent!: DataScaleModel;
 
-  public abstract createExtent(): Extent;
+  public abstract createExtent(): DataScaleModel;
 
   private adjustCanvas(
     canvas: HTMLCanvasElement,

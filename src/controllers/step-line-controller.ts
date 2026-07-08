@@ -1,6 +1,5 @@
 import { ChartData, TimeRange } from "../chart/types";
-import { DataExtent } from "../extents/data-extent";
-import { SimpleDataExtent } from "../extents/simple-data-extent";
+import { DataScaleModel } from "../scales/data-scale-model";
 import { OHLCController } from "./controller";
 
 export class SteplineController extends OHLCController {
@@ -12,8 +11,8 @@ export class SteplineController extends OHLCController {
     return this.crosshairValues;
   }
 
-  createDataExtent(data: ChartData[], timeRange: TimeRange): DataExtent {
-    return new SimpleDataExtent(this.chart, data, timeRange);
+  createDataScale(data: ChartData[], timeRange: TimeRange): DataScaleModel {
+    return new DataScaleModel("simple", data, timeRange);
   }
 
   draw(): void {
@@ -25,7 +24,13 @@ export class SteplineController extends OHLCController {
     ctx.strokeStyle = this.options.theme.line.color;
     ctx.lineWidth = this.options.theme.line.width;
 
-    const visibleExtent = this.chart.getVisibleExtent();
+    const timeScale = this.chart.getTimeScale();
+    const priceScale = this.chart.getPriceScale();
+    const scaleOptions = {
+      canvas: ctx.canvas,
+      zoomLevel: this.chart.getZoomLevel(),
+      panOffset: this.chart.getPanOffset(),
+    };
 
     // Start from the first data point
     let lastX = null;
@@ -36,7 +41,8 @@ export class SteplineController extends OHLCController {
 
       if (point.close == undefined) continue;
 
-      const { x, y } = visibleExtent.mapToPixel(point.time, point.close!);
+      const x = timeScale.project(point.time, scaleOptions);
+      const y = priceScale.project(point.close!, scaleOptions);
 
       if (lastX === null || lastY === null) {
         ctx.moveTo(x, y);

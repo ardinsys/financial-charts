@@ -1,0 +1,247 @@
+import type { ChartData, TimeRange } from "../chart/types";
+import { PriceScale } from "./price-scale";
+import { TimeScale } from "./time-scale";
+
+export interface ScaleRangeModifier {
+  yMin?: number;
+  yMax?: number;
+  actor: any;
+  enabled: boolean;
+}
+
+export type DataScaleSource = "simple" | "ohlc";
+
+export class DataScaleModel {
+  private xMin!: number;
+  private xMax!: number;
+  private yMin!: number;
+  private yMax!: number;
+  private volMax!: number;
+  private readonly topOffset = 0.15;
+  private readonly bottomOffset = 0.2;
+  private modifiers = new Map<any, ScaleRangeModifier>();
+
+  private readonly timeScale: TimeScale;
+  private readonly priceScale: PriceScale;
+  private readonly volumeScale: PriceScale;
+
+  constructor(
+    private readonly source: DataScaleSource,
+    dataset: ChartData[],
+    timeRange: TimeRange
+  ) {
+    this.timeScale = new TimeScale({
+      start: timeRange.start,
+      end: timeRange.end,
+    });
+    this.priceScale = new PriceScale({ min: 0, max: 1 });
+    this.volumeScale = new PriceScale({ min: 0, max: 1 });
+    this.recalculate(dataset, timeRange);
+  }
+
+  recalculate(dataset: ChartData[], timeRange: TimeRange): void {
+    this.xMin = timeRange.start;
+    this.xMax = timeRange.end;
+    this.yMin = Infinity;
+    this.yMax = -Infinity;
+    this.volMax = -Infinity;
+
+    for (const data of dataset) {
+      if (this.source === "simple") {
+        this.yMin = Math.min(this.yMin, data.close || Infinity);
+        this.yMax = Math.max(this.yMax, data.close || -Infinity);
+      } else {
+        this.yMin = Math.min(this.yMin, data.low || Infinity);
+        this.yMax = Math.max(this.yMax, data.high || -Infinity);
+      }
+      this.volMax = Math.max(this.volMax, data.volume || -Infinity);
+    }
+
+    for (const modifier of this.modifiers.values()) {
+      if (!modifier.enabled) continue;
+      this.yMin = Math.min(this.yMin, modifier.yMin || Infinity);
+      this.yMax = Math.max(this.yMax, modifier.yMax || -Infinity);
+    }
+
+    this.applyOffsets();
+    this.syncScales();
+  }
+
+  addModifier(modifier: ScaleRangeModifier) {
+    this.modifiers.set(modifier.actor, modifier);
+  }
+
+  removeModifier(actor: any) {
+    this.modifiers.delete(actor);
+  }
+
+  addDataPoint(data: ChartData) {
+    return this.source === "simple"
+      ? this.addSimpleDataPoint(data)
+      : this.addOhlcDataPoint(data);
+  }
+
+  mapToPixel(
+    time: number,
+    value: number,
+    canvas: { width: number; height: number },
+    zoomLevel = 1,
+    panOffset = 0
+  ) {
+    const options = { canvas, zoomLevel, panOffset };
+    return {
+      x: this.timeScale.project(time, options),
+      y: this.priceScale.project(value, options),
+    };
+  }
+
+  pixelToPoint(
+    x: number,
+    y: number,
+    canvas: { width: number; height: number },
+    zoomLevel = 1,
+    panOffset = 0
+  ) {
+    const options = { canvas, zoomLevel, panOffset };
+    return {
+      time: this.timeScale.unproject(x, options),
+      price: this.priceScale.unproject(y, options),
+    };
+  }
+
+  mapVolToPixel(
+    time: number,
+    volume: number,
+    canvas: { width: number; height: number },
+    zoomLevel = 1,
+    panOffset = 0
+  ) {
+    const options = { canvas, zoomLevel, panOffset };
+    return {
+      x: this.timeScale.project(time, options),
+      y: this.volumeScale.projectVolume(volume, options),
+    };
+  }
+
+  getTimeScale() {
+    return this.timeScale;
+  }
+
+  getPriceScale() {
+    return this.priceScale;
+  }
+
+  getVolumeScale() {
+    return this.volumeScale;
+  }
+
+  getYMin() {
+    return this.yMin;
+  }
+
+  getYMax() {
+    return this.yMax;
+  }
+
+  getXMin() {
+    return this.xMin;
+  }
+
+  getXMax() {
+    return this.xMax;
+  }
+
+  getVolMax() {
+    return this.volMax;
+  }
+
+  private applyOffsets() {
+    const yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+    const yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+    this.yMin = yMin;
+    this.yMax = yMax;
+  }
+
+  private syncScales() {
+    this.timeScale.setRange({ start: this.xMin, end: this.xMax });
+    this.priceScale.setRange({ min: this.yMin, max: this.yMax });
+    this.volumeScale.setRange({ min: 0, max: this.volMax });
+  }
+
+  private addSimpleDataPoint(data: ChartData) {
+    const time = data.time;
+
+    let changed = time > this.xMax || time < this.xMin;
+
+    this.xMin = Math.min(this.xMin, time);
+    this.xMax = Math.max(this.xMax, time);
+
+    let yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+    let yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+    if (data.close !== null && data.close !== undefined) {
+      changed = changed || data.close < yMin || data.close > yMax;
+      this.yMin = Math.min(yMin, data.close!);
+      this.yMax = Math.max(yMax, data.close!);
+
+      yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+      yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+      this.yMin = yMin;
+      this.yMax = yMax;
+    }
+
+    if (data.volume !== null && data.volume !== undefined) {
+      changed = changed || data.volume > this.volMax;
+    }
+
+    this.volMax = Math.max(this.volMax, data.volume!);
+    this.syncScales();
+
+    return changed;
+  }
+
+  private addOhlcDataPoint(data: ChartData) {
+    const time = data.time;
+
+    let changed = time > this.xMax || time < this.xMin;
+
+    this.xMin = Math.min(this.xMin, time);
+    this.xMax = Math.max(this.xMax, time);
+
+    let yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+    let yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+    const low = data.low;
+    const high = data.high;
+
+    if (low != null && data.low !== undefined) {
+      changed = changed || low < yMin;
+    }
+    if (high != null && data.high !== undefined) {
+      changed = changed || high > yMax;
+    }
+    if (data.volume !== null && data.volume !== undefined) {
+      changed = changed || data.volume > this.volMax;
+    }
+
+    if (low != null) {
+      this.yMin = Math.min(yMin, low);
+    }
+    if (high != null) {
+      this.yMax = Math.max(yMax, high);
+    }
+
+    yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
+    yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
+
+    this.yMin = yMin;
+    this.yMax = yMax;
+
+    this.volMax = Math.max(this.volMax, data.volume || -Infinity);
+    this.syncScales();
+
+    return changed;
+  }
+}

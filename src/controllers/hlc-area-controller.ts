@@ -31,7 +31,13 @@ export class HLCAreaController extends OHLCController {
     const visibleDataPoints = this.chart.getLastVisibleDataPoints();
     if (visibleDataPoints.length === 0) return;
 
-    const visibleExtent = this.chart.getVisibleExtent();
+    const timeScale = this.chart.getTimeScale();
+    const priceScale = this.chart.getPriceScale();
+    const scaleOptions = {
+      canvas: ctx.canvas,
+      zoomLevel: this.chart.getZoomLevel(),
+      panOffset: this.chart.getPanOffset(),
+    };
 
     // Paths for the lines
     const highPath = new Path2D();
@@ -56,8 +62,14 @@ export class HLCAreaController extends OHLCController {
 
       if (point.high == undefined || point.low == undefined) continue;
 
-      const high = visibleExtent.mapToPixel(point.time, point.high!);
-      const low = visibleExtent.mapToPixel(point.time, point.low!);
+      const high = {
+        x: timeScale.project(point.time, scaleOptions),
+        y: priceScale.project(point.high!, scaleOptions),
+      };
+      const low = {
+        x: timeScale.project(point.time, scaleOptions),
+        y: priceScale.project(point.low!, scaleOptions),
+      };
 
       if (!foundFirst) {
         firstHigh = high;
@@ -81,7 +93,10 @@ export class HLCAreaController extends OHLCController {
       const point = visibleDataPoints[i];
       if (point.close == undefined) continue;
 
-      const close = visibleExtent.mapToPixel(point.time, point.close!);
+      const close = {
+        x: timeScale.project(point.time, scaleOptions),
+        y: priceScale.project(point.close!, scaleOptions),
+      };
 
       if (!foundFirst) {
         firstClose = close;

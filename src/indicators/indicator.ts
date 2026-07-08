@@ -1,6 +1,6 @@
 import { mergeThemes } from "../chart/themes";
 import { FinancialChart } from "../chart/financial-chart";
-import { ExtentModifier } from "../extents/data-extent";
+import { ScaleRangeModifier } from "../scales/data-scale-model";
 import { TimeRange } from "../chart/types";
 
 export const indicatorLabelTemplate = {
@@ -147,7 +147,7 @@ export abstract class Indicator<
     });
   }
 
-  public getModifier(visibleTimeRange: TimeRange): ExtentModifier | null {
+  public getModifier(visibleTimeRange: TimeRange): ScaleRangeModifier | null {
     return null;
   }
 

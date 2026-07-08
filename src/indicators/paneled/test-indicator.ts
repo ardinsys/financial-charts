@@ -1,4 +1,4 @@
-import { Extent } from "../../extents/extent";
+import { DataScaleModel } from "../../scales/data-scale-model";
 import { DefaultIndicatorOptions, indicatorLabelTemplate } from "../indicator";
 import { PaneledIndicator } from "../paneled-indicator";
 
@@ -6,7 +6,7 @@ export class TestIndicator extends PaneledIndicator<
   {},
   DefaultIndicatorOptions
 > {
-  public createExtent(): Extent {
+  public createExtent(): DataScaleModel {
     return this.chart.getVisibleExtent();
   }
 
@@ -30,16 +30,19 @@ export class TestIndicator extends PaneledIndicator<
     const size = 10;
 
     for (const data of this.chart.getLastVisibleDataPoints()) {
-      const point = this.chart
-        .getVisibleExtent()
-        .mapToPixel(
+      const scaleOptions = {
+        canvas: this.canvas,
+        zoomLevel: this.chart.getZoomLevel(),
+        panOffset: this.chart.getPanOffset(),
+      };
+      const x = this.chart
+        .getTimeScale()
+        .project(
           data.time + this.chart.getController().getXLabelOffset(),
-          data.close!,
-          this.canvas,
-          this.chart.getZoomLevel(),
-          this.chart.getPanOffset()
+          scaleOptions
         );
-      this.context.fillRect(point.x - size / 2, point.y, size, size);
+      const y = this.chart.getPriceScale().project(data.close!, scaleOptions);
+      this.context.fillRect(x - size / 2, y, size, size);
     }
   }
 

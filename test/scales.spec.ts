@@ -36,7 +36,7 @@ function createChart(data: ChartData[], timeRange: TimeRange) {
 }
 
 describe("time-based scales", () => {
-  it("matches Extent.mapToPixel and pixelToPoint for time and price", () => {
+  it("matches the legacy coordinate projection for time and price", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const end = start + 4 * 60_000;
     const chart = createChart(
@@ -49,18 +49,18 @@ describe("time-based scales", () => {
       ],
       { start, end }
     );
-    const extent = chart.getVisibleExtent();
+    const visibleScale = chart.getVisibleExtent();
     const canvas = chart.getContext("main").canvas;
     const zoomLevel = 2;
     const panOffset = 30;
 
     const timeScale = new TimeScale({
-      start: extent.getXMin(),
-      end: extent.getXMax(),
+      start: visibleScale.getXMin(),
+      end: visibleScale.getXMax(),
     });
     const priceScale = new PriceScale({
-      min: extent.getYMin(),
-      max: extent.getYMax(),
+      min: visibleScale.getYMin(),
+      max: visibleScale.getYMax(),
     });
 
     const options = { canvas, zoomLevel, panOffset };
@@ -70,7 +70,7 @@ describe("time-based scales", () => {
     ];
 
     for (const point of points) {
-      const extentPixel = extent.mapToPixel(
+      const projectedPoint = visibleScale.mapToPixel(
         point.time,
         point.price,
         canvas,
@@ -78,14 +78,16 @@ describe("time-based scales", () => {
         panOffset
       );
 
-      expect(timeScale.project(point.time, options)).toBeCloseTo(extentPixel.x);
-      expect(priceScale.project(point.price, options)).toBeCloseTo(
-        extentPixel.y
+      expect(timeScale.project(point.time, options)).toBeCloseTo(
+        projectedPoint.x
       );
-      expect(timeScale.unproject(extentPixel.x, options)).toBeCloseTo(
+      expect(priceScale.project(point.price, options)).toBeCloseTo(
+        projectedPoint.y
+      );
+      expect(timeScale.unproject(projectedPoint.x, options)).toBeCloseTo(
         point.time
       );
-      expect(priceScale.unproject(extentPixel.y, options)).toBeCloseTo(
+      expect(priceScale.unproject(projectedPoint.y, options)).toBeCloseTo(
         point.price
       );
     }

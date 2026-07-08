@@ -15,7 +15,13 @@ export class CandlestickController extends OHLCController {
 
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 
-    const visibleExtent = this.chart.getVisibleExtent();
+    const timeScale = this.chart.getTimeScale();
+    const priceScale = this.chart.getPriceScale();
+    const scaleOptions = {
+      canvas: ctx.canvas,
+      zoomLevel: this.chart.getZoomLevel(),
+      panOffset: this.chart.getPanOffset(),
+    };
 
     for (let i = 0; i < visibleDataPoints.length; i++) {
       const point = visibleDataPoints[i];
@@ -25,12 +31,11 @@ export class CandlestickController extends OHLCController {
       if (point.high == undefined) continue;
       if (point.low == undefined) continue;
 
-      const { x } = visibleExtent.mapToPixel(point.time, point.close!);
-
-      const high = visibleExtent.mapToPixel(point.time, point.high!).y;
-      const low = visibleExtent.mapToPixel(point.time, point.low!).y;
-      const open = visibleExtent.mapToPixel(point.time, point.open!).y;
-      const close = visibleExtent.mapToPixel(point.time, point.close!).y;
+      const x = timeScale.project(point.time, scaleOptions);
+      const high = priceScale.project(point.high!, scaleOptions);
+      const low = priceScale.project(point.low!, scaleOptions);
+      const open = priceScale.project(point.open!, scaleOptions);
+      const close = priceScale.project(point.close!, scaleOptions);
 
       // Draw the high-low line
       ctx.beginPath();

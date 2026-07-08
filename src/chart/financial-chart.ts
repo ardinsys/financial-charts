@@ -1,7 +1,7 @@
 import { ChartController } from "../controllers/controller";
-import { DataExtent } from "../extents/data-extent";
 import { PaneledIndicator, InitParams } from "../indicators/paneled-indicator";
 import { Indicator } from "../indicators/indicator";
+import { DataScaleModel } from "../scales/data-scale-model";
 import {
   calculateStepSize as calculatePriceStepSize,
   calculateYAxisLabels as calculatePriceYAxisLabels,
@@ -108,8 +108,8 @@ export class FinancialChart extends EventEmitter {
   protected panOffset = 0;
   protected timeRange!: TimeRange;
   protected autoTimeRange = false;
-  protected dataExtent!: DataExtent;
-  protected visibleExtent: DataExtent;
+  protected dataScale!: DataScaleModel;
+  protected visibleScale: DataScaleModel;
   private resizer!: Resizer;
 
   protected indicators: Indicator<any, any>[] = [];
@@ -151,7 +151,19 @@ export class FinancialChart extends EventEmitter {
   }
 
   getVisibleExtent() {
-    return this.visibleExtent;
+    return this.visibleScale;
+  }
+
+  getTimeScale() {
+    return this.visibleScale.getTimeScale();
+  }
+
+  getPriceScale() {
+    return this.visibleScale.getPriceScale();
+  }
+
+  getVolumeScale() {
+    return this.visibleScale.getVolumeScale();
   }
 
   getZoomLevel() {
@@ -213,11 +225,11 @@ export class FinancialChart extends EventEmitter {
     }
 
     this.controller = new ControllerClass(this, this.options);
-    this.dataExtent = this.controller.createDataExtent(
+    this.dataScale = this.controller.createDataScale(
       this.data,
       this.timeRange
     );
-    this.visibleExtent = this.controller.createDataExtent([], {
+    this.visibleScale = this.controller.createDataScale([], {
       start: 0,
       end: 0,
     });
@@ -387,7 +399,7 @@ export class FinancialChart extends EventEmitter {
     }
 
     this.controller = new ControllerClass(this, this.options);
-    this.visibleExtent = this.controller.createDataExtent([], {
+    this.visibleScale = this.controller.createDataScale([], {
       start: 0,
       end: 0,
     });
@@ -548,7 +560,7 @@ export class FinancialChart extends EventEmitter {
       end: endTime,
     };
     if (recalc) {
-      this.dataExtent.recalculate(this.data, this.timeRange);
+      this.dataScale.recalculate(this.data, this.timeRange);
     }
   }
 
@@ -591,11 +603,11 @@ export class FinancialChart extends EventEmitter {
       this.autoTimeRange = false;
       this.timeRange = timeRange;
     }
-    this.dataExtent = this.controller.createDataExtent(
+    this.dataScale = this.controller.createDataScale(
       this.data,
       this.timeRange
     );
-    this.visibleExtent = this.controller.createDataExtent([], {
+    this.visibleScale = this.controller.createDataScale([], {
       start: 0,
       end: 0,
     });
@@ -668,7 +680,7 @@ export class FinancialChart extends EventEmitter {
       const rect = topCanvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      const rawPoint = this.dataExtent.pixelToPoint(
+      const rawPoint = this.dataScale.pixelToPoint(
         x,
         y,
         this.getContext("main").canvas,
@@ -703,9 +715,9 @@ export class FinancialChart extends EventEmitter {
    * @returns maximum pan offset in pixels
    */
   private getMaxPanOffset(): number {
-    const timeRange = this.dataExtent.getXMax() - this.dataExtent.getXMin();
+    const timeRange = this.dataScale.getXMax() - this.dataScale.getXMin();
     const visibleTimeRange = timeRange / this.zoomLevel;
-    const endTime = this.dataExtent.getXMin() + visibleTimeRange;
+    const endTime = this.dataScale.getXMin() + visibleTimeRange;
     const pixelPerMs = this.getPixelPerMs();
 
     return ((this.timeRange.end - endTime) * pixelPerMs) / this.zoomLevel;
@@ -751,7 +763,7 @@ export class FinancialChart extends EventEmitter {
 
     const offsetX = event.clientX - this.container.getBoundingClientRect().left;
 
-    const oldPoint = this.dataExtent.pixelToPoint(
+    const oldPoint = this.dataScale.pixelToPoint(
       offsetX,
       0,
       this.getContext("main").canvas,
@@ -761,7 +773,7 @@ export class FinancialChart extends EventEmitter {
 
     this.adjustZoomLevel(zoomFactor);
 
-    const newPixelPoint = this.dataExtent.mapToPixel(
+    const newPixelPoint = this.dataScale.mapToPixel(
       oldPoint.time,
       oldPoint.price,
       this.getContext("main").canvas,
@@ -847,7 +859,7 @@ export class FinancialChart extends EventEmitter {
         const rect =
           this.getContext("crosshair").canvas.getBoundingClientRect();
         const point = this.findClosestDataPoint(
-          this.visibleExtent.pixelToPoint(
+          this.visibleScale.pixelToPoint(
             e.changedTouches[0].clientX - rect.left,
             e.changedTouches[0].clientY - rect.top,
             this.getContext("main").canvas,
@@ -1091,9 +1103,9 @@ export class FinancialChart extends EventEmitter {
   public getVisibleTimeRange(): TimeRange {
     const pixelPerMs = this.getPixelPerMs() / this.zoomLevel;
 
-    const timeRange = this.dataExtent.getXMax() - this.dataExtent.getXMin();
+    const timeRange = this.dataScale.getXMax() - this.dataScale.getXMin();
     const visibleTimeRange = timeRange / this.zoomLevel;
-    const startTime = this.dataExtent.getXMin() + this.panOffset / pixelPerMs;
+    const startTime = this.dataScale.getXMin() + this.panOffset / pixelPerMs;
     const endTime = startTime + visibleTimeRange;
     return { start: startTime, end: endTime };
   }
@@ -1115,7 +1127,7 @@ export class FinancialChart extends EventEmitter {
       this.updateAutoTimeRange(false);
     }
 
-    this.dataExtent = this.controller.createDataExtent(
+    this.dataScale = this.controller.createDataScale(
       this.data,
       this.timeRange
     );
@@ -1263,7 +1275,7 @@ export class FinancialChart extends EventEmitter {
       this.recalcPaneledIndicators();
       this.requestRedraw(this.allRedrawParts);
     } else {
-      this.visibleExtent.removeModifier(indicator);
+      this.visibleScale.removeModifier(indicator);
       this.indicatorLabelContainer.removeChild(indicator.getLabelContainer());
       this.indicators = this.indicators.filter((i) => i !== indicator);
       this.requestRedraw(this.allRedrawParts);
@@ -1272,7 +1284,7 @@ export class FinancialChart extends EventEmitter {
 
   protected pointerMove(e: { x: number; y: number }) {
     if (this.isTouchCapable && !this.isTouchCrosshair) return;
-    const rawPoint = this.visibleExtent.pixelToPoint(
+    const rawPoint = this.visibleScale.pixelToPoint(
       e.x,
       e.y,
       this.getContext("main").canvas,
@@ -1309,22 +1321,21 @@ export class FinancialChart extends EventEmitter {
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 
     const timeRange = this.getTimeRange();
-    const visibleExtent = this.getVisibleExtent();
-    const zoomLevel = this.getZoomLevel();
-    const panOffset = this.getPanOffset();
+    const timeScale = this.getTimeScale();
+    const volumeScale = this.getVolumeScale();
+    const scaleOptions = {
+      canvas: ctx.canvas,
+      zoomLevel: this.getZoomLevel(),
+      panOffset: this.getPanOffset(),
+    };
 
     for (let i = 0; i < visibleDataPoints.length; i++) {
       const point = visibleDataPoints[i];
       if (point.time < timeRange.start) continue;
       if (point.time > timeRange.end) break;
 
-      const { x, y } = visibleExtent.mapVolToPixel(
-        point.time,
-        point.volume!,
-        ctx.canvas,
-        zoomLevel,
-        panOffset
-      );
+      const x = timeScale.project(point.time, scaleOptions);
+      const y = volumeScale.projectVolume(point.volume!, scaleOptions);
 
       const volumeBarStartY = this.getDrawingSize().height - y;
 
@@ -1374,13 +1385,11 @@ export class FinancialChart extends EventEmitter {
 
     const xOffset = this.controller.getXLabelOffset();
 
-    const { x } = this.visibleExtent.mapToPixel(
-      this.pointerTime + xOffset,
-      0,
-      this.getContext("main").canvas,
-      this.zoomLevel,
-      this.panOffset
-    );
+    const x = this.getTimeScale().project(this.pointerTime + xOffset, {
+      canvas: this.getContext("main").canvas,
+      zoomLevel: this.zoomLevel,
+      panOffset: this.panOffset,
+    });
     ctx.strokeStyle = this.options.theme.crosshair.color;
     ctx.lineWidth = this.options.theme.crosshair.width;
     ctx.setLineDash(this.options.theme.crosshair.lineDash);
@@ -1412,7 +1421,7 @@ export class FinancialChart extends EventEmitter {
       textPadding * 2 + 12
     );
 
-    const price = this.visibleExtent.pixelToPoint(
+    const price = this.visibleScale.pixelToPoint(
       0,
       this.pointerY,
       this.getContext("main").canvas,
@@ -1547,7 +1556,7 @@ export class FinancialChart extends EventEmitter {
    */
   protected estimatePriceLabelDecimalPlaces(labelSpacing: number) {
     const priceRange =
-      this.visibleExtent.getYMax() - this.visibleExtent.getYMin();
+      this.visibleScale.getYMax() - this.visibleScale.getYMin();
     const maxLabels = Math.floor(this.getDrawingSize().height / labelSpacing);
     const stepSize = priceRange / maxLabels;
 
@@ -1621,7 +1630,7 @@ export class FinancialChart extends EventEmitter {
     // If there isn't any data yet, just add it
     if (this.data.length === 0) {
       this.data.push(d);
-      this.dataExtent.addDataPoint(d);
+      this.dataScale.addDataPoint(d);
       return true;
     }
 
@@ -1637,11 +1646,11 @@ export class FinancialChart extends EventEmitter {
         close: d.close!,
       };
       this.data[this.data.length - 1] = td;
-      this.dataExtent.addDataPoint(td);
+      this.dataScale.addDataPoint(td);
       return false;
     } else {
       this.data.push(d);
-      this.dataExtent.addDataPoint(d);
+      this.dataScale.addDataPoint(d);
       this.xLabelDates.push(new Date(d.time));
       return true;
     }
@@ -1649,8 +1658,8 @@ export class FinancialChart extends EventEmitter {
 
   private calculateYAxisLabels(labelSpacing: number) {
     return calculatePriceYAxisLabels({
-      yMin: this.visibleExtent.getYMin(),
-      yMax: this.visibleExtent.getYMax(),
+      yMin: this.visibleScale.getYMin(),
+      yMax: this.visibleScale.getYMax(),
       canvasHeight: this.getLogicalCanvas("y-label").height,
       fontSize: this.options.theme.yAxis.fontSize,
       labelSpacing,
@@ -1729,12 +1738,13 @@ export class FinancialChart extends EventEmitter {
     labels.sort((a, b) => b.priority - a.priority);
 
     labels.forEach((label) => {
-      const { x } = this.dataExtent.mapToPixel(
+      const x = this.dataScale.getTimeScale().project(
         label.date.getTime() + this.controller.getXLabelOffset(),
-        0,
-        { width: canvasWidth, height: 0 } as HTMLCanvasElement,
-        this.zoomLevel,
-        this.panOffset
+        {
+          canvas: { width: canvasWidth, height: 0 },
+          zoomLevel: this.zoomLevel,
+          panOffset: this.panOffset,
+        }
       );
 
       const textWidth = ctx.measureText(label.displayLabel).width;
@@ -1796,13 +1806,13 @@ export class FinancialChart extends EventEmitter {
     for (const indicator of this.indicators) {
       const modifier = indicator.getModifier(visibleTimeRange);
       if (modifier) {
-        this.visibleExtent.addModifier(modifier);
+        this.visibleScale.addModifier(modifier);
       }
     }
 
     // Do not recalc xMin and xMax to preserve x positions
     // but we need to adjust yMin and yMax to the visible data points
-    this.visibleExtent.recalculate(visibleDataPoints, this.timeRange);
+    this.visibleScale.recalculate(visibleDataPoints, this.timeRange);
 
     this.lastVisibleDataPoints = visibleDataPoints;
     return visibleDataPoints;

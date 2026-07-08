@@ -133,7 +133,7 @@ describe("current price tick calculations", () => {
   });
 });
 
-describe("current extent coordinate mapping", () => {
+describe("current scale coordinate mapping", () => {
   it("round-trips time and price through pixel coordinates", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart(
@@ -146,16 +146,16 @@ describe("current extent coordinate mapping", () => {
       ],
       { start, end: start + 240_000 }
     );
-    const extent = chart.getVisibleExtent();
+    const visibleScale = chart.getVisibleExtent();
     const canvas = chart.getContext("main").canvas;
 
-    const pixel = extent.mapToPixel(start + 60_000, 12, canvas, 2, 30);
+    const pixel = visibleScale.mapToPixel(start + 60_000, 12, canvas, 2, 30);
     expect({
       x: Number(pixel.x.toFixed(6)),
       y: Number(pixel.y.toFixed(6)),
     }).toEqual({ x: 300, y: 178.148148 });
 
-    const point = extent.pixelToPoint(pixel.x, pixel.y, canvas, 2, 30);
+    const point = visibleScale.pixelToPoint(pixel.x, pixel.y, canvas, 2, 30);
     expect(point.time).toBeCloseTo(start + 60_000, 6);
     expect(point.price).toBeCloseTo(12, 10);
   });
