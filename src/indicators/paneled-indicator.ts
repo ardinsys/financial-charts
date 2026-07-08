@@ -1,7 +1,8 @@
+import type { Pane } from "../panes/pane";
 import { DataScaleModel } from "../scales/data-scale-model";
 import {
   calculateStepSize as calculatePriceStepSize,
-  calculateYAxisLabels as calculatePriceYAxisLabels,
+  calculateYAxisLabels as calculatePriceYAxisLabels
 } from "../scales/ticks/price-ticks";
 import { pixelRatio } from "../utils/screen";
 import { DefaultIndicatorOptions, Indicator } from "./indicator";
@@ -12,6 +13,7 @@ export interface InitParams {
   y: number;
   x: number;
   devicePixelRatio: number;
+  pane?: Pane;
 }
 
 export abstract class PaneledIndicator<
@@ -24,6 +26,7 @@ export abstract class PaneledIndicator<
   protected context!: CanvasRenderingContext2D;
   protected axisContext!: CanvasRenderingContext2D;
   protected extent!: DataScaleModel;
+  protected pane?: Pane;
 
   public abstract createExtent(): DataScaleModel;
 
@@ -32,20 +35,23 @@ export abstract class PaneledIndicator<
     params: InitParams,
     isMain: boolean
   ) {
+    const paneRegion = params.pane?.getRegion();
+    const yAxisRegion = params.pane?.getYAxisRegion();
+    const mainWidth =
+      paneRegion?.width ?? params.width - this.chart.getYLabelWidth();
+    const axisWidth = yAxisRegion?.width ?? this.chart.getYLabelWidth();
+    const height = paneRegion?.height ?? params.height;
+
     canvas.style.userSelect = "none";
     // @ts-ignore
     canvas.style.webkitTapHighlightColor = "transparent";
     canvas.style.position = "absolute";
-    canvas.style.left = isMain ? "0px" : this.width() + "px";
+    canvas.style.left = isMain ? "0px" : mainWidth + "px";
     canvas.style.top = "0px";
-    canvas.style.width = isMain
-      ? params.width - this.chart.getYLabelWidth() + "px"
-      : this.chart.getYLabelWidth() + "px";
-    canvas.style.height = params.height + "px";
-    canvas.width = isMain
-      ? (params.width - this.chart.getYLabelWidth()) * params.devicePixelRatio
-      : this.chart.getYLabelWidth() * params.devicePixelRatio;
-    canvas.height = params.height * params.devicePixelRatio;
+    canvas.style.width = (isMain ? mainWidth : axisWidth) + "px";
+    canvas.style.height = height + "px";
+    canvas.width = (isMain ? mainWidth : axisWidth) * params.devicePixelRatio;
+    canvas.height = height * params.devicePixelRatio;
     if (isMain) {
       this.context.scale(params.devicePixelRatio, params.devicePixelRatio);
     } else {
@@ -54,6 +60,7 @@ export abstract class PaneledIndicator<
   }
 
   public init(params: InitParams): void {
+    this.pane = params.pane;
     this.extent = this.createExtent();
     this.container = document.createElement("div");
     this.container.style.overflow = "hidden";
@@ -87,6 +94,7 @@ export abstract class PaneledIndicator<
   }
 
   public resize(params: InitParams) {
+    this.pane = params.pane;
     this.container.style.left = params.x + "px";
     this.container.style.top = params.y + "px";
     this.container.style.width = params.width + "px";
@@ -102,6 +110,8 @@ export abstract class PaneledIndicator<
   public abstract getCrosshairValue(time: number, relativeY: number): string;
 
   protected initDrawing() {
+    this.pane?.setPriceRange(this.extent.getYMin(), this.extent.getYMax());
+
     const ctx = this.context;
     ctx.clearRect(0, 0, this.width(), this.height());
     ctx.fillStyle = this.chart.getOptions().theme.backgroundColor;
@@ -147,20 +157,45 @@ export abstract class PaneledIndicator<
   }
 
   protected calculateYAxisLabels(fontSize: number, labelSpacing: number) {
+    if (this.pane) {
+      return this.pane.calculateYAxisLabels(
+        this.extent,
+        fontSize,
+        labelSpacing
+      );
+    }
+
     return calculatePriceYAxisLabels({
       yMin: this.extent.getYMin(),
       yMax: this.extent.getYMax(),
       canvasHeight: this.axisCanvas.height / pixelRatio(),
       fontSize,
-      labelSpacing,
+      labelSpacing
     });
   }
 
   protected calculateStepSize(range: number, maxLabels: number) {
+    if (this.pane) {
+      return this.pane.calculateStepSize(range, maxLabels);
+    }
+
     return calculatePriceStepSize(range, maxLabels);
   }
 
   protected drawYAxis(): void {
+    if (this.pane) {
+      this.pane.drawYAxis({
+        axisContext: this.axisContext,
+        gridContext: this.context,
+        extent: this.extent,
+        theme: this.chart.getTheme(),
+        formatter: this.chart.getFormatter(),
+        pixelRatio: pixelRatio(),
+        labelSpacing: 30
+      });
+      return;
+    }
+
     const theme = this.chart.getTheme();
     const yAxisValues = this.calculateYAxisLabels(theme.xAxis.fontSize, 30);
 

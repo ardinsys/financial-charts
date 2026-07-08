@@ -10,14 +10,14 @@ export class TestIndicator extends PaneledIndicator<
     return this.chart.getVisibleExtent();
   }
 
-  public updateLabel(dataTime?: number): void {
+  public updateLabel(_dataTime?: number): void {
     this.labelContainer.querySelector("[data-id=name]")!.textContent =
       this.options.names[this.chart.getOptions().locale] ||
       this.options.names.default ||
       this.options.key;
   }
 
-  public getCrosshairValue(time: number, relativeY: number): string {
+  public getCrosshairValue(_time: number, _relativeY: number): string {
     return "Hello";
   }
 
@@ -37,7 +37,9 @@ export class TestIndicator extends PaneledIndicator<
         barAlignment: "center" as const
       };
       const x = this.chart.getTimeScale().project(data.time, scaleOptions);
-      const y = this.chart.getPriceScale().project(data.close!, scaleOptions);
+      const priceScale =
+        this.pane?.getPriceScale() ?? this.chart.getPriceScale();
+      const y = priceScale.project(data.close!, scaleOptions);
       this.context.fillRect(x - size / 2, y, size, size);
     }
   }

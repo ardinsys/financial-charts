@@ -1,6 +1,9 @@
 import { ChartController } from "../controllers/controller";
 import { DataStore } from "../data/data-store";
-import { PaneledIndicator, InitParams } from "../indicators/paneled-indicator";
+import type {
+  PaneledIndicator,
+  InitParams
+} from "../indicators/paneled-indicator";
 import { Indicator } from "../indicators/indicator";
 import {
   DataScaleModel,
@@ -123,6 +126,15 @@ export class FinancialChart extends EventEmitter {
   private readonly renderPipeline = new RenderPipeline();
   private readonly mainPane = new Pane(0);
   private readonly panes: Pane[] = [this.mainPane];
+  private nextPaneId = 1;
+  private readonly paneByIndicator = new Map<
+    PaneledIndicator<any, any>,
+    Pane
+  >();
+  private readonly indicatorByPane = new Map<
+    Pane,
+    PaneledIndicator<any, any>
+  >();
 
   protected indicators: Indicator<any, any>[] = [];
   protected panaledIndicators: PaneledIndicator<any, any>[] = [];
@@ -133,8 +145,7 @@ export class FinancialChart extends EventEmitter {
   protected pointerTime = -1;
   protected crosshairDataPoint: ChartData | null = null;
   protected pointerY = -1;
-  // -1: chart, 0-n indicator index
-  protected pointerTarget = -1;
+  protected pointerPane: Pane = this.mainPane;
 
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
@@ -223,7 +234,9 @@ export class FinancialChart extends EventEmitter {
     if (this.dataScale) {
       this.dataScale.configureTimeScale(options);
     }
-    this.mainPane.setTimeScale(this.visibleScale.getTimeScale());
+    for (const pane of this.panes) {
+      pane.setTimeScale(this.visibleScale.getTimeScale());
+    }
   }
 
   private syncMainPanePriceScale() {
@@ -397,6 +410,65 @@ export class FinancialChart extends EventEmitter {
     return this.mainPane;
   }
 
+  private isPaneledIndicator(
+    indicator: Indicator<any, any>
+  ): indicator is PaneledIndicator<any, any> {
+    const candidate = indicator as {
+      createExtent?: unknown;
+      getContainer?: unknown;
+      getCrosshairValue?: unknown;
+      init?: unknown;
+      resize?: unknown;
+    };
+
+    return (
+      typeof candidate.createExtent === "function" &&
+      typeof candidate.getContainer === "function" &&
+      typeof candidate.getCrosshairValue === "function" &&
+      typeof candidate.init === "function" &&
+      typeof candidate.resize === "function"
+    );
+  }
+
+  private createPaneForIndicator(indicator: PaneledIndicator<any, any>) {
+    const pane = new Pane(this.nextPaneId++);
+    pane.setTimeScale(this.visibleScale.getTimeScale());
+    this.panes.push(pane);
+    this.paneByIndicator.set(indicator, pane);
+    this.indicatorByPane.set(pane, indicator);
+    return pane;
+  }
+
+  private removePaneForIndicator(indicator: PaneledIndicator<any, any>) {
+    const pane = this.paneByIndicator.get(indicator);
+    if (!pane) return;
+
+    this.paneByIndicator.delete(indicator);
+    this.indicatorByPane.delete(pane);
+    this.panes.splice(this.panes.indexOf(pane), 1);
+    if (this.pointerPane === pane) {
+      this.pointerPane = this.mainPane;
+    }
+  }
+
+  private getPaneInitParams(pane: Pane): InitParams {
+    const region = pane.getRegion();
+    const yAxisRegion = pane.getYAxisRegion();
+
+    return {
+      width: region.width + yAxisRegion.width,
+      height: region.height,
+      y: region.y,
+      x: region.x,
+      devicePixelRatio: pixelRatio(),
+      pane
+    };
+  }
+
+  private getPaneAtY(y: number) {
+    return this.panes.find((pane) => pane.containsY(y));
+  }
+
   private configureRenderPipeline() {
     this.renderPipeline.addHook("grid", () => this.prepareControllerDraw());
     this.renderPipeline.addHook("axes", () => this.drawControllerAxes());
@@ -549,7 +621,7 @@ export class FinancialChart extends EventEmitter {
       requestAnimationFrame(() => {
         this.pointerTime = -1;
         this.pointerY = -1;
-        this.pointerTarget = -1;
+        this.pointerPane = this.mainPane;
         this.drawCrosshair();
       });
     });
@@ -566,15 +638,10 @@ export class FinancialChart extends EventEmitter {
         this.calcSpaceDistribution(this.panaledIndicators.length);
         this.resizeCanvases();
 
-        for (let i = 0; i < this.panaledIndicators.length; i++) {
-          const indicator = this.panaledIndicators[i];
-          indicator.resize({
-            width: this.container.offsetWidth,
-            height: this.indicatorHeight,
-            y: this.chartHeight + this.indicatorHeight * i,
-            devicePixelRatio: pixelRatio(),
-            x: 0
-          });
+        for (const indicator of this.panaledIndicators) {
+          const pane = this.paneByIndicator.get(indicator);
+          if (!pane) continue;
+          indicator.resize(this.getPaneInitParams(pane));
         }
 
         this.indicatorLabelContainer.style.maxHeight =
@@ -703,7 +770,7 @@ export class FinancialChart extends EventEmitter {
     this.isPanning = false;
     this.pointerTime = -1;
     this.pointerY = -1;
-    this.pointerTarget = -1;
+    this.pointerPane = this.mainPane;
     this.lastTouchDistance = undefined;
     this.lastPointerPosition = undefined;
     this.isTouchCrosshair = false;
@@ -894,7 +961,7 @@ export class FinancialChart extends EventEmitter {
           this.lastTouchDistance = undefined;
           this.pointerY = -1;
           this.pointerTime = -1;
-          this.pointerTarget = -1;
+          this.pointerPane = this.mainPane;
           this.requestRedraw("crosshair");
         }
       }, 500);
@@ -1223,15 +1290,10 @@ export class FinancialChart extends EventEmitter {
 
   private recalcPaneledIndicators() {
     this.calcSpaceDistribution(this.panaledIndicators.length);
-    for (let i = 0; i < this.panaledIndicators.length; i++) {
-      const indicator = this.panaledIndicators[i];
-      indicator.resize({
-        width: this.container.offsetWidth,
-        height: this.indicatorHeight,
-        y: this.chartHeight + this.indicatorHeight * i,
-        devicePixelRatio: pixelRatio(),
-        x: 0
-      });
+    for (const indicator of this.panaledIndicators) {
+      const pane = this.paneByIndicator.get(indicator);
+      if (!pane) continue;
+      indicator.resize(this.getPaneInitParams(pane));
     }
     this.resizeCanvases();
   }
@@ -1242,27 +1304,16 @@ export class FinancialChart extends EventEmitter {
    * @param indicator indicator to draw
    */
   public addIndicator(indicator: Indicator<any, any>) {
-    if (indicator instanceof PaneledIndicator) {
+    if (this.isPaneledIndicator(indicator)) {
       // Main chart must have at least 25% of the height
       // every indicator by default gets 25% of the height
       // if it is possible. Otherwise they equally get less.
 
-      this.calcSpaceDistribution(this.panaledIndicators.length + 1);
-
-      const params: InitParams = {
-        devicePixelRatio: pixelRatio(),
-        height: this.indicatorHeight,
-        width: this.container.offsetWidth,
-        x: 0,
-        y:
-          this.chartHeight +
-          this.indicatorHeight * this.panaledIndicators.length
-      };
-
       indicator.setChart(this);
-      indicator.init(params);
-
       this.panaledIndicators.push(indicator);
+      const pane = this.createPaneForIndicator(indicator);
+      this.calcSpaceDistribution(this.panaledIndicators.length);
+      indicator.init(this.getPaneInitParams(pane));
 
       this.container.appendChild(indicator.getContainer());
 
@@ -1291,6 +1342,7 @@ export class FinancialChart extends EventEmitter {
     this.chartHeight = height - indicatorHeight * indicatorCount;
     this.indicatorHeight = indicatorHeight;
     this.layoutMainPane();
+    this.layoutPaneledIndicatorPanes();
   }
 
   private layoutMainPane() {
@@ -1310,6 +1362,30 @@ export class FinancialChart extends EventEmitter {
     });
   }
 
+  private layoutPaneledIndicatorPanes() {
+    const width = Math.max(0, this.container.offsetWidth - this.yLabelWidth);
+
+    for (let i = 0; i < this.panaledIndicators.length; i++) {
+      const indicator = this.panaledIndicators[i];
+      const pane = this.paneByIndicator.get(indicator);
+      if (!pane) continue;
+      const y = this.chartHeight + this.indicatorHeight * i;
+
+      pane.setRegion({
+        x: 0,
+        y,
+        width,
+        height: this.indicatorHeight
+      });
+      pane.setYAxisRegion({
+        x: width,
+        y,
+        width: this.yLabelWidth,
+        height: this.indicatorHeight
+      });
+    }
+  }
+
   /**
    * Removes an indicator from the chart and redraws the indicators
    * to reflect the changes.
@@ -1318,11 +1394,12 @@ export class FinancialChart extends EventEmitter {
    */
 
   public removeIndicator(indicator: Indicator<any, any>) {
-    if (indicator instanceof PaneledIndicator) {
+    if (this.isPaneledIndicator(indicator)) {
       this.container.removeChild(indicator.getContainer());
       this.panaledIndicators = this.panaledIndicators.filter(
         (i) => i !== indicator
       );
+      this.removePaneForIndicator(indicator);
       this.recalcPaneledIndicators();
       this.requestRedraw(this.allRedrawParts);
     } else {
@@ -1348,13 +1425,7 @@ export class FinancialChart extends EventEmitter {
       e.y,
       this.container.offsetHeight - this.xLabelHeight
     );
-    if (e.y <= this.chartHeight) {
-      this.pointerTarget = -1;
-    } else {
-      this.pointerTarget = Math.floor(
-        (e.y - this.chartHeight) / this.indicatorHeight
-      );
-    }
+    this.pointerPane = this.getPaneAtY(this.pointerY) ?? this.mainPane;
 
     this.requestRedraw("crosshair");
   }
@@ -1475,15 +1546,15 @@ export class FinancialChart extends EventEmitter {
     ).price;
     const decimals = this.estimatePriceLabelDecimalPlaces(30);
     let priceText = "";
+    const pointerPane = this.pointerPane;
+    const paneIndicator = this.indicatorByPane.get(pointerPane);
 
-    if (this.pointerTarget === -1) {
+    if (pointerPane === this.mainPane || !paneIndicator) {
       priceText = this.options.formatter.formatTooltipPrice(price, decimals);
     } else {
-      priceText = this.panaledIndicators[this.pointerTarget].getCrosshairValue(
+      priceText = paneIndicator.getCrosshairValue(
         this.pointerTime,
-        this.pointerY -
-          this.chartHeight -
-          this.indicatorHeight * this.pointerTarget
+        pointerPane.getRelativeY(this.pointerY)
       );
     }
     const priceRectWidth = this.getLogicalCanvas("y-label").width;
