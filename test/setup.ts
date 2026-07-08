@@ -1,0 +1,107 @@
+import { vi } from "vitest";
+
+class ResizeObserverMock implements ResizeObserver {
+  disconnect = vi.fn();
+  observe = vi.fn();
+  unobserve = vi.fn();
+}
+
+class CanvasGradientMock implements CanvasGradient {
+  addColorStop = vi.fn();
+}
+
+const createCanvasContext = (
+  canvas: HTMLCanvasElement
+): Partial<CanvasRenderingContext2D> => ({
+  canvas,
+  fillStyle: "#000",
+  font: "12px monospace",
+  lineWidth: 1,
+  strokeStyle: "#000",
+  textAlign: "start",
+  textBaseline: "alphabetic",
+  beginPath: vi.fn(),
+  clearRect: vi.fn(),
+  createLinearGradient: vi.fn(() => new CanvasGradientMock()),
+  fill: vi.fn(),
+  fillRect: vi.fn(),
+  fillText: vi.fn(),
+  lineTo: vi.fn(),
+  measureText: vi.fn((text: string): TextMetrics => {
+    const width = text.length * 7;
+
+    return {
+      actualBoundingBoxAscent: 0,
+      actualBoundingBoxDescent: 0,
+      actualBoundingBoxLeft: 0,
+      actualBoundingBoxRight: width,
+      alphabeticBaseline: 0,
+      emHeightAscent: 0,
+      emHeightDescent: 0,
+      fontBoundingBoxAscent: 0,
+      fontBoundingBoxDescent: 0,
+      hangingBaseline: 0,
+      ideographicBaseline: 0,
+      width,
+    };
+  }),
+  moveTo: vi.fn(),
+  rect: vi.fn(),
+  scale: vi.fn(),
+  setLineDash: vi.fn(),
+  stroke: vi.fn(),
+});
+
+Object.defineProperty(globalThis, "ResizeObserver", {
+  configurable: true,
+  writable: true,
+  value: ResizeObserverMock,
+});
+
+Object.defineProperty(globalThis, "requestAnimationFrame", {
+  configurable: true,
+  writable: true,
+  value: (callback: FrameRequestCallback) =>
+    setTimeout(() => callback(performance.now()), 0),
+});
+
+Object.defineProperty(globalThis, "cancelAnimationFrame", {
+  configurable: true,
+  writable: true,
+  value: (handle: number) => clearTimeout(handle),
+});
+
+Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+  configurable: true,
+  get() {
+    const element = this as HTMLElement;
+    if (element.style.width.endsWith("px")) {
+      return Number.parseFloat(element.style.width);
+    }
+    return element.parentElement?.offsetWidth || 800;
+  },
+});
+
+Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+  configurable: true,
+  get() {
+    const element = this as HTMLElement;
+    if (element.style.height.endsWith("px")) {
+      return Number.parseFloat(element.style.height);
+    }
+    return element.parentElement?.offsetHeight || 400;
+  },
+});
+
+Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
+  configurable: true,
+  writable: true,
+  value: vi.fn(function getContext(
+    this: HTMLCanvasElement,
+    contextId: string
+  ) {
+    if (contextId !== "2d") return null;
+
+    return createCanvasContext(this) as CanvasRenderingContext2D;
+  }),
+});
