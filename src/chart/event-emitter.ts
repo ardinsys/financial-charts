@@ -14,7 +14,7 @@ interface IndicatorRemoveEvent {
   indicator: Indicator<any, any>;
 }
 
-interface EventMap {
+export interface ChartEventMap {
   "indicator-visibility-changed": IndicatorVisibilityChangedEvent;
   "indicator-settings-open": IndicatorSettingsOpenEvent;
   "indicator-remove": IndicatorRemoveEvent;
@@ -22,10 +22,19 @@ interface EventMap {
   "touch-click": { event: TouchEvent; point: ChartData };
 }
 
-export class EventEmitter {
-  private events: { [key: string]: Function[] } = {};
+type EventListener<TEventMap, K extends keyof TEventMap> = (
+  data: TEventMap[K]
+) => void;
 
-  on<K extends keyof EventMap>(event: K, listener: (data: EventMap[K]) => any) {
+export class EventEmitter<TEventMap extends object = ChartEventMap> {
+  private events: {
+    [K in keyof TEventMap]?: Array<EventListener<TEventMap, K>>;
+  } = {};
+
+  on<K extends keyof TEventMap>(
+    event: K,
+    listener: EventListener<TEventMap, K>
+  ) {
     if (!this.events[event]) {
       this.events[event] = [];
     }
@@ -33,20 +42,20 @@ export class EventEmitter {
     this.events[event].push(listener);
 
     return () => {
-      this.events[event] = this.events[event].filter((l) => l !== listener);
+      this.off(event, listener);
     };
   }
 
-  off<K extends keyof EventMap>(
+  off<K extends keyof TEventMap>(
     event: K,
-    listener: (data: EventMap[K]) => any
+    listener: EventListener<TEventMap, K>
   ) {
     if (this.events[event]) {
       this.events[event] = this.events[event].filter((l) => l !== listener);
     }
   }
 
-  emit<K extends keyof EventMap>(event: K, data: EventMap[K]) {
+  emit<K extends keyof TEventMap>(event: K, data: TEventMap[K]) {
     if (this.events[event]) {
       this.events[event].forEach((listener) => {
         listener(data);
