@@ -1,4 +1,3 @@
-import { randomColor } from "../../utils/color";
 import {
   DefaultIndicatorOptions,
   Indicator,
@@ -91,6 +90,8 @@ export class MovingAverageIndicator extends Indicator<
     const ctx = this.chart.getContext("indicator");
     const visibleTimeRange = this.chart.getVisibleTimeRange();
 
+    this.cache.clear();
+
     const data = this.chart.getData(); // Assuming this returns the entire dataset
     let sum = 0;
     let movingAveragePoints = [];
@@ -124,11 +125,9 @@ export class MovingAverageIndicator extends Indicator<
 
     if (this.visible) {
       // Setup drawing context
-      const count = Math.max(this.chart.getIndicators().indexOf(this), 0);
-
       ctx.beginPath();
 
-      ctx.strokeStyle = randomColor(this.chart, count);
+      ctx.strokeStyle = this.theme.color;
       ctx.lineWidth = this.theme.strokeWidth;
 
       visibleDataPoints.forEach((point, index) => {
