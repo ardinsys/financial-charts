@@ -11,6 +11,7 @@ export interface Drawable {
 }
 
 export interface ChartPointerEvent {
+  type: "down" | "move" | "up";
   x: number;
   y: number;
   time: number;

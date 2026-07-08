@@ -48,28 +48,42 @@ export class TimeScale implements Scale {
   }
 
   project(value: number, options: ScaleProjectOptions): number {
+    const index = this.indexForValue(value);
+
+    return this.projectIndex(index, options);
+  }
+
+  unproject(pixel: number, options: ScaleProjectOptions): number {
+    const alignment = options.barAlignment ?? this.barAlignment;
+    const projectedIndex = this.unprojectIndex(pixel, options);
+    const index =
+      alignment === "edge"
+        ? Math.floor(projectedIndex)
+        : Math.round(projectedIndex);
+
+    return this.valueForIndex(index);
+  }
+
+  projectIndex(index: number, options: ScaleProjectOptions): number {
     const ratio = resolveDevicePixelRatio(options);
     const width = options.canvas.width / ratio;
     const span = this.getSpan();
-    const index = this.indexForValue(value);
     const coordinate =
       index + this.alignmentOffset(options.barAlignment ?? this.barAlignment);
 
     return ((coordinate - this.range.from) / span) * width;
   }
 
-  unproject(pixel: number, options: ScaleProjectOptions): number {
+  unprojectIndex(pixel: number, options: ScaleProjectOptions): number {
     const ratio = resolveDevicePixelRatio(options);
     const width = options.canvas.width / ratio;
     const span = this.getSpan();
     const coordinate = this.range.from + (pixel / width) * span;
-    const alignment = options.barAlignment ?? this.barAlignment;
-    const index =
-      alignment === "edge"
-        ? Math.floor(coordinate)
-        : Math.round(coordinate - this.alignmentOffset(alignment));
 
-    return this.valueForIndex(index);
+    return (
+      coordinate -
+      this.alignmentOffset(options.barAlignment ?? this.barAlignment)
+    );
   }
 
   getTicks(_options: ScaleTickOptions): ScaleTick[] {

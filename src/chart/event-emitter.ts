@@ -1,4 +1,5 @@
 import { Indicator } from "../indicators/indicator";
+import type { Drawing } from "../drawings/drawing";
 import { ChartData } from "./types";
 
 interface IndicatorVisibilityChangedEvent {
@@ -14,10 +15,18 @@ interface IndicatorRemoveEvent {
   indicator: Indicator<any, any>;
 }
 
+interface DrawingEvent {
+  drawing: Drawing;
+}
+
 export interface ChartEventMap {
   "indicator-visibility-changed": IndicatorVisibilityChangedEvent;
   "indicator-settings-open": IndicatorSettingsOpenEvent;
   "indicator-remove": IndicatorRemoveEvent;
+  "drawing-create": DrawingEvent;
+  "drawing-change": DrawingEvent;
+  "drawing-delete": DrawingEvent;
+  "drawing-select": DrawingEvent;
   click: { event: PointerEvent; point: ChartData };
   "touch-click": { event: TouchEvent; point: ChartData };
 }

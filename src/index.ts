@@ -28,6 +28,8 @@ export * from "./panes/pane";
 
 export * from "./plugin/chart-plugin";
 
+export * from "./drawings";
+
 export * from "./indicators/indicator";
 export * from "./indicators/label-renderer";
 export * from "./indicators/paneled-indicator";

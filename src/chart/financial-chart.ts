@@ -137,7 +137,8 @@ export class FinancialChart extends EventEmitter {
     "crosshair",
     "x-label",
     "y-label",
-    "indicator"
+    "indicator",
+    "drawings"
   ] as const;
   private controller: ChartController;
   protected outsideContainer: HTMLElement;
@@ -497,6 +498,35 @@ export class FinancialChart extends EventEmitter {
     for (const plugin of this.plugins) {
       plugin.onPointer?.(event);
     }
+  }
+
+  private createPluginPointerEvent(
+    type: ChartPointerEvent["type"],
+    x: number,
+    y: number
+  ): ChartPointerEvent | undefined {
+    if (this.dataStore.length === 0) return undefined;
+
+    const pointerY = Math.min(
+      y,
+      this.container.offsetHeight - this.xLabelHeight
+    );
+    const rawPoint = this.visibleScale.pixelToPoint(
+      x,
+      pointerY,
+      this.getContext("main").canvas
+    );
+    const closestDataPoint = this.findClosestDataPoint(rawPoint);
+    if (!closestDataPoint) return undefined;
+
+    return {
+      type,
+      x,
+      y: pointerY,
+      time: closestDataPoint.time,
+      pane: this.getPaneAtY(pointerY) ?? this.mainPane,
+      dataPoint: closestDataPoint
+    };
   }
 
   private beforeDrawPlugins() {
@@ -953,24 +983,39 @@ export class FinancialChart extends EventEmitter {
 
   private onMouseDown = (event: PointerEvent) => {
     if (event.pointerType === "touch") return;
+    const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
+    const pointerEvent = this.createPluginPointerEvent(
+      "down",
+      event.clientX - rect.left,
+      event.clientY - rect.top
+    );
+    if (pointerEvent) {
+      this.notifyPluginsPointer(pointerEvent);
+    }
     this.lastPointerPosition = { x: event.clientX };
   };
 
   private onMouseUp = (e: PointerEvent) => {
     if (e.pointerType === "touch") return;
+    const topCanvas = this.getContext("crosshair").canvas;
+    const rect = topCanvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
     if (!this.isPanning) {
-      const topCanvas = this.getContext("crosshair").canvas;
-      const rect = topCanvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
       const rawPoint = this.dataScale.pixelToPoint(
         x,
         y,
         this.getContext("main").canvas
       );
       const closestDataPoint = this.findClosestDataPoint(rawPoint);
-      if (!closestDataPoint) return;
-      this.emit("click", { event: e, point: closestDataPoint });
+      if (closestDataPoint) {
+        this.emit("click", { event: e, point: closestDataPoint });
+      }
+    }
+    const pointerEvent = this.createPluginPointerEvent("up", x, y);
+    if (pointerEvent) {
+      this.notifyPluginsPointer(pointerEvent);
     }
     this.lastPointerPosition = undefined;
     this.isPanning = false;
@@ -1213,7 +1258,13 @@ export class FinancialChart extends EventEmitter {
     if (!this.canvases.has(type)) {
       canvas.style.position = "absolute";
       canvas.style.zIndex =
-        type === "crosshair" ? "100" : type === "indicator" ? "50" : "1";
+        type === "crosshair"
+          ? "100"
+          : type === "drawings"
+            ? "60"
+            : type === "indicator"
+              ? "50"
+              : "1";
       this.container.appendChild(canvas);
       this.canvases.set(type, canvas);
     }
@@ -1549,6 +1600,7 @@ export class FinancialChart extends EventEmitter {
     );
     this.pointerPane = this.getPaneAtY(this.pointerY) ?? this.mainPane;
     this.notifyPluginsPointer({
+      type: "move",
       x: e.x,
       y: this.pointerY,
       time: this.pointerTime,

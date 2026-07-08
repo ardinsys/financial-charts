@@ -16,26 +16,26 @@ describe("FinancialChart test harness", () => {
       container,
       {
         start,
-        end: start + 2 * 60_000,
+        end: start + 2 * 60_000
       },
       {
         type: "line",
         stepSize: 60_000,
         maxZoom: 10,
-        volume: false,
+        volume: false
       }
     );
 
     chart.draw([
       { time: start, close: 10 },
       { time: start + 60_000, close: 11 },
-      { time: start + 120_000, close: 9 },
+      { time: start + 120_000, close: 9 }
     ]);
 
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
     expect(chart.getData()).toHaveLength(3);
-    expect(container.querySelectorAll("canvas")).toHaveLength(5);
+    expect(container.querySelectorAll("canvas")).toHaveLength(6);
     expect(chart.getContext("main").canvas.width).toBeGreaterThan(0);
 
     chart.dispose();
