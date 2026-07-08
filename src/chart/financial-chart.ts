@@ -23,6 +23,7 @@ import {
   RenderPipeline,
   RenderStage
 } from "../render/render-pipeline";
+import { Pane } from "../panes/pane";
 
 export type DeepConcrete<T> = T extends Function
   ? T
@@ -120,6 +121,8 @@ export class FinancialChart extends EventEmitter {
   protected visibleScale: DataScaleModel;
   private resizer!: Resizer;
   private readonly renderPipeline = new RenderPipeline();
+  private readonly mainPane = new Pane(0);
+  private readonly panes: Pane[] = [this.mainPane];
 
   protected indicators: Indicator<any, any>[] = [];
   protected panaledIndicators: PaneledIndicator<any, any>[] = [];
@@ -179,7 +182,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   getPriceScale() {
-    return this.visibleScale.getPriceScale();
+    return this.mainPane.getPriceScale();
   }
 
   getVolumeScale() {
@@ -220,6 +223,14 @@ export class FinancialChart extends EventEmitter {
     if (this.dataScale) {
       this.dataScale.configureTimeScale(options);
     }
+    this.mainPane.setTimeScale(this.visibleScale.getTimeScale());
+  }
+
+  private syncMainPanePriceScale() {
+    this.mainPane.setPriceRange(
+      this.visibleScale.getYMin(),
+      this.visibleScale.getYMax()
+    );
   }
 
   private getMinimumVisibleIndexSlots() {
@@ -378,6 +389,14 @@ export class FinancialChart extends EventEmitter {
     return [...this.indicators, ...this.panaledIndicators];
   }
 
+  getPanes() {
+    return [...this.panes];
+  }
+
+  getMainPane() {
+    return this.mainPane;
+  }
+
   private configureRenderPipeline() {
     this.renderPipeline.addHook("grid", () => this.prepareControllerDraw());
     this.renderPipeline.addHook("axes", () => this.drawControllerAxes());
@@ -500,6 +519,7 @@ export class FinancialChart extends EventEmitter {
       end: 0
     });
     this.configureRenderPipeline();
+    this.calcSpaceDistribution(this.panaledIndicators.length);
     // Init and scale canveses
     this.types.forEach((type) => this.getCanvas(type));
     const topCanvas = this.getCanvas("crosshair");
@@ -533,8 +553,6 @@ export class FinancialChart extends EventEmitter {
         this.drawCrosshair();
       });
     });
-
-    this.calcSpaceDistribution(this.panaledIndicators.length);
 
     const createResizers = (): Resizer => {
       let alreadyResized = false;
@@ -979,17 +997,17 @@ export class FinancialChart extends EventEmitter {
     canvas.style.webkitTapHighlightColor = "transparent";
 
     if (type === "y-label") {
+      const yAxisRegion = this.mainPane.getYAxisRegion();
       canvas.style.right = "0px";
-      canvas.width = this.yLabelWidth * devicePixelRatio;
-      canvas.style.width = this.yLabelWidth + "px";
+      canvas.width = yAxisRegion.width * devicePixelRatio;
+      canvas.style.width = yAxisRegion.width + "px";
     } else if (type === "x-label" || type === "crosshair") {
       canvas.width = this.container.offsetWidth * devicePixelRatio;
       canvas.style.width = this.container.offsetWidth + "px";
     } else {
-      canvas.width =
-        this.container.offsetWidth * devicePixelRatio -
-        this.yLabelWidth * devicePixelRatio;
-      canvas.style.width = this.container.offsetWidth - this.yLabelWidth + "px";
+      const region = this.mainPane.getRegion();
+      canvas.width = region.width * devicePixelRatio;
+      canvas.style.width = region.width + "px";
     }
 
     if (type === "x-label") {
@@ -999,9 +1017,14 @@ export class FinancialChart extends EventEmitter {
     } else if (type === "crosshair") {
       canvas.height = this.container.offsetHeight * devicePixelRatio;
       canvas.style.height = this.container.offsetHeight + "px";
+    } else if (type === "y-label") {
+      const yAxisRegion = this.mainPane.getYAxisRegion();
+      canvas.height = yAxisRegion.height * devicePixelRatio;
+      canvas.style.height = yAxisRegion.height + "px";
     } else {
-      canvas.height = this.chartHeight * devicePixelRatio;
-      canvas.style.height = this.chartHeight + "px";
+      const region = this.mainPane.getRegion();
+      canvas.height = region.height * devicePixelRatio;
+      canvas.style.height = region.height + "px";
     }
   }
 
@@ -1267,6 +1290,24 @@ export class FinancialChart extends EventEmitter {
 
     this.chartHeight = height - indicatorHeight * indicatorCount;
     this.indicatorHeight = indicatorHeight;
+    this.layoutMainPane();
+  }
+
+  private layoutMainPane() {
+    const width = Math.max(0, this.container.offsetWidth - this.yLabelWidth);
+
+    this.mainPane.setRegion({
+      x: 0,
+      y: 0,
+      width,
+      height: this.chartHeight
+    });
+    this.mainPane.setYAxisRegion({
+      x: width,
+      y: 0,
+      width: this.yLabelWidth,
+      height: this.chartHeight
+    });
   }
 
   /**
@@ -1750,6 +1791,7 @@ export class FinancialChart extends EventEmitter {
       this.timeRange,
       this.getTimeScaleOptions()
     );
+    this.syncMainPanePriceScale();
 
     this.lastVisibleDataPoints = visibleDataPoints;
     return visibleDataPoints;

@@ -24,6 +24,8 @@ export * from "./scales/ticks/time-ticks";
 
 export * from "./render/render-pipeline";
 
+export * from "./panes/pane";
+
 export * from "./indicators/indicator";
 export * from "./indicators/paneled-indicator";
 export * from "./indicators/simple/moving-average";
