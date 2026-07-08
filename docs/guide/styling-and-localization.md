@@ -22,7 +22,7 @@ Merge your overrides with the shipped themes – missing values are backfilled a
 import {
   defaultLightTheme,
   defaultDarkTheme,
-  mergeThemes,
+  mergeThemes
 } from "@ardinsys/financial-charts";
 
 const baseTheme = mergeThemes(defaultLightTheme, {
@@ -31,15 +31,15 @@ const baseTheme = mergeThemes(defaultLightTheme, {
     color: "#2d7dff",
     fill: [
       [0, "rgba(45, 125, 255, 0.35)"],
-      [1, "rgba(45, 125, 255, 0)"],
-    ],
+      [1, "rgba(45, 125, 255, 0)"]
+    ]
   },
   crosshair: {
     color: "#727cf5",
     tooltip: {
-      backgroundColor: "#0f111b",
-    },
-  },
+      backgroundColor: "#0f111b"
+    }
+  }
 });
 ```
 
@@ -62,7 +62,7 @@ const chart = new FinancialChart(root, "auto", {
   theme,
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
-  volume: true,
+  volume: true
 });
 
 window
@@ -85,18 +85,38 @@ chart.updateLocale("en", {
         high: "High",
         low: "Low",
         close: "Close",
-        volume: "Volume",
-      },
+        volume: "Volume"
+      }
     },
     indicators: {
       actions: {
         show: "Show",
         hide: "Hide",
         settings: "Settings",
-        remove: "Remove",
-      },
-    },
+        remove: "Remove"
+      }
+    }
+  }
+});
+```
+
+`DefaultFormatter` accepts locale, timezone, and Intl option overrides:
+
+```ts
+import { DefaultFormatter } from "@ardinsys/financial-charts";
+
+const formatter = new DefaultFormatter({
+  locale: "en-US",
+  timeZone: "UTC",
+  dateTimeFormatOptions: {
+    tooltipDate: { dateStyle: "medium", timeStyle: "short" }
   },
+  numberFormatOptions: {
+    price: { maximumFractionDigits: 2 }
+  },
+  volumeFormatOptions: {
+    compactThreshold: 10_000
+  }
 });
 ```
 
@@ -120,7 +140,7 @@ const chart = new FinancialChart(root, "auto", {
   type: "candle",
   theme: baseTheme,
   locale: "en",
-  formatter: new CustomFormatter(),
+  formatter: new CustomFormatter()
 });
 ```
 
@@ -143,18 +163,18 @@ const { locale, setLocale, t } = createIntl("en", {
           high: "High",
           low: "Low",
           close: "Close",
-          volume: "Volume",
-        },
+          volume: "Volume"
+        }
       },
       indicators: {
         actions: {
           show: "Show",
           hide: "Hide",
           settings: "Settings",
-          remove: "Remove",
-        },
-      },
-    },
+          remove: "Remove"
+        }
+      }
+    }
   },
   hu: {
     messages: {
@@ -164,19 +184,19 @@ const { locale, setLocale, t } = createIntl("en", {
           high: "Max",
           low: "Min",
           close: "Záró",
-          volume: "Forgalom",
-        },
+          volume: "Forgalom"
+        }
       },
       indicators: {
         actions: {
           show: "Megjelenítés",
           hide: "Elrejtés",
           settings: "Beállítás",
-          remove: "Törlés",
-        },
-      },
-    },
-  },
+          remove: "Törlés"
+        }
+      }
+    }
+  }
 });
 
 const chart = new FinancialChart(root, "auto", {
@@ -192,8 +212,8 @@ const chart = new FinancialChart(root, "auto", {
           show: "Show",
           hide: "Hide",
           settings: "Settings",
-          remove: "Remove",
-        },
+          remove: "Remove"
+        }
       },
       common: {
         sources: {
@@ -201,11 +221,11 @@ const chart = new FinancialChart(root, "auto", {
           high: "High",
           low: "Low",
           close: "Close",
-          volume: "Volume",
-        },
-      },
-    },
-  },
+          volume: "Volume"
+        }
+      }
+    }
+  }
 });
 
 // Keep chart labels in sync with the active app locale
@@ -218,8 +238,8 @@ function switchLocale(nextLocale: string) {
           show: t("indicators.actions.show"),
           hide: t("indicators.actions.hide"),
           settings: t("indicators.actions.settings"),
-          remove: t("indicators.actions.remove"),
-        },
+          remove: t("indicators.actions.remove")
+        }
       },
       common: {
         sources: {
@@ -227,10 +247,10 @@ function switchLocale(nextLocale: string) {
           high: t("common.sources.high"),
           low: t("common.sources.low"),
           close: t("common.sources.close"),
-          volume: t("common.sources.volume"),
-        },
-      },
-    },
+          volume: t("common.sources.volume")
+        }
+      }
+    }
   });
 }
 ```
@@ -258,18 +278,18 @@ const { locale, setLocale, t } = createIntl("en", {
           high: "High",
           low: "Low",
           close: "Close",
-          volume: "Volume",
-        },
+          volume: "Volume"
+        }
       },
       indicators: {
         actions: {
           show: "Show",
           hide: "Hide",
           settings: "Settings",
-          remove: "Remove",
-        },
-      },
-    },
+          remove: "Remove"
+        }
+      }
+    }
   },
   hu: {
     messages: {
@@ -279,19 +299,19 @@ const { locale, setLocale, t } = createIntl("en", {
           high: "Max",
           low: "Min",
           close: "Záró",
-          volume: "Forgalom",
-        },
+          volume: "Forgalom"
+        }
       },
       indicators: {
         actions: {
           show: "Megjelenítés",
           hide: "Elrejtés",
           settings: "Beállítás",
-          remove: "Törlés",
-        },
-      },
-    },
-  },
+          remove: "Törlés"
+        }
+      }
+    }
+  }
 });
 
 const container = ref<HTMLElement | null>(null);
@@ -305,18 +325,18 @@ const chartLocaleBundle = computed(() => ({
         high: t("common.sources.high"),
         low: t("common.sources.low"),
         close: t("common.sources.close"),
-        volume: t("common.sources.volume"),
-      },
+        volume: t("common.sources.volume")
+      }
     },
     indicators: {
       actions: {
         show: t("indicators.actions.show"),
         hide: t("indicators.actions.hide"),
         settings: t("indicators.actions.settings"),
-        remove: t("indicators.actions.remove"),
-      },
-    },
-  },
+        remove: t("indicators.actions.remove")
+      }
+    }
+  }
 }));
 
 onMounted(() => {
@@ -328,7 +348,7 @@ onMounted(() => {
     stepSize: 15 * 60 * 1000,
     maxZoom: 150,
     volume: true,
-    locale: locale.value.toUpperCase(),
+    locale: locale.value.toUpperCase()
   });
 
   chart.value = instance;
@@ -356,7 +376,7 @@ import { createIntl } from "@ardinsys/intl";
 
 const intl = createIntl("en", {
   en: { numberFormats: { money: { style: "currency", currency: "USD" } } },
-  hu: { numberFormats: { money: { style: "currency", currency: "HUF" } } },
+  hu: { numberFormats: { money: { style: "currency", currency: "HUF" } } }
 });
 
 // Example: user formatter (not shipped with the library)
@@ -380,7 +400,7 @@ const chart = new FinancialChart(root, "auto", {
   stepSize: 5 * 60 * 1000,
   maxZoom: 200,
   formatter: new IntlFormatter(),
-  locale: "en",
+  locale: "en"
 });
 ```
 

@@ -11,7 +11,7 @@ export default defineConfig({
       { text: "Guide", link: "/guide/quick-start" },
       { text: "Integrations", link: "/integrations/overview" },
       { text: "Reference", link: "/reference/chart" },
-      { text: "GitHub", link: "https://github.com/ardinsys/financial-charts" },
+      { text: "GitHub", link: "https://github.com/ardinsys/financial-charts" }
     ],
     sidebar: [
       { text: "Introduction", link: "/introduction" },
@@ -22,38 +22,39 @@ export default defineConfig({
           { text: "Data and updates", link: "/guide/data-and-updates" },
           {
             text: "View and interactions",
-            link: "/guide/view-and-interactions",
+            link: "/guide/view-and-interactions"
           },
+          { text: "Drawing tools", link: "/guide/drawing-tools" },
           {
             text: "Styling and localization",
-            link: "/guide/styling-and-localization",
-          },
-        ],
+            link: "/guide/styling-and-localization"
+          }
+        ]
       },
       {
         text: "Integrations",
         items: [
-          { text: "Overview", link: "/integrations/overview" },
+          { text: "Overview", link: "/integrations/overview" }
           // { text: "React 16.8+", link: "/integrations/react" },
           // { text: "Vue 3+", link: "/integrations/vue" },
           // { text: "Svelte 3+", link: "/integrations/svelte" },
-        ],
+        ]
       },
       {
         text: "API Reference",
         items: [
           { text: "FinancialChart", link: "/reference/chart" },
           { text: "Indicators", link: "/reference/indicators" },
-          { text: "Drawings", link: "/reference/drawings" },
-        ],
-      },
+          { text: "Drawings", link: "/reference/drawings" }
+        ]
+      }
     ],
     socialLinks: [
-      { icon: "github", link: "https://github.com/ardinsys/financial-charts" },
+      { icon: "github", link: "https://github.com/ardinsys/financial-charts" }
     ],
     footer: {
       message: "Released under the Apache 2.0 License.",
-      copyright: "© 2025 Ardinsys",
-    },
-  },
+      copyright: "© 2025 Ardinsys"
+    }
+  }
 });

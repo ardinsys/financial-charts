@@ -27,7 +27,7 @@ import {
   HollowCandleController,
   CandlestickController,
   SteplineController,
-  HLCAreaController,
+  HLCAreaController
 } from "@ardinsys/financial-charts";
 
 FinancialChart.registerController(AreaController);
@@ -48,12 +48,12 @@ import {
   defaultDarkTheme,
   defaultLightTheme,
   mergeThemes,
-  type ChartTheme,
+  type ChartTheme
 } from "@ardinsys/financial-charts";
 
 const customTheme: ChartTheme = {
   grid: { color: "#333333" },
-  crosshair: { color: "#FF6B6B" },
+  crosshair: { color: "#FF6B6B" }
 };
 
 const theme = mergeThemes(defaultDarkTheme, customTheme);
@@ -73,7 +73,7 @@ const chart = new FinancialChart(
     locale: "en",
     maxZoom: 100,
     stepSize: 15 * 60 * 1000,
-    volume: true,
+    volume: true
   }
 );
 ```
@@ -107,7 +107,7 @@ chart.draw([
     high: 15,
     low: 10,
     close: 10,
-    volume: 1200000,
+    volume: 1200000
   },
   {
     time: Date.UTC(2024, 0, 1, 9, 15),
@@ -115,8 +115,8 @@ chart.draw([
     high: 15,
     low: 8,
     close: 15,
-    volume: 1500000,
-  },
+    volume: 1500000
+  }
 ]);
 ```
 
@@ -131,7 +131,7 @@ chart.drawNextPoint({
   high: 14,
   low: 10,
   close: 13,
-  volume: 1600000,
+  volume: 1600000
 });
 ```
 
@@ -145,5 +145,6 @@ chart.dispose();
 
 - [Guide > Data and updates](/guide/data-and-updates) explains how `draw`/`drawNextPoint` interact with step size and auto ranges.
 - [Guide > View and interactions](/guide/view-and-interactions) covers zooming, panning, and core runtime options.
+- [Guide > Drawing tools](/guide/drawing-tools) shows how to add trendlines, rectangles, text, and persistence.
 - [Guide > Styling and localization](/guide/styling-and-localization) walks through themes, custom formatters, and locales.
 - The [API Reference](/reference/chart) lists every method signature and event payload.

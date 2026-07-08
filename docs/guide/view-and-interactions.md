@@ -1,6 +1,6 @@
 # View and interactions
 
-Control how the chart looks and behaves at runtime: zoom, pan, swap controllers, and respond to user input.
+Control how the chart looks and behaves at runtime: zoom, pan, swap controllers, attach plugins, and respond to user input.
 
 ## Adjusting the core view
 
@@ -10,7 +10,7 @@ Control how the chart looks and behaves at runtime: zoom, pan, swap controllers,
 chart.updateCoreOptions("auto", 15 * 60 * 1000, 150);
 ```
 
-When you need deterministic motion (custom zoom buttons, minimaps), read the current window and feed a modified range back into the chart:
+When you need deterministic navigation, read the current window and feed a modified range back into the chart:
 
 ```ts
 const current = chart.getVisibleTimeRange();
@@ -29,24 +29,38 @@ chart.updateCoreOptions(
 - **Pan:** click-drag or touch-drag.
 - **Volume overlay:** toggle with `setVolumeDraw(true | false)`.
 - **Theme/locale:** call `updateTheme` or `updateLocale` whenever user preferences change.
+- **Drawings:** attach `DrawingManager` and choose a drawing factory. See [Drawing tools](/guide/drawing-tools).
 
-## Controllers and indicators
+## Controllers, indicators, and plugins
 
 - Switch renderers without losing zoom/pan via `chart.changeType("hlc-area")` (controller must be registered first).
 - Add/remove overlay or paneled indicators dynamically: `chart.addIndicator(indicator)` / `chart.removeIndicator(indicator)`.
 - The chart automatically allocates space for paneled indicators while keeping at least 25% of height for price.
+- Attach custom overlay behavior with `chart.addPlugin(plugin)`. Plugins can listen to data, visible-range, pointer, and render lifecycle hooks.
+
+Render invalidation uses named layers:
+
+```ts
+chart.requestRedraw(["series", "indicators", "drawings"]);
+```
+
+Use `"controller"` when you want to redraw the grid, axes, and main series together.
 
 ## Events
 
 Subscribe with `chart.on(event, handler)` – each call returns an unsubscribe function.
 
-| Event                         | Payload                                         | When it fires                                 |
-| ----------------------------- | ----------------------------------------------- | --------------------------------------------- |
-| `click`                       | `{ event: PointerEvent, point: ChartData }`     | User clicks the chart with a mouse.           |
-| `touch-click`                 | `{ event: TouchEvent, point: ChartData }`       | User taps the chart on touch devices.         |
-| `indicator-visibility-changed` | `{ indicator, visible }`                       | Indicator show/hide buttons are toggled.      |
-| `indicator-settings-open`     | `{ indicator }`                                 | Settings button next to an indicator is used. |
-| `indicator-remove`            | `{ indicator }`                                 | Indicator remove button is pressed.           |
+| Event                          | Payload                                     | When it fires                                 |
+| ------------------------------ | ------------------------------------------- | --------------------------------------------- |
+| `click`                        | `{ event: PointerEvent, point: ChartData }` | User clicks the chart with a mouse.           |
+| `touch-click`                  | `{ event: TouchEvent, point: ChartData }`   | User taps the chart on touch devices.         |
+| `indicator-visibility-changed` | `{ indicator, visible }`                    | Indicator show/hide buttons are toggled.      |
+| `indicator-settings-open`      | `{ indicator }`                             | Settings button next to an indicator is used. |
+| `indicator-remove`             | `{ indicator }`                             | Indicator remove button is pressed.           |
+| `drawing-create`               | `{ drawing }`                               | Pointer-created drawing is finalized.         |
+| `drawing-change`               | `{ drawing }`                               | Drawing anchors or content change.            |
+| `drawing-select`               | `{ drawing }`                               | Drawing selection changes to a drawing.       |
+| `drawing-delete`               | `{ drawing }`                               | Drawing is removed through `DrawingManager`.  |
 
 Use these hooks to open dialogs, sync layout with other widgets, or log interactions. `ChartData` is exported by the library for strongly typed payloads.
 

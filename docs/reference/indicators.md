@@ -1,17 +1,28 @@
 # Indicators
 
-Indicators can be drawn either on top of the main price chart (overlay indicators) or inside dedicated panels stacked underneath (paneled indicators). Both types inherit from the `Indicator` base class and share the same lifecycle hooks.
+Indicators can be drawn either on top of the main price chart (overlay indicators) or inside dedicated panes stacked underneath (paneled indicators). Indicators implement the `ChartPlugin` lifecycle, so attachment, data updates, redraws, pointer-aware crosshair updates, and cleanup all flow through the same plugin contract.
 
 ## Base indicator API
 
 ```ts
-import { Indicator, type DefaultIndicatorOptions } from "@ardinsys/financial-charts";
+import {
+  Indicator,
+  type DefaultIndicatorOptions
+} from "@ardinsys/financial-charts";
 
 abstract class MyIndicator extends Indicator<MyTheme, MyOptions> {
-  public getDefaultOptions(): MyOptions { /* ... */ }
-  public getDefaultThemes(): Record<string, MyTheme> { /* ... */ }
-  public draw(): void { /* render using chart contexts */ }
-  public updateLabel(dataTime?: number): void { /* sync label contents */ }
+  public getDefaultOptions(): MyOptions {
+    /* ... */
+  }
+  public getDefaultThemes(): Record<string, MyTheme> {
+    /* ... */
+  }
+  public draw(): void {
+    /* render using chart contexts */
+  }
+  public updateLabel(dataTime?: number): void {
+    /* sync label contents */
+  }
 }
 ```
 
@@ -19,11 +30,12 @@ abstract class MyIndicator extends Indicator<MyTheme, MyOptions> {
 
 Every indicator merges its supplied options with these defaults:
 
-| Field           | Description                                                                                               |
-| --------------- | --------------------------------------------------------------------------------------------------------- |
-| `key`           | Unique identifier (for labels and debugging).                                                             |
-| `names`         | Localized display names keyed by locale (`default` is used as a fallback).                                |
-| `labelTemplate` | HTML template used for the indicator pill. Two versions are usually provided (`light` and `dark`).        |
+| Field           | Description                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------------------- |
+| `key`           | Unique identifier (for labels and debugging).                                                      |
+| `names`         | Localized display names keyed by locale (`default` is used as a fallback).                         |
+| `labelTemplate` | HTML template used for the indicator pill. Two versions are usually provided (`light` and `dark`). |
+| `labelRenderer` | Optional renderer object for replacing the template rendering strategy.                            |
 
 The base class automatically wires the template buttons:
 
@@ -33,11 +45,13 @@ The base class automatically wires the template buttons:
 
 ### Lifecycle hooks
 
+- `attach(ctx)` is inherited from `Indicator` and calls `setChart(ctx.chart)`.
 - `setChart(chart)` is called when the indicator is attached. Use it to cache the reference and read `chart.getOptions()` if you need runtime information.
-- `draw()` runs on each render pass. Use `chart.getContext("indicator")`, `chart.getVisibleExtent()`, and helper getters such as `getZoomLevel()` to map data to pixels.
+- `draw()` runs on each indicator render pass. Use `chart.getContext("indicator")`, `chart.getTimeScale()`, and `chart.getPriceScale()` to map data to pixels.
 - `updateLabel(dataTime?)` is invoked after renders and when locales or themes change. Update label text/values here.
-- `getModifier(visibleTimeRange)` lets you modify the Y-axis extent. Return an `ExtentModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).
+- `getModifier(visibleTimeRange)` lets you modify the price range. Return a `ScaleRangeModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).
 - `updateOptions(partial)` merges new options, requests a redraw, and re-renders the label.
+- `detach()` is called when an indicator is removed or the chart is disposed; the base class uses it to remove label listeners.
 
 ### Label templates
 
@@ -50,33 +64,39 @@ Templates are chosen by `chart.getOptions().theme.key` (default `"light"` / `"da
 
 ## Paneled indicators
 
-`PaneledIndicator` extends `Indicator` and supplies its own container plus two canvases (main chart and Y axis). Implement the following methods:
+`PaneledIndicator` extends `Indicator` and supplies its own container plus two canvases (main pane and Y axis). The chart creates a `Pane` for each paneled indicator and passes it in `InitParams`. Implement the following methods:
 
 ```ts
 abstract class MyPaneledIndicator extends PaneledIndicator<MyTheme, MyOptions> {
-  public createExtent(): Extent { /* setup extent calculator */ }
-  public draw(): void { /* draw using this.context */ }
-  public updateLabel(): void { /* optional */ }
+  public createExtent(): DataScaleModel {
+    /* setup scale model */
+  }
+  public draw(): void {
+    /* draw using this.context */
+  }
+  public updateLabel(): void {
+    /* optional */
+  }
   public getCrosshairValue(time: number, relativeY: number): string {
     return "..."; // displayed next to the crosshair when hovering the panel
   }
 }
 ```
 
-- `init(params)` is handled by the chart and receives `{ width, height, x, y, devicePixelRatio }`.
+- `init(params)` is handled by the chart and receives `{ width, height, x, y, devicePixelRatio, pane }`.
 - `resize(params)` is invoked whenever the parent chart resizes or the number of paneled indicators changes. Use it to recompute canvas sizes.
 - `initDrawing()` clears the panel, paints the background, and draws shared grid lines. Call it at the start of `draw()`.
-- `calculateYAxisLabels()` and `drawYAxis()` are helpers for rendering axis ticks using the indicator extent.
+- `calculateYAxisLabels()` and `drawYAxis()` are helpers for rendering axis ticks through the pane's price scale.
 
 ## Indicator events
 
 The base class emits events when users interact with the label:
 
-| Event                        | Description                               |
-| ---------------------------- | ----------------------------------------- |
+| Event                          | Description                                |
+| ------------------------------ | ------------------------------------------ |
 | `indicator-visibility-changed` | Fired after show/hide buttons are toggled. |
-| `indicator-settings-open`    | Fired when the settings button is pressed.|
-| `indicator-remove`           | Fired when the remove button is pressed.  |
+| `indicator-settings-open`      | Fired when the settings button is pressed. |
+| `indicator-remove`             | Fired when the remove button is pressed.   |
 
 Listen to these events via `chart.on(...)` to open modals, persist state, or synchronize UI.
 

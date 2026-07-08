@@ -1,6 +1,6 @@
 # FinancialChart API
 
-`FinancialChart` is the main class exported by the library. It manages canvas creation, rendering, user input, indicators, and event emission.
+`FinancialChart` is the main class exported by the library. It manages canvas creation, index-based scales, rendering, user input, indicators, plugins, drawings, and event emission.
 
 ## Constructor
 
@@ -33,16 +33,16 @@ type ChartOptions = {
 };
 ```
 
-| Option        | Description                                                                                      |
-| ------------- | ------------------------------------------------------------------------------------------------ |
-| `type`        | Identifier for a registered controller such as `"candle"`, `"bar"`, or custom IDs.               |
-| `stepSize`    | Time frame granularity in milliseconds. Incoming candles are snapped to this size.               |
-| `maxZoom`     | Highest zoom factor before clamping user input.                                                  |
-| `volume`      | Enables a histogram below the price chart.                                                       |
-| `theme`       | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.             |
-| `locale`      | Locale code forwarded to the formatter (defaults to `navigator.language`).                       |
-| `formatter`   | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.              |
-| `localeValues`| Localized indicator labels keyed by locale. Merged with built-in English strings.                |
+| Option         | Description                                                                                          |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| `type`         | Identifier for a registered controller such as `"candle"`, `"bar"`, or custom IDs.                   |
+| `stepSize`     | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                   |
+| `maxZoom`      | Highest zoom factor before clamping user input.                                                      |
+| `volume`       | Enables a histogram below the price chart.                                                           |
+| `theme`        | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.                 |
+| `locale`       | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`. |
+| `formatter`    | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                  |
+| `localeValues` | Localized indicator labels keyed by locale. Merged with built-in English strings.                    |
 
 #### Localization options
 
@@ -87,6 +87,7 @@ type LocaleValues = {
 ```
 
 - Data **must** be sorted ascending by `time`.
+- X coordinates are index-based: every data point occupies one ordinal slot, so weekends, holidays, and missing bars do not create blank horizontal gaps.
 - When `timeRange` is `"auto"`, the window starts at the first data point and extends to either the last point plus one `stepSize` or a viewport-sized span (about 30-50 steps), whichever is larger.
 
 ## Methods
@@ -108,24 +109,27 @@ type LocaleValues = {
 
 ### View and styling
 
-| Method                         | Description                                                                                                  |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `changeType(type)`            | Switches the active controller (candles, bars, area, etc.) while preserving zoom and pan state.              |
-| `updateTheme(theme)`          | Deep merges a theme patch and redraws the view. Useful when toggling light/dark mode.                        |
-| `setVolumeDraw(enabled)`      | Shows or hides the volume histogram without recreating the chart.                                            |
-| `updateCoreOptions(range, stepSize, maxZoom)` | Rebuilds the internal state with new core settings. Resets zoom/pan because data is remapped. |
-| `updateLocale(locale, values?)` | Changes the formatter locale and (optionally) overrides indicator labels for multiple languages.           |
+| Method                                        | Description                                                                                      |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `changeType(type)`                            | Switches the active controller (candles, bars, area, etc.) while preserving zoom and pan state.  |
+| `updateTheme(theme)`                          | Deep merges a theme patch and redraws the view. Useful when toggling light/dark mode.            |
+| `setVolumeDraw(enabled)`                      | Shows or hides the volume histogram without recreating the chart.                                |
+| `updateCoreOptions(range, stepSize, maxZoom)` | Rebuilds the internal state with new core settings. Resets zoom/pan because data is remapped.    |
+| `updateLocale(locale, values?)`               | Changes the formatter locale and (optionally) overrides indicator labels for multiple languages. |
 
 ### Query helpers
 
-| Method                    | Description                                                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `getVisibleTimeRange()`   | Returns `{ start, end }` for the currently visible window factoring in zoom and pan offsets.                      |
-| `getTimeRange()`          | Returns the configured base time range (before zoom/pan).                                                          |
-| `getOptions()`            | Gives access to the current `ChartOptions` object (after merges).                                                 |
-| `getTheme()`              | Returns the active `ChartTheme`.                                                                                  |
-| `getController()`         | Returns the currently instantiated controller instance.                                                           |
-| `getIndicators()` / `getPaneledIndicators()` / `getAllIndicators()` | Lists overlay indicators, paneled indicators, or both combined.         |
+| Method                                                              | Description                                                                                 |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `getVisibleTimeRange()`                                             | Returns `{ start, end }` for the currently visible index window, mapped back to timestamps. |
+| `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
+| `getOptions()`                                                      | Gives access to the current `ChartOptions` object (after merges).                           |
+| `getTheme()`                                                        | Returns the active `ChartTheme`.                                                            |
+| `getController()`                                                   | Returns the currently instantiated controller instance.                                     |
+| `getTimeScale()` / `getPriceScale()` / `getVolumeScale()`           | Returns the active scales for custom renderers and plugins.                                 |
+| `getPanes()` / `getMainPane()`                                      | Lists pane models or returns the main price pane.                                           |
+| `getPlugins()`                                                      | Lists attached plugins.                                                                     |
+| `getIndicators()` / `getPaneledIndicators()` / `getAllIndicators()` | Lists overlay indicators, paneled indicators, or both combined.                             |
 
 ### Indicator management
 
@@ -136,12 +140,28 @@ chart.removeIndicator(indicator: Indicator): void;
 
 Use overlays for drawings on top of price data and `PaneledIndicator` implementations when you need a dedicated sub-chart. See the [Indicators reference](./indicators.md) for implementation details.
 
+### Plugins
+
+```ts
+chart.addPlugin(plugin: ChartPlugin): void;
+chart.removePlugin(plugin: ChartPlugin): void;
+```
+
+Plugins receive a `ChartContext` during `attach(ctx)`, can render via
+`beforeDraw`/`draw`/`afterDraw`, receive `onData`, `onVisibleRangeChanged`, and
+`onPointer` notifications, and should release external resources in `detach()`.
+
+Register render hooks with `ctx.onRenderStage(stage, callback)` when you need a
+specific stage. Stages run in this order:
+
+`beforeDraw → grid → axes → series → indicators → drawings → crosshair → afterDraw`
+
 ### Lifecycle
 
-| Method        | Description                                                                                                                           |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `dispose()`   | Tears down event listeners, the resize observer, and removes canvases plus paneled indicator containers. Call this before removing the DOM node. |
-| `requestRedraw(parts, immediate?)` | Schedules a render pass for the specified parts (`"controller"`, `"indicators"`, `"crosshair"`). Useful for advanced integrations or custom controllers. |
+| Method                             | Description                                                                                                                                                                                      |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `dispose()`                        | Tears down event listeners, the resize observer, and removes canvases plus paneled indicator containers. Call this before removing the DOM node.                                                 |
+| `requestRedraw(parts, immediate?)` | Schedules a render pass for one or more layers. Use `"grid"`, `"axes"`, `"series"`, `"indicators"`, `"drawings"`, `"crosshair"`, or the compatibility alias `"controller"` for grid/axes/series. |
 
 Because `FinancialChart` extends an event emitter, the usual `on(event, handler)` and `off(event, handler)` helpers are also available.
 
@@ -149,17 +169,17 @@ Because `FinancialChart` extends an event emitter, the usual `on(event, handler)
 
 Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 
-| Event                         | Payload                                         | When it fires                                 |
-| ----------------------------- | ----------------------------------------------- | --------------------------------------------- |
-| `click`                       | `{ event: PointerEvent, point: ChartData }`     | User clicks the chart on desktop.             |
-| `touch-click`                 | `{ event: TouchEvent, point: ChartData }`       | User taps the chart on touch devices.         |
-| `indicator-visibility-changed` | `{ indicator, visible }`                       | Indicator show/hide buttons are toggled.      |
-| `indicator-settings-open`     | `{ indicator }`                                 | Settings button next to an indicator is used. |
-| `indicator-remove`            | `{ indicator }`                                 | Indicator remove button is pressed.           |
-| `drawing-create`              | `{ drawing }`                                   | Pointer-created drawing is finalized.         |
-| `drawing-change`              | `{ drawing }`                                   | Drawing anchors or content change.            |
-| `drawing-select`              | `{ drawing }`                                   | Drawing selection changes to a drawing.       |
-| `drawing-delete`              | `{ drawing }`                                   | Drawing is removed through `DrawingManager`.  |
+| Event                          | Payload                                     | When it fires                                 |
+| ------------------------------ | ------------------------------------------- | --------------------------------------------- |
+| `click`                        | `{ event: PointerEvent, point: ChartData }` | User clicks the chart on desktop.             |
+| `touch-click`                  | `{ event: TouchEvent, point: ChartData }`   | User taps the chart on touch devices.         |
+| `indicator-visibility-changed` | `{ indicator, visible }`                    | Indicator show/hide buttons are toggled.      |
+| `indicator-settings-open`      | `{ indicator }`                             | Settings button next to an indicator is used. |
+| `indicator-remove`             | `{ indicator }`                             | Indicator remove button is pressed.           |
+| `drawing-create`               | `{ drawing }`                               | Pointer-created drawing is finalized.         |
+| `drawing-change`               | `{ drawing }`                               | Drawing anchors or content change.            |
+| `drawing-select`               | `{ drawing }`                               | Drawing selection changes to a drawing.       |
+| `drawing-delete`               | `{ drawing }`                               | Drawing is removed through `DrawingManager`.  |
 
 ## Controllers
 
@@ -173,4 +193,4 @@ Register controllers once before chart creation. The library ships with the foll
 - `SteplineController`
 - `HLCAreaController`
 
-Custom controllers can extend the base types to add indicators or overlays tailored to your application. Controllers receive access to the chart instance, canvas contexts, and the mapped `DataExtent`.
+Custom controllers can extend the base types to add renderers tailored to your application. Controllers receive access to the chart instance, canvas contexts, visible data, and active scales.

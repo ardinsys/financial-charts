@@ -67,12 +67,12 @@ manager.registerDrawingDeserializer("my-drawing", (json) => {
 
 Subscribe with `chart.on(...)`. Each handler receives `{ drawing }`.
 
-| Event             | When it fires                                      |
-| ----------------- | -------------------------------------------------- |
-| `drawing-create`  | A pointer-created drawing is finalized.            |
-| `drawing-change`  | A drawing is changed while creating or dragging.   |
-| `drawing-select`  | A drawing becomes selected through the manager.    |
-| `drawing-delete`  | A drawing is removed through the manager.          |
+| Event            | When it fires                                    |
+| ---------------- | ------------------------------------------------ |
+| `drawing-create` | A pointer-created drawing is finalized.          |
+| `drawing-change` | A drawing is changed while creating or dragging. |
+| `drawing-select` | A drawing becomes selected through the manager.  |
+| `drawing-delete` | A drawing is removed through the manager.        |
 
 Loading drawings with `fromJSON()` is treated as state restoration and does not
 emit per-drawing create/delete events.
