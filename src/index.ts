@@ -26,6 +26,8 @@ export * from "./render/render-pipeline";
 
 export * from "./panes/pane";
 
+export * from "./plugin/chart-plugin";
+
 export * from "./indicators/indicator";
 export * from "./indicators/paneled-indicator";
 export * from "./indicators/simple/moving-average";

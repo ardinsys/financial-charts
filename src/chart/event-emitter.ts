@@ -55,6 +55,29 @@ export class EventEmitter<TEventMap extends object = ChartEventMap> {
     }
   }
 
+  listenerCount<K extends keyof TEventMap>(event?: K) {
+    if (event !== undefined) {
+      return this.events[event]?.length ?? 0;
+    }
+
+    let count = 0;
+    for (const listeners of Object.values(this.events) as Array<
+      unknown[] | undefined
+    >) {
+      count += listeners?.length ?? 0;
+    }
+    return count;
+  }
+
+  removeAllListeners<K extends keyof TEventMap>(event?: K) {
+    if (event !== undefined) {
+      delete this.events[event];
+      return;
+    }
+
+    this.events = {};
+  }
+
   emit<K extends keyof TEventMap>(event: K, data: TEventMap[K]) {
     if (this.events[event]) {
       this.events[event].forEach((listener) => {

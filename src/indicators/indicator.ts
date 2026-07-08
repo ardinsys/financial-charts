@@ -49,7 +49,7 @@ export const indicatorLabelTemplate = {
         </button>
       </div>
     </div>
-    `,
+    `
 };
 
 export interface DefaultIndicatorOptions {
@@ -68,6 +68,7 @@ export abstract class Indicator<
   protected theme!: TTheme;
   protected labelContainer: HTMLElement;
   protected visible = true;
+  private labelListenerDisposers: Array<() => void> = [];
 
   constructor(
     themes?: Record<string, Partial<TTheme>> | undefined | null,
@@ -83,6 +84,7 @@ export abstract class Indicator<
   }
 
   public setChart(chart: FinancialChart): void {
+    this.detachLabelListeners();
     this.chart = chart;
     this.theme = this.themes[chart.getOptions().theme.key];
     this.labelContainer.innerHTML =
@@ -109,7 +111,7 @@ export abstract class Indicator<
     settings.title = chart.getLocaleValues().indicators.actions.settings;
     remove.title = chart.getLocaleValues().indicators.actions.remove;
 
-    hide?.addEventListener("click", () => {
+    this.addLabelClickListener(hide, () => {
       show.classList.remove("fci-hide");
       hide.classList.add("fci-hide");
       label.classList.remove("fci-hidden");
@@ -117,11 +119,11 @@ export abstract class Indicator<
       this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
       this.chart.emit("indicator-visibility-changed", {
         indicator: this,
-        visible: true,
+        visible: true
       });
     });
 
-    show?.addEventListener("click", () => {
+    this.addLabelClickListener(show, () => {
       hide.classList.remove("fci-hide");
       show.classList.add("fci-hide");
       label.classList.add("fci-hidden");
@@ -129,25 +131,47 @@ export abstract class Indicator<
       this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
       this.chart.emit("indicator-visibility-changed", {
         indicator: this,
-        visible: false,
+        visible: false
       });
     });
 
-    settings?.addEventListener("click", () => {
+    this.addLabelClickListener(settings, () => {
       this.chart.emit("indicator-settings-open", {
-        indicator: this,
+        indicator: this
       });
     });
 
-    remove?.addEventListener("click", () => {
+    this.addLabelClickListener(remove, () => {
       this.chart.removeIndicator(this);
       this.chart.emit("indicator-remove", {
-        indicator: this,
+        indicator: this
       });
     });
   }
 
-  public getModifier(visibleTimeRange: TimeRange): ScaleRangeModifier | null {
+  private addLabelClickListener(
+    element: HTMLElement | null,
+    listener: () => void
+  ) {
+    if (!element) return;
+
+    element.addEventListener("click", listener);
+    this.labelListenerDisposers.push(() => {
+      element.removeEventListener("click", listener);
+    });
+  }
+
+  private detachLabelListeners() {
+    for (const dispose of this.labelListenerDisposers.splice(0)) {
+      dispose();
+    }
+  }
+
+  public detach(): void {
+    this.detachLabelListeners();
+  }
+
+  public getModifier(_visibleTimeRange: TimeRange): ScaleRangeModifier | null {
     return null;
   }
 

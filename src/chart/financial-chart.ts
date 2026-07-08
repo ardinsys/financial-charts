@@ -27,6 +27,11 @@ import {
   RenderStage
 } from "../render/render-pipeline";
 import { Pane } from "../panes/pane";
+import type {
+  ChartContext,
+  ChartPlugin,
+  ChartPointerEvent
+} from "../plugin/chart-plugin";
 
 export type DeepConcrete<T> = T extends Function
   ? T
@@ -82,11 +87,16 @@ type Resizer = {
   ratioResize: () => void;
 };
 
+type IndicatorConstructor = (new (...args: any[]) => Indicator<any, any>) & {
+  ID?: string;
+};
+
 export type ChartRedrawPart = RenderLayer | "controller";
 
 export class FinancialChart extends EventEmitter {
   private static controllers: Map<ControllerType, new () => ChartController> =
     new Map();
+  private static indicatorRegistry = new Map<string, IndicatorConstructor>();
 
   public static registerController<T extends typeof ChartController>(
     controllerClass: T
@@ -97,6 +107,29 @@ export class FinancialChart extends EventEmitter {
     }
     // @ts-ignore
     this.controllers.set(controllerClass.ID, controllerClass);
+  }
+
+  public static registerIndicator<T extends IndicatorConstructor>(
+    indicatorClass: T
+  ) {
+    if (indicatorClass.ID === "default" || !indicatorClass.ID) {
+      throw new Error("Indicator must have a static ID field!");
+    }
+
+    this.indicatorRegistry.set(indicatorClass.ID, indicatorClass);
+  }
+
+  public static createIndicator<T extends Indicator<any, any>>(
+    id: string,
+    ...args: any[]
+  ): T {
+    const IndicatorClass = this.indicatorRegistry.get(id);
+
+    if (!IndicatorClass) {
+      throw new Error(`Indicator: ${id} is not registered!`);
+    }
+
+    return new IndicatorClass(...args) as T;
   }
 
   private readonly types = [
@@ -138,6 +171,7 @@ export class FinancialChart extends EventEmitter {
 
   protected indicators: Indicator<any, any>[] = [];
   protected panaledIndicators: PaneledIndicator<any, any>[] = [];
+  private plugins: ChartPlugin[] = [];
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
@@ -357,6 +391,7 @@ export class FinancialChart extends EventEmitter {
       to,
       rightOffset: Math.max(0, to - this.dataStore.length)
     };
+    this.notifyPluginsVisibleRangeChanged();
   }
 
   private panVisibleIndexRange(dx: number) {
@@ -408,6 +443,78 @@ export class FinancialChart extends EventEmitter {
 
   getMainPane() {
     return this.mainPane;
+  }
+
+  getPlugins() {
+    return [...this.plugins];
+  }
+
+  addPlugin(plugin: ChartPlugin) {
+    this.plugins.push(plugin);
+    try {
+      plugin.attach(this.createChartContext());
+      this.requestRedraw(this.allRedrawParts);
+    } catch (error) {
+      this.plugins = this.plugins.filter((item) => item !== plugin);
+      throw error;
+    }
+  }
+
+  removePlugin(plugin: ChartPlugin) {
+    if (!this.plugins.includes(plugin)) return;
+
+    plugin.detach?.();
+    this.plugins = this.plugins.filter((item) => item !== plugin);
+    this.requestRedraw(this.allRedrawParts);
+  }
+
+  private createChartContext(): ChartContext {
+    return {
+      chart: this,
+      getPanes: () => this.getPanes(),
+      getVisibleTimeRange: () => this.getVisibleTimeRange(),
+      on: (event, listener) => this.on(event, listener),
+      onRenderStage: (stage, callback) => this.onRenderStage(stage, callback),
+      requestRedraw: (part, immediate) => this.requestRedraw(part, immediate)
+    };
+  }
+
+  private notifyPluginsData(data: readonly ChartData[]) {
+    for (const plugin of this.plugins) {
+      plugin.onData?.(data);
+    }
+  }
+
+  private notifyPluginsVisibleRangeChanged() {
+    const range = this.getVisibleTimeRange();
+
+    for (const plugin of this.plugins) {
+      plugin.onVisibleRangeChanged?.(range);
+    }
+  }
+
+  private notifyPluginsPointer(event: ChartPointerEvent) {
+    for (const plugin of this.plugins) {
+      plugin.onPointer?.(event);
+    }
+  }
+
+  private beforeDrawPlugins() {
+    for (const plugin of this.plugins) {
+      plugin.beforeDraw?.();
+    }
+  }
+
+  private drawPlugins() {
+    for (const plugin of this.plugins) {
+      plugin.draw?.();
+    }
+  }
+
+  private afterDrawPlugins() {
+    for (const plugin of this.plugins) {
+      plugin.afterDraw?.();
+    }
   }
 
   private isPaneledIndicator(
@@ -470,11 +577,14 @@ export class FinancialChart extends EventEmitter {
   }
 
   private configureRenderPipeline() {
+    this.renderPipeline.addHook("beforeDraw", () => this.beforeDrawPlugins());
     this.renderPipeline.addHook("grid", () => this.prepareControllerDraw());
     this.renderPipeline.addHook("axes", () => this.drawControllerAxes());
     this.renderPipeline.addHook("series", () => this.drawControllerSeries());
     this.renderPipeline.addHook("indicators", () => this.drawIndicators());
+    this.renderPipeline.addHook("drawings", () => this.drawPlugins());
     this.renderPipeline.addHook("crosshair", () => this.drawCrosshair());
+    this.renderPipeline.addHook("afterDraw", () => this.afterDrawPlugins());
   }
 
   public onRenderStage(
@@ -810,6 +920,7 @@ export class FinancialChart extends EventEmitter {
     });
     this.resetVisibleIndexRange();
     this.recalculateVisibleExtent();
+    this.notifyPluginsData(this.dataStore.toArray());
 
     this.requestRedraw(this.allRedrawParts);
   }
@@ -1262,6 +1373,7 @@ export class FinancialChart extends EventEmitter {
 
     this.resetVisibleIndexRange();
     this.recalculateVisibleExtent();
+    this.notifyPluginsData(this.dataStore.toArray());
 
     this.requestRedraw(this.allRedrawParts);
   }
@@ -1285,6 +1397,7 @@ export class FinancialChart extends EventEmitter {
     }
 
     this.refreshIndexBounds({ preserveRightEdge, span });
+    this.notifyPluginsData(this.dataStore.toArray());
     this.requestRedraw(this.allRedrawParts);
   }
 
@@ -1395,7 +1508,10 @@ export class FinancialChart extends EventEmitter {
 
   public removeIndicator(indicator: Indicator<any, any>) {
     if (this.isPaneledIndicator(indicator)) {
-      this.container.removeChild(indicator.getContainer());
+      indicator.detach();
+      if (indicator.getContainer().parentElement === this.container) {
+        this.container.removeChild(indicator.getContainer());
+      }
       this.panaledIndicators = this.panaledIndicators.filter(
         (i) => i !== indicator
       );
@@ -1403,8 +1519,14 @@ export class FinancialChart extends EventEmitter {
       this.recalcPaneledIndicators();
       this.requestRedraw(this.allRedrawParts);
     } else {
+      indicator.detach();
       this.visibleScale.removeModifier(indicator);
-      this.indicatorLabelContainer.removeChild(indicator.getLabelContainer());
+      if (
+        indicator.getLabelContainer().parentElement ===
+        this.indicatorLabelContainer
+      ) {
+        this.indicatorLabelContainer.removeChild(indicator.getLabelContainer());
+      }
       this.indicators = this.indicators.filter((i) => i !== indicator);
       this.requestRedraw(this.allRedrawParts);
     }
@@ -1426,6 +1548,13 @@ export class FinancialChart extends EventEmitter {
       this.container.offsetHeight - this.xLabelHeight
     );
     this.pointerPane = this.getPaneAtY(this.pointerY) ?? this.mainPane;
+    this.notifyPluginsPointer({
+      x: e.x,
+      y: this.pointerY,
+      time: this.pointerTime,
+      pane: this.pointerPane,
+      dataPoint: closestDataPoint
+    });
 
     this.requestRedraw("crosshair");
   }
@@ -1654,6 +1783,18 @@ export class FinancialChart extends EventEmitter {
     topCanvas.removeEventListener("touchstart", this.onTouchStart);
     topCanvas.removeEventListener("touchend", this.onTouchEnd);
     topCanvas.removeEventListener("touchmove", this.onTouchMove);
+    for (const indicator of this.getAllIndicators()) {
+      indicator.detach();
+    }
+    for (const plugin of this.plugins) {
+      plugin.detach?.();
+    }
+    this.indicators = [];
+    this.panaledIndicators = [];
+    this.plugins = [];
+    this.paneByIndicator.clear();
+    this.indicatorByPane.clear();
+    this.removeAllListeners();
     this.resizeObserver.unobserve(this.container);
     this.resizeObserver.disconnect();
     this.canvases.forEach((canvas) => canvas.remove());
