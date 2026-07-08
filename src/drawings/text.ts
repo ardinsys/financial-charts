@@ -2,6 +2,7 @@ import {
   Drawing,
   type DrawingAnchor,
   type DrawingHitTestContext,
+  type DrawingJSON,
   type DrawingOptions,
   type DrawingPoint,
   type DrawingRenderContext
@@ -16,7 +17,19 @@ export interface TextDrawingOptions extends DrawingOptions {
   text?: string;
 }
 
+interface TextDrawingJSONData {
+  backgroundColor: string;
+  color: string;
+  font: string;
+  padding: number;
+  selectedColor: string;
+  text: string;
+}
+
 export class TextDrawing extends Drawing {
+  static readonly type = "text";
+  readonly type = TextDrawing.type;
+
   private backgroundColor: string;
   private color: string;
   private font: string;
@@ -40,6 +53,22 @@ export class TextDrawing extends Drawing {
     this.padding = padding;
     this.selectedColor = selectedColor;
     this.text = text;
+  }
+
+  static fromJSON(json: DrawingJSON): TextDrawing {
+    const data = json.data as Partial<TextDrawingJSONData> | undefined;
+
+    return new TextDrawing({
+      anchors: json.anchors,
+      id: json.id,
+      paneId: json.paneId,
+      backgroundColor: data?.backgroundColor,
+      color: data?.color,
+      font: data?.font,
+      padding: data?.padding,
+      selectedColor: data?.selectedColor,
+      text: data?.text
+    });
   }
 
   getText() {
@@ -82,6 +111,17 @@ export class TextDrawing extends Drawing {
       point.y >= bounds.y - context.tolerance &&
       point.y <= bounds.y + bounds.height + context.tolerance
     );
+  }
+
+  protected getDataJSON(): TextDrawingJSONData {
+    return {
+      backgroundColor: this.backgroundColor,
+      color: this.color,
+      font: this.font,
+      padding: this.padding,
+      selectedColor: this.selectedColor,
+      text: this.text
+    };
   }
 
   private getBounds(

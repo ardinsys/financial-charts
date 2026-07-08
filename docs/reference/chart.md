@@ -156,6 +156,10 @@ Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 | `indicator-visibility-changed` | `{ indicator, visible }`                       | Indicator show/hide buttons are toggled.      |
 | `indicator-settings-open`     | `{ indicator }`                                 | Settings button next to an indicator is used. |
 | `indicator-remove`            | `{ indicator }`                                 | Indicator remove button is pressed.           |
+| `drawing-create`              | `{ drawing }`                                   | Pointer-created drawing is finalized.         |
+| `drawing-change`              | `{ drawing }`                                   | Drawing anchors or content change.            |
+| `drawing-select`              | `{ drawing }`                                   | Drawing selection changes to a drawing.       |
+| `drawing-delete`              | `{ drawing }`                                   | Drawing is removed through `DrawingManager`.  |
 
 ## Controllers
 

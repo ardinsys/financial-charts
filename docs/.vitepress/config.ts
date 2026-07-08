@@ -44,6 +44,7 @@ export default defineConfig({
         items: [
           { text: "FinancialChart", link: "/reference/chart" },
           { text: "Indicators", link: "/reference/indicators" },
+          { text: "Drawings", link: "/reference/drawings" },
         ],
       },
     ],

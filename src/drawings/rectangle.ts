@@ -1,6 +1,7 @@
 import {
   Drawing,
   type DrawingHitTestContext,
+  type DrawingJSON,
   type DrawingOptions,
   type DrawingPoint,
   type DrawingRenderContext
@@ -13,7 +14,17 @@ export interface RectangleDrawingOptions extends DrawingOptions {
   strokeColor?: string;
 }
 
+interface RectangleDrawingJSONData {
+  fillColor: string;
+  lineWidth: number;
+  selectedColor: string;
+  strokeColor: string;
+}
+
 export class RectangleDrawing extends Drawing {
+  static readonly type = "rectangle";
+  readonly type = RectangleDrawing.type;
+
   private fillColor: string;
   private lineWidth: number;
   private selectedColor: string;
@@ -31,6 +42,20 @@ export class RectangleDrawing extends Drawing {
     this.lineWidth = lineWidth;
     this.selectedColor = selectedColor;
     this.strokeColor = strokeColor;
+  }
+
+  static fromJSON(json: DrawingJSON): RectangleDrawing {
+    const data = json.data as Partial<RectangleDrawingJSONData> | undefined;
+
+    return new RectangleDrawing({
+      anchors: json.anchors,
+      id: json.id,
+      paneId: json.paneId,
+      fillColor: data?.fillColor,
+      lineWidth: data?.lineWidth,
+      selectedColor: data?.selectedColor,
+      strokeColor: data?.strokeColor
+    });
   }
 
   draw(ctx: CanvasRenderingContext2D, context: DrawingRenderContext) {
@@ -74,6 +99,15 @@ export class RectangleDrawing extends Drawing {
       Math.abs(point.y - (bounds.y + bounds.height)) <= tolerance;
 
     return nearVerticalEdge || nearHorizontalEdge;
+  }
+
+  protected getDataJSON(): RectangleDrawingJSONData {
+    return {
+      fillColor: this.fillColor,
+      lineWidth: this.lineWidth,
+      selectedColor: this.selectedColor,
+      strokeColor: this.strokeColor
+    };
   }
 
   private getBounds(context: DrawingRenderContext) {

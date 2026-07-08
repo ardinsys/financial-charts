@@ -1,6 +1,7 @@
 import {
   Drawing,
   type DrawingHitTestContext,
+  type DrawingJSON,
   type DrawingOptions,
   type DrawingPoint,
   type DrawingRenderContext
@@ -12,7 +13,16 @@ export interface TrendLineOptions extends DrawingOptions {
   selectedColor?: string;
 }
 
+interface TrendLineJSONData {
+  color: string;
+  lineWidth: number;
+  selectedColor: string;
+}
+
 export class TrendLine extends Drawing {
+  static readonly type = "trendline";
+  readonly type = TrendLine.type;
+
   private color: string;
   private lineWidth: number;
   private selectedColor: string;
@@ -27,6 +37,19 @@ export class TrendLine extends Drawing {
     this.color = color;
     this.lineWidth = lineWidth;
     this.selectedColor = selectedColor;
+  }
+
+  static fromJSON(json: DrawingJSON): TrendLine {
+    const data = json.data as Partial<TrendLineJSONData> | undefined;
+
+    return new TrendLine({
+      anchors: json.anchors,
+      id: json.id,
+      paneId: json.paneId,
+      color: data?.color,
+      lineWidth: data?.lineWidth,
+      selectedColor: data?.selectedColor
+    });
   }
 
   draw(ctx: CanvasRenderingContext2D, context: DrawingRenderContext) {
@@ -53,6 +76,14 @@ export class TrendLine extends Drawing {
     if (!start || !end) return false;
 
     return distanceToSegment(point, start, end) <= context.tolerance;
+  }
+
+  protected getDataJSON(): TrendLineJSONData {
+    return {
+      color: this.color,
+      lineWidth: this.lineWidth,
+      selectedColor: this.selectedColor
+    };
   }
 }
 

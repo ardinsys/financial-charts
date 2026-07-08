@@ -2,6 +2,7 @@ import {
   Drawing,
   type DrawingAnchor,
   type DrawingHitTestContext,
+  type DrawingJSON,
   type DrawingOptions,
   type DrawingPoint,
   type DrawingRenderContext
@@ -13,7 +14,16 @@ export interface HorizontalLineOptions extends DrawingOptions {
   selectedColor?: string;
 }
 
+interface HorizontalLineJSONData {
+  color: string;
+  lineWidth: number;
+  selectedColor: string;
+}
+
 export class HorizontalLine extends Drawing {
+  static readonly type = "horizontal-line";
+  readonly type = HorizontalLine.type;
+
   private color: string;
   private lineWidth: number;
   private selectedColor: string;
@@ -28,6 +38,19 @@ export class HorizontalLine extends Drawing {
     this.color = color;
     this.lineWidth = lineWidth;
     this.selectedColor = selectedColor;
+  }
+
+  static fromJSON(json: DrawingJSON): HorizontalLine {
+    const data = json.data as Partial<HorizontalLineJSONData> | undefined;
+
+    return new HorizontalLine({
+      anchors: json.anchors,
+      id: json.id,
+      paneId: json.paneId,
+      color: data?.color,
+      lineWidth: data?.lineWidth,
+      selectedColor: data?.selectedColor
+    });
   }
 
   draw(ctx: CanvasRenderingContext2D, context: DrawingRenderContext) {
@@ -60,5 +83,13 @@ export class HorizontalLine extends Drawing {
   private getLineAnchor(): DrawingAnchor {
     const anchors = this.getAnchors();
     return anchors.at(-1) ?? { index: 0, price: 0 };
+  }
+
+  protected getDataJSON(): HorizontalLineJSONData {
+    return {
+      color: this.color,
+      lineWidth: this.lineWidth,
+      selectedColor: this.selectedColor
+    };
   }
 }

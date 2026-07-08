@@ -3,8 +3,10 @@ import { FinancialChart } from "../src/chart/financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import {
+  type DrawingAnchor,
   DrawingManager,
   type DrawingFactory,
+  type DrawingManagerJSON,
   HorizontalLine,
   RectangleDrawing,
   TextDrawing,
@@ -280,11 +282,104 @@ describe("drawing tools", () => {
 
     expect(manager.getDrawings()).toEqual([]);
   });
+
+  it("round-trips drawings through JSON and preserves data-space anchors", () => {
+    const { chart } = createChart();
+    const manager = createManager(chart, ({ anchors, paneId }) => {
+      return new TrendLine({ anchors, paneId });
+    });
+    const paneId = chart.getMainPane().getId();
+    const originalAnchors: DrawingAnchor[] = [
+      { index: 0.25, price: 10.5 },
+      { index: 2.5, price: 14.25 }
+    ];
+    const selected = new TextDrawing({
+      anchors: [{ index: 1.5, price: 12.75 }],
+      id: "text-1",
+      paneId,
+      text: "Reloaded"
+    });
+    manager.addDrawing(
+      new TrendLine({
+        anchors: originalAnchors,
+        id: "trend-1",
+        paneId,
+        color: "#abcdef"
+      })
+    );
+    manager.addDrawing(
+      new HorizontalLine({
+        anchors: [{ index: 1, price: 11 }],
+        id: "horizontal-1",
+        paneId
+      })
+    );
+    manager.addDrawing(
+      new RectangleDrawing({
+        anchors: [
+          { index: 0.5, price: 10.75 },
+          { index: 3, price: 13.5 }
+        ],
+        id: "rectangle-1",
+        paneId
+      })
+    );
+    manager.addDrawing(selected);
+    manager.selectDrawing(selected);
+
+    const json = JSON.parse(JSON.stringify(manager)) as DrawingManagerJSON;
+    chart.removePlugin(manager);
+
+    const reloadedManager = new DrawingManager();
+    chart.addPlugin(reloadedManager);
+    const reloadedDrawings = reloadedManager.fromJSON(json);
+    const reloadedTrend = reloadedDrawings.find(
+      (drawing) => drawing.id === "trend-1"
+    ) as TrendLine;
+    const reloadedText = reloadedDrawings.find(
+      (drawing) => drawing.id === "text-1"
+    ) as TextDrawing;
+    const beforePan = projectAnchor(chart, reloadedTrend.getAnchors()[0]);
+
+    (
+      chart as unknown as {
+        setVisibleIndexRange(range: { from: number; to: number }): void;
+      }
+    ).setVisibleIndexRange({ from: 1, to: 4 });
+
+    const afterPan = projectAnchor(chart, reloadedTrend.getAnchors()[0]);
+
+    expect(json.drawings.map((drawing) => drawing.type)).toEqual([
+      "trendline",
+      "horizontal-line",
+      "rectangle",
+      "text"
+    ]);
+    expect(reloadedDrawings).toHaveLength(4);
+    expect(reloadedTrend.getAnchors()).toEqual(originalAnchors);
+    expect(reloadedText.getText()).toBe("Reloaded");
+    expect(reloadedManager.getSelectedDrawing()).toBe(reloadedText);
+    expect(reloadedTrend.getAnchors()).toEqual(originalAnchors);
+    expect(afterPan.x).toBeLessThan(beforePan.x);
+  });
 });
 
 function drawingHitContext(chart: FinancialChart) {
   return {
     ...drawingContext(chart),
     tolerance: 8
+  };
+}
+
+function projectAnchor(chart: FinancialChart, anchor: DrawingAnchor) {
+  const pane = chart.getMainPane();
+  const canvas = chart.getContext("drawings").canvas;
+
+  return {
+    x: pane.getTimeScale()!.projectIndex(anchor.index, {
+      canvas,
+      barAlignment: "center"
+    }),
+    y: pane.getPriceScale().project(anchor.price, { canvas })
   };
 }

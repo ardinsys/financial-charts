@@ -8,18 +8,38 @@ import {
   anchorFromPoint,
   Drawing,
   type DrawingAnchor,
+  type DrawingJSON,
   type DrawingPoint
 } from "./drawing";
+import { HorizontalLine } from "./horizontal-line";
+import { RectangleDrawing } from "./rectangle";
+import { TextDrawing } from "./text";
+import { TrendLine } from "./trendline";
 
 export type DrawingFactory = (options: {
   anchors: DrawingAnchor[];
   paneId: number;
 }) => Drawing;
 
+export type DrawingDeserializer = (json: DrawingJSON) => Drawing;
+
+export interface DrawingManagerJSON {
+  drawings: DrawingJSON[];
+  selectedDrawingId?: string;
+}
+
 export interface DrawingManagerOptions {
+  drawingDeserializers?: Record<string, DrawingDeserializer>;
   drawingFactory?: DrawingFactory;
   hitTestTolerance?: number;
 }
+
+const builtInDrawingDeserializers: Record<string, DrawingDeserializer> = {
+  [HorizontalLine.type]: HorizontalLine.fromJSON,
+  [RectangleDrawing.type]: RectangleDrawing.fromJSON,
+  [TextDrawing.type]: TextDrawing.fromJSON,
+  [TrendLine.type]: TrendLine.fromJSON
+};
 
 type Interaction =
   | {
@@ -42,10 +62,19 @@ export class DrawingManager implements ChartPlugin {
   private selectedDrawing?: Drawing;
   private interaction?: Interaction;
   private drawingFactory?: DrawingFactory;
+  private drawingDeserializers: Map<string, DrawingDeserializer>;
   private hitTestTolerance: number;
 
   constructor(options: DrawingManagerOptions = {}) {
     this.drawingFactory = options.drawingFactory;
+    this.drawingDeserializers = new Map(
+      Object.entries(builtInDrawingDeserializers)
+    );
+    for (const [type, deserializer] of Object.entries(
+      options.drawingDeserializers ?? {}
+    )) {
+      this.registerDrawingDeserializer(type, deserializer);
+    }
     this.hitTestTolerance = options.hitTestTolerance ?? 8;
   }
 
@@ -55,6 +84,10 @@ export class DrawingManager implements ChartPlugin {
 
   setDrawingFactory(factory?: DrawingFactory) {
     this.drawingFactory = factory;
+  }
+
+  registerDrawingDeserializer(type: string, deserializer: DrawingDeserializer) {
+    this.drawingDeserializers.set(type, deserializer);
   }
 
   getDrawings() {
@@ -103,6 +136,33 @@ export class DrawingManager implements ChartPlugin {
     }
     this.ctx.chart.emit("drawing-delete", { drawing });
     this.ctx.requestRedraw("drawings");
+  }
+
+  toJSON(): DrawingManagerJSON {
+    const json: DrawingManagerJSON = {
+      drawings: this.drawings.map((drawing) => drawing.toJSON())
+    };
+
+    if (this.selectedDrawing) {
+      json.selectedDrawingId = this.selectedDrawing.id;
+    }
+
+    return json;
+  }
+
+  fromJSON(json: DrawingManagerJSON) {
+    this.interaction = undefined;
+    this.selectedDrawing?.setSelected(false);
+    this.drawings = json.drawings.map((drawing) =>
+      this.deserializeDrawing(drawing)
+    );
+    this.selectedDrawing = this.drawings.find(
+      (drawing) => drawing.id === json.selectedDrawingId
+    );
+    this.selectedDrawing?.setSelected(true);
+    this.ctx.requestRedraw("drawings");
+
+    return this.getDrawings();
   }
 
   onPointer(event: ChartPointerEvent) {
@@ -244,5 +304,14 @@ export class DrawingManager implements ChartPlugin {
 
   private getPane(paneId: number) {
     return this.ctx.getPanes().find((pane) => pane.getId() === paneId);
+  }
+
+  private deserializeDrawing(json: DrawingJSON) {
+    const deserializer = this.drawingDeserializers.get(json.type);
+    if (!deserializer) {
+      throw new Error(`Unknown drawing type: ${json.type}`);
+    }
+
+    return deserializer(json);
   }
 }

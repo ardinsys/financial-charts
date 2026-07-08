@@ -25,9 +25,21 @@ export interface DrawingOptions {
   paneId?: number;
 }
 
+export interface DrawingJSON<
+  TType extends string = string,
+  TData extends object = object
+> {
+  anchors: DrawingAnchor[];
+  data?: TData;
+  id: string;
+  paneId: number;
+  type: TType;
+}
+
 let drawingId = 0;
 
 export abstract class Drawing {
+  readonly type: string = "drawing";
   readonly id: string;
   private anchors: DrawingAnchor[];
   private paneId: number;
@@ -68,6 +80,25 @@ export abstract class Drawing {
       index: anchor.index + delta.index,
       price: anchor.price + delta.price
     }));
+  }
+
+  toJSON(): DrawingJSON {
+    const json: DrawingJSON = {
+      anchors: this.getAnchors(),
+      id: this.id,
+      paneId: this.paneId,
+      type: this.type
+    };
+    const data = this.getDataJSON();
+    if (data !== undefined) {
+      json.data = data;
+    }
+
+    return json;
+  }
+
+  protected getDataJSON(): object | undefined {
+    return undefined;
   }
 
   protected projectAnchor(
