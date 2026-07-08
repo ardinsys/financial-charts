@@ -55,6 +55,7 @@ const createCanvasContext = (
   scale: vi.fn(),
   setLineDash: vi.fn(),
   stroke: vi.fn(),
+  strokeRect: vi.fn(),
 });
 
 Object.defineProperty(globalThis, "ResizeObserver", {

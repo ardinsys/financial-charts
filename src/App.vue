@@ -16,6 +16,8 @@ import { TestIndicator } from "./indicators/paneled/test-indicator";
 import {
   DrawingManager,
   HorizontalLine,
+  RectangleDrawing,
+  TextDrawing,
   TrendLine,
   type DrawingFactory
 } from "./drawings";
@@ -30,8 +32,9 @@ FinancialChart.registerController(HLCAreaController);
 
 const chartContainer = ref<HTMLElement>();
 const clickedData = ref<ChartData>();
-type DrawingTool = "trendline" | "horizontal-line";
+type DrawingTool = "trendline" | "horizontal-line" | "rectangle" | "text";
 const activeDrawingTool = ref<DrawingTool>("trendline");
+const drawingText = ref("Text");
 
 // Date that represents today 17:00
 const fivepm = new Date();
@@ -44,6 +47,7 @@ nineam.setHours(9, 0, 0, 0);
 const chartData = ref<ChartData[]>([]);
 let chart: FinancialChart;
 let drawingManager: DrawingManager | undefined;
+let selectedTextDrawing: TextDrawing | undefined;
 
 const fiveYear = new Date();
 fiveYear.setFullYear(fiveYear.getFullYear() - 5);
@@ -90,6 +94,24 @@ function createDrawingFactory(tool: DrawingTool): DrawingFactory {
       });
     }
 
+    if (tool === "rectangle") {
+      return new RectangleDrawing({
+        anchors,
+        paneId,
+        strokeColor: "#c084fc",
+        fillColor: "rgba(192, 132, 252, 0.12)",
+      });
+    }
+
+    if (tool === "text") {
+      return new TextDrawing({
+        anchors,
+        paneId,
+        text: drawingText.value || "Text",
+        color: "#fef3c7",
+      });
+    }
+
     return new TrendLine({
       anchors,
       paneId,
@@ -105,6 +127,14 @@ function setDrawingTool(tool: DrawingTool) {
 
 function deleteSelectedDrawing() {
   drawingManager?.deleteSelected();
+}
+
+function updateSelectedTextDrawing() {
+  const selectedDrawing = drawingManager?.getSelectedDrawing();
+  selectedTextDrawing =
+    selectedDrawing instanceof TextDrawing ? selectedDrawing : undefined;
+  selectedTextDrawing?.setText(drawingText.value || "Text");
+  chart?.requestRedraw("drawings", true);
 }
 
 onMounted(() => {
@@ -151,6 +181,20 @@ onMounted(() => {
     drawingFactory: createDrawingFactory(activeDrawingTool.value),
   });
   chart.addPlugin(drawingManager);
+
+  chart.on("drawing-select", ({ drawing }) => {
+    selectedTextDrawing =
+      drawing instanceof TextDrawing ? drawing : undefined;
+    if (selectedTextDrawing) {
+      drawingText.value = selectedTextDrawing.getText();
+    }
+  });
+
+  chart.on("drawing-delete", ({ drawing }) => {
+    if (drawing === selectedTextDrawing) {
+      selectedTextDrawing = undefined;
+    }
+  });
 
   const unsub = chart.on("indicator-settings-open", (data) => {
     console.log("indicator-settings-open", data.indicator.getKey());
@@ -371,6 +415,26 @@ watch(chartData, (newVal, oldVal) => {
       >
         Horizontal
       </button>
+      <button
+        :class="{ active: activeDrawingTool === 'rectangle' }"
+        type="button"
+        @click="setDrawingTool('rectangle')"
+      >
+        Rectangle
+      </button>
+      <button
+        :class="{ active: activeDrawingTool === 'text' }"
+        type="button"
+        @click="setDrawingTool('text')"
+      >
+        Text
+      </button>
+      <input
+        v-model="drawingText"
+        aria-label="Drawing text"
+        type="text"
+        @input="updateSelectedTextDrawing"
+      />
       <button type="button" @click="deleteSelectedDrawing">Delete</button>
     </div>
     <div
@@ -420,5 +484,17 @@ body {
 .drawing-toolbar button.active {
   background: #1d4ed8;
   border-color: #60a5fa;
+}
+
+.drawing-toolbar input {
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #0f172a;
+  color: #f8fafc;
+  font:
+    13px/1.2 system-ui,
+    sans-serif;
+  min-width: 140px;
+  padding: 8px 10px;
 }
 </style>

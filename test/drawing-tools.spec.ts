@@ -6,6 +6,8 @@ import {
   DrawingManager,
   type DrawingFactory,
   HorizontalLine,
+  RectangleDrawing,
+  TextDrawing,
   TrendLine,
   type DrawingPoint,
   type DrawingRenderContext
@@ -182,6 +184,97 @@ describe("drawing tools", () => {
 
     chart.requestRedraw("drawings", true);
     expect(chart.getContext("drawings").stroke).toHaveBeenCalled();
+
+    manager.deleteSelected();
+
+    expect(manager.getDrawings()).toEqual([]);
+  });
+
+  it("creates, hit-tests, moves, draws, and deletes a rectangle", () => {
+    const { chart, data } = createChart();
+    const manager = createManager(
+      chart,
+      ({ anchors, paneId }) => new RectangleDrawing({ anchors, paneId })
+    );
+
+    const drawing = createDrawing(
+      chart,
+      data,
+      manager,
+      { x: 120, y: 160 },
+      { x: 360, y: 240 }
+    ) as RectangleDrawing;
+    const anchorsBeforeMove = drawing.getAnchors();
+
+    expect(manager.hitTest({ x: 240, y: 160 }, chart.getMainPane())).toBe(
+      drawing
+    );
+    expect(drawing.hitTest({ x: 240, y: 200 }, drawingHitContext(chart))).toBe(
+      false
+    );
+
+    manager.onPointer(pointerEvent(chart, data[1], "down", { x: 240, y: 160 }));
+    manager.onPointer(pointerEvent(chart, data[2], "move", { x: 320, y: 190 }));
+    manager.onPointer(pointerEvent(chart, data[2], "up", { x: 320, y: 190 }));
+
+    const anchorsAfterMove = drawing.getAnchors();
+    expect(anchorsAfterMove[0].index).toBeGreaterThan(
+      anchorsBeforeMove[0].index
+    );
+    expect(anchorsAfterMove[0].price).toBeLessThan(anchorsBeforeMove[0].price);
+
+    chart.requestRedraw("drawings", true);
+    expect(chart.getContext("drawings").rect).toHaveBeenCalled();
+
+    manager.deleteSelected();
+
+    expect(manager.getDrawings()).toEqual([]);
+  });
+
+  it("creates, edits, hit-tests, moves, draws, and deletes text", () => {
+    const { chart, data } = createChart();
+    const manager = createManager(
+      chart,
+      ({ anchors, paneId }) =>
+        new TextDrawing({ anchors, paneId, text: "Earnings" })
+    );
+
+    const drawing = createDrawing(
+      chart,
+      data,
+      manager,
+      { x: 160, y: 160 },
+      { x: 300, y: 220 }
+    ) as TextDrawing;
+    const anchorsBeforeMove = drawing.getAnchors();
+
+    expect(manager.hitTest({ x: 180, y: 170 }, chart.getMainPane())).toBe(
+      drawing
+    );
+    expect(drawing.hitTest({ x: 320, y: 260 }, drawingHitContext(chart))).toBe(
+      false
+    );
+
+    drawing.setText("Guidance");
+
+    expect(drawing.getText()).toBe("Guidance");
+
+    manager.onPointer(pointerEvent(chart, data[1], "down", { x: 180, y: 170 }));
+    manager.onPointer(pointerEvent(chart, data[2], "move", { x: 260, y: 210 }));
+    manager.onPointer(pointerEvent(chart, data[2], "up", { x: 260, y: 210 }));
+
+    const anchorsAfterMove = drawing.getAnchors();
+    expect(anchorsAfterMove[0].index).toBeGreaterThan(
+      anchorsBeforeMove[0].index
+    );
+    expect(anchorsAfterMove[0].price).toBeLessThan(anchorsBeforeMove[0].price);
+
+    chart.requestRedraw("drawings", true);
+    expect(chart.getContext("drawings").fillText).toHaveBeenCalledWith(
+      "Guidance",
+      expect.any(Number),
+      expect.any(Number)
+    );
 
     manager.deleteSelected();
 
