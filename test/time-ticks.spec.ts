@@ -1,0 +1,122 @@
+import { describe, expect, it } from "vitest";
+import { DefaultFormatter } from "../src/chart/formatter";
+import { DataStore } from "../src/data/data-store";
+import { TimeTickGenerator } from "../src/scales/ticks/time-ticks";
+
+const hour = 60 * 60_000;
+const day = 24 * hour;
+
+function createFormatter() {
+  return new DefaultFormatter({ locale: "en-US", timeZone: "UTC" });
+}
+
+function createStore(times: number[]) {
+  return new DataStore(times.map((time) => ({ time, close: time })));
+}
+
+function generateTicks(times: number[], targetTickCount = 8) {
+  return new TimeTickGenerator().generate({
+    dataStore: createStore(times),
+    visibleRange: { from: 0, to: times.length },
+    formatter: createFormatter(),
+    targetTickCount,
+  });
+}
+
+describe("TimeTickGenerator", () => {
+  it("chooses stable intraday hour ticks", () => {
+    const start = Date.UTC(2024, 0, 2, 9);
+    const times = Array.from({ length: 15 }, (_, index) => {
+      return start + index * 30 * 60_000;
+    });
+
+    const ticks = generateTicks(times, 5);
+
+    expect(ticks.map((tick) => tick.index)).toEqual([2, 6, 10, 14]);
+    expect(ticks.map((tick) => tick.label)).toEqual([
+      "10:00 AM",
+      "12:00 PM",
+      "2:00 PM",
+      "4:00 PM",
+    ]);
+    expect(ticks.every((tick) => tick.kind === "hour")).toBe(true);
+  });
+
+  it("anchors day and week ticks to real bars across market gaps", () => {
+    const friday = Date.UTC(2024, 0, 5);
+    const monday = Date.UTC(2024, 0, 8);
+    const tuesday = Date.UTC(2024, 0, 9);
+    const nextMonday = Date.UTC(2024, 0, 15);
+
+    const ticks = generateTicks([friday, monday, tuesday, nextMonday], 10);
+
+    expect(
+      ticks.map((tick) => ({
+        index: tick.index,
+        time: tick.time,
+        kind: tick.kind,
+        label: tick.label,
+      }))
+    ).toEqual([
+      { index: 0, time: friday, kind: "day", label: "5" },
+      { index: 1, time: monday, kind: "week", label: "8" },
+      { index: 2, time: tuesday, kind: "day", label: "9" },
+      { index: 3, time: nextMonday, kind: "week", label: "15" },
+    ]);
+  });
+
+  it("selects month and year ticks for multi-year ranges", () => {
+    const times = Array.from({ length: 36 }, (_, index) => {
+      return Date.UTC(2022 + Math.floor(index / 12), index % 12, 1);
+    });
+
+    const ticks = generateTicks(times, 8);
+
+    expect(ticks.map((tick) => tick.index)).toEqual([0, 6, 12, 18, 24, 30]);
+    expect(ticks.map((tick) => tick.kind)).toEqual([
+      "year",
+      "month",
+      "year",
+      "month",
+      "year",
+      "month",
+    ]);
+    expect(ticks.map((tick) => tick.label)).toEqual([
+      "2022",
+      "Jul",
+      "2023",
+      "Jul",
+      "2024",
+      "Jul",
+    ]);
+  });
+
+  it("keeps indices unique and increasing when one bar crosses many boundaries", () => {
+    const ticks = generateTicks(
+      [
+        Date.UTC(2024, 0, 31),
+        Date.UTC(2024, 2, 1),
+        Date.UTC(2024, 2, 4),
+      ],
+      10
+    );
+
+    expect(ticks.map((tick) => tick.index)).toEqual([0, 1, 2]);
+    expect(new Set(ticks.map((tick) => tick.index)).size).toBe(ticks.length);
+    expect(ticks.map((tick) => tick.kind)).toEqual(["day", "month", "week"]);
+  });
+
+  it("respects fractional visible index ranges", () => {
+    const start = Date.UTC(2024, 0, 1);
+    const times = Array.from({ length: 10 }, (_, index) => start + index * day);
+
+    const ticks = new TimeTickGenerator().generate({
+      dataStore: createStore(times),
+      visibleRange: { from: 2.2, to: 6.4 },
+      formatter: createFormatter(),
+      targetTickCount: 10,
+    });
+
+    expect(ticks.map((tick) => tick.index)).toEqual([2, 3, 4, 5, 6]);
+  });
+});

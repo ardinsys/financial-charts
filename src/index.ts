@@ -20,6 +20,7 @@ export * from "./scales/time-scale";
 export * from "./scales/price-scale";
 export * from "./scales/data-scale-model";
 export * from "./scales/ticks/price-ticks";
+export * from "./scales/ticks/time-ticks";
 
 export * from "./indicators/indicator";
 export * from "./indicators/paneled-indicator";
