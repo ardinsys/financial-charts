@@ -229,9 +229,11 @@ function classifyBoundary(
   previous: CalendarParts | undefined
 ): TimeTickKind {
   if (!previous) {
-    if (current.month === 1 && current.day === 1) return "year";
-    if (current.day === 1) return "month";
-    if (current.weekday === 1) return "week";
+    if (current.month === 1 && current.day === 1 && current.hour === 0) {
+      return "year";
+    }
+    if (current.day === 1 && current.hour === 0) return "month";
+    if (current.weekday === 1 && current.hour === 0) return "week";
     if (current.hour === 0) return "day";
     return "hour";
   }

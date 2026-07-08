@@ -9,12 +9,9 @@ type CharacterizedChart = {
   calculateYAxisLabels(labelSpacing: number): AxisLabel[];
   estimatePriceLabelDecimalPlaces(labelSpacing: number): number;
   getContext: FinancialChart["getContext"];
+  getLastXGridCoords: FinancialChart["getLastXGridCoords"];
   getVisibleExtent: FinancialChart["getVisibleExtent"];
-  processXLabels(): Array<{
-    date: Date;
-    displayLabel: string;
-    priority: number;
-  }>;
+  drawXAxis: FinancialChart["drawXAxis"];
 };
 
 FinancialChart.registerController(LineController);
@@ -57,6 +54,16 @@ function roundedLabels(labels: AxisLabel[]) {
     value: label.value,
     position: Number(label.position.toFixed(6))
   }));
+}
+
+function getFillTextLabels(chart: CharacterizedChart) {
+  const fillText = chart.getContext("x-label").fillText as unknown as {
+    mock: { calls: unknown[][]; clear: () => void };
+    mockClear: () => void;
+  };
+  fillText.mockClear();
+  chart.drawXAxis();
+  return fillText.mock.calls.map((call) => call[0]);
 }
 
 describe("current price tick calculations", () => {
@@ -120,7 +127,7 @@ describe("current price tick calculations", () => {
       ],
       { start, end: start + 60_000 }
     );
-    expect(mediumRangeChart.estimatePriceLabelDecimalPlaces(30)).toBe(1);
+    expect(mediumRangeChart.estimatePriceLabelDecimalPlaces(30)).toBe(0);
 
     const tinyRangeChart = createChart(
       [
@@ -129,7 +136,7 @@ describe("current price tick calculations", () => {
       ],
       { start, end: start + 60_000 }
     );
-    expect(tinyRangeChart.estimatePriceLabelDecimalPlaces(30)).toBe(6);
+    expect(tinyRangeChart.estimatePriceLabelDecimalPlaces(30)).toBe(5);
   });
 });
 
@@ -180,8 +187,8 @@ describe("current default formatter output", () => {
   });
 });
 
-describe("current X-label selection", () => {
-  it("keeps intraday labels on hours except the first bar after midnight", () => {
+describe("current X-axis tick rendering", () => {
+  it("draws intraday hour ticks anchored to real bars", () => {
     const start = Date.UTC(2024, 0, 1, 23);
     const chart = createChart(
       [
@@ -193,19 +200,13 @@ describe("current X-label selection", () => {
       { stepSize: 60 * 60_000 }
     );
 
-    expect(
-      chart.processXLabels().map((label) => ({
-        displayLabel: label.displayLabel,
-        priority: label.priority
-      }))
-    ).toEqual([
-      { displayLabel: "11:00 PM", priority: 1 },
-      { displayLabel: "2", priority: 1 },
-      { displayLabel: "1:00 AM", priority: 1 }
+    expect(getFillTextLabels(chart)).toEqual(["2", "11:00 PM", "1:00 AM"]);
+    expect(chart.getLastXGridCoords().map((x) => Math.round(x))).toEqual([
+      360, 120, 600
     ]);
   });
 
-  it("keeps long-range labels prioritized by year, then month, then day", () => {
+  it("draws long-range ticks prioritized by year, then month, then day", () => {
     const start = Date.UTC(2023, 11, 31);
     const chart = createChart(
       [
@@ -218,16 +219,9 @@ describe("current X-label selection", () => {
       { stepSize: 24 * 60 * 60_000 }
     );
 
-    expect(
-      chart.processXLabels().map((label) => ({
-        displayLabel: label.displayLabel,
-        priority: label.priority
-      }))
-    ).toEqual([
-      { displayLabel: "31", priority: 2 },
-      { displayLabel: "2024", priority: 4 },
-      { displayLabel: "Feb", priority: 3 },
-      { displayLabel: "2", priority: 2 }
+    expect(getFillTextLabels(chart)).toEqual(["2024", "Feb", "31", "2"]);
+    expect(chart.getLastXGridCoords().map((x) => Math.round(x))).toEqual([
+      270, 450, 90, 630
     ]);
   });
 });

@@ -11,6 +11,7 @@ import {
   calculateStepSize as calculatePriceStepSize,
   calculateYAxisLabels as calculatePriceYAxisLabels
 } from "../scales/ticks/price-ticks";
+import { TimeTickGenerator } from "../scales/ticks/time-ticks";
 import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";
@@ -64,12 +65,6 @@ export interface ChartOptions {
   localeValues?: {
     [key: string]: LocaleValues;
   };
-}
-
-interface XAxisLabel {
-  date: Date;
-  displayLabel: string;
-  priority: number;
 }
 
 type Resizer = {
@@ -138,8 +133,7 @@ export class FinancialChart extends EventEmitter {
 
   private isTouchCapable = "ontouchstart" in window;
 
-  private xLabelDates: Date[] = [];
-  private xLabelCache: Map<number, XAxisLabel> = new Map();
+  private readonly timeTickGenerator = new TimeTickGenerator();
   private allRedrawParts = ["controller", "indicators", "crosshair"] as const;
 
   private chartHeight: number = 0;
@@ -399,88 +393,6 @@ export class FinancialChart extends EventEmitter {
     this.recalculateVisibleExtent();
 
     this.requestRedraw(this.allRedrawParts);
-  }
-
-  private processXLabels(): XAxisLabel[] {
-    // Calculate the range of the data in days
-    let rangeInDays = 0;
-
-    if (this.autoTimeRange && this.dataStore.length > 0) {
-      const firstPoint = this.dataStore.get(0)!;
-      const lastPoint = this.dataStore.get(this.dataStore.length - 1)!;
-      rangeInDays = (lastPoint.time - firstPoint.time) / (1000 * 3600 * 24);
-    } else {
-      rangeInDays =
-        (this.timeRange.end - this.timeRange.start) / (1000 * 3600 * 24);
-    }
-
-    return this.xLabelDates.map((date, index, array) => {
-      const prevDate = index > 0 ? array[index - 1] : null;
-      if (this.xLabelCache.has(date.getTime())) {
-        return this.xLabelCache.get(date.getTime())!;
-      }
-
-      let ret: XAxisLabel;
-
-      if (rangeInDays > 365) {
-        if (prevDate && date.getFullYear() !== prevDate.getFullYear()) {
-          ret = {
-            date,
-            displayLabel: this.options.formatter.formatYear(date.getTime()),
-            priority: 4
-          };
-        } else if (prevDate && date.getMonth() !== prevDate.getMonth()) {
-          ret = {
-            date,
-            displayLabel: this.options.formatter.formatMonth(date.getTime()),
-            priority: 3
-          };
-        } else {
-          ret = {
-            date,
-            displayLabel: this.options.formatter.formatDay(date.getTime()),
-            priority: 2
-          };
-        }
-      } else if (rangeInDays > 30) {
-        if (prevDate && date.getMonth() !== prevDate.getMonth()) {
-          ret = {
-            date,
-            displayLabel: this.options.formatter.formatMonth(date.getTime()),
-            priority: 3
-          };
-        } else {
-          ret = {
-            date,
-            displayLabel: this.options.formatter.formatDay(date.getTime()),
-            priority: 2
-          };
-        }
-      } else if (rangeInDays > 1) {
-        ret = {
-          date,
-          displayLabel: this.options.formatter.formatDay(date.getTime()),
-          priority: 2
-        };
-      } else {
-        if (prevDate && date.getDate() !== prevDate?.getDate()) {
-          ret = {
-            date,
-            displayLabel: this.options.formatter.formatDay(date.getTime()),
-            priority: 1
-          };
-        } else {
-          ret = {
-            date,
-            displayLabel: this.options.formatter.formatHour(date.getTime()),
-            priority: 1
-          };
-        }
-      }
-
-      this.xLabelCache.set(date.getTime(), ret);
-      return ret;
-    });
   }
 
   private findClosestDataPoint(rawPoint: ChartData): ChartData | undefined {
@@ -754,9 +666,6 @@ export class FinancialChart extends EventEmitter {
       this.timeRange = timeRange;
     }
 
-    this.xLabelCache.clear();
-    this.xLabelDates = [];
-
     if (this.originalDataStore.length == 0) {
       this.autoTimeRange = timeRange === "auto";
       this.dataScale = this.controller.createDataScale([], this.timeRange);
@@ -788,11 +697,6 @@ export class FinancialChart extends EventEmitter {
     this.resetVisibleIndexRange();
     this.recalculateVisibleExtent();
 
-    for (const d of this.dataStore.toArray()) {
-      if (d.time < this.timeRange.start) continue;
-      this.xLabelDates.push(new Date(d.time));
-    }
-
     this.requestRedraw(this.allRedrawParts);
   }
 
@@ -804,12 +708,6 @@ export class FinancialChart extends EventEmitter {
   ) {
     this.options.locale = locale;
     this.options.formatter.setLocale(locale);
-    this.xLabelCache.clear();
-    this.xLabelDates = [];
-    for (const d of this.dataStore.toArray()) {
-      if (d.time < this.timeRange.start) continue;
-      this.xLabelDates.push(new Date(d.time));
-    }
 
     if (values) {
       this.options.localeValues = {
@@ -1244,13 +1142,6 @@ export class FinancialChart extends EventEmitter {
     this.resetVisibleIndexRange();
     this.recalculateVisibleExtent();
 
-    this.xLabelDates = [];
-
-    for (const d of this.dataStore.toArray()) {
-      if (d.time < this.timeRange.start) continue;
-      this.xLabelDates.push(new Date(d.time));
-    }
-
     this.requestRedraw(this.allRedrawParts);
   }
 
@@ -1637,27 +1528,26 @@ export class FinancialChart extends EventEmitter {
    * @returns             number of decimal places needed
    */
   protected estimatePriceLabelDecimalPlaces(labelSpacing: number) {
-    const priceRange =
-      this.visibleScale.getYMax() - this.visibleScale.getYMin();
-    const maxLabels = Math.floor(this.getDrawingSize().height / labelSpacing);
-    const stepSize = priceRange / maxLabels;
+    const labels = this.calculateYAxisLabels(labelSpacing);
+    let stepSize = Infinity;
 
-    // Estimate decimal places based on step size
-    if (stepSize < 0.00001) {
-      return 6; // very small step size
-    } else if (stepSize < 0.0001) {
-      return 5; // very small step size
-    } else if (stepSize < 0.001) {
-      return 4;
-    } else if (stepSize < 0.01) {
-      return 3;
-    } else if (stepSize < 0.1) {
-      return 2;
-    } else if (stepSize < 1) {
-      return 1;
-    } else {
-      return 0; // no decimal places needed
+    for (let i = 1; i < labels.length; i++) {
+      const step = Math.abs(labels[i].value - labels[i - 1].value);
+      if (step > 0) {
+        stepSize = Math.min(stepSize, step);
+      }
     }
+
+    if (!Number.isFinite(stepSize)) return 0;
+
+    for (let decimals = 0; decimals <= 6; decimals++) {
+      const scaledStep = stepSize * 10 ** decimals;
+      if (Math.abs(Math.round(scaledStep) - scaledStep) < 1e-8) {
+        return decimals;
+      }
+    }
+
+    return 6;
   }
 
   protected mapDataToStepSize(
@@ -1678,10 +1568,6 @@ export class FinancialChart extends EventEmitter {
     const storedData = this.dataStore.get(dataIndex)!;
 
     this.dataScale.addDataPoint(storedData);
-
-    if (isNewData) {
-      this.xLabelDates.push(new Date(d.time));
-    }
 
     return isNewData;
   }
@@ -1740,7 +1626,6 @@ export class FinancialChart extends EventEmitter {
 
   drawXAxis(): void {
     this.lastXGridCoords = [];
-    const labels = this.processXLabels();
     const ctx = this.getContext("x-label");
     const mainCtx = this.getContext("main");
     const sizes = this.getLogicalCanvas("x-label");
@@ -1761,19 +1646,30 @@ export class FinancialChart extends EventEmitter {
     ctx.font = `${this.options.theme.xAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
     ctx.textBaseline = "middle";
     const canvasWidth = ctx.canvas.width - this.p(this.yLabelWidth);
+    const logicalCanvasWidth = this.l(canvasWidth);
     const padding = 20;
+    const targetTickCount = Math.max(
+      2,
+      Math.floor(logicalCanvasWidth / 90)
+    );
+    const labels = this.timeTickGenerator.generate({
+      dataStore: this.dataStore,
+      visibleRange: this.visibleIndexRange,
+      formatter: this.options.formatter,
+      targetTickCount
+    });
 
     let drawnLabels: { start: number; end: number }[] = [];
 
     labels.sort((a, b) => b.priority - a.priority);
 
     labels.forEach((label) => {
-      const x = this.dataScale.getTimeScale().project(label.date.getTime(), {
+      const x = this.dataScale.getTimeScale().project(label.time, {
         canvas: { width: canvasWidth, height: 0 },
         barAlignment: "center"
       });
 
-      const textWidth = ctx.measureText(label.displayLabel).width;
+      const textWidth = ctx.measureText(label.label).width;
       const labelPos = { start: x - textWidth / 2, end: x + textWidth / 2 };
 
       // Check for overlap with already drawn labels
@@ -1783,9 +1679,9 @@ export class FinancialChart extends EventEmitter {
           labelPos.end > drawnLabel.start - padding
       );
 
-      if (!overlaps && labelPos.end < this.l(canvasWidth)) {
+      if (!overlaps && labelPos.end < logicalCanvasWidth) {
         if (labelPos.start >= 0) {
-          ctx.fillText(label.displayLabel, labelPos.start, sizes.height - 15);
+          ctx.fillText(label.label, labelPos.start, sizes.height - 15);
 
           // Draw grid line
           mainCtx.lineWidth = this.options.theme.grid.width;
