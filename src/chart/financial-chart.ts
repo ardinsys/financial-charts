@@ -17,6 +17,12 @@ import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
 import { pixelRatio } from "../utils/screen";
+import {
+  RenderCallback,
+  RenderLayer,
+  RenderPipeline,
+  RenderStage
+} from "../render/render-pipeline";
 
 export type DeepConcrete<T> = T extends Function
   ? T
@@ -72,6 +78,8 @@ type Resizer = {
   ratioResize: () => void;
 };
 
+export type ChartRedrawPart = RenderLayer | "controller";
+
 export class FinancialChart extends EventEmitter {
   private static controllers: Map<ControllerType, new () => ChartController> =
     new Map();
@@ -111,6 +119,7 @@ export class FinancialChart extends EventEmitter {
   protected dataScale!: DataScaleModel;
   protected visibleScale: DataScaleModel;
   private resizer!: Resizer;
+  private readonly renderPipeline = new RenderPipeline();
 
   protected indicators: Indicator<any, any>[] = [];
   protected panaledIndicators: PaneledIndicator<any, any>[] = [];
@@ -134,7 +143,19 @@ export class FinancialChart extends EventEmitter {
   private isTouchCapable = "ontouchstart" in window;
 
   private readonly timeTickGenerator = new TimeTickGenerator();
-  private allRedrawParts = ["controller", "indicators", "crosshair"] as const;
+  private readonly controllerRedrawParts: readonly RenderLayer[] = [
+    "grid",
+    "axes",
+    "series"
+  ];
+  private readonly allRedrawParts: readonly RenderLayer[] = [
+    "grid",
+    "axes",
+    "series",
+    "indicators",
+    "drawings",
+    "crosshair"
+  ];
 
   private chartHeight: number = 0;
   private indicatorHeight: number = 0;
@@ -357,16 +378,23 @@ export class FinancialChart extends EventEmitter {
     return [...this.indicators, ...this.panaledIndicators];
   }
 
-  private redraw() {
-    if (this.redrawParts.has("controller")) {
-      this.drawController();
-    }
-    if (this.redrawParts.has("indicators")) {
-      this.drawIndicators();
-    }
-    if (this.redrawParts.has("crosshair")) {
-      this.drawCrosshair();
-    }
+  private configureRenderPipeline() {
+    this.renderPipeline.addHook("grid", () => this.prepareControllerDraw());
+    this.renderPipeline.addHook("axes", () => this.drawControllerAxes());
+    this.renderPipeline.addHook("series", () => this.drawControllerSeries());
+    this.renderPipeline.addHook("indicators", () => this.drawIndicators());
+    this.renderPipeline.addHook("crosshair", () => this.drawCrosshair());
+  }
+
+  public onRenderStage(
+    stage: RenderStage,
+    callback: RenderCallback
+  ): () => void {
+    return this.renderPipeline.addHook(stage, callback);
+  }
+
+  private redraw(layers: Iterable<RenderLayer>) {
+    this.renderPipeline.render(layers);
   }
 
   public changeType(type: ControllerType) {
@@ -471,6 +499,7 @@ export class FinancialChart extends EventEmitter {
       start: 0,
       end: 0
     });
+    this.configureRenderPipeline();
     // Init and scale canveses
     this.types.forEach((type) => this.getCanvas(type));
     const topCanvas = this.getCanvas("crosshair");
@@ -766,7 +795,7 @@ export class FinancialChart extends EventEmitter {
       this.isPanning = true;
       const dx = event.clientX - this.lastPointerPosition.x;
       this.panVisibleIndexRange(dx);
-      this.requestRedraw(["controller", "indicators"]);
+      this.requestRedraw([...this.controllerRedrawParts, "indicators"]);
       this.lastPointerPosition = { x: event.clientX };
     } else {
       this.isPanning = false;
@@ -799,7 +828,7 @@ export class FinancialChart extends EventEmitter {
     this.requestRedraw(this.allRedrawParts);
   };
 
-  private drawController() {
+  private prepareControllerDraw() {
     const ctx = this.getContext("main");
     const sizes = this.getLogicalCanvas("main");
     ctx.clearRect(0, 0, sizes.width, sizes.height);
@@ -807,10 +836,14 @@ export class FinancialChart extends EventEmitter {
     ctx.fillRect(0, 0, sizes.width, sizes.height);
 
     this.recalculateVisibleExtent();
+  }
 
+  private drawControllerAxes() {
     this.drawYAxis();
     this.drawXAxis();
+  }
 
+  private drawControllerSeries() {
     if (this.options.volume) {
       this.drawVolumeBars();
     }
@@ -818,7 +851,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   protected onZoom() {
-    this.drawCrosshair();
+    this.redraw(["crosshair"]);
   }
 
   private onTouchStart = (event: TouchEvent) => {
@@ -902,8 +935,7 @@ export class FinancialChart extends EventEmitter {
       requestAnimationFrame(() => {
         const rect =
           this.getContext("crosshair").canvas.getBoundingClientRect();
-        this.drawController();
-        this.drawIndicators();
+        this.redraw([...this.controllerRedrawParts, "indicators"]);
         if (!this.isTouchCrosshair) return;
         this.pointerMove({
           x: event.touches[0].clientX - rect.left,
@@ -925,8 +957,7 @@ export class FinancialChart extends EventEmitter {
         (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left;
       this.adjustZoomLevel(zoomFactor, offsetX);
       requestAnimationFrame(() => {
-        this.drawController();
-        this.drawIndicators();
+        this.redraw([...this.controllerRedrawParts, "indicators"]);
       });
       this.lastTouchDistance = distance;
     } else {
@@ -1648,10 +1679,7 @@ export class FinancialChart extends EventEmitter {
     const canvasWidth = ctx.canvas.width - this.p(this.yLabelWidth);
     const logicalCanvasWidth = this.l(canvasWidth);
     const padding = 20;
-    const targetTickCount = Math.max(
-      2,
-      Math.floor(logicalCanvasWidth / 90)
-    );
+    const targetTickCount = Math.max(2, Math.floor(logicalCanvasWidth / 90));
     const labels = this.timeTickGenerator.generate({
       dataStore: this.dataStore,
       visibleRange: this.visibleIndexRange,
@@ -1736,26 +1764,16 @@ export class FinancialChart extends EventEmitter {
   }
 
   private redrawScheduled = false;
-  private redrawParts = new Set<"controller" | "crosshair" | "indicators">();
+  private redrawParts = new Set<RenderLayer>();
 
   public requestRedraw(
-    part:
-      | "controller"
-      | "crosshair"
-      | "indicators"
-      | ReadonlyArray<"controller" | "crosshair" | "indicators">,
+    part: ChartRedrawPart | ReadonlyArray<ChartRedrawPart>,
     immediate = false
   ) {
-    if (Array.isArray(part)) {
-      for (const p of part) {
-        this.redrawParts.add(p);
-      }
-    } else {
-      this.redrawParts.add(part as any);
-    }
+    this.addRedrawParts(part);
 
     if (immediate) {
-      this.redraw();
+      this.flushRedraw();
       return;
     }
 
@@ -1768,17 +1786,38 @@ export class FinancialChart extends EventEmitter {
 
     requestAnimationFrame(() => {
       // Perform the redraw for the requested parts
-      this.redraw();
+      this.flushRedraw();
 
       // Reset for the next redraw cycle
       this.redrawScheduled = false;
-      this.redrawParts.clear();
 
       // If additional parts were requested for redraw while the current frame was being processed,
       // They are already added to redrawParts, so we can immediately schedule another redraw if needed
       if (this.redrawParts.size > 0) {
-        this.requestRedraw(part); // This recursive call ensures we don't ignore recent requests
+        this.requestRedraw([...this.redrawParts]);
       }
     });
+  }
+
+  private addRedrawParts(
+    part: ChartRedrawPart | ReadonlyArray<ChartRedrawPart>
+  ) {
+    const parts = Array.isArray(part) ? part : [part];
+
+    for (const p of parts) {
+      if (p === "controller") {
+        for (const layer of this.controllerRedrawParts) {
+          this.redrawParts.add(layer);
+        }
+      } else {
+        this.redrawParts.add(p);
+      }
+    }
+  }
+
+  private flushRedraw() {
+    const layers = new Set(this.redrawParts);
+    this.redrawParts.clear();
+    this.redraw(layers);
   }
 }

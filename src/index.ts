@@ -22,6 +22,8 @@ export * from "./scales/data-scale-model";
 export * from "./scales/ticks/price-ticks";
 export * from "./scales/ticks/time-ticks";
 
+export * from "./render/render-pipeline";
+
 export * from "./indicators/indicator";
 export * from "./indicators/paneled-indicator";
 export * from "./indicators/simple/moving-average";
