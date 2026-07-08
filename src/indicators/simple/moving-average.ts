@@ -1,8 +1,5 @@
-import {
-  DefaultIndicatorOptions,
-  Indicator,
-  indicatorLabelTemplate
-} from "../indicator";
+import { DefaultIndicatorOptions, Indicator } from "../indicator";
+import { indicatorLabelTemplate } from "../label-renderer";
 
 export interface MovingAverageTheme {
   color: string;
@@ -18,6 +15,8 @@ export class MovingAverageIndicator extends Indicator<
   MovingAverageTheme,
   MovingAverageOptions
 > {
+  static ID = "moving-average";
+
   private cache = new Map<number, number>();
 
   public getDefaultOptions(): MovingAverageOptions {

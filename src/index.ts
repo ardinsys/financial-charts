@@ -29,6 +29,8 @@ export * from "./panes/pane";
 export * from "./plugin/chart-plugin";
 
 export * from "./indicators/indicator";
+export * from "./indicators/label-renderer";
 export * from "./indicators/paneled-indicator";
+export * from "./indicators/paneled/test-indicator";
 export * from "./indicators/simple/moving-average";
 import "./styles.css";

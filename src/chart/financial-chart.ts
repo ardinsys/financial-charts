@@ -1422,7 +1422,7 @@ export class FinancialChart extends EventEmitter {
       // every indicator by default gets 25% of the height
       // if it is possible. Otherwise they equally get less.
 
-      indicator.setChart(this);
+      indicator.attach(this.createChartContext());
       this.panaledIndicators.push(indicator);
       const pane = this.createPaneForIndicator(indicator);
       this.calcSpaceDistribution(this.panaledIndicators.length);
@@ -1436,7 +1436,7 @@ export class FinancialChart extends EventEmitter {
       indicator.updateLabel();
     } else {
       this.indicators.push(indicator);
-      indicator.setChart(this);
+      indicator.attach(this.createChartContext());
       this.requestRedraw(this.allRedrawParts);
       this.indicatorLabelContainer.appendChild(indicator.getLabelContainer());
       indicator.updateLabel();

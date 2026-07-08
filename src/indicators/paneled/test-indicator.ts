@@ -1,11 +1,14 @@
 import { DataScaleModel } from "../../scales/data-scale-model";
-import { DefaultIndicatorOptions, indicatorLabelTemplate } from "../indicator";
+import { DefaultIndicatorOptions } from "../indicator";
+import { indicatorLabelTemplate } from "../label-renderer";
 import { PaneledIndicator } from "../paneled-indicator";
 
 export class TestIndicator extends PaneledIndicator<
   {},
   DefaultIndicatorOptions
 > {
+  static ID = "test";
+
   public createExtent(): DataScaleModel {
     return this.chart.getVisibleExtent();
   }

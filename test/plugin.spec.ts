@@ -2,16 +2,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
+import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
+import type { IndicatorLabelRenderer } from "../src/indicators/label-renderer";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
 
 FinancialChart.registerController(LineController);
 
 const charts: FinancialChart[] = [];
-
-class RegisteredIndicator extends MovingAverageIndicator {
-  static ID = "registered-sma";
-}
 
 class DetachProbeIndicator extends MovingAverageIndicator {
   detachCalls = 0;
@@ -66,13 +64,74 @@ function createChart() {
 }
 
 describe("plugin lifecycle", () => {
-  it("creates indicators from the chart-level registry", () => {
-    FinancialChart.registerIndicator(RegisteredIndicator);
+  it("creates and attaches built-in indicators from the chart-level registry", () => {
+    const { chart, data } = createChart();
+    FinancialChart.registerIndicator(MovingAverageIndicator);
+    FinancialChart.registerIndicator(TestIndicator);
 
-    const indicator =
-      FinancialChart.createIndicator<RegisteredIndicator>("registered-sma");
+    const sma =
+      FinancialChart.createIndicator<MovingAverageIndicator>("moving-average");
+    const testIndicator = FinancialChart.createIndicator<TestIndicator>("test");
 
-    expect(indicator).toBeInstanceOf(RegisteredIndicator);
+    chart.draw(data);
+    chart.addIndicator(sma);
+    chart.addIndicator(testIndicator);
+
+    expect(sma).toBeInstanceOf(MovingAverageIndicator);
+    expect(testIndicator).toBeInstanceOf(TestIndicator);
+    expect(chart.getIndicators()).toEqual([sma]);
+    expect(chart.getPaneledIndicators()).toEqual([testIndicator]);
+    expect(chart.getPanes()).toHaveLength(2);
+    expect(
+      sma.getLabelContainer().querySelector("[data-id=name]")?.textContent
+    ).toBe("Simple Moving Average");
+    expect(
+      testIndicator.getLabelContainer().querySelector("[data-id=name]")
+        ?.textContent
+    ).toBe("Test");
+  });
+
+  it("renders indicator labels through an injectable renderer", () => {
+    const { chart, data } = createChart();
+    const renderer: IndicatorLabelRenderer = {
+      render: vi.fn(
+        ({ themeKey }) => /* html */ `
+          <div data-id="custom-label" data-theme="${themeKey}">
+            <span data-id="label">
+              <span data-id="name"></span>
+              <span data-id="extra"></span>
+              <span data-id="value"></span>
+            </span>
+            <button data-id="show"></button>
+            <button data-id="hide"></button>
+            <button data-id="settings"></button>
+            <button data-id="remove"></button>
+          </div>
+        `
+      )
+    };
+    const indicator = new MovingAverageIndicator(null, {
+      labelRenderer: renderer,
+      names: {
+        default: "Injected SMA"
+      }
+    });
+
+    chart.draw(data);
+    chart.addIndicator(indicator);
+
+    expect(renderer.render).toHaveBeenCalledWith(
+      expect.objectContaining({ themeKey: "light" })
+    );
+    expect(
+      indicator
+        .getLabelContainer()
+        .querySelector("[data-id=custom-label]")
+        ?.getAttribute("data-theme")
+    ).toBe("light");
+    expect(
+      indicator.getLabelContainer().querySelector("[data-id=name]")?.textContent
+    ).toBe("Injected SMA");
   });
 
   it("attaches, draws, notifies, and detaches chart plugins", () => {
