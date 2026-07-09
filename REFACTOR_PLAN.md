@@ -70,6 +70,9 @@ packages / new files (U3–U6) are truly parallel where marked.
   wave touches `financial-chart.ts`.
 - **Framework packages** carry their own build + typecheck + a basic mount/unmount
   test; their framework dep is a **peerDependency**, never a core dependency.
+- **Build tooling:** every publishable package is bundled with **tsdown** (ESM +
+  CJS + `.d.ts`), replacing the current `vite build && tsc` in core. **vite** is
+  used only for the dev **playgrounds/examples**, not for producing package output.
 
 Per-batch format: **Depends on · Parallel-safe with · Goal · Changes ·
 Out of scope · Acceptance · Size (S≈<150, M≈150-400, L≈400+ lines)**.
@@ -131,20 +134,33 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
 #### U1 — `ChartUIAdapter` seam + web adapter (indicator labels)
 - **Depends on:** N2  · **Parallel-safe with:** — (hot file)
 - **Goal:** introduce the UI-adapter abstraction with zero visible change.
-- **Changes:** define `src/ui/chart-ui-adapter.ts` — a `ChartUIAdapter` interface
-  plus the declarative **UI model** the core hands it (indicator-label descriptors:
-  name/value/extra + actions show/hide/settings/remove + visibility/theme state;
-  pane regions). Generalize the existing `IndicatorLabelRenderer`
-  (`label-renderer.ts`) into the adapter. Provide `WebUIAdapter` reproducing
-  today's HTML-string + `data-id`/button wiring **exactly** — the "basic web
-  renderer like now" and the **default**. Refactor `indicator.ts` +
-  `paneled-indicator.ts` to emit the model and delegate to the adapter instead of
-  building DOM directly.
-- **Out of scope:** non-label chrome (U2); framework packages.
+- **Changes:** define `src/ui/chart-ui-adapter.ts` — a `ChartUIAdapter` interface.
+  **Contract decided against the real indicator ecosystem** (`commons-js`
+  `financial-charts-indicators`: SMA/Bollinger/RSI/MACD/orders/support-resistance):
+  those indicators author labels as **HTML templates + imperative
+  `updateLabel()` writing into `this.labelContainer.querySelector("[data-id=…]")`**,
+  with rich per-color multi-segment content and even custom template sub-nodes
+  (MACD). So **do NOT convert label content to a data model** — keep the
+  `labelContainer`/`updateLabel`/`labelTemplate`/`data-id` contract intact. The
+  adapter abstracts only the generic chrome currently hardcoded in
+  `Indicator.setChart`: creating the label host, wiring show/hide/settings/remove,
+  localized titles, visibility toggling, cleanup —
+  `createIndicatorLabel(descriptor, actions) → { root, setActionTitles, setVisible,
+  destroy }` where `root` becomes `indicator.labelContainer`. Provide `WebUIAdapter`
+  reproducing today's HTML-string + `data-id`/button wiring **verbatim** (the
+  default, keeps core dependency-free). Add `uiAdapter?` to `ChartOptions`
+  (resolved once in the constructor, kept out of the deep theme merge) and expose
+  it via `ChartContext.ui`. Refactor `indicator.ts` to delegate host/button wiring
+  to the adapter; subclass-facing API (`labelContainer`, `updateLabel`,
+  `renderLabel`) is unchanged.
+- **Out of scope:** non-label chrome / composition (U2); framework packages;
+  any change to the indicator content API (would break `commons-js`).
 - **Acceptance:** with the default `WebUIAdapter`, labels/actions render and behave
-  identically; indicator DOM creation removed from
-  `indicator.ts`/`paneled-indicator.ts` (confined to the adapter); build/tests green.
-- **Size:** L (split candidate: interface + UI model; then migrate labels).
+  identically; button/host DOM creation removed from `indicator.ts` (confined to
+  the adapter); `this.labelContainer` still a live element indicators can query;
+  build/tests green.
+- **Size:** L (split candidate: adapter interface + WebUIAdapter; then migrate the
+  base `Indicator`).
 
 #### U2 — Move remaining core chrome + composition hooks to the adapter
 - **Depends on:** U1  · **Parallel-safe with:** —
@@ -164,8 +180,10 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
 - **Goal:** real workspace so framework adapters ship as their own packages.
 - **Changes:** move core into `packages/core` (published name
   `@ardinsys/financial-charts`); scaffold `packages/vue` + `packages/react` with
-  peerDeps; add root `pnpm-workspace.yaml` globs, shared `tsconfig.base.json`,
-  per-package vite lib build; relocate docs/CI; keep root `pnpm -r build` /
+  peerDeps; add root `pnpm-workspace.yaml` globs, shared `tsconfig.base.json`.
+  **Bundle every package with tsdown** (ESM + CJS + `.d.ts`) — migrate core off
+  `vite build && tsc`. Add a `playground/` (or `examples/`) app per framework
+  built with **vite** for local dev. Relocate docs/CI; keep root `pnpm -r build` /
   `pnpm -r test` green. No source behavior change.
 - **Out of scope:** implementing the framework adapters (U4/U5).
 - **Acceptance:** `pnpm -r build` + `pnpm -r test` green; core publishes an

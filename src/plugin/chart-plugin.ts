@@ -3,6 +3,7 @@ import type { ChartEventMap } from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";
 import type { Pane } from "../panes/pane";
 import type { RenderCallback, RenderStage } from "../render/render-pipeline";
+import type { ChartUIAdapter } from "../ui/chart-ui-adapter";
 
 export interface Drawable {
   beforeDraw?(): void;
@@ -21,6 +22,7 @@ export interface ChartPointerEvent {
 
 export interface ChartContext {
   chart: FinancialChart;
+  ui: ChartUIAdapter;
   getPanes(): Pane[];
   getVisibleTimeRange(): TimeRange;
   on<K extends keyof ChartEventMap>(

@@ -2,6 +2,7 @@ import type { FinancialChart } from "../chart/financial-chart";
 import { mergeThemes } from "../chart/themes";
 import { TimeRange } from "../chart/types";
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
+import type { IndicatorLabelHandle } from "../ui/chart-ui-adapter";
 import { ScaleRangeModifier } from "../scales/data-scale-model";
 import {
   defaultIndicatorLabelRenderer,
@@ -32,9 +33,9 @@ export abstract class Indicator<
   protected chart!: FinancialChart;
   protected chartContext!: ChartContext;
   protected theme!: TTheme;
-  protected labelContainer: HTMLElement;
+  protected labelContainer!: HTMLElement;
   protected visible = true;
-  private labelListenerDisposers: Array<() => void> = [];
+  private labelHandle?: IndicatorLabelHandle;
 
   constructor(
     themes?: Record<string, Partial<TTheme>> | undefined | null,
@@ -42,11 +43,6 @@ export abstract class Indicator<
   ) {
     this.themes = mergeThemes(this.getDefaultThemes(), themes);
     this.options = mergeThemes(this.getDefaultOptions(), options);
-    this.labelContainer = document.createElement("div");
-    this.labelContainer.style.position = "relative";
-    this.labelContainer.style.zIndex = "101";
-    this.labelContainer.style.width = "fit-content";
-    this.labelContainer.classList.add("financial-indicator");
   }
 
   public get key() {
@@ -59,68 +55,44 @@ export abstract class Indicator<
   }
 
   public setChart(chart: FinancialChart): void {
-    this.detachLabelListeners();
+    this.labelHandle?.destroy();
     this.chart = chart;
     this.theme = this.themes[chart.getOptions().theme.key];
-    this.labelContainer.innerHTML = this.renderLabel();
 
-    const label = this.labelContainer.querySelector(
-      '[data-id="label"]'
-    ) as HTMLElement;
-    const hide = this.labelContainer.querySelector(
-      '[data-id="hide"]'
-    ) as HTMLElement;
-    const show = this.labelContainer.querySelector(
-      '[data-id="show"]'
-    ) as HTMLElement;
-    const settings = this.labelContainer.querySelector(
-      '[data-id="settings"]'
-    ) as HTMLElement;
-    const remove = this.labelContainer.querySelector(
-      '[data-id="remove"]'
-    ) as HTMLElement;
+    const actions = chart.getLocaleValues().indicators.actions;
+    this.labelHandle = this.chartContext.ui.createIndicatorLabel(
+      {
+        key: this.options.key,
+        themeKey: chart.getOptions().theme.key,
+        templateHtml: this.renderLabel(),
+        actionTitles: {
+          show: actions.show,
+          hide: actions.hide,
+          settings: actions.settings,
+          remove: actions.remove
+        },
+        visible: this.visible
+      },
+      {
+        onToggleVisibility: (visible) => {
+          this.visible = visible;
+          this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
+          this.chart.emit("indicator-visibility-changed", {
+            indicator: this,
+            visible
+          });
+        },
+        onOpenSettings: () => {
+          this.chart.emit("indicator-settings-open", { indicator: this });
+        },
+        onRemove: () => {
+          this.chart.removeIndicator(this);
+          this.chart.emit("indicator-remove", { indicator: this });
+        }
+      }
+    );
 
-    hide.title = chart.getLocaleValues().indicators.actions.show;
-    show.title = chart.getLocaleValues().indicators.actions.hide;
-    settings.title = chart.getLocaleValues().indicators.actions.settings;
-    remove.title = chart.getLocaleValues().indicators.actions.remove;
-
-    this.addLabelClickListener(hide, () => {
-      show.classList.remove("fci-hide");
-      hide.classList.add("fci-hide");
-      label.classList.remove("fci-hidden");
-      this.visible = true;
-      this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
-      this.chart.emit("indicator-visibility-changed", {
-        indicator: this,
-        visible: true
-      });
-    });
-
-    this.addLabelClickListener(show, () => {
-      hide.classList.remove("fci-hide");
-      show.classList.add("fci-hide");
-      label.classList.add("fci-hidden");
-      this.visible = false;
-      this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
-      this.chart.emit("indicator-visibility-changed", {
-        indicator: this,
-        visible: false
-      });
-    });
-
-    this.addLabelClickListener(settings, () => {
-      this.chart.emit("indicator-settings-open", {
-        indicator: this
-      });
-    });
-
-    this.addLabelClickListener(remove, () => {
-      this.chart.removeIndicator(this);
-      this.chart.emit("indicator-remove", {
-        indicator: this
-      });
-    });
+    this.labelContainer = this.labelHandle.root;
   }
 
   protected renderLabel() {
@@ -132,26 +104,8 @@ export abstract class Indicator<
     );
   }
 
-  private addLabelClickListener(
-    element: HTMLElement | null,
-    listener: () => void
-  ) {
-    if (!element) return;
-
-    element.addEventListener("click", listener);
-    this.labelListenerDisposers.push(() => {
-      element.removeEventListener("click", listener);
-    });
-  }
-
-  private detachLabelListeners() {
-    for (const dispose of this.labelListenerDisposers.splice(0)) {
-      dispose();
-    }
-  }
-
   public detach(): void {
-    this.detachLabelListeners();
+    this.labelHandle?.destroy();
   }
 
   public getModifier(_visibleTimeRange: TimeRange): ScaleRangeModifier | null {
@@ -159,23 +113,13 @@ export abstract class Indicator<
   }
 
   public updateLocale() {
-    const hide = this.labelContainer.querySelector(
-      '[data-id="hide"]'
-    ) as HTMLElement;
-    const show = this.labelContainer.querySelector(
-      '[data-id="show"]'
-    ) as HTMLElement;
-    const settings = this.labelContainer.querySelector(
-      '[data-id="settings"]'
-    ) as HTMLElement;
-    const remove = this.labelContainer.querySelector(
-      '[data-id="remove"]'
-    ) as HTMLElement;
-
-    hide.title = this.chart.getLocaleValues().indicators.actions.show;
-    show.title = this.chart.getLocaleValues().indicators.actions.hide;
-    settings.title = this.chart.getLocaleValues().indicators.actions.settings;
-    remove.title = this.chart.getLocaleValues().indicators.actions.remove;
+    const actions = this.chart.getLocaleValues().indicators.actions;
+    this.labelHandle?.setActionTitles({
+      show: actions.show,
+      hide: actions.hide,
+      settings: actions.settings,
+      remove: actions.remove
+    });
 
     this.updateLabel();
   }

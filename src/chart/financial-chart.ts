@@ -20,6 +20,8 @@ import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
 import { pixelRatio } from "../utils/screen";
+import type { ChartUIAdapter } from "../ui/chart-ui-adapter";
+import { WebUIAdapter } from "../ui/web-ui-adapter";
 import {
   RenderCallback,
   RenderLayer,
@@ -77,6 +79,7 @@ export interface ChartOptions {
   locale?: string;
   formatter?: Formatter;
   theme?: ChartTheme;
+  uiAdapter?: ChartUIAdapter;
   localeValues?: {
     [key: string]: LocaleValues;
   };
@@ -157,6 +160,7 @@ export class FinancialChart extends EventEmitter {
   protected dataScale!: DataScaleModel;
   protected visibleScale: DataScaleModel;
   private resizer!: Resizer;
+  private ui: ChartUIAdapter;
   private readonly renderPipeline = new RenderPipeline();
   private readonly mainPane = new Pane(0);
   private readonly panes: Pane[] = [this.mainPane];
@@ -468,6 +472,7 @@ export class FinancialChart extends EventEmitter {
   private createChartContext(): ChartContext {
     return {
       chart: this,
+      ui: this.ui,
       getPanes: () => this.getPanes(),
       getVisibleTimeRange: () => this.getVisibleTimeRange(),
       on: (event, listener) => this.on(event, listener),
@@ -677,6 +682,8 @@ export class FinancialChart extends EventEmitter {
       ...this.getDefaultLocaleValues(),
       ...this.options.localeValues
     };
+
+    this.ui = options.uiAdapter ?? new WebUIAdapter();
 
     this.outsideContainer = container;
     this.container = document.createElement("div");

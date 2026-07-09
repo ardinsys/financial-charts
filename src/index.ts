@@ -28,6 +28,9 @@ export * from "./panes/pane";
 
 export * from "./plugin/chart-plugin";
 
+export * from "./ui/chart-ui-adapter";
+export * from "./ui/web-ui-adapter";
+
 export * from "./drawings";
 
 export * from "./indicators/indicator";
