@@ -96,8 +96,8 @@ describe("Pane", () => {
     expect(mainPane.getTimeScale()).toBe(chart.getTimeScale());
     expect(chart.getPriceScale()).toBe(mainPane.getPriceScale());
     expect(mainPane.getPriceScale().getRange()).toEqual({
-      min: chart.getVisibleExtent().getYMin(),
-      max: chart.getVisibleExtent().getYMax()
+      min: chart.getVisibleScale().getYMin(),
+      max: chart.getVisibleScale().getYMax()
     });
   });
 

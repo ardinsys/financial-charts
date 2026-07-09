@@ -9,8 +9,8 @@ export class TestIndicator extends PaneledIndicator<
 > {
   static ID = "test";
 
-  public createExtent(): DataScaleModel {
-    return this.chart.getVisibleExtent();
+  public createScale(): DataScaleModel {
+    return this.chart.getVisibleScale();
   }
 
   public updateLabel(_dataTime?: number): void {

@@ -145,6 +145,20 @@ can use the generic event emitter types for custom event maps.
 - Per-bar X-label generation was replaced by `TimeTickGenerator`.
 - The chart's old array scans were replaced with `DataStore` lookup helpers.
 
+### Public API renamed (`extent` → `scale`)
+
+The internal `Extent`/`DataExtent` rename to `Scale`/`DataScaleModel` is now
+carried through the public surface. These names changed (no compatibility
+aliases):
+
+| Old (0.9)                             | New (1.0)                              |
+| ------------------------------------- | -------------------------------------- |
+| `chart.getVisibleExtent()`            | `chart.getVisibleScale()`              |
+| `chart.recalculateVisibleExtent()`    | `chart.recalculateVisibleScale()`      |
+| `PaneledIndicator.createExtent()`     | `PaneledIndicator.createScale()`       |
+| `PaneledIndicator` protected `extent` | protected `scale`                      |
+| `PaneYAxisRenderOptions.extent`       | `PaneYAxisRenderOptions.scale`         |
+
 ## Suggested upgrade path
 
 1. Update imports and register controllers once at app startup.

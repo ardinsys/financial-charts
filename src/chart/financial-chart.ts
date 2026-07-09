@@ -219,7 +219,7 @@ export class FinancialChart extends EventEmitter {
     return this.timeRange;
   }
 
-  getVisibleExtent() {
+  getVisibleScale() {
     return this.visibleScale;
   }
 
@@ -551,7 +551,7 @@ export class FinancialChart extends EventEmitter {
     indicator: Indicator<any, any>
   ): indicator is PaneledIndicator<any, any> {
     const candidate = indicator as {
-      createExtent?: unknown;
+      createScale?: unknown;
       getContainer?: unknown;
       getCrosshairValue?: unknown;
       init?: unknown;
@@ -559,7 +559,7 @@ export class FinancialChart extends EventEmitter {
     };
 
     return (
-      typeof candidate.createExtent === "function" &&
+      typeof candidate.createScale === "function" &&
       typeof candidate.getContainer === "function" &&
       typeof candidate.getCrosshairValue === "function" &&
       typeof candidate.init === "function" &&
@@ -649,7 +649,7 @@ export class FinancialChart extends EventEmitter {
     });
     this.syncTimeScales();
 
-    this.recalculateVisibleExtent();
+    this.recalculateVisibleScale();
 
     this.requestRedraw(this.allRedrawParts);
   }
@@ -949,7 +949,7 @@ export class FinancialChart extends EventEmitter {
       end: 0
     });
     this.resetVisibleIndexRange();
-    this.recalculateVisibleExtent();
+    this.recalculateVisibleScale();
     this.notifyPluginsData(this.dataStore.toArray());
 
     this.requestRedraw(this.allRedrawParts);
@@ -1076,7 +1076,7 @@ export class FinancialChart extends EventEmitter {
     ctx.fillStyle = this.options.theme.backgroundColor;
     ctx.fillRect(0, 0, sizes.width, sizes.height);
 
-    this.recalculateVisibleExtent();
+    this.recalculateVisibleScale();
   }
 
   private drawControllerAxes() {
@@ -1423,7 +1423,7 @@ export class FinancialChart extends EventEmitter {
     );
 
     this.resetVisibleIndexRange();
-    this.recalculateVisibleExtent();
+    this.recalculateVisibleScale();
     this.notifyPluginsData(this.dataStore.toArray());
 
     this.requestRedraw(this.allRedrawParts);
@@ -1615,7 +1615,7 @@ export class FinancialChart extends EventEmitter {
     const ctx = this.getContext("main");
     const spacing = 0.1;
     const pixelPerMs = this.getPixelPerMs();
-    const visibleDataPoints = this.recalculateVisibleExtent();
+    const visibleDataPoints = this.recalculateVisibleScale();
     const candleSpacing = this.options.stepSize * pixelPerMs * spacing;
     const candleWidth = this.options.stepSize * pixelPerMs - candleSpacing;
 
@@ -2033,7 +2033,7 @@ export class FinancialChart extends EventEmitter {
 
   private lastVisibleDataPoints: ChartData[] = [];
 
-  recalculateVisibleExtent() {
+  recalculateVisibleScale() {
     this.refreshIndexBounds();
     const visibleTimeRange = this.getVisibleTimeRange();
     const visibleDataPoints = this.dataStore.visibleIndexSlice(

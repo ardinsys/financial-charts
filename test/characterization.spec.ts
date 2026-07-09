@@ -10,7 +10,7 @@ type CharacterizedChart = {
   estimatePriceLabelDecimalPlaces(labelSpacing: number): number;
   getContext: FinancialChart["getContext"];
   getLastXGridCoords: FinancialChart["getLastXGridCoords"];
-  getVisibleExtent: FinancialChart["getVisibleExtent"];
+  getVisibleScale: FinancialChart["getVisibleScale"];
   drawXAxis: FinancialChart["drawXAxis"];
 };
 
@@ -153,7 +153,7 @@ describe("current scale coordinate mapping", () => {
       ],
       { start, end: start + 240_000 }
     );
-    const visibleScale = chart.getVisibleExtent();
+    const visibleScale = chart.getVisibleScale();
     const canvas = chart.getContext("main").canvas;
 
     const pixel = visibleScale.mapToPixel(start + 60_000, 12, canvas);

@@ -24,7 +24,7 @@ export interface PaneDrawable {
 export interface PaneYAxisRenderOptions {
   axisContext: CanvasRenderingContext2D;
   gridContext: CanvasRenderingContext2D;
-  extent: DataScaleModel;
+  scale: DataScaleModel;
   theme: DeepConcrete<ChartTheme>;
   formatter: Formatter;
   pixelRatio: number;
@@ -105,13 +105,13 @@ export class Pane {
   }
 
   calculateYAxisLabels(
-    extent: DataScaleModel,
+    scale: DataScaleModel,
     fontSize: number,
     labelSpacing: number
   ) {
     return calculatePriceYAxisLabels({
-      yMin: extent.getYMin(),
-      yMax: extent.getYMax(),
+      yMin: scale.getYMin(),
+      yMax: scale.getYMax(),
       canvasHeight: this.region.height,
       fontSize,
       labelSpacing
@@ -125,14 +125,14 @@ export class Pane {
   drawYAxis({
     axisContext,
     gridContext,
-    extent,
+    scale,
     theme,
     formatter,
     pixelRatio,
     labelSpacing
   }: PaneYAxisRenderOptions) {
     const yAxisValues = this.calculateYAxisLabels(
-      extent,
+      scale,
       theme.yAxis.fontSize,
       labelSpacing
     );

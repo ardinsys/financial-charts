@@ -25,10 +25,10 @@ export abstract class PaneledIndicator<
   protected axisCanvas!: HTMLCanvasElement;
   protected context!: CanvasRenderingContext2D;
   protected axisContext!: CanvasRenderingContext2D;
-  protected extent!: DataScaleModel;
+  protected scale!: DataScaleModel;
   protected pane?: Pane;
 
-  public abstract createExtent(): DataScaleModel;
+  public abstract createScale(): DataScaleModel;
 
   private adjustCanvas(
     canvas: HTMLCanvasElement,
@@ -61,7 +61,7 @@ export abstract class PaneledIndicator<
 
   public init(params: InitParams): void {
     this.pane = params.pane;
-    this.extent = this.createExtent();
+    this.scale = this.createScale();
     this.container = document.createElement("div");
     this.container.style.overflow = "hidden";
     this.container.style.userSelect = "none";
@@ -110,7 +110,7 @@ export abstract class PaneledIndicator<
   public abstract getCrosshairValue(time: number, relativeY: number): string;
 
   protected initDrawing() {
-    this.pane?.setPriceRange(this.extent.getYMin(), this.extent.getYMax());
+    this.pane?.setPriceRange(this.scale.getYMin(), this.scale.getYMax());
 
     const ctx = this.context;
     ctx.clearRect(0, 0, this.width(), this.height());
@@ -159,15 +159,15 @@ export abstract class PaneledIndicator<
   protected calculateYAxisLabels(fontSize: number, labelSpacing: number) {
     if (this.pane) {
       return this.pane.calculateYAxisLabels(
-        this.extent,
+        this.scale,
         fontSize,
         labelSpacing
       );
     }
 
     return calculatePriceYAxisLabels({
-      yMin: this.extent.getYMin(),
-      yMax: this.extent.getYMax(),
+      yMin: this.scale.getYMin(),
+      yMax: this.scale.getYMax(),
       canvasHeight: this.axisCanvas.height / pixelRatio(),
       fontSize,
       labelSpacing
@@ -187,7 +187,7 @@ export abstract class PaneledIndicator<
       this.pane.drawYAxis({
         axisContext: this.axisContext,
         gridContext: this.context,
-        extent: this.extent,
+        scale: this.scale,
         theme: this.chart.getTheme(),
         formatter: this.chart.getFormatter(),
         pixelRatio: pixelRatio(),

@@ -68,7 +68,7 @@ Templates are chosen by `chart.getOptions().theme.key` (default `"light"` / `"da
 
 ```ts
 abstract class MyPaneledIndicator extends PaneledIndicator<MyTheme, MyOptions> {
-  public createExtent(): DataScaleModel {
+  public createScale(): DataScaleModel {
     /* setup scale model */
   }
   public draw(): void {

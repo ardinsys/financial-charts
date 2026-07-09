@@ -110,7 +110,7 @@ describe("index-based time scales", () => {
       ],
       { start, end }
     );
-    const visibleScale = chart.getVisibleExtent();
+    const visibleScale = chart.getVisibleScale();
     const canvas = chart.getContext("main").canvas;
 
     const timeScale = new TimeScale(
