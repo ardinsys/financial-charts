@@ -4,6 +4,12 @@ import {
   calculateStepSize as calculatePriceStepSize,
   calculateYAxisLabels as calculatePriceYAxisLabels
 } from "../scales/ticks/price-ticks";
+import {
+  configurePositionedElement,
+  createCanvasLayer,
+  createPositionedContainer,
+  resizeCanvasLayer
+} from "../utils/dom";
 import { pixelRatio } from "../utils/screen";
 import { DefaultIndicatorOptions, Indicator } from "./indicator";
 
@@ -41,42 +47,33 @@ export abstract class PaneledIndicator<
       paneRegion?.width ?? params.width - this.chart.getYLabelWidth();
     const axisWidth = yAxisRegion?.width ?? this.chart.getYLabelWidth();
     const height = paneRegion?.height ?? params.height;
+    const context = isMain ? this.context : this.axisContext;
 
-    canvas.style.userSelect = "none";
-    // @ts-ignore
-    canvas.style.webkitTapHighlightColor = "transparent";
-    canvas.style.position = "absolute";
-    canvas.style.left = isMain ? "0px" : mainWidth + "px";
-    canvas.style.top = "0px";
-    canvas.style.width = (isMain ? mainWidth : axisWidth) + "px";
-    canvas.style.height = height + "px";
-    canvas.width = (isMain ? mainWidth : axisWidth) * params.devicePixelRatio;
-    canvas.height = height * params.devicePixelRatio;
-    if (isMain) {
-      this.context.scale(params.devicePixelRatio, params.devicePixelRatio);
-    } else {
-      this.axisContext.scale(params.devicePixelRatio, params.devicePixelRatio);
-    }
+    resizeCanvasLayer(canvas, {
+      left: isMain ? 0 : mainWidth,
+      top: 0,
+      width: isMain ? mainWidth : axisWidth,
+      height,
+      pixelRatio: params.devicePixelRatio,
+      context
+    });
   }
 
   public init(params: InitParams): void {
     this.pane = params.pane;
     this.scale = this.createScale();
-    this.container = document.createElement("div");
-    this.container.style.overflow = "hidden";
-    this.container.style.userSelect = "none";
-    this.container.style.borderTop = `2px solid ${
-      this.chart.getTheme().grid.color
-    }`;
-    // @ts-ignore
-    this.container.style.webkitTapHighlightColor = "transparent";
-    this.container.style.position = "absolute";
-    this.container.style.left = params.x + "px";
-    this.container.style.top = params.y + "px";
-    this.container.style.width = params.width + "px";
-    this.container.style.height = params.height + "px";
-    this.canvas = document.createElement("canvas");
-    this.axisCanvas = document.createElement("canvas");
+    this.container = createPositionedContainer({
+      overflow: "hidden",
+      userSelect: "none",
+      tapHighlightColor: "transparent",
+      borderTop: `2px solid ${this.chart.getTheme().grid.color}`,
+      left: params.x,
+      top: params.y,
+      width: params.width,
+      height: params.height
+    });
+    this.canvas = createCanvasLayer();
+    this.axisCanvas = createCanvasLayer();
 
     this.context = this.canvas.getContext("2d")!;
     this.axisContext = this.axisCanvas.getContext("2d")!;
@@ -87,18 +84,22 @@ export abstract class PaneledIndicator<
     this.container.appendChild(this.canvas);
     this.container.appendChild(this.axisCanvas);
 
-    this.labelContainer.style.position = "relative";
-    this.labelContainer.style.left = "5px";
-    this.labelContainer.style.top = "10px";
+    configurePositionedElement(this.labelContainer, {
+      position: "relative",
+      left: 5,
+      top: 10
+    });
     this.container.appendChild(this.labelContainer);
   }
 
   public resize(params: InitParams) {
     this.pane = params.pane;
-    this.container.style.left = params.x + "px";
-    this.container.style.top = params.y + "px";
-    this.container.style.width = params.width + "px";
-    this.container.style.height = params.height + "px";
+    configurePositionedElement(this.container, {
+      left: params.x,
+      top: params.y,
+      width: params.width,
+      height: params.height
+    });
     this.adjustCanvas(this.canvas, params, true);
     this.adjustCanvas(this.axisCanvas, params, false);
   }
@@ -158,11 +159,7 @@ export abstract class PaneledIndicator<
 
   protected calculateYAxisLabels(fontSize: number, labelSpacing: number) {
     if (this.pane) {
-      return this.pane.calculateYAxisLabels(
-        this.scale,
-        fontSize,
-        labelSpacing
-      );
+      return this.pane.calculateYAxisLabels(this.scale, fontSize, labelSpacing);
     }
 
     return calculatePriceYAxisLabels({

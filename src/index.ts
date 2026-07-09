@@ -4,6 +4,7 @@ export * from "./chart/themes";
 export * from "./chart/types";
 
 export * from "./utils/color";
+export * from "./utils/dom";
 export * from "./utils/screen";
 
 export * from "./controllers/controller";

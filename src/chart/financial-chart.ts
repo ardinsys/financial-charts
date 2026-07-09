@@ -20,6 +20,13 @@ import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
 import { pixelRatio } from "../utils/screen";
+import {
+  bindEvent,
+  createCanvasLayer,
+  createPositionedContainer,
+  resizeCanvasLayer,
+  scaleCanvasContext
+} from "../utils/dom";
 import type { ChartOverlay, ChartUIAdapter } from "../ui/chart-ui-adapter";
 import { WebUIAdapter } from "../ui/web-ui-adapter";
 import {
@@ -190,6 +197,7 @@ export class FinancialChart extends EventEmitter {
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
   private resizeObserver: ResizeObserver;
+  private readonly eventDisposers: Array<() => void> = [];
 
   private isTouchCrosshair = false;
   private isTouchCrosshairTimeout?: any;
@@ -687,17 +695,17 @@ export class FinancialChart extends EventEmitter {
     this.ui = options.uiAdapter ?? new WebUIAdapter();
 
     this.outsideContainer = container;
-    this.container = document.createElement("div");
-    this.container.style.overflow = "hidden";
+    this.container = createPositionedContainer({
+      position: "relative",
+      overflow: "hidden",
+      width: "100%",
+      height: "100%",
+      backgroundColor: this.options.theme.backgroundColor
+    });
     this.container.classList.add(
       "financial-charts",
       `financial-charts-${this.options.theme.key}`
     );
-
-    this.container.style.position = "relative";
-    this.container.style.width = "100%";
-    this.container.style.height = "100%";
-    this.container.style.backgroundColor = this.options.theme.backgroundColor;
     this.outsideContainer.appendChild(this.container);
 
     this.overlay = this.ui.createOverlay(this.container, {
@@ -734,36 +742,30 @@ export class FinancialChart extends EventEmitter {
     // Init and scale canveses
     this.types.forEach((type) => this.getCanvas(type));
     const topCanvas = this.getCanvas("crosshair");
-    topCanvas.addEventListener("pointerdown", this.onMouseDown);
-    topCanvas.addEventListener("pointerup", this.onMouseUp);
-    topCanvas.addEventListener("mousemove", this.onMouseMove);
-    topCanvas.addEventListener("wheel", this.onWheel, {
-      passive: false
-    });
-    topCanvas.addEventListener("touchstart", this.onTouchStart, {
-      passive: false
-    });
-    topCanvas.addEventListener("touchend", this.onTouchEnd, {
-      passive: false
-    });
-    topCanvas.addEventListener("touchmove", this.onTouchMove, {
-      passive: false
-    });
-    topCanvas.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-    });
-    topCanvas.addEventListener("pointerleave", (e) => {
-      if (e.pointerType === "touch") return;
-      this.lastPointerPosition = undefined;
-      this.lastTouchDistance = undefined;
-      this.isPanning = false;
-      requestAnimationFrame(() => {
-        this.pointerTime = -1;
-        this.pointerY = -1;
-        this.pointerPane = this.mainPane;
-        this.drawCrosshair();
-      });
-    });
+    this.eventDisposers.push(
+      bindEvent(topCanvas, "pointerdown", this.onMouseDown),
+      bindEvent(topCanvas, "pointerup", this.onMouseUp),
+      bindEvent(topCanvas, "mousemove", this.onMouseMove),
+      bindEvent(topCanvas, "wheel", this.onWheel, { passive: false }),
+      bindEvent(topCanvas, "touchstart", this.onTouchStart, { passive: false }),
+      bindEvent(topCanvas, "touchend", this.onTouchEnd, { passive: false }),
+      bindEvent(topCanvas, "touchmove", this.onTouchMove, { passive: false }),
+      bindEvent(topCanvas, "contextmenu", (e) => {
+        e.preventDefault();
+      }),
+      bindEvent(topCanvas, "pointerleave", (e) => {
+        if (e.pointerType === "touch") return;
+        this.lastPointerPosition = undefined;
+        this.lastTouchDistance = undefined;
+        this.isPanning = false;
+        requestAnimationFrame(() => {
+          this.pointerTime = -1;
+          this.pointerY = -1;
+          this.pointerPane = this.mainPane;
+          this.drawCrosshair();
+        });
+      })
+    );
 
     const createResizers = (): Resizer => {
       let alreadyResized = false;
@@ -821,7 +823,9 @@ export class FinancialChart extends EventEmitter {
 
     this.resizer = createResizers();
 
-    window.addEventListener("resize", this.resizer.ratioResize);
+    this.eventDisposers.push(
+      bindEvent(window, "resize", this.resizer.ratioResize)
+    );
 
     this.resizeObserver = new ResizeObserver(() => this.resizer.resize(false));
     this.resizeObserver.observe(this.container);
@@ -1214,48 +1218,44 @@ export class FinancialChart extends EventEmitter {
     canvas: HTMLCanvasElement
   ) {
     const devicePixelRatio = pixelRatio();
-    canvas.style.userSelect = "none";
-    // @ts-ignore
-    canvas.style.webkitTapHighlightColor = "transparent";
+    let width: number;
+    let height: number;
+    let right: number | undefined;
+    let bottom: number | undefined;
 
     if (type === "y-label") {
       const yAxisRegion = this.mainPane.getYAxisRegion();
-      canvas.style.right = "0px";
-      canvas.width = yAxisRegion.width * devicePixelRatio;
-      canvas.style.width = yAxisRegion.width + "px";
+      right = 0;
+      width = yAxisRegion.width;
+      height = yAxisRegion.height;
     } else if (type === "x-label" || type === "crosshair") {
-      canvas.width = this.container.offsetWidth * devicePixelRatio;
-      canvas.style.width = this.container.offsetWidth + "px";
+      width = this.container.offsetWidth;
+      height =
+        type === "x-label" ? this.xLabelHeight : this.container.offsetHeight;
+      if (type === "x-label") {
+        bottom = 0;
+      }
     } else {
       const region = this.mainPane.getRegion();
-      canvas.width = region.width * devicePixelRatio;
-      canvas.style.width = region.width + "px";
+      width = region.width;
+      height = region.height;
     }
 
-    if (type === "x-label") {
-      canvas.style.bottom = "0px";
-      canvas.height = this.xLabelHeight * devicePixelRatio;
-      canvas.style.height = this.xLabelHeight + "px";
-    } else if (type === "crosshair") {
-      canvas.height = this.container.offsetHeight * devicePixelRatio;
-      canvas.style.height = this.container.offsetHeight + "px";
-    } else if (type === "y-label") {
-      const yAxisRegion = this.mainPane.getYAxisRegion();
-      canvas.height = yAxisRegion.height * devicePixelRatio;
-      canvas.style.height = yAxisRegion.height + "px";
-    } else {
-      const region = this.mainPane.getRegion();
-      canvas.height = region.height * devicePixelRatio;
-      canvas.style.height = region.height + "px";
-    }
+    resizeCanvasLayer(canvas, {
+      right,
+      bottom,
+      width,
+      height,
+      pixelRatio: devicePixelRatio,
+      context: this.contexts.get(type)
+    });
   }
 
   protected getCanvas(type: (typeof this.types)[number]): HTMLCanvasElement {
     const canvas: HTMLCanvasElement =
-      this.canvases.get(type) || document.createElement("canvas");
+      this.canvases.get(type) || createCanvasLayer();
 
     if (!this.canvases.has(type)) {
-      canvas.style.position = "absolute";
       canvas.style.zIndex =
         type === "crosshair"
           ? "100"
@@ -1287,17 +1287,7 @@ export class FinancialChart extends EventEmitter {
       const canvas = this.canvases.get(type);
       if (!canvas) return;
 
-      const devicePixelRatio = pixelRatio();
-
-      if (this.contexts.has(type)) {
-        this.adjustCanvas(type, canvas);
-        const ctx = this.getContext(type);
-        ctx.scale(devicePixelRatio, devicePixelRatio);
-      } else {
-        this.adjustCanvas(type, canvas);
-        const ctx = this.getContext(type);
-        ctx.scale(devicePixelRatio, devicePixelRatio);
-      }
+      this.adjustCanvas(type, canvas);
     });
   }
 
@@ -1324,6 +1314,7 @@ export class FinancialChart extends EventEmitter {
   getContext(type: (typeof this.types)[number]): CanvasRenderingContext2D {
     if (!this.contexts.has(type)) {
       const ctx = this.getCanvas(type).getContext("2d")!;
+      scaleCanvasContext(ctx);
       this.contexts.set(type, ctx);
     }
 
@@ -1825,13 +1816,7 @@ export class FinancialChart extends EventEmitter {
    * Properly dispose the chart.
    */
   public dispose() {
-    const topCanvas = this.getCanvas("crosshair");
-    topCanvas.removeEventListener("pointerdown", this.onMouseDown);
-    topCanvas.removeEventListener("pointerup", this.onMouseUp);
-    topCanvas.removeEventListener("mousemove", this.onMouseMove);
-    topCanvas.removeEventListener("touchstart", this.onTouchStart);
-    topCanvas.removeEventListener("touchend", this.onTouchEnd);
-    topCanvas.removeEventListener("touchmove", this.onTouchMove);
+    for (const dispose of this.eventDisposers.splice(0)) dispose();
     for (const indicator of this.getAllIndicators()) {
       indicator.detach();
     }
@@ -1850,7 +1835,6 @@ export class FinancialChart extends EventEmitter {
     this.overlay.destroy();
     this.container.remove();
     this.canvases.clear();
-    window.removeEventListener("resize", this.resizer.ratioResize);
   }
 
   /**

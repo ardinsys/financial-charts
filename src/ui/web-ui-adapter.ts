@@ -7,6 +7,7 @@ import {
   IndicatorLabelModel
 } from "./chart-ui-adapter";
 import { ICON_HIDE, ICON_REMOVE, ICON_SETTINGS, ICON_SHOW } from "./icons";
+import { bindEvent, createPositionedContainer } from "../utils/dom";
 
 /**
  * Default, framework-agnostic UI adapter. Renders the indicator label model to
@@ -15,13 +16,13 @@ import { ICON_HIDE, ICON_REMOVE, ICON_SETTINGS, ICON_SHOW } from "./icons";
  */
 export class WebUIAdapter implements ChartUIAdapter {
   createOverlay(host: HTMLElement, context: ChartOverlayContext): ChartOverlay {
-    const indicatorLabelContainer = document.createElement("div");
-    indicatorLabelContainer.style.zIndex = "101";
-    indicatorLabelContainer.style.overflow = "auto";
-    indicatorLabelContainer.style.position = "absolute";
-    indicatorLabelContainer.style.top = context.labelTopOffset + "px";
-    indicatorLabelContainer.style.left = "10px";
-    indicatorLabelContainer.style.width = "fit-content";
+    const indicatorLabelContainer = createPositionedContainer({
+      zIndex: 101,
+      overflow: "auto",
+      top: context.labelTopOffset,
+      left: 10,
+      width: "fit-content"
+    });
     host.appendChild(indicatorLabelContainer);
 
     return {
@@ -39,10 +40,11 @@ export class WebUIAdapter implements ChartUIAdapter {
     model: IndicatorLabelModel,
     actions: IndicatorLabelActions
   ): IndicatorLabelHandle {
-    const root = document.createElement("div");
-    root.style.position = "relative";
-    root.style.zIndex = "101";
-    root.style.width = "fit-content";
+    const root = createPositionedContainer({
+      position: "relative",
+      zIndex: 101,
+      width: "fit-content"
+    });
     root.classList.add("financial-indicator");
 
     const button = (id: string, icon: string, extraClass = "") =>
@@ -80,8 +82,7 @@ export class WebUIAdapter implements ChartUIAdapter {
     const disposers: Array<() => void> = [];
     const on = (element: HTMLElement | null, listener: () => void) => {
       if (!element) return;
-      element.addEventListener("click", listener);
-      disposers.push(() => element.removeEventListener("click", listener));
+      disposers.push(bindEvent(element, "click", listener));
     };
 
     const applyVisible = (visible: boolean) => {
