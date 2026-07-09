@@ -1,6 +1,6 @@
 # Vue 3+
 
-Use refs plus `onMounted`/`onBeforeUnmount` to manage the chart. Pass the controller classes to the chart instance.
+Use refs plus `onMounted`/`onBeforeUnmount` to manage the chart. Built-in chart types are available by default on each chart instance.
 
 ```vue
 <template>
@@ -9,29 +9,10 @@ Use refs plus `onMounted`/`onBeforeUnmount` to manage the chart. Pass the contro
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
-import {
-  FinancialChart,
-  AreaController,
-  LineController,
-  BarController,
-  HollowCandleController,
-  CandlestickController,
-  SteplineController,
-  HLCAreaController,
-  type ChartData
-} from "@ardinsys/financial-charts";
+import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
 import "@ardinsys/financial-charts/dist/style.css";
 
 const props = defineProps<{ data: ChartData[] }>();
-const controllers = [
-  AreaController,
-  LineController,
-  BarController,
-  HollowCandleController,
-  CandlestickController,
-  SteplineController,
-  HLCAreaController
-];
 const appLocale = ref("en"); // replace with your i18n store value
 const localeValues = {
   en: {
@@ -49,7 +30,6 @@ onMounted(() => {
 
   const instance = new FinancialChart(container.value, "auto", {
     type: "hlc-area",
-    controllers,
     stepSize: 15 * 60 * 1000,
     maxZoom: 150,
     volume: true,

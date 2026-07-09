@@ -22,7 +22,6 @@ describe("FinancialChart test harness", () => {
       },
       {
         type: "line",
-        controllers: [LineController],
         stepSize: 60_000,
         maxZoom: 10,
         volume: false
@@ -40,6 +39,7 @@ describe("FinancialChart test harness", () => {
     expect(chart.getData()).toHaveLength(3);
     expect(container.querySelectorAll("canvas")).toHaveLength(6);
     expect(chart.getContext("main").canvas.width).toBeGreaterThan(0);
+    expect(() => chart.changeType("candle")).not.toThrow();
 
     chart.dispose();
   });

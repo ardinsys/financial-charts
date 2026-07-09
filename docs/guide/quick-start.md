@@ -14,31 +14,21 @@ Import the distributed stylesheet when you need indicator labels or paneled indi
 import "@ardinsys/financial-charts/dist/style.css";
 ```
 
-## 2. Choose controllers for the chart
+## 2. Create the chart
 
-Pass the controllers your chart can instantiate. Registrations are scoped to each chart instance, so tests, SSR renders, and multiple charts do not share global state.
+The built-in controllers are available by default on each chart instance. The basic flow is constructor, then `draw(data)`.
 
 ```ts
-import {
-  FinancialChart,
-  AreaController,
-  LineController,
-  BarController,
-  HollowCandleController,
-  CandlestickController,
-  SteplineController,
-  HLCAreaController
-} from "@ardinsys/financial-charts";
+import { FinancialChart } from "@ardinsys/financial-charts";
 
-const controllers = [
-  AreaController,
-  LineController,
-  CandlestickController,
-  BarController,
-  HollowCandleController,
-  SteplineController,
-  HLCAreaController
-];
+const chart = new FinancialChart(root, "auto", {
+  type: "candle",
+  stepSize: 15 * 60 * 1000,
+  maxZoom: 100,
+  volume: true
+});
+
+chart.draw(data);
 ```
 
 ## 3. Pick or extend a theme
@@ -61,7 +51,7 @@ const customTheme: ChartTheme = {
 const theme = mergeThemes(defaultDarkTheme, customTheme);
 ```
 
-## 4. Create the chart
+## 4. Apply the theme
 
 Pass a container element, a base time range (or `"auto"`), and chart options.
 
@@ -71,7 +61,6 @@ const chart = new FinancialChart(
   "auto",
   {
     type: "candle",
-    controllers,
     theme,
     locale: "en",
     maxZoom: 100,

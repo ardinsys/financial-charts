@@ -2,8 +2,6 @@
 
 Themes, locales, and formatters let you align the chart with your brand and language requirements without touching the rendering core.
 
-Chart creation snippets assume the controller list from the quick start is available as `controllers`.
-
 ## Theme anatomy
 
 `ChartTheme` is split into predictable sections:
@@ -61,7 +59,6 @@ const theme = prefersDark ? defaultDarkTheme : baseTheme;
 
 const chart = new FinancialChart(root, "auto", {
   type: "hlc-area",
-  controllers,
   theme,
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
@@ -141,7 +138,6 @@ class CustomFormatter extends DefaultFormatter {
 
 const chart = new FinancialChart(root, "auto", {
   type: "candle",
-  controllers,
   theme: baseTheme,
   locale: "en",
   formatter: new CustomFormatter()
@@ -205,7 +201,6 @@ const { locale, setLocale, t } = createIntl("en", {
 
 const chart = new FinancialChart(root, "auto", {
   type: "candle",
-  controllers,
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
   volume: true,
@@ -269,28 +264,9 @@ Use a computed value to regenerate the chart's locale bundle whenever your i18n 
 ```vue
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watchEffect } from "vue";
-import {
-  FinancialChart,
-  AreaController,
-  LineController,
-  BarController,
-  HollowCandleController,
-  CandlestickController,
-  SteplineController,
-  HLCAreaController
-} from "@ardinsys/financial-charts";
+import { FinancialChart } from "@ardinsys/financial-charts";
 import "@ardinsys/financial-charts/dist/style.css";
 import { createIntl } from "@ardinsys/intl";
-
-const controllers = [
-  AreaController,
-  LineController,
-  BarController,
-  HollowCandleController,
-  CandlestickController,
-  SteplineController,
-  HLCAreaController
-];
 
 const { locale, setLocale, t } = createIntl("en", {
   en: {
@@ -367,7 +343,6 @@ onMounted(() => {
 
   const instance = new FinancialChart(container.value, "auto", {
     type: "candle",
-    controllers,
     stepSize: 15 * 60 * 1000,
     maxZoom: 150,
     volume: true,
@@ -420,7 +395,6 @@ class IntlFormatter extends DefaultFormatter {
 
 const chart = new FinancialChart(root, "auto", {
   type: "candle",
-  controllers,
   stepSize: 5 * 60 * 1000,
   maxZoom: 200,
   formatter: new IntlFormatter(),

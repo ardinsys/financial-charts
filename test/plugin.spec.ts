@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
+import type { Drawing } from "../src/drawings";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
@@ -142,6 +143,34 @@ describe("plugin lifecycle", () => {
 
     expect(chart.getPlugins()).toEqual([]);
     expect(plugin.detach).toHaveBeenCalledOnce();
+  });
+
+  it("exposes canvas and event helpers through the plugin context", () => {
+    const { chart } = createChart();
+    let attachedContext: Parameters<ChartPlugin["attach"]>[0] | undefined;
+    const plugin: ChartPlugin = {
+      key: "context-probe",
+      attach: (ctx) => {
+        attachedContext = ctx;
+      }
+    };
+    const selectListener = vi.fn();
+    const unsubscribe = chart.on("drawing-select", selectListener);
+
+    chart.addPlugin(plugin);
+
+    expect(attachedContext?.getCanvasContext("drawings")).toBe(
+      chart.getContext("drawings")
+    );
+    expect(attachedContext?.getLogicalCanvas("drawings")).toEqual(
+      chart.getLogicalCanvas("drawings")
+    );
+
+    const drawing = {} as Drawing;
+    attachedContext?.emit("drawing-select", { drawing });
+
+    expect(selectListener).toHaveBeenCalledWith({ drawing });
+    unsubscribe();
   });
 
   it("detaches indicator label listeners when indicators are removed", () => {

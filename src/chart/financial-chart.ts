@@ -1,4 +1,11 @@
 import { ChartController } from "../controllers/controller";
+import { AreaController } from "../controllers/area-controller";
+import { BarController } from "../controllers/bar-controller";
+import { CandlestickController } from "../controllers/candle-controller";
+import { HLCAreaController } from "../controllers/hlc-area-controller";
+import { HollowCandleController } from "../controllers/hollow-candle-controller";
+import { LineController } from "../controllers/line-controller";
+import { SteplineController } from "../controllers/step-line-controller";
 import { DataStore } from "../data/data-store";
 import type {
   PaneledIndicator,
@@ -110,6 +117,24 @@ export type ControllerConstructor = (new (
   ID?: string;
 };
 
+const defaultControllerConstructors: readonly ControllerConstructor[] = [
+  AreaController,
+  LineController,
+  CandlestickController,
+  BarController,
+  HollowCandleController,
+  SteplineController,
+  HLCAreaController
+];
+
+export type ChartCanvasLayer =
+  | "main"
+  | "crosshair"
+  | "x-label"
+  | "y-label"
+  | "indicator"
+  | "drawings";
+
 export type ChartRedrawPart = RenderLayer | "controller";
 export type PaneHeightsInput =
   | Partial<Record<number, number>>
@@ -124,7 +149,7 @@ type PaneResizeDrag = {
 };
 
 export class FinancialChart extends EventEmitter {
-  private readonly types = [
+  private readonly types: readonly ChartCanvasLayer[] = [
     "main",
     "crosshair",
     "x-label",
@@ -219,6 +244,12 @@ export class FinancialChart extends EventEmitter {
   ) {
     const id = this.getRegistrationId(controllerClass, "Controller");
     this.controllers.set(id as ControllerType, controllerClass);
+  }
+
+  public registerDefaults() {
+    for (const controller of defaultControllerConstructors) {
+      this.registerController(controller);
+    }
   }
 
   private registerConstructorOptions(options: ChartOptions) {
@@ -531,6 +562,9 @@ export class FinancialChart extends EventEmitter {
     return {
       chart: this,
       domAdapter: this.domAdapter,
+      emit: (event, data) => this.emit(event, data),
+      getCanvasContext: (layer) => this.getContext(layer),
+      getLogicalCanvas: (layer) => this.getLogicalCanvas(layer),
       getPanes: () => this.getPanes(),
       getVisibleTimeRange: () => this.getVisibleTimeRange(),
       on: (event, listener) => this.on(event, listener),
@@ -1002,6 +1036,9 @@ export class FinancialChart extends EventEmitter {
   ) {
     super();
     this.options = options as DeepConcrete<ChartOptions>;
+    if (!options.controllers) {
+      this.registerDefaults();
+    }
     this.registerConstructorOptions(options);
 
     this.options.volume = this.options.volume || false;
@@ -1621,7 +1658,7 @@ export class FinancialChart extends EventEmitter {
     return num / pixelRatio();
   }
 
-  getContext(type: (typeof this.types)[number]): CanvasRenderingContext2D {
+  getContext(type: ChartCanvasLayer): CanvasRenderingContext2D {
     if (!this.contexts.has(type)) {
       const ctx = this.getCanvas(type).getContext("2d")!;
       scaleCanvasContext(ctx);
@@ -1637,7 +1674,7 @@ export class FinancialChart extends EventEmitter {
    * @param type which canvas you want1
    * @returns    the logical canvas size
    */
-  getLogicalCanvas(type: (typeof this.types)[number]) {
+  getLogicalCanvas(type: ChartCanvasLayer) {
     const ratio = pixelRatio();
     const width = this.getContext(type).canvas.width / ratio;
     const height = this.getContext(type).canvas.height / ratio;

@@ -139,15 +139,16 @@ The global mutable controller registry was removed.
 
 What to update:
 
-- Pass controller classes in chart options. The `controllers` array must include
-  the class for the initial `type`.
+- Omit `controllers` to use the built-in chart types on that instance.
+- Pass controller classes in chart options when you want an exact custom set.
+  The `controllers` array must include the class for the initial `type`.
 - For late-loaded controller extensions, call `chart.registerController(...)` on
-  the target chart instance.
+  the target chart instance. Call `chart.registerDefaults()` to add the built-ins
+  to an instance that was constructed with a custom set.
 
 ```ts
 const chart = new FinancialChart(root, "auto", {
   type: "candle",
-  controllers: [CandlestickController, LineController],
   stepSize: 15 * 60 * 1000,
   maxZoom: 100,
   volume: true
@@ -244,7 +245,8 @@ The old continuous-time zoom/pan scalars no longer model the index-based scale
 
 ## Suggested upgrade path
 
-1. Pass controller classes through each chart's `controllers` option.
+1. Omit `controllers` for built-in chart types, or pass a chart-scoped
+   `controllers` array for custom/exact controller sets.
 2. Confirm charts with missing calendar periods render as desired; blank weekend
    gaps are intentionally gone.
 3. Replace custom overlay code with `ChartPlugin` where possible.

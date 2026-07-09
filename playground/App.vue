@@ -3,13 +3,6 @@ import { onMounted, ref, watch } from "vue";
 import {
   ChartData,
   FinancialChart,
-  AreaController,
-  LineController,
-  BarController,
-  HollowCandleController,
-  CandlestickController,
-  SteplineController,
-  HLCAreaController,
   defaultDarkTheme,
   defaultLightTheme,
   mergeThemes,
@@ -22,16 +15,6 @@ import {
   TrendLine,
   type DrawingFactory
 } from "@ardinsys/financial-charts";
-
-const controllers = [
-  AreaController,
-  LineController,
-  CandlestickController,
-  BarController,
-  HollowCandleController,
-  SteplineController,
-  HLCAreaController,
-];
 
 const chartContainer = ref<HTMLElement>();
 const clickedData = ref<ChartData>();
@@ -151,7 +134,6 @@ onMounted(() => {
     },
     {
       type: "stepline",
-      controllers,
       theme: darkTheme,
       locale: "hu-HU",
       maxZoom: 100,

@@ -1,36 +1,12 @@
 # React (16.8+)
 
-Use refs and effects to manage the chart lifecycle. Keep the controller classes in a shared array and pass them to each chart instance.
-
-```ts
-// controllers.ts
-import {
-  AreaController,
-  LineController,
-  BarController,
-  HollowCandleController,
-  CandlestickController,
-  SteplineController,
-  HLCAreaController,
-} from "@ardinsys/financial-charts";
-
-export const controllers = [
-  AreaController,
-  LineController,
-  BarController,
-  HollowCandleController,
-  CandlestickController,
-  SteplineController,
-  HLCAreaController,
-];
-```
+Use refs and effects to manage the chart lifecycle. Built-in chart types are available by default on each chart instance.
 
 ```tsx
 // Chart.tsx
 import { useEffect, useRef } from "react";
 import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
 import "@ardinsys/financial-charts/dist/style.css";
-import { controllers } from "./controllers";
 
 type Props = { data: ChartData[] };
 
@@ -51,7 +27,6 @@ export function Chart({ data }: Props) {
 
     const chart = new FinancialChart(containerRef.current, "auto", {
       type: "candle",
-      controllers,
       stepSize: 15 * 60 * 1000,
       maxZoom: 150,
       volume: true,

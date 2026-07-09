@@ -41,19 +41,18 @@ type ChartOptions = {
 | `stepSize`     | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                   |
 | `maxZoom`      | Highest zoom factor before clamping user input.                                                      |
 | `volume`       | Enables a histogram below the price chart.                                                           |
-| `controllers`  | Controller classes available to this chart instance. Must include the class matching `type`.         |
+| `controllers`  | Optional exact controller set for this chart. Omit to register the built-in controllers by default.  |
 | `theme`        | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.                 |
 | `domAdapter`   | `ChartDOMAdapter` implementation for non-canvas chart chrome. Defaults to `DefaultDOMAdapter`.       |
 | `locale`       | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`. |
 | `formatter`    | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                  |
 | `localeValues` | Localized indicator labels keyed by locale. Merged with built-in English strings.                    |
 
-Controllers are chart-scoped. Pass them in the constructor for the common case:
+Built-in controllers are registered on each chart by default:
 
 ```ts
 const chart = new FinancialChart(root, "auto", {
   type: "candle",
-  controllers: [CandlestickController, LineController],
   stepSize: 15 * 60 * 1000,
   maxZoom: 100,
   volume: true
@@ -136,11 +135,15 @@ type LocaleValues = {
 
 ### Extension registration
 
-| Method                                | Description                                     |
-| ------------------------------------- | ----------------------------------------------- |
-| `registerController(ControllerClass)` | Adds a controller class to this chart instance. |
+| Method                                | Description                                      |
+| ------------------------------------- | ------------------------------------------------ |
+| `registerController(ControllerClass)` | Adds a controller class to this chart instance.  |
+| `registerDefaults()`                  | Adds every built-in controller to this instance. |
 
-Use the instance method when controller extensions load after chart construction. Registrations are not shared between charts.
+Omitting `options.controllers` calls `registerDefaults()` before the initial
+controller is resolved. Provide `controllers` when you want an exact set, then
+call `registerController(...)` or `registerDefaults()` later if extensions load
+after construction. Registrations are not shared between charts.
 
 ### Query helpers
 
@@ -150,8 +153,6 @@ Use the instance method when controller extensions load after chart construction
 | `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
 | `getOptions()`                                                      | Gives access to the current `ChartOptions` object (after merges).                           |
 | `getTheme()`                                                        | Returns the active `ChartTheme`.                                                            |
-| `getController()`                                                   | Returns the currently instantiated controller instance.                                     |
-| `getTimeScale()` / `getPriceScale()` / `getVolumeScale()`           | Returns the active scales for custom renderers and plugins.                                 |
 | `getPanes()` / `getMainPane()`                                      | Lists pane models or returns the main price pane.                                           |
 | `getPaneHeights()`                                                  | Returns current logical pixel heights keyed by pane id.                                     |
 | `getPlugins()`                                                      | Lists attached plugins.                                                                     |
@@ -183,6 +184,9 @@ chart.removePlugin(plugin: ChartPlugin): void;
 Plugins receive a `ChartContext` during `attach(ctx)`, can render via
 `beforeDraw`/`draw`/`afterDraw`, receive `onData`, `onVisibleRangeChanged`, and
 `onPointer` notifications, and should release external resources in `detach()`.
+Use the context's `getCanvasContext(layer)`, `getLogicalCanvas(layer)`,
+`getPanes()`, `emit(...)`, and `requestRedraw(...)` helpers for extension-level
+rendering and events.
 
 Register render hooks with `ctx.onRenderStage(stage, callback)` when you need a
 specific stage. Stages run in this order:
@@ -216,7 +220,7 @@ Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 
 ## Controllers
 
-Controllers are registered per chart instance through `options.controllers` or `chart.registerController(...)`. The library ships with the following built-ins:
+Controllers are registered per chart instance. The library ships with the following built-ins:
 
 - `AreaController`
 - `LineController`

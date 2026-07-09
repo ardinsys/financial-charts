@@ -113,7 +113,7 @@ export class DrawingManager implements ChartPlugin {
     this.selectedDrawing?.setSelected(true);
 
     if (drawing) {
-      this.ctx.chart.emit("drawing-select", { drawing });
+      this.ctx.emit("drawing-select", { drawing });
     }
     this.ctx.requestRedraw("drawings");
   }
@@ -134,7 +134,7 @@ export class DrawingManager implements ChartPlugin {
     if (this.interaction?.drawing === drawing) {
       this.interaction = undefined;
     }
-    this.ctx.chart.emit("drawing-delete", { drawing });
+    this.ctx.emit("drawing-delete", { drawing });
     this.ctx.requestRedraw("drawings");
   }
 
@@ -179,9 +179,8 @@ export class DrawingManager implements ChartPlugin {
   }
 
   draw() {
-    const chart = this.ctx.chart;
-    const ctx = chart.getContext("drawings");
-    const sizes = chart.getLogicalCanvas("drawings");
+    const ctx = this.ctx.getCanvasContext("drawings");
+    const sizes = this.ctx.getLogicalCanvas("drawings");
 
     ctx.clearRect(0, 0, sizes.width, sizes.height);
 
@@ -208,7 +207,7 @@ export class DrawingManager implements ChartPlugin {
       if (
         drawing.hitTest(point, {
           pane,
-          canvas: this.ctx.chart.getContext("drawings").canvas,
+          canvas: this.ctx.getCanvasContext("drawings").canvas,
           tolerance: this.hitTestTolerance
         })
       ) {
@@ -260,7 +259,7 @@ export class DrawingManager implements ChartPlugin {
 
     if (this.interaction.type === "creating") {
       this.interaction.drawing.setAnchors([this.interaction.start, anchor]);
-      this.ctx.chart.emit("drawing-change", {
+      this.ctx.emit("drawing-change", {
         drawing: this.interaction.drawing
       });
       this.ctx.requestRedraw("drawings");
@@ -277,7 +276,7 @@ export class DrawingManager implements ChartPlugin {
         price: originalAnchor.price + delta.price
       }))
     );
-    this.ctx.chart.emit("drawing-change", {
+    this.ctx.emit("drawing-change", {
       drawing: this.interaction.drawing
     });
     this.ctx.requestRedraw("drawings");
@@ -287,7 +286,7 @@ export class DrawingManager implements ChartPlugin {
     if (!this.interaction) return;
 
     if (this.interaction.type === "creating") {
-      this.ctx.chart.emit("drawing-create", {
+      this.ctx.emit("drawing-create", {
         drawing: this.interaction.drawing
       });
     }

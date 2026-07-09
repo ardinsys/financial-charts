@@ -1,9 +1,9 @@
-import {
+import type {
   FinancialChart,
   ChartOptions,
   DeepConcrete
 } from "../chart/financial-chart";
-import { ChartData, TimeRange } from "../chart/types";
+import type { ChartData, TimeRange } from "../chart/types";
 import { DataScaleModel } from "../scales/data-scale-model";
 import type { BarAlignment } from "../scales/time-scale";
 

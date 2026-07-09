@@ -1,4 +1,8 @@
-import type { ChartRedrawPart, FinancialChart } from "../chart/financial-chart";
+import type {
+  ChartCanvasLayer,
+  ChartRedrawPart,
+  FinancialChart
+} from "../chart/financial-chart";
 import type { ChartEventMap } from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";
 import type { Pane } from "../panes/pane";
@@ -23,6 +27,9 @@ export interface ChartPointerEvent {
 export interface ChartContext {
   chart: FinancialChart;
   domAdapter: ChartDOMAdapter;
+  emit<K extends keyof ChartEventMap>(event: K, data: ChartEventMap[K]): void;
+  getCanvasContext(layer: ChartCanvasLayer): CanvasRenderingContext2D;
+  getLogicalCanvas(layer: ChartCanvasLayer): { width: number; height: number };
   getPanes(): Pane[];
   getVisibleTimeRange(): TimeRange;
   on<K extends keyof ChartEventMap>(
