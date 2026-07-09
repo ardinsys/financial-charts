@@ -4,6 +4,8 @@ import {
   calculateStepSize as calculatePriceStepSize,
   calculateYAxisLabels as calculatePriceYAxisLabels
 } from "../scales/ticks/price-ticks";
+import type { ScaleProjectOptions } from "../scales/scale";
+import type { BarAlignment } from "../scales/time-scale";
 import {
   configurePositionedElement,
   createCanvasLayer,
@@ -11,7 +13,12 @@ import {
   resizeCanvasLayer
 } from "../utils/dom";
 import { pixelRatio } from "../utils/screen";
-import { DefaultIndicatorOptions, Indicator } from "./indicator";
+import {
+  DefaultIndicatorOptions,
+  Indicator,
+  type IndicatorDrawingContext,
+  type IndicatorPoint
+} from "./indicator";
 
 export interface InitParams {
   width: number;
@@ -20,6 +27,36 @@ export interface InitParams {
   x: number;
   devicePixelRatio: number;
   pane?: Pane;
+}
+
+export interface PaneledIndicatorDrawingContext extends Omit<
+  IndicatorDrawingContext,
+  | "ctx"
+  | "canvas"
+  | "priceScale"
+  | "scaleOptions"
+  | "projectTime"
+  | "projectPrice"
+  | "projectPoint"
+> {
+  ctx: CanvasRenderingContext2D;
+  axisCtx: CanvasRenderingContext2D;
+  canvas: HTMLCanvasElement;
+  axisCanvas: HTMLCanvasElement;
+  pane?: Pane;
+  scale: DataScaleModel;
+  priceScale: ReturnType<Pane["getPriceScale"]>;
+  scaleOptions: ScaleProjectOptions & { barAlignment: BarAlignment };
+  width: number;
+  height: number;
+  axisWidth: number;
+  projectTime(time: number, barAlignment?: BarAlignment): number;
+  projectPrice(value: number): number;
+  projectPoint(
+    time: number,
+    value: number,
+    barAlignment?: BarAlignment
+  ): IndicatorPoint;
 }
 
 export abstract class PaneledIndicator<
@@ -110,6 +147,14 @@ export abstract class PaneledIndicator<
 
   public abstract getCrosshairValue(time: number, relativeY: number): string;
 
+  public draw(): void {
+    this.initDrawing();
+    if (!this.visible) return;
+    this.drawPane(this.getPaneDrawingContext());
+  }
+
+  protected drawPane(_context: PaneledIndicatorDrawingContext): void {}
+
   protected initDrawing() {
     this.pane?.setPriceRange(this.scale.getYMin(), this.scale.getYMax());
 
@@ -129,6 +174,41 @@ export abstract class PaneledIndicator<
     }
 
     this.initYAxis();
+  }
+
+  protected getPaneDrawingContext(): PaneledIndicatorDrawingContext {
+    const base = this.getDrawingContext();
+    const canvas = this.canvas;
+    const paneRegion = this.pane?.getRegion();
+    const yAxisRegion = this.pane?.getYAxisRegion();
+    const timeScale = this.chart.getTimeScale();
+    const priceScale = this.pane?.getPriceScale() ?? this.chart.getPriceScale();
+    const scaleOptions = {
+      canvas,
+      barAlignment: "center" as const
+    };
+
+    return {
+      ...base,
+      ctx: this.context,
+      axisCtx: this.axisContext,
+      canvas,
+      axisCanvas: this.axisCanvas,
+      pane: this.pane,
+      scale: this.scale,
+      priceScale,
+      scaleOptions,
+      width: paneRegion?.width ?? this.width(),
+      height: paneRegion?.height ?? this.height(),
+      axisWidth: yAxisRegion?.width ?? this.axisCanvas.width / pixelRatio(),
+      projectTime: (time, barAlignment = "center") =>
+        timeScale.project(time, { canvas, barAlignment }),
+      projectPrice: (value) => priceScale.project(value, scaleOptions),
+      projectPoint: (time, value, barAlignment = "center") => ({
+        x: timeScale.project(time, { canvas, barAlignment }),
+        y: priceScale.project(value, scaleOptions)
+      })
+    };
   }
 
   private initYAxis() {

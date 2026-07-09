@@ -1,13 +1,22 @@
 import type { FinancialChart } from "../chart/financial-chart";
+import type { ChartData, TimeRange } from "../chart/types";
 import { mergeThemes } from "../chart/themes";
-import { TimeRange } from "../chart/types";
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
 import type {
   IndicatorLabelHandle,
   IndicatorLabelModel,
   IndicatorLabelSegment
 } from "../ui/chart-ui-adapter";
-import { ScaleRangeModifier } from "../scales/data-scale-model";
+import type { Formatter } from "../chart/formatter";
+import type { DeepConcrete } from "../chart/financial-chart";
+import type { ChartTheme } from "../chart/themes";
+import type {
+  DataScaleModel,
+  ScaleRangeModifier
+} from "../scales/data-scale-model";
+import type { PriceScale } from "../scales/price-scale";
+import type { ScaleProjectOptions } from "../scales/scale";
+import type { BarAlignment, TimeScale } from "../scales/time-scale";
 
 export type { IndicatorLabelSegment };
 
@@ -26,11 +35,39 @@ export interface IndicatorLabelContent {
   segments?: IndicatorLabelSegment[];
 }
 
+export interface IndicatorPoint {
+  x: number;
+  y: number;
+}
+
+export interface IndicatorDrawingContext {
+  chart: FinancialChart;
+  ctx: CanvasRenderingContext2D;
+  canvas: HTMLCanvasElement;
+  data: readonly ChartData[];
+  visibleData: readonly ChartData[];
+  visibleTimeRange: TimeRange;
+  visible: boolean;
+  stepSize: number;
+  timeScale: TimeScale;
+  priceScale: PriceScale;
+  visibleScale: DataScaleModel;
+  scaleOptions: ScaleProjectOptions & { barAlignment: BarAlignment };
+  formatter: Formatter;
+  theme: DeepConcrete<ChartTheme>;
+  projectTime(time: number, barAlignment?: BarAlignment): number;
+  projectPrice(value: number): number;
+  projectPoint(
+    time: number,
+    value: number,
+    barAlignment?: BarAlignment
+  ): IndicatorPoint;
+}
+
 export abstract class Indicator<
   TTheme extends object,
   TOptions extends DefaultIndicatorOptions
-> implements ChartPlugin
-{
+> implements ChartPlugin {
   protected themes!: Record<string, TTheme>;
   protected options!: TOptions;
   protected chart!: FinancialChart;
@@ -129,6 +166,41 @@ export abstract class Indicator<
   /** Re-render the label. Rebuilds the model from `getLabelContent`. */
   public updateLabel(dataTime?: number): void {
     this.labelHandle?.update(this.buildLabelModel(dataTime));
+  }
+
+  protected getDrawingContext(): IndicatorDrawingContext {
+    const ctx = this.chart.getContext("indicator");
+    const canvas = ctx.canvas;
+    const timeScale = this.chart.getTimeScale();
+    const priceScale = this.chart.getPriceScale();
+    const scaleOptions = {
+      canvas,
+      barAlignment: "center" as const
+    };
+
+    return {
+      chart: this.chart,
+      ctx,
+      canvas,
+      data: this.chart.getData(),
+      visibleData: this.chart.getLastVisibleDataPoints(),
+      visibleTimeRange: this.chart.getVisibleTimeRange(),
+      visible: this.visible,
+      stepSize: this.chart.getOptions().stepSize,
+      timeScale,
+      priceScale,
+      visibleScale: this.chart.getVisibleScale(),
+      scaleOptions,
+      formatter: this.chart.getFormatter(),
+      theme: this.chart.getTheme(),
+      projectTime: (time, barAlignment = "center") =>
+        timeScale.project(time, { canvas, barAlignment }),
+      projectPrice: (value) => priceScale.project(value, scaleOptions),
+      projectPoint: (time, value, barAlignment = "center") => ({
+        x: timeScale.project(time, { canvas, barAlignment }),
+        y: priceScale.project(value, scaleOptions)
+      })
+    };
   }
 
   public abstract getDefaultOptions(): TOptions;

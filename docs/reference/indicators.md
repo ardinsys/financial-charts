@@ -18,10 +18,11 @@ abstract class MyIndicator extends Indicator<MyTheme, MyOptions> {
     /* ... */
   }
   public draw(): void {
-    /* render using chart contexts */
+    const { ctx, data, projectPoint } = this.getDrawingContext();
+    /* render using ctx + projection helpers */
   }
-  public updateLabel(dataTime?: number): void {
-    /* sync label contents */
+  protected getLabelContent(dataTime?: number): IndicatorLabelContent {
+    /* return detail/value segments for the label */
   }
 }
 ```
@@ -47,7 +48,7 @@ The base class automatically wires the template buttons:
 
 - `attach(ctx)` is inherited from `Indicator` and calls `setChart(ctx.chart)`.
 - `setChart(chart)` is called when the indicator is attached. Use it to cache the reference and read `chart.getOptions()` if you need runtime information.
-- `draw()` runs on each indicator render pass. Use `chart.getContext("indicator")`, `chart.getTimeScale()`, and `chart.getPriceScale()` to map data to pixels.
+- `draw()` runs on each indicator render pass. Call `getDrawingContext()` to access the indicator canvas, data, visible data, visible range, scales, formatter/theme, and `projectTime` / `projectPrice` / `projectPoint` helpers without wiring canvas or scale plumbing yourself.
 - `updateLabel(dataTime?)` is invoked after renders and when locales or themes change. Update label text/values here.
 - `getModifier(visibleTimeRange)` lets you modify the price range. Return a `ScaleRangeModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).
 - `updateOptions(partial)` merges new options, requests a redraw, and re-renders the label.
@@ -71,11 +72,11 @@ abstract class MyPaneledIndicator extends PaneledIndicator<MyTheme, MyOptions> {
   public createScale(): DataScaleModel {
     /* setup scale model */
   }
-  public draw(): void {
-    /* draw using this.context */
+  protected drawPane(ctx: PaneledIndicatorDrawingContext): void {
+    /* draw only pane content; background/grid/Y axis are handled by the base */
   }
-  public updateLabel(): void {
-    /* optional */
+  protected getLabelContent(): IndicatorLabelContent {
+    /* return detail/value segments for the label */
   }
   public getCrosshairValue(time: number, relativeY: number): string {
     return "..."; // displayed next to the crosshair when hovering the panel
@@ -83,10 +84,10 @@ abstract class MyPaneledIndicator extends PaneledIndicator<MyTheme, MyOptions> {
 }
 ```
 
-- `init(params)` is handled by the chart and receives `{ width, height, x, y, devicePixelRatio, pane }`.
-- `resize(params)` is invoked whenever the parent chart resizes or the number of paneled indicators changes. Use it to recompute canvas sizes.
-- `initDrawing()` clears the panel, paints the background, and draws shared grid lines. Call it at the start of `draw()`.
-- `calculateYAxisLabels()` and `drawYAxis()` are helpers for rendering axis ticks through the pane's price scale.
+- `init(params)` and `resize(params)` are handled by the chart.
+- `draw()` is implemented by the base class. It clears the panel, paints the background, draws shared grid lines, syncs the pane price scale, draws the Y axis, and then calls `drawPane(context)` when the indicator is visible.
+- `drawPane(context)` receives the pane canvas context, axis context, pane, scale, price scale, dimensions, data, visible data, visible range, formatter/theme, and projection helpers.
+- Existing paneled indicators that override `draw()` still work; new indicators should prefer `drawPane(context)` to avoid canvas/axis boilerplate.
 
 ## Indicator events
 

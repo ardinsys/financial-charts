@@ -1,8 +1,10 @@
 import {
   DefaultIndicatorOptions,
   Indicator,
+  type IndicatorDrawingContext,
   type IndicatorLabelContent
 } from "../indicator";
+import type { ChartData, TimeRange } from "../../chart/types";
 
 export interface MovingAverageTheme {
   color: string;
@@ -69,74 +71,65 @@ export class MovingAverageIndicator extends Indicator<
   }
 
   public draw(): void {
-    const ctx = this.chart.getContext("indicator");
-    const visibleTimeRange = this.chart.getVisibleTimeRange();
-
+    const context = this.getDrawingContext();
+    const visibleDataPoints = this.getVisibleMovingAveragePoints(context);
     this.cache.clear();
 
-    const data = this.chart.getData(); // Assuming this returns the entire dataset
+    for (const point of visibleDataPoints) {
+      this.cache.set(point.time, point.movingAverage);
+    }
+
+    if (!context.visible) return;
+
+    context.ctx.beginPath();
+    context.ctx.strokeStyle = this.theme.color;
+    context.ctx.lineWidth = this.theme.strokeWidth;
+
+    visibleDataPoints.forEach((point, index) => {
+      const { x, y } = context.projectPoint(point.time, point.movingAverage);
+
+      if (index === 0) {
+        context.ctx.moveTo(x, y);
+      } else {
+        context.ctx.lineTo(x, y);
+      }
+    });
+
+    context.ctx.stroke();
+  }
+
+  private getVisibleMovingAveragePoints(context: IndicatorDrawingContext) {
+    return this.getMovingAveragePoints(context.data).filter((point) =>
+      this.isVisible(point.time, context.visibleTimeRange, context.stepSize)
+    );
+  }
+
+  private getMovingAveragePoints(data: readonly ChartData[]) {
+    const movingAveragePoints: Array<{
+      time: number;
+      movingAverage: number;
+    }> = [];
     let sum = 0;
-    let movingAveragePoints = [];
 
-    // Calculate the moving average for the entire dataset
     for (let i = 0; i < data.length; i++) {
-      if (data[i][this.options.source] === undefined) continue;
+      const value = data[i][this.options.source];
+      if (value === undefined) continue;
 
-      sum += data[i][this.options.source]!;
-      let divisor = Math.min(i + 1, this.options.period); // Determine the divisor, which is either the period or the number of points so far
-      const movingAverage = sum / divisor;
+      sum += value ?? 0;
       movingAveragePoints.push({
         time: data[i].time,
-        movingAverage: movingAverage
+        movingAverage: sum / Math.min(i + 1, this.options.period)
       });
 
-      // Once enough points are available, start removing the oldest data point from the sum
       if (i >= this.options.period - 1) {
-        sum -= data[i - this.options.period + 1][this.options.source]!;
+        sum -= data[i - this.options.period + 1][this.options.source] ?? 0;
       }
     }
 
-    // Filter the moving average points to only those visible
-    const visibleDataPoints = movingAveragePoints.filter((point) => {
-      return (
-        point.time >=
-          visibleTimeRange.start - this.chart.getOptions().stepSize &&
-        point.time < visibleTimeRange.end
-      );
-    });
+    return movingAveragePoints;
+  }
 
-    if (this.visible) {
-      // Setup drawing context
-      ctx.beginPath();
-
-      ctx.strokeStyle = this.theme.color;
-      ctx.lineWidth = this.theme.strokeWidth;
-
-      visibleDataPoints.forEach((point, index) => {
-        this.cache.set(point.time, point.movingAverage);
-
-        const scaleOptions = {
-          canvas: this.chart.getContext("main").canvas,
-          barAlignment: "center" as const
-        };
-        const x = this.chart.getTimeScale().project(point.time, scaleOptions);
-        const y = this.chart
-          .getPriceScale()
-          .project(point.movingAverage, scaleOptions);
-
-        // Move to the first point or draw line to subsequent points
-        if (index === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
-
-      ctx.stroke();
-    } else {
-      visibleDataPoints.forEach((point) => {
-        this.cache.set(point.time, point.movingAverage);
-      });
-    }
+  private isVisible(time: number, range: TimeRange, stepSize: number) {
+    return time >= range.start - stepSize && time < range.end;
   }
 }
