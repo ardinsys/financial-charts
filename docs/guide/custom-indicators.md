@@ -69,16 +69,17 @@ class LastPriceIndicator extends Indicator<LastPriceTheme, LastPriceOptions> {
     const points = this.collectVisibleValues(context);
     if (!context.visible || points.length === 0) return;
 
+    const first = points[0];
     const last = points.at(-1)!;
-    const size = this.chart.getLogicalCanvas("indicator");
-    const y = context.projectPrice(last.value);
+    const start = context.projectPoint(first.time, last.value);
+    const end = context.projectPoint(last.time, last.value);
 
     context.ctx.save();
     context.ctx.strokeStyle = this.theme.color;
     context.ctx.lineWidth = this.theme.lineWidth;
     context.ctx.beginPath();
-    context.ctx.moveTo(0, y);
-    context.ctx.lineTo(size.width, y);
+    context.ctx.moveTo(start.x, start.y);
+    context.ctx.lineTo(end.x, end.y);
     context.ctx.stroke();
     context.ctx.restore();
   }

@@ -1342,10 +1342,10 @@ export class FinancialChart extends EventEmitter {
 
   private applyLocalizationUpdate() {
     for (const indicator of this.indicators) {
-      indicator.updateLocale();
+      indicator.refreshLabel();
     }
     for (const indicator of this.panaledIndicators) {
-      indicator.updateLocale();
+      indicator.refreshLabel();
     }
 
     this.requestRedraw(this.allRedrawParts);
@@ -1876,13 +1876,13 @@ export class FinancialChart extends EventEmitter {
       this.recalcPaneledIndicators();
 
       this.requestRedraw(this.allRedrawParts);
-      indicator.updateLabel();
+      indicator.refreshLabel();
     } else {
       this.indicators.push(indicator);
       indicator.attach(this.createChartContext());
       this.requestRedraw(this.allRedrawParts);
       this.indicatorLabelContainer.appendChild(indicator.getLabelContainer());
-      indicator.updateLabel();
+      indicator.refreshLabel();
     }
   }
 
@@ -2151,10 +2151,10 @@ export class FinancialChart extends EventEmitter {
     }
 
     for (const indicator of this.panaledIndicators) {
-      indicator.updateLabel(this.pointerTime);
+      indicator.refreshLabel(this.pointerTime);
     }
     for (const indicator of this.indicators) {
-      indicator.updateLabel(this.pointerTime);
+      indicator.refreshLabel(this.pointerTime);
     }
   }
 

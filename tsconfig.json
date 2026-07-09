@@ -6,6 +6,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "useDefineForClassFields": true,
     "declaration": true,
+    "stripInternal": true,
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,

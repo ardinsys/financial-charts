@@ -24,17 +24,17 @@ What to update:
 ### Visible range and pan/zoom are range-model driven
 
 The chart internally tracks a fractional visible index range. Public helpers such
-as `getVisibleTimeRange()` still return timestamps, but `getZoomLevel()` is now
-derived from the visible index span and `getPanOffset()` is retained only as a
-compatibility value.
+as `getVisibleTimeRange()` still return timestamps, and
+`getVisibleLogicalRange()` exposes the underlying bar-index window when you need
+to persist or inspect index-space view state.
 
 What to update:
 
 - Prefer `getVisibleTimeRange()` for UI state.
 - Use `updateCoreOptions(range, stepSize, maxZoom)` when changing symbol,
   timeframe, or base range.
-- Avoid persisting old zoom/pan scalar values from v0.9; persist the data range
-  or application-level view state instead.
+- Avoid persisting old zoom/pan scalar values from v0.9; persist the data range,
+  `getVisibleTimeRange()`, or `getVisibleLogicalRange()` depending on your UI.
 
 ### Render invalidation uses named layers
 
@@ -91,6 +91,12 @@ What to update:
 - For custom paneled indicators, implement `createScale()`, `drawPane()`,
   `getLabelContent()`, and `getCrosshairValue()` so the base class can own pane
   layout, canvas sizing, background, grid, and Y-axis drawing.
+- Do not call `indicator.setChart(chart)` directly; that public hook was removed.
+  The inherited `attach(ctx)` lifecycle now stores the chart context and creates
+  labels.
+- Downstream indicator packages, including `commons-js` indicators, should move
+  old `updateLabel()` DOM writes into `getLabelContent()` and return
+  `{ detail, segments }`.
 - Use `getModifier(visibleTimeRange)` to contribute to price auto-ranging.
 
 ### Paneled indicators are pane-backed
@@ -139,6 +145,8 @@ Built-in tools include `TrendLine`, `HorizontalLine`, `RectangleDrawing`, and
 
 Drawings persist through `manager.toJSON()` and `manager.fromJSON(snapshot)`.
 Storage itself is application-owned.
+Register custom drawing deserializers on each `DrawingManager` instance; drawing
+deserializers are not global.
 
 ### Controller registration is instance-scoped
 
@@ -200,8 +208,8 @@ protected getLabelContent(dataTime?: number): IndicatorLabelContent {
 ```
 
 The base `Indicator` builds an `IndicatorLabelModel` (name from localized
-`names`, actions, visibility) and hands it to the adapter; `updateLabel()` is now
-concrete. Multi-color values (Bollinger, MACD) are expressed as multiple
+`names`, actions, visibility) and hands it to the adapter. Multi-color values
+(Bollinger, MACD) are expressed as multiple
 `segments`. This is what lets DOM adapters render labels using app-owned
 markup, styling, or framework components.
 

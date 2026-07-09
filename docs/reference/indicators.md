@@ -46,8 +46,7 @@ The default adapter renders and wires:
 
 ### Lifecycle hooks
 
-- `attach(ctx)` is inherited from `Indicator` and calls `setChart(ctx.chart)`.
-- `setChart(chart)` is called when the indicator is attached. Use it to cache the reference and read `chart.getOptions()` if you need runtime information.
+- `attach(ctx)` is inherited from `Indicator`; the base class stores the chart context and creates the adapter-rendered label.
 - `draw()` runs on each indicator render pass. Call `getDrawingContext()` to access the indicator canvas, data, visible data, visible range, scales, formatter/theme, and `projectTime` / `projectPrice` / `projectPoint` helpers without wiring canvas or scale plumbing yourself.
 - `getLabelContent(dataTime?)` is invoked after renders and when locales or themes change. Return label detail text and optional value segments here; the base class updates the adapter-rendered label.
 - `getModifier(visibleTimeRange)` lets you modify the price range. Return a `ScaleRangeModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).

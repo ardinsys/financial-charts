@@ -1,4 +1,5 @@
 export * from "./chart/financial-chart";
+export * from "./chart/event-emitter";
 export * from "./chart/formatter";
 export * from "./chart/themes";
 export * from "./chart/types";

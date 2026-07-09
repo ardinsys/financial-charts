@@ -91,13 +91,9 @@ export abstract class Indicator<
 
   public attach(ctx: ChartContext): void {
     this.chartContext = ctx;
-    this.setChart(ctx.chart);
-  }
-
-  public setChart(chart: FinancialChart): void {
     this.labelHandle?.destroy();
-    this.chart = chart;
-    this.theme = this.themes[chart.getOptions().theme.key];
+    this.chart = ctx.chart;
+    this.theme = this.themes[ctx.chart.getOptions().theme.key];
 
     this.labelHandle = this.chartContext.domAdapter.createIndicatorLabel(
       this.buildLabelModel(),
@@ -159,12 +155,8 @@ export abstract class Indicator<
     return null;
   }
 
-  public updateLocale() {
-    this.updateLabel();
-  }
-
-  /** Re-render the label. Rebuilds the model from `getLabelContent`. */
-  public updateLabel(dataTime?: number): void {
+  /** @internal Re-render the adapter label from `getLabelContent`. */
+  public refreshLabel(dataTime?: number): void {
     this.labelHandle?.update(this.buildLabelModel(dataTime));
   }
 
@@ -218,7 +210,7 @@ export abstract class Indicator<
     this.options = mergeThemes(this.options, options);
     if (!this.chart) return;
     this.chart.requestRedraw(["indicators", "crosshair", "controller"]);
-    this.updateLabel();
+    this.refreshLabel();
   }
 
   public getLabelContainer(): HTMLElement {
