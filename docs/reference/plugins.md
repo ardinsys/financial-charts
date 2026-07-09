@@ -57,6 +57,8 @@ chart.addPlugin(new WatermarkPlugin());
 | `on(event, listener)`             | Subscribes to chart events and returns an unsubscribe function.                                                |
 | `onRenderStage(stage, callback)`  | Registers a render-pipeline hook.                                                                              |
 | `requestRedraw(part, immediate?)` | Schedules one or more redraw parts.                                                                            |
+| `setCrosshair(options)`           | Sets the native crosshair from plugin code and returns the resolved state.                                     |
+| `clearCrosshair()`                | Clears the native crosshair and pointer-aware indicator labels.                                                |
 
 ## Render stages and redraw parts
 
@@ -65,6 +67,10 @@ Render stages run in this order:
 `beforeDraw -> grid -> axes -> series -> indicators -> drawings -> crosshair -> afterDraw`
 
 Redraw parts are layer-oriented: `grid`, `axes`, `series`, `indicators`, `drawings`, `crosshair`, and the compatibility alias `controller` for `grid` + `axes` + `series`.
+
+Register a hook on `series` when a plugin should draw immediately above the
+active controller but below indicators, drawings, and crosshair. This is useful
+for comparison-series overlays that have their own data stream.
 
 ## Pointer events
 

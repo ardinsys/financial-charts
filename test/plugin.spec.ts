@@ -173,6 +173,49 @@ describe("plugin lifecycle", () => {
     unsubscribe();
   });
 
+  it("lets plugins drive the native crosshair state", () => {
+    const { chart, data } = createChart();
+    let attachedContext: Parameters<ChartPlugin["attach"]>[0] | undefined;
+    const plugin: ChartPlugin = {
+      key: "crosshair-probe",
+      attach: (ctx) => {
+        attachedContext = ctx;
+      }
+    };
+    const internals = chart as unknown as {
+      crosshairDataPoint: ChartData | null;
+      isProgrammaticCrosshair: boolean;
+      pointerTime: number;
+      pointerY: number;
+    };
+
+    chart.draw(data);
+    chart.addPlugin(plugin);
+
+    const state = attachedContext?.setCrosshair({
+      time: data[1].time + 10_000
+    });
+
+    expect(state).toEqual(
+      expect.objectContaining({
+        time: data[1].time,
+        dataPoint: data[1],
+        pane: chart.getMainPane()
+      })
+    );
+    expect(internals.crosshairDataPoint).toEqual(data[1]);
+    expect(internals.pointerTime).toBe(data[1].time);
+    expect(internals.pointerY).toBeGreaterThan(0);
+    expect(internals.isProgrammaticCrosshair).toBe(true);
+
+    attachedContext?.clearCrosshair();
+
+    expect(internals.crosshairDataPoint).toBeNull();
+    expect(internals.pointerTime).toBe(-1);
+    expect(internals.pointerY).toBe(-1);
+    expect(internals.isProgrammaticCrosshair).toBe(false);
+  });
+
   it("detaches indicator label listeners when indicators are removed", () => {
     const { chart, data } = createChart();
     chart.draw(data);

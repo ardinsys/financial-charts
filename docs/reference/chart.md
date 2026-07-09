@@ -142,6 +142,15 @@ type LocaleValues = {
 | `updateCoreOptions(range, stepSize, maxZoom)` | Rebuilds the internal state with new core settings. Resets zoom/pan because data is remapped.     |
 | `updateLocalization(options)`                 | Changes locale, timezone, formatter, and/or localized UI strings in one redraw.                   |
 | `updateLocale(locale, values?)`               | Compatibility shorthand for `updateLocalization({ locale, localeValues: values })`.               |
+| `setCrosshair(options)`                       | Sets the native crosshair to the nearest visible data point for a timestamp.                      |
+| `clearCrosshair()`                            | Clears the native crosshair and resets pointer-aware indicator labels.                            |
+
+`setCrosshair({ time, y?, price?, paneId? })` is intended for synchronized
+charts and other external pointer controllers. It resolves `time` against the
+target chart's own data, so charts can have different tick sizes. Pass `y` for a
+chart-relative logical Y coordinate, or pass `price`/`paneId` to project a pane
+price on the target chart. It returns the resolved crosshair state, or
+`undefined` when the requested time is not visible on the target chart.
 
 ### Extension registration
 
@@ -202,6 +211,11 @@ Register render hooks with `ctx.onRenderStage(stage, callback)` when you need a
 specific stage. Stages run in this order:
 
 `beforeDraw → grid → axes → series → indicators → drawings → crosshair → afterDraw`
+
+Hooks registered for `series` run after the active controller's series draw and
+before indicators, drawings, and crosshair. That is the right layer for
+comparison-series plugins that should sit above the main controller but below
+everything else.
 
 ### Lifecycle
 

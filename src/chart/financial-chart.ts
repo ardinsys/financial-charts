@@ -152,6 +152,24 @@ export type PaneHeightsInput =
   | Partial<Record<number, number>>
   | readonly number[];
 
+export interface ChartCrosshairOptions {
+  /** Timestamp to resolve on the target chart. The nearest data point is used. */
+  time: number;
+  /** Chart-relative logical Y coordinate. */
+  y?: number;
+  /** Price to project inside the target pane when `y` is omitted. */
+  price?: number;
+  /** Target pane id. Defaults to the main pane. */
+  paneId?: number;
+}
+
+export interface ChartCrosshairState {
+  time: number;
+  y: number;
+  pane: Pane;
+  dataPoint: ChartData;
+}
+
 type PaneResizeDrag = {
   dividerIndex: number;
   startClientY: number;
@@ -223,6 +241,7 @@ export class FinancialChart extends EventEmitter {
   protected crosshairDataPoint: ChartData | null = null;
   protected pointerY = -1;
   protected pointerPane: Pane = this.mainPane;
+  private isProgrammaticCrosshair = false;
 
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
@@ -589,7 +608,9 @@ export class FinancialChart extends EventEmitter {
       getVisibleTimeRange: () => this.getVisibleTimeRange(),
       on: (event, listener) => this.on(event, listener),
       onRenderStage: (stage, callback) => this.onRenderStage(stage, callback),
-      requestRedraw: (part, immediate) => this.requestRedraw(part, immediate)
+      requestRedraw: (part, immediate) => this.requestRedraw(part, immediate),
+      setCrosshair: (options) => this.setCrosshair(options),
+      clearCrosshair: () => this.clearCrosshair()
     };
   }
 
@@ -997,6 +1018,82 @@ export class FinancialChart extends EventEmitter {
     return this.panes.find((pane) => pane.containsY(y));
   }
 
+  private getPaneById(id?: number) {
+    if (id === undefined) return this.mainPane;
+    return this.panes.find((pane) => pane.getId() === id) ?? this.mainPane;
+  }
+
+  private clearCrosshairState() {
+    this.pointerTime = -1;
+    this.crosshairDataPoint = null;
+    this.pointerY = -1;
+    this.pointerPane = this.mainPane;
+    this.isProgrammaticCrosshair = false;
+  }
+
+  private refreshIndicatorLabels(dataTime?: number) {
+    for (const indicator of this.panaledIndicators) {
+      indicator.refreshLabel(dataTime);
+    }
+    for (const indicator of this.indicators) {
+      indicator.refreshLabel(dataTime);
+    }
+  }
+
+  private getCrosshairDefaultPrice(point: ChartData) {
+    return point.close ?? point.open ?? point.high ?? point.low;
+  }
+
+  private resolveCrosshairY(
+    options: ChartCrosshairOptions,
+    pane: Pane,
+    point: ChartData
+  ) {
+    const plotHeight = this.container.offsetHeight - this.xLabelHeight;
+    if (options.y !== undefined) {
+      return Math.max(0, Math.min(options.y, plotHeight));
+    }
+
+    const region = pane.getRegion();
+    const price = options.price ?? this.getCrosshairDefaultPrice(point);
+    if (price === undefined || price === null) {
+      return region.y + region.height / 2;
+    }
+
+    return (
+      region.y +
+      pane.getPriceScale().project(price, {
+        canvas: { width: region.width, height: region.height }
+      })
+    );
+  }
+
+  private resolveCrosshairState(
+    options: ChartCrosshairOptions
+  ): ChartCrosshairState | undefined {
+    const index = this.dataStore.nearestIndex(options.time);
+    if (index === -1) return undefined;
+
+    const dataPoint = this.dataStore.get(index);
+    if (!dataPoint) return undefined;
+
+    const x = this.getTimeScale().project(dataPoint.time, {
+      canvas: this.getContext("main").canvas,
+      barAlignment: "center"
+    });
+    if (x < 0 || x > this.getDrawingSize().width) return undefined;
+
+    const pane = this.getPaneById(options.paneId);
+    const y = this.resolveCrosshairY(options, pane, dataPoint);
+
+    return {
+      time: dataPoint.time,
+      y,
+      pane,
+      dataPoint
+    };
+  }
+
   private configureRenderPipeline() {
     this.renderPipeline.addHook("beforeDraw", () => this.beforeDrawPlugins());
     this.renderPipeline.addHook("grid", () => this.prepareControllerDraw());
@@ -1142,12 +1239,7 @@ export class FinancialChart extends EventEmitter {
         this.lastPointerPosition = undefined;
         this.lastTouchDistance = undefined;
         this.isPanning = false;
-        requestAnimationFrame(() => {
-          this.pointerTime = -1;
-          this.pointerY = -1;
-          this.pointerPane = this.mainPane;
-          this.drawCrosshair();
-        });
+        requestAnimationFrame(() => this.clearCrosshair());
       })
     );
 
@@ -1293,9 +1385,7 @@ export class FinancialChart extends EventEmitter {
     this.visibleIndexRange = { from: 0, to: 1 };
     this.indexBounds = { from: 0, to: 1 };
     this.isPanning = false;
-    this.pointerTime = -1;
-    this.pointerY = -1;
-    this.pointerPane = this.mainPane;
+    this.clearCrosshairState();
     this.lastTouchDistance = undefined;
     this.lastPointerPosition = undefined;
     this.isTouchCrosshair = false;
@@ -1523,10 +1613,7 @@ export class FinancialChart extends EventEmitter {
         } else {
           this.lastPointerPosition = undefined;
           this.lastTouchDistance = undefined;
-          this.pointerY = -1;
-          this.pointerTime = -1;
-          this.pointerPane = this.mainPane;
-          this.requestRedraw("crosshair");
+          this.clearCrosshair();
         }
       }, 500);
     } else if (event.touches.length === 2) {
@@ -1919,6 +2006,31 @@ export class FinancialChart extends EventEmitter {
     }
   }
 
+  public setCrosshair(
+    options: ChartCrosshairOptions
+  ): ChartCrosshairState | undefined {
+    const state = this.resolveCrosshairState(options);
+    if (!state) {
+      this.clearCrosshair();
+      return undefined;
+    }
+
+    this.crosshairDataPoint = state.dataPoint;
+    this.pointerTime = state.time;
+    this.pointerY = state.y;
+    this.pointerPane = state.pane;
+    this.isProgrammaticCrosshair = true;
+    this.requestRedraw("crosshair");
+
+    return state;
+  }
+
+  public clearCrosshair(): void {
+    this.clearCrosshairState();
+    this.refreshIndicatorLabels();
+    this.requestRedraw("crosshair");
+  }
+
   protected pointerMove(e: { x: number; y: number }) {
     if (this.isTouchCapable && !this.isTouchCrosshair) return;
     const rawPoint = this.visibleScale.pixelToPoint(
@@ -1935,6 +2047,7 @@ export class FinancialChart extends EventEmitter {
       this.container.offsetHeight - this.xLabelHeight
     );
     this.pointerPane = this.getPaneAtY(this.pointerY) ?? this.mainPane;
+    this.isProgrammaticCrosshair = false;
     this.notifyPluginsPointer({
       type: "move",
       x: e.x,
@@ -2012,7 +2125,13 @@ export class FinancialChart extends EventEmitter {
 
     if (this.pointerTime === -1) return;
     if (this.pointerY === -1) return;
-    if (this.isTouchCapable && !this.isTouchCrosshair) return;
+    if (
+      this.isTouchCapable &&
+      !this.isTouchCrosshair &&
+      !this.isProgrammaticCrosshair
+    ) {
+      return;
+    }
 
     if (this.pointerY >= this.container.offsetHeight - this.xLabelHeight) {
       this.getContext("crosshair").clearRect(0, 0, sizes.width, sizes.height);
@@ -2150,12 +2269,7 @@ export class FinancialChart extends EventEmitter {
       ohlcTextX += valueWidth + spacing;
     }
 
-    for (const indicator of this.panaledIndicators) {
-      indicator.refreshLabel(this.pointerTime);
-    }
-    for (const indicator of this.indicators) {
-      indicator.refreshLabel(this.pointerTime);
-    }
+    this.refreshIndicatorLabels(this.pointerTime);
   }
 
   /**

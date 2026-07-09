@@ -1,5 +1,7 @@
 import type {
   ChartCanvasLayer,
+  ChartCrosshairOptions,
+  ChartCrosshairState,
   ChartRedrawPart,
   FinancialChart
 } from "../chart/financial-chart";
@@ -41,6 +43,8 @@ export interface ChartContext {
     part: ChartRedrawPart | ReadonlyArray<ChartRedrawPart>,
     immediate?: boolean
   ): void;
+  setCrosshair(options: ChartCrosshairOptions): ChartCrosshairState | undefined;
+  clearCrosshair(): void;
 }
 
 export interface ChartPlugin extends Drawable {

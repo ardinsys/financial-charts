@@ -30,6 +30,7 @@ chart.updateCoreOptions(
 - **Volume overlay:** toggle with `setVolumeDraw(true | false)`.
 - **Theme/localization:** call `updateTheme` or `updateLocalization` whenever user preferences change.
 - **Drawings:** attach `DrawingManager` and choose a drawing factory. See [Drawing tools](/guide/drawing-tools).
+- **Synced crosshair:** call `setCrosshair({ time })` on peer charts and `clearCrosshair()` when the source pointer leaves.
 
 ## Controllers, indicators, and plugins
 
@@ -45,6 +46,10 @@ chart.requestRedraw(["series", "indicators", "drawings"]);
 ```
 
 Use `"controller"` when you want to redraw the grid, axes, and main series together.
+
+Plugins that draw a comparison series above the active controller can register a
+`series` render-stage hook and request `"series"` redraws when their secondary
+dataset changes.
 
 ## Events
 
