@@ -170,6 +170,8 @@ after construction. Registrations are not shared between charts.
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `getVisibleTimeRange()`                                             | Returns `{ start, end }` for the currently visible index window, mapped back to timestamps. |
 | `setVisibleTimeRange(range)`                                        | Sets the visible window by timestamp range and redraws view layers.                         |
+| `getVisibleTimeWindow()`                                            | Returns the precise fractional visible timestamp window used for pan/zoom replication.      |
+| `setVisibleTimeWindow(range)`                                       | Sets the precise fractional visible timestamp window and redraws view layers.               |
 | `setVisibleIndexRange(range)`                                       | Sets the visible window directly in logical index units.                                    |
 | `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
 | `getOptions()`                                                      | Gives access to the current `ChartOptions` object (after merges).                           |

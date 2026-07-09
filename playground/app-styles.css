@@ -149,7 +149,9 @@ button {
 .workspace {
   display: grid;
   grid-template-rows: 44px minmax(0, 1fr);
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .topbar {
@@ -227,9 +229,74 @@ button {
   color: #f8fafc;
 }
 
+.layout-switch {
+  background: #0f131c;
+  border: 1px solid #2a2e39;
+  border-radius: 6px;
+  display: inline-flex;
+  height: 30px;
+  overflow: hidden;
+}
+
+.layout-switch__button {
+  background: transparent;
+  border: 0;
+  border-left: 1px solid #2a2e39;
+  color: #9aa4b2;
+  min-width: 38px;
+  padding: 0 9px;
+}
+
+.layout-switch__button:first-child {
+  border-left: 0;
+}
+
+.layout-switch__button:hover {
+  background: #202636;
+  color: #d1d4dc;
+}
+
+.layout-switch__button.active {
+  background: rgba(41, 98, 255, 0.18);
+  color: #f8fafc;
+}
+
+.stress-count-control {
+  align-items: center;
+  background: #171c27;
+  border: 1px solid #2a2e39;
+  border-radius: 6px;
+  color: #9aa4b2;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 6px;
+  height: 30px;
+  padding: 0 7px;
+}
+
+.stress-count-control input {
+  background: #0f131c;
+  border: 1px solid #2a2e39;
+  border-radius: 4px;
+  color: #f8fafc;
+  height: 22px;
+  padding: 0 4px;
+  width: 48px;
+}
+
+.stress-count-control span:last-child {
+  color: #d1d4dc;
+  font:
+    600 12px/1 Roboto Mono,
+    monospace;
+  min-width: 22px;
+  text-align: right;
+}
+
 .chart-stage {
   background: #131722;
   display: grid;
+  height: 100%;
   min-height: 0;
   min-width: 0;
   position: relative;
@@ -240,6 +307,16 @@ button {
   gap: 1px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+.chart-stage--stress {
+  align-content: start;
+  background: #0f131c;
+  column-gap: 8px;
+  grid-template-columns: minmax(360px, 1fr) 34px minmax(360px, 1fr);
+  overflow: auto;
+  padding: 8px;
+  row-gap: 0;
 }
 
 .chart-cell {
@@ -255,6 +332,61 @@ button {
   overflow: hidden;
   position: relative;
   width: 100%;
+}
+
+.chart-cell--stress {
+  border: 1px solid #242833;
+  height: 220px;
+  margin-top: 8px;
+}
+
+.stress-column {
+  min-width: 0;
+}
+
+.stress-column--primary {
+  grid-column: 1;
+}
+
+.stress-column--comparison {
+  grid-column: 3;
+}
+
+.stress-column-header {
+  align-items: center;
+  background: rgba(19, 23, 34, 0.96);
+  border: 1px solid #242833;
+  color: #9aa4b2;
+  display: flex;
+  font-size: 11px;
+  gap: 8px;
+  height: 28px;
+  justify-content: space-between;
+  padding: 0 8px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.stress-column-header strong {
+  color: #f8fafc;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.stress-scroll-gutter {
+  align-self: start;
+  background:
+    linear-gradient(180deg, rgba(41, 98, 255, 0.22), rgba(34, 171, 148, 0.18)),
+    #131722;
+  border: 1px solid #242833;
+  border-radius: 6px;
+  grid-column: 2;
+  grid-row: 1;
+  height: calc(100vh - 64px);
+  min-height: 260px;
+  position: sticky;
+  top: 8px;
 }
 
 .chart-host .financial-indicator .fci-actions {

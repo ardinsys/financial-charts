@@ -117,6 +117,75 @@ function createSyncedChart(group: string) {
   return { chart, data, drawingManager, syncPlugin };
 }
 
+function createSyncedChartWithDeferredData(group: string) {
+  const data = createData();
+  const container = document.createElement("div");
+  container.style.width = "800px";
+  container.style.height = "400px";
+  document.body.appendChild(container);
+
+  const chart = new FinancialChart(
+    container,
+    {
+      start: data[0].time,
+      end: data.at(-1)!.time + 60_000
+    },
+    {
+      type: "line",
+      controllers: [LineController],
+      stepSize: 60_000,
+      maxZoom: 10,
+      volume: false,
+      locale: "en-US"
+    }
+  );
+  const drawingManager = new DrawingManager();
+  const syncPlugin = new ChartSyncPlugin({ group, drawingManager });
+  chart.addPlugin(drawingManager);
+  chart.addPlugin(syncPlugin);
+  charts.push(chart);
+
+  return { chart, data, drawingManager, syncPlugin };
+}
+
+function createDeferredChartWithSync(
+  group: string,
+  syncOptions: ConstructorParameters<typeof ChartSyncPlugin>[0] = {}
+) {
+  const data = createData();
+  const container = document.createElement("div");
+  container.style.width = "800px";
+  container.style.height = "400px";
+  document.body.appendChild(container);
+
+  const chart = new FinancialChart(
+    container,
+    {
+      start: data[0].time,
+      end: data.at(-1)!.time + 60_000
+    },
+    {
+      type: "line",
+      controllers: [LineController],
+      stepSize: 60_000,
+      maxZoom: 10,
+      volume: false,
+      locale: "en-US"
+    }
+  );
+  const drawingManager = new DrawingManager();
+  const syncPlugin = new ChartSyncPlugin({
+    ...syncOptions,
+    group,
+    drawingManager
+  });
+  chart.addPlugin(drawingManager);
+  chart.addPlugin(syncPlugin);
+  charts.push(chart);
+
+  return { chart, data, drawingManager, syncPlugin };
+}
+
 function createGroup() {
   groupId += 1;
   return `sync-test-${groupId}`;
@@ -154,6 +223,145 @@ describe("ChartSyncPlugin", () => {
     expect(target.chart.getVisibleTimeRange()).toEqual(
       source.chart.getVisibleTimeRange()
     );
+  });
+
+  it("preserves fractional visible windows while panning", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group);
+
+    source.chart.setVisibleIndexRange({ from: 0.35, to: 2.35 });
+
+    const sourceLogical = source.chart.getVisibleLogicalRange();
+    const targetLogical = target.chart.getVisibleLogicalRange();
+    const sourceWindow = source.chart.getVisibleTimeWindow();
+    const targetWindow = target.chart.getVisibleTimeWindow();
+
+    expect(targetLogical.from).toBeCloseTo(sourceLogical.from, 10);
+    expect(targetLogical.to).toBeCloseTo(sourceLogical.to, 10);
+    expect(targetLogical.to - targetLogical.from).toBeCloseTo(
+      sourceLogical.to - sourceLogical.from,
+      10
+    );
+    expect(targetWindow.start).toBeCloseTo(sourceWindow.start, 5);
+    expect(targetWindow.end).toBeCloseTo(sourceWindow.end, 5);
+  });
+
+  it("applies initial state when a freshly mounted chart receives data after sync attach", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const sourceDrawing = new TrendLine({
+      anchors: [
+        { index: 0, price: 10 },
+        { index: 2, price: 14 }
+      ],
+      id: "deferred-data-trend",
+      paneId: source.chart.getMainPane().getId()
+    });
+    const sourceIndicator = new CustomMovingAverageIndicator(null, {
+      key: "deferred-data-sma",
+      names: { default: "Deferred Data SMA" },
+      period: 7,
+      source: "close"
+    });
+
+    source.chart.setVisibleTimeRange({
+      start: source.data[1].time,
+      end: source.data[2].time + 60_000
+    });
+    source.drawingManager.addDrawing(sourceDrawing);
+    source.chart.emit("drawing-create", { drawing: sourceDrawing });
+    source.chart.addIndicator(sourceIndicator);
+    source.chart.setCrosshair({
+      time: source.data[2].time,
+      price: source.data[2].close ?? undefined
+    });
+
+    const target = createSyncedChartWithDeferredData(group);
+
+    expect(target.chart.getData()).toEqual([]);
+    expect(target.drawingManager.getDrawings()).toEqual([]);
+
+    target.chart.draw(target.data);
+
+    expect(target.chart.getVisibleTimeRange()).toEqual(
+      source.chart.getVisibleTimeRange()
+    );
+    expect(target.drawingManager.getDrawings()[0]?.id).toBe(
+      "deferred-data-trend"
+    );
+    expect(target.chart.getIndicators()[0]).toBeInstanceOf(
+      CustomMovingAverageIndicator
+    );
+    expect(target.chart.getIndicators()[0]?.getOptions().period).toBe(7);
+    expect(target.chart.getCrosshairState()?.time).toBe(source.data[2].time);
+  });
+
+  it("retains group state when every chart unmounts before a fresh chart mounts", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const sourceDrawing = new TrendLine({
+      anchors: [
+        { index: 0, price: 10 },
+        { index: 2, price: 14 }
+      ],
+      id: "retained-trend",
+      paneId: source.chart.getMainPane().getId()
+    });
+    const sourceIndicator = new CustomMovingAverageIndicator(null, {
+      key: "retained-sma",
+      names: { default: "Retained SMA" },
+      period: 13,
+      source: "close"
+    });
+
+    source.chart.setVisibleTimeRange({
+      start: source.data[1].time,
+      end: source.data[2].time + 60_000
+    });
+    source.drawingManager.addDrawing(sourceDrawing);
+    source.chart.emit("drawing-create", { drawing: sourceDrawing });
+    source.chart.addIndicator(sourceIndicator);
+    source.chart.setCrosshair({
+      time: source.data[2].time,
+      price: source.data[2].close ?? undefined
+    });
+
+    const retainedVisibleRange = source.chart.getVisibleTimeRange();
+    source.chart.dispose();
+    charts.splice(charts.indexOf(source.chart), 1);
+
+    expect(getSyncGroupSize(group)).toBe(0);
+
+    const target = createSyncedChartWithDeferredData(group);
+    target.chart.draw(target.data);
+
+    expect(target.chart.getVisibleTimeRange()).toEqual(retainedVisibleRange);
+    expect(target.drawingManager.getDrawings()[0]?.id).toBe("retained-trend");
+    expect(target.chart.getIndicators()[0]).toBeInstanceOf(
+      CustomMovingAverageIndicator
+    );
+    expect(target.chart.getIndicators()[0]?.getOptions().period).toBe(13);
+    expect(target.chart.getCrosshairState()?.time).toBe(source.data[2].time);
+  });
+
+  it("does not defer initial sync when initialSync is disabled", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+
+    source.chart.addIndicator(
+      new CustomMovingAverageIndicator(null, {
+        key: "initial-sync-disabled-sma",
+        names: { default: "Disabled Initial Sync SMA" },
+        period: 11,
+        source: "close"
+      })
+    );
+
+    const target = createDeferredChartWithSync(group, { initialSync: false });
+    target.chart.draw(target.data);
+
+    expect(target.chart.getIndicators()).toEqual([]);
   });
 
   it("syncs crosshair changes and clears", () => {

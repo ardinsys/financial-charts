@@ -39,6 +39,7 @@ export interface ChartContext {
     key: string
   ): TPlugin | undefined;
   getPlugins(): ChartPlugin[];
+  getVisibleTimeWindow(): TimeRange;
   getVisibleTimeRange(): TimeRange;
   on<K extends keyof ChartEventMap>(
     event: K,

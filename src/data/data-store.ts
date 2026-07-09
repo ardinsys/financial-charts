@@ -96,6 +96,59 @@ export class DataStore {
     };
   }
 
+  logicalIndexForTime(time: number, stepSize: number) {
+    const extrapolationStep = Math.max(stepSize, Number.EPSILON);
+    if (this.data.length === 0) return 0;
+
+    const first = this.data[0];
+    const lastIndex = this.data.length - 1;
+    const last = this.data[lastIndex];
+
+    if (time <= first.time) {
+      return (time - first.time) / extrapolationStep;
+    }
+    if (time >= last.time) {
+      return lastIndex + (time - last.time) / extrapolationStep;
+    }
+
+    const nextIndex = this.lowerBound(time);
+    if (this.data[nextIndex]?.time === time) return nextIndex;
+
+    const previousIndex = Math.max(0, nextIndex - 1);
+    const previous = this.data[previousIndex];
+    const next = this.data[nextIndex];
+    const span = Math.max(next.time - previous.time, Number.EPSILON);
+
+    return previousIndex + (time - previous.time) / span;
+  }
+
+  timeAtLogicalIndex(index: number, stepSize: number) {
+    const extrapolationStep = Math.max(stepSize, Number.EPSILON);
+    if (this.data.length === 0) return index * extrapolationStep;
+
+    const first = this.data[0];
+    const lastIndex = this.data.length - 1;
+    const last = this.data[lastIndex];
+
+    if (index <= 0) {
+      return first.time + index * extrapolationStep;
+    }
+    if (index >= lastIndex) {
+      return last.time + (index - lastIndex) * extrapolationStep;
+    }
+
+    const previousIndex = Math.floor(index);
+    const nextIndex = Math.ceil(index);
+    if (previousIndex === nextIndex) return this.data[previousIndex].time;
+
+    const previous = this.data[previousIndex];
+    const next = this.data[nextIndex];
+
+    return (
+      previous.time + (next.time - previous.time) * (index - previousIndex)
+    );
+  }
+
   static merge(data: ChartData[], stepSize: number): ChartData[] {
     const store = new DataStore();
     for (const point of data) {

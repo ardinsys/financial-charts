@@ -448,6 +448,10 @@ export class FinancialChart extends EventEmitter {
     return Math.max(this.visibleIndexRange.to - this.visibleIndexRange.from, 1);
   }
 
+  private getBarAlignmentOffset() {
+    return this.controller.getBarAlignment() === "center" ? 0.5 : 0;
+  }
+
   getPixelsPerBar() {
     return this.getDrawingSize().width / this.getVisibleIndexSpan();
   }
@@ -497,6 +501,22 @@ export class FinancialChart extends EventEmitter {
     this.setVisibleIndexRange(
       this.dataStore.indexRangeForTimeRange(range.start, end)
     );
+    this.recalculateVisibleScale();
+    this.requestRedraw(this.viewRedrawParts);
+  }
+
+  public setVisibleTimeWindow(range: TimeRange) {
+    if (this.dataStore.length === 0) return;
+
+    const alignmentOffset = this.getBarAlignmentOffset();
+    const from =
+      this.dataStore.logicalIndexForTime(range.start, this.options.stepSize) +
+      alignmentOffset;
+    const to =
+      this.dataStore.logicalIndexForTime(range.end, this.options.stepSize) +
+      alignmentOffset;
+
+    this.setVisibleIndexRange({ from, to: Math.max(from + 1, to) });
     this.recalculateVisibleScale();
     this.requestRedraw(this.viewRedrawParts);
   }
@@ -647,6 +667,7 @@ export class FinancialChart extends EventEmitter {
           | TPlugin
           | undefined,
       getPlugins: () => this.getPlugins(),
+      getVisibleTimeWindow: () => this.getVisibleTimeWindow(),
       getVisibleTimeRange: () => this.getVisibleTimeRange(),
       on: (event, listener) => this.on(event, listener),
       onRenderStage: (stage, callback) => this.onRenderStage(stage, callback),
@@ -1947,7 +1968,7 @@ export class FinancialChart extends EventEmitter {
 
   /**
    * Get the currently visible time range.
-   * This is the time range that is visible on the screen.
+   * This is rounded to visible data-point boundaries.
    *
    * @returns the currently visible time range
    */
@@ -1974,6 +1995,27 @@ export class FinancialChart extends EventEmitter {
     return {
       start: startPoint.time,
       end: endPoint.time + this.options.stepSize
+    };
+  }
+
+  /**
+   * Get the precise visible time window.
+   * This preserves fractional logical indexes for pan/zoom replication.
+   */
+  public getVisibleTimeWindow(): TimeRange {
+    if (this.dataStore.length === 0) return this.timeRange;
+
+    const alignmentOffset = this.getBarAlignmentOffset();
+
+    return {
+      start: this.dataStore.timeAtLogicalIndex(
+        this.visibleIndexRange.from - alignmentOffset,
+        this.options.stepSize
+      ),
+      end: this.dataStore.timeAtLogicalIndex(
+        this.visibleIndexRange.to - alignmentOffset,
+        this.options.stepSize
+      )
     };
   }
 
@@ -2423,7 +2465,7 @@ export class FinancialChart extends EventEmitter {
     for (const indicator of this.getAllIndicators()) {
       indicator.detach();
     }
-    for (const plugin of this.plugins) {
+    for (const plugin of [...this.plugins].reverse()) {
       plugin.detach?.();
     }
     this.indicators = [];

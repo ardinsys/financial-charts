@@ -54,17 +54,28 @@ export const darkTheme = mergeThemes(defaultDarkTheme, {
   }
 });
 
-function createSessionData(
+export interface SessionDataOptions {
+  impulseScale?: number;
+  startPrice?: number;
+  trendBias?: number;
+}
+
+export function createSessionData(
   start: number,
   length: number,
-  interval: number
+  interval: number,
+  options: SessionDataOptions = {}
 ): ChartData[] {
   const data: ChartData[] = [];
-  let previousClose = 184.25;
+  let previousClose = options.startPrice ?? 184.25;
+  const impulseScale = options.impulseScale ?? 1;
+  const trendBias = options.trendBias ?? 0;
 
   for (let index = 0; index < length; index++) {
-    const drift = Math.sin(index / 4) * 1.2 + Math.cos(index / 9) * 0.8;
-    const impulse = index % 17 === 0 ? 1.4 : index % 23 === 0 ? -1.2 : 0;
+    const drift =
+      Math.sin(index / 4) * 1.2 + Math.cos(index / 9) * 0.8 + trendBias;
+    const impulse =
+      (index % 17 === 0 ? 1.4 : index % 23 === 0 ? -1.2 : 0) * impulseScale;
     const open = previousClose;
     const close = open + drift * 0.32 + impulse;
     const high = Math.max(open, close) + 0.45 + (index % 5) * 0.08;

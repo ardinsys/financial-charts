@@ -17,6 +17,7 @@ import {
   FinancialChart,
   MovingAverageIndicator,
   TestIndicator,
+  type ChartData,
   type ControllerType,
   type Indicator,
   type MovingAverageOptions
@@ -30,6 +31,7 @@ import { indicatorCatalog, type IndicatorKind } from "./indicator-catalog";
 import {
   darkTheme,
   formatNumber,
+  createSessionData,
   initialData,
   lastPoint,
   previousPoint,
@@ -54,10 +56,33 @@ const chartTypeOptions: Array<{ label: string; value: ControllerType }> = [
   { label: "HLC Area", value: "hlc-area" }
 ];
 
-const chartHosts = ref<HTMLElement[]>([]);
-const chartCount = ref<1 | 9>(1);
+type ChartLayoutMode = "single" | "grid" | "stress";
+type ChartSlotColumn = "primary" | "comparison";
+
+interface ChartSlot {
+  column: ChartSlotColumn;
+  data: ChartData[];
+  id: string;
+  stepSize: number;
+}
+
+const layoutOptions: Array<{
+  label: string;
+  title: string;
+  value: ChartLayoutMode;
+}> = [
+  { label: "1", title: "Single chart", value: "single" },
+  { label: "9", title: "9 chart grid", value: "grid" },
+  { label: "Sync", title: "Synced chart stress grid", value: "stress" }
+];
+
+const chartHosts = new Map<string, HTMLElement>();
+const chartStageKey = ref(0);
+const chartLayoutMode = ref<ChartLayoutMode>("single");
 const selectedChartType = ref<ControllerType>("candle");
 const selectedTimeframeMs = ref<number>(baseStepSize);
+const stressChartsPerColumn = ref(20);
+const pendingStressChartsPerColumn = ref(stressChartsPerColumn.value);
 const activeDrawingTool = ref<DrawingTool>();
 const indicatorDialogOpen = ref(false);
 const indicatorSettingsOpen = ref(false);
@@ -70,17 +95,55 @@ const priceChange = (lastPoint.close ?? 0) - (previousPoint.close ?? 0);
 const priceChangeClass = computed(() =>
   priceChange >= 0 ? "price-up" : "price-down"
 );
-const chartSlots = computed(() =>
-  Array.from({ length: chartCount.value }, (_, index) => index)
+const stressTotalCharts = computed(() => stressChartsPerColumn.value * 2);
+const comparisonStepSize = computed(() => selectedTimeframeMs.value * 2);
+const comparisonData = computed(() =>
+  createSessionData(
+    initialData[0].time - comparisonStepSize.value * 24,
+    132,
+    comparisonStepSize.value,
+    {
+      impulseScale: 1.35,
+      startPrice: 176.8,
+      trendBias: 0.08
+    }
+  )
 );
-const chartLayoutLabel = computed(() =>
-  chartCount.value === 1 ? "9 charts" : "1 chart"
+const chartSlots = computed<ChartSlot[]>(() => {
+  if (chartLayoutMode.value === "stress") {
+    return [
+      ...createChartSlots("primary", initialData, selectedTimeframeMs.value, {
+        count: stressChartsPerColumn.value
+      }),
+      ...createChartSlots(
+        "comparison",
+        comparisonData.value,
+        comparisonStepSize.value,
+        { count: stressChartsPerColumn.value }
+      )
+    ];
+  }
+
+  const count = chartLayoutMode.value === "grid" ? 9 : 1;
+  return createChartSlots("primary", initialData, selectedTimeframeMs.value, {
+    count,
+    prefix: "standard"
+  });
+});
+const primaryStressSlots = computed(() =>
+  chartSlots.value.filter((slot) => slot.column === "primary")
+);
+const comparisonStressSlots = computed(() =>
+  chartSlots.value.filter((slot) => slot.column === "comparison")
 );
 const selectedTimeframeLabel = computed(
   () =>
     timeframeOptions.find(
       (option) => option.value === selectedTimeframeMs.value
-    )?.label ?? `${selectedTimeframeMs.value / 60000}m`
+    )?.label ?? formatTimeframeLabel(selectedTimeframeMs.value)
+);
+const comparisonTimeframeLabel = computed(() =>
+  formatTimeframeLabel(comparisonStepSize.value)
 );
 const selectedIndicatorTitle = computed(() => {
   const indicator = selectedIndicator.value;
@@ -92,15 +155,43 @@ const selectedIndicatorTitle = computed(() => {
 interface PlaygroundChart {
   chart: FinancialChart;
   drawingManager: DrawingManager;
+  slot: ChartSlot;
 }
 
 let charts: PlaygroundChart[] = [];
 let indicatorIndex = 0;
+const minStressChartsPerColumn = 1;
+const maxStressChartsPerColumn = 100;
 
-function setChartHost(element: Element | null, index: number) {
+function createChartSlots(
+  column: ChartSlotColumn,
+  data: ChartData[],
+  stepSize: number,
+  options: { count?: number; prefix?: string } = {}
+): ChartSlot[] {
+  const count = options.count ?? 100;
+  const prefix = options.prefix ?? column;
+
+  return Array.from({ length: count }, (_, index) => ({
+    column,
+    data,
+    id: `${prefix}-${index}`,
+    stepSize
+  }));
+}
+
+function setChartHost(element: Element | null, id: string) {
   if (element instanceof HTMLElement) {
-    chartHosts.value[index] = element;
+    chartHosts.set(id, element);
+  } else {
+    chartHosts.delete(id);
   }
+}
+
+function formatTimeframeLabel(value: number) {
+  return value % (60 * 60 * 1000) === 0
+    ? `${value / (60 * 60 * 1000)}h`
+    : `${value / 60000}m`;
 }
 
 function getPrimaryChart() {
@@ -133,14 +224,35 @@ function deleteSelectedDrawing() {
   manager?.deleteSelected();
 }
 
-function toggleChartLayout() {
-  chartCount.value = chartCount.value === 1 ? 9 : 1;
+function setChartLayout(mode: ChartLayoutMode) {
+  if (chartLayoutMode.value === mode) return;
+  chartLayoutMode.value = mode;
 }
 
-function getChartTimeRange() {
+function normalizeStressCount(value: number) {
+  if (!Number.isFinite(value)) return stressChartsPerColumn.value;
+
+  return Math.min(
+    maxStressChartsPerColumn,
+    Math.max(minStressChartsPerColumn, Math.round(value))
+  );
+}
+
+function applyStressCount() {
+  const nextCount = normalizeStressCount(pendingStressChartsPerColumn.value);
+  pendingStressChartsPerColumn.value = nextCount;
+  if (nextCount === stressChartsPerColumn.value) return;
+
+  stressChartsPerColumn.value = nextCount;
+  if (chartLayoutMode.value === "stress") {
+    void rebuildCharts({ remount: true });
+  }
+}
+
+function getChartTimeRange(data: ChartData[], stepSize: number) {
   return {
-    start: initialData[0].time,
-    end: initialData.at(-1)!.time + selectedTimeframeMs.value
+    start: data[0].time,
+    end: data.at(-1)!.time + stepSize
   };
 }
 
@@ -151,12 +263,18 @@ function applyChartType() {
 }
 
 function applyTimeframe() {
+  const slotsById = new Map(chartSlots.value.map((slot) => [slot.id, slot]));
   for (const item of charts) {
+    const nextSlot = slotsById.get(item.slot.id);
+    if (!nextSlot) continue;
+
+    item.slot = nextSlot;
     item.chart.updateCoreOptions(
-      getChartTimeRange(),
-      selectedTimeframeMs.value,
+      getChartTimeRange(nextSlot.data, nextSlot.stepSize),
+      nextSlot.stepSize,
       90
     );
+    item.chart.draw(nextSlot.data);
   }
 }
 
@@ -222,15 +340,19 @@ function removeSelectedIndicator() {
   selectedIndicator.value = undefined;
 }
 
-function createChart(root: HTMLElement): PlaygroundChart {
-  const chart = new FinancialChart(root, getChartTimeRange(), {
-    type: selectedChartType.value,
-    theme: darkTheme,
-    locale: "en-US",
-    maxZoom: 90,
-    stepSize: selectedTimeframeMs.value,
-    volume: true
-  });
+function createChart(root: HTMLElement, slot: ChartSlot): PlaygroundChart {
+  const chart = new FinancialChart(
+    root,
+    getChartTimeRange(slot.data, slot.stepSize),
+    {
+      type: selectedChartType.value,
+      theme: darkTheme,
+      locale: "en-US",
+      maxZoom: 90,
+      stepSize: slot.stepSize,
+      volume: true
+    }
+  );
 
   const drawingManager = new DrawingManager();
   const selectedDrawingToolbar = new SelectedDrawingToolbarPlugin(
@@ -263,9 +385,9 @@ function createChart(root: HTMLElement): PlaygroundChart {
     }
   });
 
-  chart.draw(initialData);
+  chart.draw(slot.data);
 
-  return { chart, drawingManager };
+  return { chart, drawingManager, slot };
 }
 
 function disposeCharts() {
@@ -277,15 +399,23 @@ function disposeCharts() {
   indicatorSettingsOpen.value = false;
 }
 
-async function rebuildCharts() {
+async function rebuildCharts(options: { remount?: boolean } = {}) {
   disposeCharts();
-  chartHosts.value = [];
+
+  if (options.remount) {
+    chartHosts.clear();
+    chartStageKey.value += 1;
+  }
+
   await nextTick();
 
   charts = chartSlots.value
-    .map((slot) => chartHosts.value[slot])
-    .filter((host): host is HTMLElement => host instanceof HTMLElement)
-    .map((host) => createChart(host));
+    .map((slot) => ({ host: chartHosts.get(slot.id), slot }))
+    .filter(
+      (item): item is { host: HTMLElement; slot: ChartSlot } =>
+        item.host instanceof HTMLElement
+    )
+    .map(({ host, slot }) => createChart(host, slot));
 
   if (activeDrawingTool.value) {
     const factory = createDrawingFactory(activeDrawingTool.value);
@@ -295,8 +425,8 @@ async function rebuildCharts() {
   }
 }
 
-watch(chartCount, () => {
-  void rebuildCharts();
+watch(chartLayoutMode, () => {
+  void rebuildCharts({ remount: true });
 });
 
 onMounted(() => {
@@ -378,13 +508,32 @@ onBeforeUnmount(() => {
               {{ option.label }}
             </option>
           </select>
-          <button
-            class="command-button"
-            type="button"
-            @click="toggleChartLayout"
-          >
-            {{ chartLayoutLabel }}
-          </button>
+          <div class="layout-switch" aria-label="Chart layout">
+            <button
+              v-for="option in layoutOptions"
+              :key="option.value"
+              :class="{ active: chartLayoutMode === option.value }"
+              :title="option.title"
+              class="layout-switch__button"
+              type="button"
+              @click="setChartLayout(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+          <label class="stress-count-control" title="Charts per sync column">
+            <span>Charts</span>
+            <input
+              v-model.number="pendingStressChartsPerColumn"
+              :max="maxStressChartsPerColumn"
+              :min="minStressChartsPerColumn"
+              type="number"
+              @blur="applyStressCount"
+              @change="applyStressCount"
+              @keydown.enter="applyStressCount"
+            />
+            <span>{{ stressTotalCharts }}</span>
+          </label>
           <button
             class="command-button command-button--primary"
             type="button"
@@ -396,11 +545,68 @@ onBeforeUnmount(() => {
       </header>
 
       <section
-        :class="['chart-stage', { 'chart-stage--grid': chartCount === 9 }]"
+        v-if="chartLayoutMode === 'stress'"
+        :key="`${chartLayoutMode}-${chartStageKey}`"
+        class="chart-stage chart-stage--stress"
       >
-        <div v-for="slot in chartSlots" :key="slot" class="chart-cell">
+        <div class="stress-column stress-column--primary">
+          <header class="stress-column-header">
+            <strong>ARDS</strong>
+            <span
+              >{{ selectedTimeframeLabel }} ·
+              {{ primaryStressSlots.length }}</span
+            >
+          </header>
           <div
-            :ref="(element) => setChartHost(element as Element | null, slot)"
+            v-for="slot in primaryStressSlots"
+            :key="slot.id"
+            class="chart-cell chart-cell--stress"
+          >
+            <div
+              :ref="
+                (element) => setChartHost(element as Element | null, slot.id)
+              "
+              class="chart-host"
+            ></div>
+          </div>
+        </div>
+
+        <div class="stress-scroll-gutter" aria-hidden="true"></div>
+
+        <div class="stress-column stress-column--comparison">
+          <header class="stress-column-header">
+            <strong>ARDS-X</strong>
+            <span
+              >{{ comparisonTimeframeLabel }} ·
+              {{ comparisonStressSlots.length }}</span
+            >
+          </header>
+          <div
+            v-for="slot in comparisonStressSlots"
+            :key="slot.id"
+            class="chart-cell chart-cell--stress"
+          >
+            <div
+              :ref="
+                (element) => setChartHost(element as Element | null, slot.id)
+              "
+              class="chart-host"
+            ></div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        v-else
+        :key="`${chartLayoutMode}-${chartStageKey}`"
+        :class="[
+          'chart-stage',
+          { 'chart-stage--grid': chartLayoutMode === 'grid' }
+        ]"
+      >
+        <div v-for="slot in chartSlots" :key="slot.id" class="chart-cell">
+          <div
+            :ref="(element) => setChartHost(element as Element | null, slot.id)"
             class="chart-host"
           ></div>
         </div>

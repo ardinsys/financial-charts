@@ -56,6 +56,7 @@ chart.addPlugin(new WatermarkPlugin());
 | `getPanes()`                      | Returns pane models, including the main pane and paneled indicators.                                           |
 | `getPlugin(key)`                  | Returns the first attached plugin with the matching `key`, useful for plugin-to-plugin integration.            |
 | `getPlugins()`                    | Returns all currently attached plugins.                                                                        |
+| `getVisibleTimeWindow()`          | Returns the precise fractional visible timestamp window for pan/zoom replication.                              |
 | `getVisibleTimeRange()`           | Returns the current visible timestamp range.                                                                   |
 | `on(event, listener)`             | Subscribes to chart events and returns an unsubscribe function.                                                |
 | `onRenderStage(stage, callback)`  | Registers a render-pipeline hook.                                                                              |
@@ -118,6 +119,11 @@ data spans or tick sizes. Indicators are cloned through `indicator.clone()`, so
 custom indicators can participate without plugin-side registration. The base
 indicator clone handles the standard `(themes, options)` constructor shape;
 override `clone()` when an indicator owns additional constructor state.
+Freshly mounted charts also perform their initial sync after their first
+`draw()` if the sync plugin was attached before data was available. The group
+keeps the latest state as detached snapshots, so virtualized rows can all
+unmount briefly and the next mounted chart can still rehydrate without holding
+old chart or DOM instances alive.
 
 ```ts
 class MyIndicator extends Indicator<MyTheme, MyOptions> {
