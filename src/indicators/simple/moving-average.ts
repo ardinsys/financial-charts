@@ -134,8 +134,6 @@ export class MovingAverageIndicator extends Indicator<
 
         const scaleOptions = {
           canvas: this.chart.getContext("main").canvas,
-          zoomLevel: this.chart.getZoomLevel(),
-          panOffset: this.chart.getPanOffset(),
           barAlignment: "center" as const
         };
         const x = this.chart.getTimeScale().project(point.time, scaleOptions);

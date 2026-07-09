@@ -35,9 +35,7 @@ export class HLCAreaController extends OHLCController {
     const timeScale = this.chart.getTimeScale();
     const priceScale = this.chart.getPriceScale();
     const scaleOptions = {
-      canvas: ctx.canvas,
-      zoomLevel: this.chart.getZoomLevel(),
-      panOffset: this.chart.getPanOffset()
+      canvas: ctx.canvas
     };
 
     // Paths for the lines

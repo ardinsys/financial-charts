@@ -114,11 +114,9 @@ export class DataScaleModel {
   mapToPixel(
     time: number,
     value: number,
-    canvas: { width: number; height: number },
-    zoomLevel = 1,
-    panOffset = 0
+    canvas: { width: number; height: number }
   ) {
-    const options = { canvas, zoomLevel, panOffset };
+    const options = { canvas };
     return {
       x: this.timeScale.project(time, options),
       y: this.priceScale.project(value, options)
@@ -128,11 +126,9 @@ export class DataScaleModel {
   pixelToPoint(
     x: number,
     y: number,
-    canvas: { width: number; height: number },
-    zoomLevel = 1,
-    panOffset = 0
+    canvas: { width: number; height: number }
   ) {
-    const options = { canvas, zoomLevel, panOffset };
+    const options = { canvas };
     return {
       time: this.timeScale.unproject(x, options),
       price: this.priceScale.unproject(y, options)
@@ -142,11 +138,9 @@ export class DataScaleModel {
   mapVolToPixel(
     time: number,
     volume: number,
-    canvas: { width: number; height: number },
-    zoomLevel = 1,
-    panOffset = 0
+    canvas: { width: number; height: number }
   ) {
-    const options = { canvas, zoomLevel, panOffset };
+    const options = { canvas };
     return {
       x: this.timeScale.project(time, options),
       y: this.volumeScale.projectVolume(volume, options)

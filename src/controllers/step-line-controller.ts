@@ -29,9 +29,7 @@ export class SteplineController extends OHLCController {
     const timeScale = this.chart.getTimeScale();
     const priceScale = this.chart.getPriceScale();
     const scaleOptions = {
-      canvas: ctx.canvas,
-      zoomLevel: this.chart.getZoomLevel(),
-      panOffset: this.chart.getPanOffset()
+      canvas: ctx.canvas
     };
 
     // Start from the first data point

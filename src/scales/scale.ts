@@ -8,8 +8,6 @@ export interface ScaleCanvas {
 export interface ScaleProjectOptions {
   canvas: ScaleCanvas;
   devicePixelRatio?: number;
-  zoomLevel?: number;
-  panOffset?: number;
   barAlignment?: "center" | "edge";
 }
 

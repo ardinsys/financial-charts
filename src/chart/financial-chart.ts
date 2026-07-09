@@ -235,12 +235,8 @@ export class FinancialChart extends EventEmitter {
     return this.visibleScale.getVolumeScale();
   }
 
-  getZoomLevel() {
-    return this.getIndexBoundsSpan() / this.getVisibleIndexSpan();
-  }
-
-  getPanOffset() {
-    return 0;
+  getVisibleLogicalRange(): TimeScaleRange {
+    return { ...this.visibleIndexRange };
   }
 
   getController() {
@@ -1626,8 +1622,6 @@ export class FinancialChart extends EventEmitter {
     const volumeScale = this.getVolumeScale();
     const scaleOptions = {
       canvas: ctx.canvas,
-      zoomLevel: this.getZoomLevel(),
-      panOffset: this.getPanOffset(),
       barAlignment: "edge" as const
     };
 

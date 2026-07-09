@@ -35,8 +35,6 @@ export class TestIndicator extends PaneledIndicator<
     for (const data of this.chart.getLastVisibleDataPoints()) {
       const scaleOptions = {
         canvas: this.canvas,
-        zoomLevel: this.chart.getZoomLevel(),
-        panOffset: this.chart.getPanOffset(),
         barAlignment: "center" as const
       };
       const x = this.chart.getTimeScale().project(data.time, scaleOptions);

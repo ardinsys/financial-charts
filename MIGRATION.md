@@ -159,6 +159,20 @@ aliases):
 | `PaneledIndicator` protected `extent` | protected `scale`                      |
 | `PaneYAxisRenderOptions.extent`       | `PaneYAxisRenderOptions.scale`         |
 
+### Zoom/pan vocabulary removed in favor of the index range
+
+The old continuous-time zoom/pan scalars no longer model the index-based scale
+(`panOffset` was always `0`; `zoomLevel` was a derived ratio). They are removed:
+
+- `chart.getZoomLevel()` / `chart.getPanOffset()` → **removed**. Use
+  `chart.getVisibleLogicalRange()`, which returns the visible bar index range
+  `{ from, to, rightOffset }`.
+- `ScaleProjectOptions.zoomLevel` / `.panOffset` → **removed**. `project()` /
+  `unproject()` derive position from the scale's own range; pass only
+  `{ canvas, barAlignment? }`.
+- `DataScaleModel.mapToPixel` / `pixelToPoint` / `mapVolToPixel` no longer accept
+  `zoomLevel` / `panOffset` arguments.
+
 ## Suggested upgrade path
 
 1. Update imports and register controllers once at app startup.

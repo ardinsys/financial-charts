@@ -18,9 +18,7 @@ export class LineController extends SimpleController {
     const timeScale = this.chart.getTimeScale();
     const priceScale = this.chart.getPriceScale();
     const scaleOptions = {
-      canvas: ctx.canvas,
-      zoomLevel: this.chart.getZoomLevel(),
-      panOffset: this.chart.getPanOffset(),
+      canvas: ctx.canvas
     };
 
     for (let i = 0; i < visibleDataPoints.length; i++) {
