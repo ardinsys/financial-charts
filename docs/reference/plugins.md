@@ -54,6 +54,8 @@ chart.addPlugin(new WatermarkPlugin());
 | `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `grid`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`. |
 | `getLogicalCanvas(layer)`         | Returns logical pixel size for the layer.                                                                      |
 | `getPanes()`                      | Returns pane models, including the main pane and paneled indicators.                                           |
+| `getPlugin(key)`                  | Returns the first attached plugin with the matching `key`, useful for plugin-to-plugin integration.            |
+| `getPlugins()`                    | Returns all currently attached plugins.                                                                        |
 | `getVisibleTimeRange()`           | Returns the current visible timestamp range.                                                                   |
 | `on(event, listener)`             | Subscribes to chart events and returns an unsubscribe function.                                                |
 | `onRenderStage(stage, callback)`  | Registers a render-pipeline hook.                                                                              |
@@ -74,6 +76,110 @@ active controller but below indicators, drawings, and crosshair. This is useful
 for comparison-series overlays that have their own data stream.
 
 ## Built-in plugins
+
+### ChartSyncPlugin
+
+`ChartSyncPlugin` links chart instances by `group` and synchronizes visible time
+range, crosshair, drawings, drawing selection, and indicators. Add one plugin
+instance to each chart that should participate:
+
+```ts
+import {
+  ChartSyncPlugin,
+  DrawingManager,
+  FinancialChart
+} from "@ardinsys/financial-charts";
+
+const drawingManager = new DrawingManager();
+chart.addPlugin(drawingManager);
+chart.addPlugin(
+  new ChartSyncPlugin({
+    group: "watchlist",
+    drawingManager
+  })
+);
+```
+
+Defaults enable all sync channels:
+
+```ts
+new ChartSyncPlugin({
+  group: "watchlist",
+  visibleRange: true,
+  crosshair: true,
+  drawings: true,
+  indicators: true,
+  messages: true
+});
+```
+
+Crosshair and visible range sync are time-based, so charts can have different
+data spans or tick sizes. Indicators are cloned through `indicator.clone()`, so
+custom indicators can participate without plugin-side registration. The base
+indicator clone handles the standard `(themes, options)` constructor shape;
+override `clone()` when an indicator owns additional constructor state.
+
+```ts
+class MyIndicator extends Indicator<MyTheme, MyOptions> {
+  constructor(
+    private readonly feed: PriceFeed,
+    options?: Partial<MyOptions>
+  ) {
+    super(null, options);
+  }
+
+  clone() {
+    return new MyIndicator(this.feed, this.getOptions());
+  }
+}
+```
+
+Third-party plugins can also use the sync group as a small message bus. Add the
+sync plugin before plugins that read it from `attach()`, then use
+`postMessage()` and `onMessage()` with an app-owned channel name:
+
+```ts
+import { ChartSyncPlugin, type ChartPlugin } from "@ardinsys/financial-charts";
+
+const sync = new ChartSyncPlugin({ group: "watchlist" });
+chart.addPlugin(sync);
+chart.addPlugin(new CompareSeriesPlugin());
+
+class CompareSeriesPlugin implements ChartPlugin {
+  readonly key = "compare-series";
+  private sync?: ChartSyncPlugin;
+  private unsubscribe?: () => void;
+
+  attach(ctx) {
+    this.sync = ctx.getPlugin<ChartSyncPlugin>("chart-sync");
+    this.unsubscribe = this.sync?.onMessage<{
+      symbol: string;
+      color: string;
+    }>("compare-series:update", ({ payload }) => {
+      this.applyComparison(payload.symbol, payload.color);
+    });
+  }
+
+  setComparison(symbol: string, color: string) {
+    this.applyComparison(symbol, color);
+    this.sync?.postMessage("compare-series:update", { symbol, color });
+  }
+
+  private applyComparison(symbol: string, color: string) {
+    // Update this chart's overlay data and styles.
+  }
+
+  detach() {
+    this.unsubscribe?.();
+  }
+}
+```
+
+Messages are delivered to peer charts in the same group. Pass
+`{ includeSelf: true }` to also invoke local handlers. Handlers invoked from a
+synced message are guarded against accidental rebroadcast, so a plugin does not
+create an echo loop by calling `postMessage()` from inside its receive handler.
+Custom messages are runtime-only and are not part of `initialSync`.
 
 ### DrawingSelectionPlugin
 

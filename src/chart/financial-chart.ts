@@ -170,6 +170,10 @@ export interface ChartCrosshairState {
   dataPoint: ChartData;
 }
 
+export interface IndicatorMutationOptions {
+  emit?: boolean;
+}
+
 type PaneResizeDrag = {
   dividerIndex: number;
   startClientY: number;
@@ -482,10 +486,19 @@ export class FinancialChart extends EventEmitter {
     this.syncTimeScales();
   }
 
-  private setVisibleIndexRange(range: TimeScaleRange) {
+  public setVisibleIndexRange(range: TimeScaleRange) {
     this.visibleIndexRange = range;
     this.clampVisibleIndexRange();
     this.syncTimeScales();
+  }
+
+  public setVisibleTimeRange(range: TimeRange) {
+    const end = Math.max(range.start, range.end - 1);
+    this.setVisibleIndexRange(
+      this.dataStore.indexRangeForTimeRange(range.start, end)
+    );
+    this.recalculateVisibleScale();
+    this.requestRedraw(this.viewRedrawParts);
   }
 
   private clampVisibleIndexRange() {
@@ -629,6 +642,11 @@ export class FinancialChart extends EventEmitter {
       getCanvasContext: (layer) => this.getContext(layer),
       getLogicalCanvas: (layer) => this.getLogicalCanvas(layer),
       getPanes: () => this.getPanes(),
+      getPlugin: <TPlugin extends ChartPlugin = ChartPlugin>(key: string) =>
+        this.plugins.find((plugin) => plugin.key === key) as
+          | TPlugin
+          | undefined,
+      getPlugins: () => this.getPlugins(),
       getVisibleTimeRange: () => this.getVisibleTimeRange(),
       on: (event, listener) => this.on(event, listener),
       onRenderStage: (stage, callback) => this.onRenderStage(stage, callback),
@@ -2022,7 +2040,10 @@ export class FinancialChart extends EventEmitter {
    *
    * @param indicator indicator to draw
    */
-  public addIndicator(indicator: Indicator<any, any>) {
+  public addIndicator(
+    indicator: Indicator<any, any>,
+    options: IndicatorMutationOptions = {}
+  ) {
     if (this.isPaneledIndicator(indicator)) {
       // Main chart must have at least 25% of the height
       // every indicator by default gets 25% of the height
@@ -2050,6 +2071,10 @@ export class FinancialChart extends EventEmitter {
       this.indicatorLabelContainer.appendChild(indicator.getLabelContainer());
       indicator.refreshLabel();
     }
+
+    if (options.emit ?? true) {
+      this.emit("indicator-add", { indicator });
+    }
   }
 
   /**
@@ -2059,8 +2084,13 @@ export class FinancialChart extends EventEmitter {
    * @param indicator indicator to remove
    */
 
-  public removeIndicator(indicator: Indicator<any, any>) {
+  public removeIndicator(
+    indicator: Indicator<any, any>,
+    options: IndicatorMutationOptions = {}
+  ) {
     if (this.isPaneledIndicator(indicator)) {
+      if (!this.panaledIndicators.includes(indicator)) return false;
+
       indicator.detach();
       if (indicator.getContainer().parentElement === this.container) {
         this.container.removeChild(indicator.getContainer());
@@ -2072,6 +2102,8 @@ export class FinancialChart extends EventEmitter {
       this.recalcPaneledIndicators();
       this.requestRedraw(this.allRedrawParts);
     } else {
+      if (!this.indicators.includes(indicator)) return false;
+
       indicator.detach();
       this.visibleScale.removeModifier(indicator);
       if (
@@ -2083,6 +2115,28 @@ export class FinancialChart extends EventEmitter {
       this.indicators = this.indicators.filter((i) => i !== indicator);
       this.requestRedraw(this.allRedrawParts);
     }
+
+    if (options.emit ?? true) {
+      this.emit("indicator-remove", { indicator });
+    }
+    return true;
+  }
+
+  public getCrosshairState(): ChartCrosshairState | undefined {
+    if (
+      this.pointerTime === -1 ||
+      this.pointerY === -1 ||
+      !this.crosshairDataPoint
+    ) {
+      return undefined;
+    }
+
+    return {
+      time: this.pointerTime,
+      y: this.pointerY,
+      pane: this.pointerPane,
+      dataPoint: this.crosshairDataPoint
+    };
   }
 
   public setCrosshair(
@@ -2100,14 +2154,19 @@ export class FinancialChart extends EventEmitter {
     this.pointerPane = state.pane;
     this.isProgrammaticCrosshair = true;
     this.requestRedraw("crosshair");
+    this.emit("crosshair-change", state);
 
     return state;
   }
 
   public clearCrosshair(): void {
+    const hadCrosshair = this.getCrosshairState() !== undefined;
     this.clearCrosshairState();
     this.refreshIndicatorLabels();
     this.requestRedraw("crosshair");
+    if (hadCrosshair) {
+      this.emit("crosshair-clear", {});
+    }
   }
 
   protected pointerMove(e: { x: number; y: number }) {
@@ -2137,6 +2196,10 @@ export class FinancialChart extends EventEmitter {
     });
 
     this.requestRedraw("crosshair");
+    const state = this.getCrosshairState();
+    if (state) {
+      this.emit("crosshair-change", state);
+    }
   }
 
   private drawVolumeBars() {

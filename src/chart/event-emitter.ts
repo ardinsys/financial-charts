@@ -1,22 +1,25 @@
 import { Indicator } from "../indicators/indicator";
 import type { Drawing, DrawingAnchor, DrawingJSON } from "../drawings/drawing";
+import type { Pane } from "../panes/pane";
 import { ChartData } from "./types";
 
-interface IndicatorVisibilityChangedEvent {
+interface IndicatorEvent {
   indicator: Indicator<any, any>;
+}
+
+interface IndicatorVisibilityChangedEvent extends IndicatorEvent {
   visible: boolean;
-}
-
-interface IndicatorSettingsOpenEvent {
-  indicator: Indicator<any, any>;
-}
-
-interface IndicatorRemoveEvent {
-  indicator: Indicator<any, any>;
 }
 
 interface DrawingEvent {
   drawing: Drawing;
+}
+
+export interface ChartCrosshairChangeEvent {
+  dataPoint: ChartData;
+  pane: Pane;
+  time: number;
+  y: number;
 }
 
 export interface DrawingSelectionEvent {
@@ -40,9 +43,13 @@ export interface DrawingFinishedEvent extends DrawingEvent {
 }
 
 export interface ChartEventMap {
+  "indicator-add": IndicatorEvent;
+  "indicator-change": IndicatorEvent;
   "indicator-visibility-changed": IndicatorVisibilityChangedEvent;
-  "indicator-settings-open": IndicatorSettingsOpenEvent;
-  "indicator-remove": IndicatorRemoveEvent;
+  "indicator-settings-open": IndicatorEvent;
+  "indicator-remove": IndicatorEvent;
+  "crosshair-change": ChartCrosshairChangeEvent;
+  "crosshair-clear": {};
   "drawing-create": DrawingEvent;
   "drawing-change": DrawingEvent;
   "drawing-delete": DrawingEvent;

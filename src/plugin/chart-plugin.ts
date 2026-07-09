@@ -35,6 +35,10 @@ export interface ChartContext {
   getCanvasContext(layer: ChartCanvasLayer): CanvasRenderingContext2D;
   getLogicalCanvas(layer: ChartCanvasLayer): { width: number; height: number };
   getPanes(): Pane[];
+  getPlugin<TPlugin extends ChartPlugin = ChartPlugin>(
+    key: string
+  ): TPlugin | undefined;
+  getPlugins(): ChartPlugin[];
   getVisibleTimeRange(): TimeRange;
   on<K extends keyof ChartEventMap>(
     event: K,

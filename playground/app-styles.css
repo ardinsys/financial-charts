@@ -203,7 +203,8 @@ button {
   color: #f23645;
 }
 
-.command-button {
+.command-button,
+.command-select {
   background: #171c27;
   border: 1px solid #2a2e39;
   border-radius: 6px;
@@ -212,7 +213,12 @@ button {
   padding: 0 10px;
 }
 
-.command-button:hover {
+.command-select {
+  min-width: 76px;
+}
+
+.command-button:hover,
+.command-select:hover {
   background: #202636;
 }
 
@@ -223,8 +229,24 @@ button {
 
 .chart-stage {
   background: #131722;
+  display: grid;
   min-height: 0;
   min-width: 0;
+  position: relative;
+}
+
+.chart-stage--grid {
+  background: #242833;
+  gap: 1px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+.chart-cell {
+  background: #131722;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
   position: relative;
 }
 

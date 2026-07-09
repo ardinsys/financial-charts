@@ -102,7 +102,7 @@ export class SelectedDrawingToolbarPlugin implements ChartPlugin {
     input.title = "Text";
     input.addEventListener("input", () => {
       drawing.setText(input.value || "Text");
-      this.requestDrawingRedraw();
+      this.requestDrawingRedraw(drawing);
     });
     return input;
   }
@@ -157,11 +157,12 @@ export class SelectedDrawingToolbarPlugin implements ChartPlugin {
 
   private setStyleValue(drawing: Drawing, property: string, value: unknown) {
     (drawing as unknown as Record<string, unknown>)[property] = value;
-    this.requestDrawingRedraw();
+    this.requestDrawingRedraw(drawing);
   }
 
-  private requestDrawingRedraw() {
-    this.ctx?.requestRedraw("drawings", true);
+  private requestDrawingRedraw(drawing: Drawing) {
+    this.ctx?.emit("drawing-change", { drawing });
+    this.ctx?.requestRedraw(["drawings", "axes"], true);
   }
 }
 

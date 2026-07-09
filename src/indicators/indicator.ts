@@ -64,6 +64,10 @@ export interface IndicatorDrawingContext {
   ): IndicatorPoint;
 }
 
+export interface IndicatorUpdateOptions {
+  emit?: boolean;
+}
+
 export abstract class Indicator<
   TTheme extends object,
   TOptions extends DefaultIndicatorOptions
@@ -99,19 +103,13 @@ export abstract class Indicator<
       this.buildLabelModel(),
       {
         onToggleVisibility: (visible) => {
-          this.visible = visible;
-          this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
-          this.chart.emit("indicator-visibility-changed", {
-            indicator: this,
-            visible
-          });
+          this.setVisible(visible);
         },
         onOpenSettings: () => {
           this.chart.emit("indicator-settings-open", { indicator: this });
         },
         onRemove: () => {
           this.chart.removeIndicator(this);
-          this.chart.emit("indicator-remove", { indicator: this });
         }
       }
     );
@@ -207,11 +205,79 @@ export abstract class Indicator<
    */
   protected abstract getLabelContent(dataTime?: number): IndicatorLabelContent;
 
-  public updateOptions(options: Partial<TOptions>): void {
+  public updateOptions(
+    options: Partial<TOptions>,
+    updateOptions: IndicatorUpdateOptions = {}
+  ): void {
     this.options = mergeThemes(this.options, options);
     if (!this.chart) return;
     this.chart.requestRedraw(["indicators", "crosshair", "controller"]);
     this.refreshLabel();
+    if (updateOptions.emit ?? true) {
+      this.chart.emit("indicator-change", { indicator: this });
+    }
+  }
+
+  public setVisible(
+    visible: boolean,
+    updateOptions: IndicatorUpdateOptions = {}
+  ): void {
+    if (this.visible === visible) return;
+
+    this.visible = visible;
+    if (!this.chart) return;
+
+    this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
+    this.refreshLabel();
+    if (updateOptions.emit ?? true) {
+      this.chart.emit("indicator-visibility-changed", {
+        indicator: this,
+        visible
+      });
+    }
+  }
+
+  public isIndicatorVisible() {
+    return this.visible;
+  }
+
+  public clone(): Indicator<TTheme, TOptions> {
+    const Constructor = this.constructor as new (
+      themes?: Record<string, Partial<TTheme>> | undefined | null,
+      options?: Partial<TOptions> | undefined | null
+    ) => Indicator<TTheme, TOptions>;
+    const clone = new Constructor(
+      cloneIndicatorValue(this.themes),
+      cloneIndicatorValue(this.options)
+    );
+    clone.visible = this.visible;
+    return clone;
+  }
+
+  public copyFrom(
+    source: Indicator<TTheme, TOptions>,
+    updateOptions: IndicatorUpdateOptions = {}
+  ): void {
+    const wasVisible = this.visible;
+    this.themes = cloneIndicatorValue(source.themes);
+    this.options = cloneIndicatorValue(source.options);
+    this.visible = source.visible;
+
+    if (!this.chart) return;
+
+    this.theme = this.themes[this.chart.getOptions().theme.key];
+    this.chart.requestRedraw(["indicators", "crosshair", "controller"]);
+    this.refreshLabel();
+
+    if (updateOptions.emit ?? true) {
+      this.chart.emit("indicator-change", { indicator: this });
+      if (wasVisible !== this.visible) {
+        this.chart.emit("indicator-visibility-changed", {
+          indicator: this,
+          visible: this.visible
+        });
+      }
+    }
   }
 
   public getLabelContainer(): HTMLElement {
@@ -222,7 +288,23 @@ export abstract class Indicator<
     return this.options.key;
   }
 
+  public getIndicatorType() {
+    return (this.constructor as { ID?: string }).ID ?? this.options.key;
+  }
+
   public getOptions() {
     return this.options;
   }
+}
+
+function cloneIndicatorValue<T>(value: T): T {
+  if (typeof structuredClone === "function") {
+    try {
+      return structuredClone(value);
+    } catch {
+      // Fall through to the JSON clone for simple serializable configs.
+    }
+  }
+
+  return JSON.parse(JSON.stringify(value)) as T;
 }

@@ -148,6 +148,10 @@ describe("plugin lifecycle", () => {
   it("exposes canvas and event helpers through the plugin context", () => {
     const { chart } = createChart();
     let attachedContext: Parameters<ChartPlugin["attach"]>[0] | undefined;
+    const siblingPlugin: ChartPlugin = {
+      key: "sibling-probe",
+      attach: vi.fn()
+    };
     const plugin: ChartPlugin = {
       key: "context-probe",
       attach: (ctx) => {
@@ -157,6 +161,7 @@ describe("plugin lifecycle", () => {
     const selectListener = vi.fn();
     const unsubscribe = chart.on("drawing-select", selectListener);
 
+    chart.addPlugin(siblingPlugin);
     chart.addPlugin(plugin);
 
     expect(attachedContext?.getCanvasContext("drawings")).toBe(
@@ -165,6 +170,10 @@ describe("plugin lifecycle", () => {
     expect(attachedContext?.getLogicalCanvas("drawings")).toEqual(
       chart.getLogicalCanvas("drawings")
     );
+    expect(attachedContext?.getPlugin("sibling-probe")).toBe(siblingPlugin);
+    expect(attachedContext?.getPlugin("context-probe")).toBe(plugin);
+    expect(attachedContext?.getPlugin("missing-probe")).toBeUndefined();
+    expect(attachedContext?.getPlugins()).toEqual([siblingPlugin, plugin]);
 
     const drawing = {} as Drawing;
     attachedContext?.emit("drawing-select", { drawing });
@@ -226,11 +235,13 @@ describe("plugin lifecycle", () => {
 
     for (let i = 1; i <= 3; i++) {
       chart.addIndicator(indicator);
+      emitSpy.mockClear();
       const removeButton = indicator
         .getLabelContainer()
         .querySelector('[data-id="remove"]') as HTMLElement;
 
       chart.removeIndicator(indicator);
+      emitSpy.mockClear();
       removeButton.click();
 
       expect(indicator.detachCalls).toBe(i);

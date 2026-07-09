@@ -85,6 +85,11 @@ interface SelectDrawingOptions {
   force?: boolean;
 }
 
+interface DrawingMutationOptions {
+  emit?: boolean;
+  emitSelection?: boolean;
+}
+
 export class DrawingManager implements ChartPlugin {
   readonly key = "drawing-manager";
 
@@ -143,6 +148,37 @@ export class DrawingManager implements ChartPlugin {
     return drawing;
   }
 
+  upsertDrawing(json: DrawingJSON, options: DrawingMutationOptions = {}) {
+    const existingIndex = this.drawings.findIndex(
+      (drawing) => drawing.id === json.id
+    );
+    const wasSelected = this.selectedDrawing?.id === json.id;
+    const drawing = this.deserializeDrawing(json);
+
+    drawing.setSelected(wasSelected);
+    if (existingIndex === -1) {
+      this.drawings.push(drawing);
+      if (options.emit) {
+        this.ctx.emit("drawing-create", { drawing });
+      }
+    } else {
+      this.drawings[existingIndex].setSelected(false);
+      this.drawings[existingIndex] = drawing;
+      if (options.emit) {
+        this.ctx.emit("drawing-change", { drawing });
+      }
+    }
+
+    if (wasSelected) {
+      this.selectedDrawing = drawing;
+      if (options.emitSelection) {
+        this.emitDrawingSelection(drawing);
+      }
+    }
+    this.ctx.requestRedraw("drawings");
+    return drawing;
+  }
+
   selectDrawing(drawing?: Drawing, options: SelectDrawingOptions = {}) {
     const { emit = true, force = false } = options;
     if (this.selectedDrawing === drawing && !force) return;
@@ -169,6 +205,30 @@ export class DrawingManager implements ChartPlugin {
     this.recordHistory({ type: "delete", drawing, index });
     this.ctx.emit("drawing-delete", { drawing });
     return true;
+  }
+
+  removeDrawingById(id: string, options: DrawingMutationOptions = {}) {
+    const drawing = this.drawings.find((candidate) => candidate.id === id);
+    if (!drawing) return false;
+
+    const removed = this.removeDrawing(drawing);
+    if (removed === undefined) return false;
+
+    if (options.emit) {
+      this.ctx.emit("drawing-delete", { drawing });
+    }
+    return true;
+  }
+
+  selectDrawingById(id?: string, options: SelectDrawingOptions = {}) {
+    if (!id) {
+      this.selectDrawing(undefined, options);
+      return undefined;
+    }
+
+    const drawing = this.drawings.find((candidate) => candidate.id === id);
+    this.selectDrawing(drawing, options);
+    return drawing;
   }
 
   canUndo() {

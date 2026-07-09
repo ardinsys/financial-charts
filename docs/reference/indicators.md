@@ -51,6 +51,7 @@ The default adapter renders and wires:
 - `getLabelContent(dataTime?)` is invoked after renders and when locales or themes change. Return label detail text and optional value segments here; the base class updates the adapter-rendered label.
 - `getModifier(visibleTimeRange)` lets you modify the price range. Return a `ScaleRangeModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).
 - `updateOptions(partial)` merges new options, requests a redraw, and re-renders the label.
+- `clone()` creates another indicator instance with the same themes, options, and visibility. Override it if your custom indicator has constructor dependencies beyond the standard `(themes, options)` shape.
 - `detach()` is called when an indicator is removed or the chart is disposed; the base class uses it to remove label listeners.
 
 ### Label model and DOM adapter
@@ -98,13 +99,16 @@ abstract class MyPaneledIndicator extends PaneledIndicator<MyTheme, MyOptions> {
 
 ## Indicator events
 
-The base class emits events when users interact with the label:
+The base class emits events when users interact with the label, and the chart
+emits add/remove/change events for programmatic updates:
 
 | Event                          | Description                                |
 | ------------------------------ | ------------------------------------------ |
+| `indicator-add`                | Fired after an indicator is added.         |
+| `indicator-change`             | Fired after `updateOptions()`.             |
 | `indicator-visibility-changed` | Fired after show/hide buttons are toggled. |
 | `indicator-settings-open`      | Fired when the settings button is pressed. |
-| `indicator-remove`             | Fired when the remove button is pressed.   |
+| `indicator-remove`             | Fired after an indicator is removed.       |
 
 Listen to these events via `chart.on(...)` to open modals, persist state, or synchronize UI.
 

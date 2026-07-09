@@ -169,6 +169,8 @@ after construction. Registrations are not shared between charts.
 | Method                                                              | Description                                                                                 |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `getVisibleTimeRange()`                                             | Returns `{ start, end }` for the currently visible index window, mapped back to timestamps. |
+| `setVisibleTimeRange(range)`                                        | Sets the visible window by timestamp range and redraws view layers.                         |
+| `setVisibleIndexRange(range)`                                       | Sets the visible window directly in logical index units.                                    |
 | `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
 | `getOptions()`                                                      | Gives access to the current `ChartOptions` object (after merges).                           |
 | `getTheme()`                                                        | Returns the active `ChartTheme`.                                                            |
@@ -176,6 +178,7 @@ after construction. Registrations are not shared between charts.
 | `getPaneHeights()`                                                  | Returns current logical pixel heights keyed by pane id.                                     |
 | `getPlugins()`                                                      | Lists attached plugins.                                                                     |
 | `getIndicators()` / `getPaneledIndicators()` / `getAllIndicators()` | Lists overlay indicators, paneled indicators, or both combined.                             |
+| `getCrosshairState()`                                               | Returns the current crosshair state, or `undefined` when hidden.                            |
 
 ### Indicator management
 
@@ -234,9 +237,13 @@ Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 | ------------------------------ | --------------------------------------------------------- | --------------------------------------------- |
 | `click`                        | `{ event: PointerEvent, point: ChartData }`               | User clicks the chart on desktop.             |
 | `touch-click`                  | `{ event: TouchEvent, point: ChartData }`                 | User taps the chart on touch devices.         |
+| `crosshair-change`             | `{ time, y, pane, dataPoint }`                            | Native or programmatic crosshair moves.       |
+| `crosshair-clear`              | `{}`                                                      | Native or programmatic crosshair clears.      |
+| `indicator-add`                | `{ indicator }`                                           | Indicator is added to the chart.              |
+| `indicator-change`             | `{ indicator }`                                           | Indicator options are updated.                |
 | `indicator-visibility-changed` | `{ indicator, visible }`                                  | Indicator show/hide buttons are toggled.      |
 | `indicator-settings-open`      | `{ indicator }`                                           | Settings button next to an indicator is used. |
-| `indicator-remove`             | `{ indicator }`                                           | Indicator remove button is pressed.           |
+| `indicator-remove`             | `{ indicator }`                                           | Indicator is removed from the chart.          |
 | `drawing-create`               | `{ drawing }`                                             | Pointer-created drawing is finalized.         |
 | `drawing-change`               | `{ drawing }`                                             | Drawing anchors or content change.            |
 | `drawing-finished`             | `{ drawing, operation, id, type, paneId, anchors, json }` | Pointer create or drag operation completes.   |

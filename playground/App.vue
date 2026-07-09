@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import "./app-styles.css";
 
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch
+} from "vue";
+import {
+  ChartSyncPlugin,
   DrawingAxisBoundsPlugin,
   DrawingManager,
   DrawingSelectionPlugin,
   FinancialChart,
   MovingAverageIndicator,
   TestIndicator,
+  type ControllerType,
   type Indicator,
   type MovingAverageOptions
 } from "@ardinsys/financial-charts";
@@ -24,21 +33,54 @@ import {
   initialData,
   lastPoint,
   previousPoint,
-  stepSize
+  stepSize as baseStepSize
 } from "./market-data";
 import { SelectedDrawingToolbarPlugin } from "./plugins/selected-drawing-toolbar";
 
-const chartContainer = ref<HTMLElement>();
+const timeframeOptions = [
+  { label: "15m", value: baseStepSize },
+  { label: "30m", value: 30 * 60 * 1000 },
+  { label: "1h", value: 60 * 60 * 1000 },
+  { label: "4h", value: 4 * 60 * 60 * 1000 }
+] as const;
+
+const chartTypeOptions: Array<{ label: string; value: ControllerType }> = [
+  { label: "Candles", value: "candle" },
+  { label: "Line", value: "line" },
+  { label: "Step", value: "stepline" },
+  { label: "Area", value: "area" },
+  { label: "Bars", value: "bar" },
+  { label: "Hollow", value: "hollow-candle" },
+  { label: "HLC Area", value: "hlc-area" }
+];
+
+const chartHosts = ref<HTMLElement[]>([]);
+const chartCount = ref<1 | 9>(1);
+const selectedChartType = ref<ControllerType>("candle");
+const selectedTimeframeMs = ref<number>(baseStepSize);
 const activeDrawingTool = ref<DrawingTool>();
 const indicatorDialogOpen = ref(false);
 const indicatorSettingsOpen = ref(false);
 const selectedIndicator = ref<Indicator<any, any>>();
 const movingAveragePeriod = ref(9);
 const movingAverageSource = ref<MovingAverageOptions["source"]>("close");
+const syncGroup = "playground-sync";
 
 const priceChange = (lastPoint.close ?? 0) - (previousPoint.close ?? 0);
 const priceChangeClass = computed(() =>
   priceChange >= 0 ? "price-up" : "price-down"
+);
+const chartSlots = computed(() =>
+  Array.from({ length: chartCount.value }, (_, index) => index)
+);
+const chartLayoutLabel = computed(() =>
+  chartCount.value === 1 ? "9 charts" : "1 chart"
+);
+const selectedTimeframeLabel = computed(
+  () =>
+    timeframeOptions.find(
+      (option) => option.value === selectedTimeframeMs.value
+    )?.label ?? `${selectedTimeframeMs.value / 60000}m`
 );
 const selectedIndicatorTitle = computed(() => {
   const indicator = selectedIndicator.value;
@@ -47,9 +89,23 @@ const selectedIndicatorTitle = computed(() => {
   return indicator.getOptions().names.default ?? indicator.getKey();
 });
 
-let chart: FinancialChart | undefined;
-let drawingManager: DrawingManager | undefined;
+interface PlaygroundChart {
+  chart: FinancialChart;
+  drawingManager: DrawingManager;
+}
+
+let charts: PlaygroundChart[] = [];
 let indicatorIndex = 0;
+
+function setChartHost(element: Element | null, index: number) {
+  if (element instanceof HTMLElement) {
+    chartHosts.value[index] = element;
+  }
+}
+
+function getPrimaryChart() {
+  return charts[0]?.chart;
+}
 
 function setDrawingTool(tool: DrawingTool) {
   if (activeDrawingTool.value === tool) {
@@ -58,19 +114,54 @@ function setDrawingTool(tool: DrawingTool) {
   }
 
   activeDrawingTool.value = tool;
-  drawingManager?.setDrawingFactory(createDrawingFactory(tool));
+  for (const item of charts) {
+    item.drawingManager.setDrawingFactory(createDrawingFactory(tool));
+  }
 }
 
 function clearDrawingTool() {
   activeDrawingTool.value = undefined;
-  drawingManager?.setDrawingFactory(undefined);
+  for (const item of charts) {
+    item.drawingManager.setDrawingFactory(undefined);
+  }
 }
 
 function deleteSelectedDrawing() {
-  drawingManager?.deleteSelected();
+  const manager =
+    charts.find((item) => item.drawingManager.getSelectedDrawing())
+      ?.drawingManager ?? charts[0]?.drawingManager;
+  manager?.deleteSelected();
+}
+
+function toggleChartLayout() {
+  chartCount.value = chartCount.value === 1 ? 9 : 1;
+}
+
+function getChartTimeRange() {
+  return {
+    start: initialData[0].time,
+    end: initialData.at(-1)!.time + selectedTimeframeMs.value
+  };
+}
+
+function applyChartType() {
+  for (const item of charts) {
+    item.chart.changeType(selectedChartType.value);
+  }
+}
+
+function applyTimeframe() {
+  for (const item of charts) {
+    item.chart.updateCoreOptions(
+      getChartTimeRange(),
+      selectedTimeframeMs.value,
+      90
+    );
+  }
 }
 
 function addIndicator(kind: IndicatorKind) {
+  const chart = getPrimaryChart();
   if (!chart) return;
 
   indicatorIndex += 1;
@@ -120,35 +211,33 @@ function applyIndicatorSettings() {
 }
 
 function removeSelectedIndicator() {
-  if (chart && selectedIndicator.value) {
-    chart.removeIndicator(selectedIndicator.value);
+  const indicator = selectedIndicator.value;
+  if (indicator) {
+    const owner =
+      charts.find((item) => item.chart.getAllIndicators().includes(indicator))
+        ?.chart ?? getPrimaryChart();
+    owner?.removeIndicator(indicator);
   }
   indicatorSettingsOpen.value = false;
   selectedIndicator.value = undefined;
 }
 
-onMounted(() => {
-  chart = new FinancialChart(
-    chartContainer.value!,
-    {
-      start: initialData[0].time,
-      end: initialData.at(-1)!.time + stepSize
-    },
-    {
-      type: "candle",
-      theme: darkTheme,
-      locale: "en-US",
-      maxZoom: 90,
-      stepSize,
-      volume: true
-    }
-  );
+function createChart(root: HTMLElement): PlaygroundChart {
+  const chart = new FinancialChart(root, getChartTimeRange(), {
+    type: selectedChartType.value,
+    theme: darkTheme,
+    locale: "en-US",
+    maxZoom: 90,
+    stepSize: selectedTimeframeMs.value,
+    volume: true
+  });
 
-  drawingManager = new DrawingManager();
+  const drawingManager = new DrawingManager();
   const selectedDrawingToolbar = new SelectedDrawingToolbarPlugin(
     drawingManager
   );
   chart.addPlugin(drawingManager);
+  chart.addPlugin(new ChartSyncPlugin({ group: syncGroup, drawingManager }));
   chart.addPlugin(new DrawingAxisBoundsPlugin());
   chart.addPlugin(selectedDrawingToolbar);
   chart.addPlugin(
@@ -175,12 +264,47 @@ onMounted(() => {
   });
 
   chart.draw(initialData);
+
+  return { chart, drawingManager };
+}
+
+function disposeCharts() {
+  for (const item of charts) {
+    item.chart.dispose();
+  }
+  charts = [];
+  selectedIndicator.value = undefined;
+  indicatorSettingsOpen.value = false;
+}
+
+async function rebuildCharts() {
+  disposeCharts();
+  chartHosts.value = [];
+  await nextTick();
+
+  charts = chartSlots.value
+    .map((slot) => chartHosts.value[slot])
+    .filter((host): host is HTMLElement => host instanceof HTMLElement)
+    .map((host) => createChart(host));
+
+  if (activeDrawingTool.value) {
+    const factory = createDrawingFactory(activeDrawingTool.value);
+    for (const item of charts) {
+      item.drawingManager.setDrawingFactory(factory);
+    }
+  }
+}
+
+watch(chartCount, () => {
+  void rebuildCharts();
+});
+
+onMounted(() => {
+  void rebuildCharts();
 });
 
 onBeforeUnmount(() => {
-  chart?.dispose();
-  chart = undefined;
-  drawingManager = undefined;
+  disposeCharts();
 });
 </script>
 
@@ -216,7 +340,7 @@ onBeforeUnmount(() => {
         <div class="symbol-block">
           <span class="exchange">NASDAQ</span>
           <strong>ARDS</strong>
-          <span>15m</span>
+          <span>{{ selectedTimeframeLabel }}</span>
           <span :class="['last-price', priceChangeClass]">
             {{ formatNumber(lastPoint.close ?? 0) }}
           </span>
@@ -226,8 +350,41 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="topbar-actions">
-          <button class="command-button" type="button">15m</button>
-          <button class="command-button" type="button">Candles</button>
+          <select
+            v-model.number="selectedTimeframeMs"
+            class="command-select"
+            title="Timeframe"
+            @change="applyTimeframe"
+          >
+            <option
+              v-for="option in timeframeOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <select
+            v-model="selectedChartType"
+            class="command-select"
+            title="Chart type"
+            @change="applyChartType"
+          >
+            <option
+              v-for="option in chartTypeOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <button
+            class="command-button"
+            type="button"
+            @click="toggleChartLayout"
+          >
+            {{ chartLayoutLabel }}
+          </button>
           <button
             class="command-button command-button--primary"
             type="button"
@@ -238,8 +395,15 @@ onBeforeUnmount(() => {
         </div>
       </header>
 
-      <section class="chart-stage">
-        <div ref="chartContainer" class="chart-host"></div>
+      <section
+        :class="['chart-stage', { 'chart-stage--grid': chartCount === 9 }]"
+      >
+        <div v-for="slot in chartSlots" :key="slot" class="chart-cell">
+          <div
+            :ref="(element) => setChartHost(element as Element | null, slot)"
+            class="chart-host"
+          ></div>
+        </div>
       </section>
     </main>
 
