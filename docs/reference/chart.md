@@ -36,19 +36,19 @@ type ChartOptions = {
 };
 ```
 
-| Option         | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| `type`         | Identifier for an instance-registered controller such as `"candle"`, `"bar"`, or custom IDs.         |
-| `stepSize`     | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                   |
-| `maxZoom`      | Highest zoom factor before clamping user input.                                                      |
-| `volume`       | Enables a histogram below the price chart.                                                           |
-| `controllers`  | Optional exact controller set for this chart. Omit to register the built-in controllers by default.  |
-| `theme`        | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.                 |
-| `domAdapter`   | `ChartDOMAdapter` implementation for non-canvas chart chrome. Defaults to `DefaultDOMAdapter`.       |
-| `locale`       | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`. |
-| `timeZone`     | IANA timezone forwarded to formatters that support `setTimeZone()`.                                  |
-| `formatter`    | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                  |
-| `localeValues` | Localized indicator labels keyed by locale. Merged with built-in English strings.                    |
+| Option         | Description                                                                                                                             |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`         | Identifier for an instance-registered controller such as `"candle"`, `"bar"`, or custom IDs.                                            |
+| `stepSize`     | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                                                      |
+| `maxZoom`      | Highest zoom factor before clamping user input.                                                                                         |
+| `volume`       | Enables a histogram below the price chart.                                                                                              |
+| `controllers`  | Optional exact controller set for this chart. Omit to register the built-in controllers by default.                                     |
+| `theme`        | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.                                                    |
+| `domAdapter`   | `ChartDOMAdapter` implementation for DOM chrome: overlay, indicator labels/actions, and pane dividers. Defaults to `DefaultDOMAdapter`. |
+| `locale`       | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`.                                    |
+| `timeZone`     | IANA timezone forwarded to formatters that support `setTimeZone()`.                                                                     |
+| `formatter`    | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                                                     |
+| `localeValues` | Localized indicator labels keyed by locale. Merged with built-in English strings.                                                       |
 
 Built-in controllers are registered on each chart by default:
 
@@ -67,6 +67,12 @@ const chart = new FinancialChart(root, "auto", {
 - `timeZone` controls date/time labels when the active formatter supports `setTimeZone()`. It is used by `DefaultFormatter`.
 - `localeValues` is merged with the internal `default` block (`Show/Hide/Settings/Remove` + OHLCV names). Supply only the locales you need; missing entries fall back to `default`.
 - `formatter` can extend `DefaultFormatter` to reuse axis formatting while customizing tooltip dates/prices.
+
+#### DOM chrome options
+
+- `domAdapter` controls the non-canvas UI seam. Use `DefaultDOMAdapter` plus the built-in `fci-*` classes for CSS restyling, or pass a custom `ChartDOMAdapter` to replace indicator labels/actions and pane dividers with app-owned DOM.
+- Canvas-rendered surfaces such as candles, axes, grid, crosshair labels, and volume remain theme-driven. Use `mergeThemes()` and `updateTheme()` for those.
+- See [Design-system adapter](/guide/design-system-adapter) for the default class list and a custom adapter example.
 
 ## Data contracts
 

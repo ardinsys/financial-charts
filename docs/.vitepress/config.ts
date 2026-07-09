@@ -28,6 +28,10 @@ export default defineConfig({
           {
             text: "Styling and localization",
             link: "/guide/styling-and-localization"
+          },
+          {
+            text: "Design-system adapter",
+            link: "/guide/design-system-adapter"
           }
         ]
       },

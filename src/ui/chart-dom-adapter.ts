@@ -96,7 +96,9 @@ export interface ChartDOMOverlay {
  * Renders the DOM chrome that sits around the canvases. The default
  * {@link DefaultDOMAdapter} reproduces the built-in HTML behavior. The core
  * delegates non-canvas DOM to this adapter so applications can restyle or
- * replace it while staying in an HTMLElement-based environment.
+ * replace it while staying in an HTMLElement-based environment. The default
+ * implementation exposes stable `fci-*` classes and `data-id` hooks for CSS
+ * restyling and integration tests.
  */
 export interface ChartDOMAdapter {
   /**
@@ -113,6 +115,10 @@ export interface ChartDOMAdapter {
     model: IndicatorLabelModel,
     actions: IndicatorLabelActions
   ): IndicatorLabelHandle;
+  /**
+   * Render a draggable divider between panes. Omit this to reuse the default
+   * divider while still replacing the rest of the adapter.
+   */
   createPaneDivider?(
     model: PaneDividerModel,
     actions: PaneDividerActions

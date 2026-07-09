@@ -31,14 +31,14 @@ abstract class MyIndicator extends Indicator<MyTheme, MyOptions> {
 
 Every indicator merges its supplied options with these defaults:
 
-| Field           | Description                                                                                        |
-| --------------- | -------------------------------------------------------------------------------------------------- |
-| `key`           | Unique identifier (for labels and debugging).                                                      |
-| `names`         | Localized display names keyed by locale (`default` is used as a fallback).                         |
-| `labelTemplate` | HTML template used for the indicator pill. Two versions are usually provided (`light` and `dark`). |
-| `labelRenderer` | Optional renderer object for replacing the template rendering strategy.                            |
+| Field   | Description                                                                |
+| ------- | -------------------------------------------------------------------------- |
+| `key`   | Unique identifier (for labels and debugging).                              |
+| `names` | Localized display names keyed by locale (`default` is used as a fallback). |
 
-The base class automatically wires the template buttons:
+The base class builds an `IndicatorLabelModel` from these options, the current label content, visibility, and localized action titles. The chart hands that model to the active `ChartDOMAdapter`.
+
+The default adapter renders and wires:
 
 - Show/hide toggles (`data-id="show"` / `"hide"`).
 - Settings button (`indicator-settings-open` event).
@@ -49,19 +49,27 @@ The base class automatically wires the template buttons:
 - `attach(ctx)` is inherited from `Indicator` and calls `setChart(ctx.chart)`.
 - `setChart(chart)` is called when the indicator is attached. Use it to cache the reference and read `chart.getOptions()` if you need runtime information.
 - `draw()` runs on each indicator render pass. Call `getDrawingContext()` to access the indicator canvas, data, visible data, visible range, scales, formatter/theme, and `projectTime` / `projectPrice` / `projectPoint` helpers without wiring canvas or scale plumbing yourself.
-- `updateLabel(dataTime?)` is invoked after renders and when locales or themes change. Update label text/values here.
+- `getLabelContent(dataTime?)` is invoked after renders and when locales or themes change. Return label detail text and optional value segments here; the base class updates the adapter-rendered label.
 - `getModifier(visibleTimeRange)` lets you modify the price range. Return a `ScaleRangeModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).
 - `updateOptions(partial)` merges new options, requests a redraw, and re-renders the label.
 - `detach()` is called when an indicator is removed or the chart is disposed; the base class uses it to remove label listeners.
 
-### Label templates
+### Label model and DOM adapter
 
-Ensure your template includes these `data-id` hooks so the base class can wire events and localization:
+Indicators do not author DOM. Return label content from `getLabelContent()` and let the adapter render it:
 
-- `label`, `name`, `extra`, `value`
-- `show`, `hide`, `settings`, `remove`
+```ts
+protected getLabelContent(dataTime?: number): IndicatorLabelContent {
+  return {
+    detail: "20 close",
+    segments: dataTime
+      ? [{ text: this.chart.getFormatter().formatPrice(12.34), color: "#2962FF" }]
+      : []
+  };
+}
+```
 
-Templates are chosen by `chart.getOptions().theme.key` (default `"light"` / `"dark"`). Provide matching entries for each theme key you support to avoid missing buttons.
+`DefaultDOMAdapter` renders the model with stable `fci-*` CSS classes and `data-id` hooks. Pass a custom `domAdapter` in `ChartOptions` to render labels/actions through app-owned DOM or framework components. See [Design-system adapter](/guide/design-system-adapter).
 
 ## Paneled indicators
 

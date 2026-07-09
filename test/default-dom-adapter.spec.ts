@@ -49,16 +49,27 @@ describe("DefaultDOMAdapter indicator label", () => {
   it("renders the model name, detail, value segment, and controls", () => {
     const { handle, q } = makeLabel();
     expect(handle.root.classList.contains("financial-indicator")).toBe(true);
+    expect(handle.root.classList.contains("fci-indicator")).toBe(true);
+    expect(handle.root.dataset.id).toBe("indicator-label");
+    expect(handle.root.dataset.indicatorKey).toBe("sma");
+    expect(handle.root.dataset.themeKey).toBe("light");
     expect(q("name").textContent).toBe("SMA");
     expect(q("extra").textContent).toBe("10 close");
 
     const spans = q("value").querySelectorAll("span");
     expect(spans).toHaveLength(1);
     expect(spans[0].textContent).toBe("12.34");
+    expect(spans[0].classList.contains("fci-value-segment")).toBe(true);
+    expect((spans[0] as HTMLElement).dataset.index).toBe("0");
     expect((spans[0] as HTMLElement).style.color).not.toBe("");
 
     for (const id of ["show", "hide", "settings", "remove"]) {
-      expect(q(id)).toBeTruthy();
+      const action = q(id) as HTMLButtonElement;
+      expect(action).toBeTruthy();
+      expect(action.type).toBe("button");
+      expect(action.dataset.action).toBe(id);
+      expect(action.classList.contains("fci-action")).toBe(true);
+      expect(action.classList.contains(`fci-action-${id}`)).toBe(true);
     }
   });
 
@@ -95,6 +106,17 @@ describe("DefaultDOMAdapter indicator label", () => {
     expect(q("show").title).toBe(titles.hide);
     expect(q("settings").title).toBe(titles.settings);
     expect(q("remove").title).toBe(titles.remove);
+    expect(q("hide").getAttribute("aria-label")).toBe(titles.show);
+    expect(q("show").getAttribute("aria-label")).toBe(titles.hide);
+    expect(q("settings").getAttribute("aria-label")).toBe(titles.settings);
+    expect(q("remove").getAttribute("aria-label")).toBe(titles.remove);
+  });
+
+  it("updates design-system data hooks when the label model changes", () => {
+    const { handle } = makeLabel();
+    handle.update(model({ key: "ema", themeKey: "dark" }));
+    expect(handle.root.dataset.indicatorKey).toBe("ema");
+    expect(handle.root.dataset.themeKey).toBe("dark");
   });
 
   it("routes button clicks to the action callbacks", () => {
@@ -140,6 +162,14 @@ describe("DefaultDOMAdapter overlay", () => {
     expect(overlay.indicatorLabelContainer.parentElement).toBe(host);
     expect(overlay.indicatorLabelContainer.style.position).toBe("absolute");
     expect(overlay.indicatorLabelContainer.style.top).toBe("40px");
+    expect(
+      overlay.indicatorLabelContainer.classList.contains("fci-overlay")
+    ).toBe(true);
+    expect(
+      overlay.indicatorLabelContainer.classList.contains("fci-indicator-labels")
+    ).toBe(true);
+    expect(overlay.indicatorLabelContainer.dataset.id).toBe("indicator-labels");
+    expect(overlay.indicatorLabelContainer.dataset.themeKey).toBe("light");
   });
 
   it("repositions on update and detaches on destroy", () => {
@@ -150,6 +180,7 @@ describe("DefaultDOMAdapter overlay", () => {
     });
     overlay.update({ themeKey: "dark", labelTopOffset: 60 });
     expect(overlay.indicatorLabelContainer.style.top).toBe("60px");
+    expect(overlay.indicatorLabelContainer.dataset.themeKey).toBe("dark");
     overlay.destroy();
     expect(overlay.indicatorLabelContainer.parentElement).toBeNull();
   });
@@ -174,8 +205,14 @@ describe("DefaultDOMAdapter pane divider", () => {
     );
 
     expect(handle.root.classList.contains("fci-pane-divider")).toBe(true);
+    expect(handle.root.dataset.id).toBe("pane-divider");
+    expect(handle.root.dataset.key).toBe("divider");
+    expect(handle.root.dataset.themeKey).toBe("light");
     expect(handle.root.dataset.beforePaneId).toBe("0");
     expect(handle.root.dataset.afterPaneId).toBe("1");
+    expect(
+      handle.root.querySelector('[data-id="pane-divider-line"]')
+    ).toBeTruthy();
     expect(handle.root.style.top).toBe("100px");
     expect(handle.root.style.height).toBe("8px");
 
@@ -192,6 +229,8 @@ describe("DefaultDOMAdapter pane divider", () => {
       width: 640,
       height: 10
     });
+    expect(handle.root.dataset.key).toBe("divider");
+    expect(handle.root.dataset.themeKey).toBe("dark");
     expect(handle.root.dataset.beforePaneId).toBe("1");
     expect(handle.root.dataset.afterPaneId).toBe("2");
     expect(handle.root.style.top).toBe("180px");

@@ -175,11 +175,13 @@ The event emitter remains compatible with existing `chart.on(...)` calls, while
 the built-in event map now includes indicator and drawing events. Plugin authors
 can use the generic event emitter types for custom event maps.
 
-### Pluggable DOM adapter (indicator labels)
+### Pluggable DOM adapter (indicator labels and pane dividers)
 
 DOM UI now goes through a `ChartDOMAdapter`. The default `DefaultDOMAdapter`
 reproduces the built-in look, so no change is required for existing users — core
-stays dependency-free.
+stays dependency-free. It exposes stable `fci-*` class hooks for CSS restyling
+and can be replaced when indicator labels/actions or pane dividers should use
+app-owned DOM.
 
 **Indicator labels are now a data model, not HTML (BREAKING for indicator
 authors).** The old `labelTemplate` / `labelRenderer` / `data-id` / imperative
@@ -204,6 +206,9 @@ markup, styling, or framework components.
 - The adapter also builds the composition layer via
   `createOverlay(host, context)` (overlay label region + DOM
   toolbars/legend/settings).
+- Pane dividers are rendered by `createPaneDivider(model, actions)`. Custom
+  adapters can override it; if omitted, the chart falls back to
+  `DefaultDOMAdapter`.
 - **Migration for indicator authors:** replace `updateLabel()` DOM writes and any
   `labelTemplate`/`labelRenderer` options with a `getLabelContent()` returning
   `{ detail, segments }`.

@@ -29,12 +29,19 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       left: 10,
       width: "fit-content"
     });
+    indicatorLabelContainer.classList.add(
+      "fci-overlay",
+      "fci-indicator-labels"
+    );
+    indicatorLabelContainer.dataset.id = "indicator-labels";
+    indicatorLabelContainer.dataset.themeKey = context.themeKey;
     host.appendChild(indicatorLabelContainer);
 
     return {
       indicatorLabelContainer,
       update: (next: ChartDOMOverlayContext) => {
         indicatorLabelContainer.style.top = next.labelTopOffset + "px";
+        indicatorLabelContainer.dataset.themeKey = next.themeKey;
       },
       destroy: () => {
         indicatorLabelContainer.remove();
@@ -51,10 +58,13 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       zIndex: 101,
       width: "fit-content"
     });
-    root.classList.add("financial-indicator");
+    root.classList.add("financial-indicator", "fci-indicator");
+    root.dataset.id = "indicator-label";
+    root.dataset.indicatorKey = model.key;
+    root.dataset.themeKey = model.themeKey;
 
     const button = (id: string, icon: string, extraClass = "") =>
-      `<button class="fci-btn ${extraClass}" data-id="${id}">${icon}</button>`;
+      `<button type="button" class="fci-btn fci-action fci-action-${id} ${extraClass}" data-id="${id}" data-action="${id}">${icon}</button>`;
 
     const controls = [
       model.actions.canHide ? button("show", ICON_SHOW) : "",
@@ -117,10 +127,14 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
     const update = (next: IndicatorLabelModel) => {
       if (name) name.textContent = next.name;
       if (extra) extra.textContent = next.detail ?? "";
+      root.dataset.indicatorKey = next.key;
+      root.dataset.themeKey = next.themeKey;
       if (value) {
         value.replaceChildren(
           ...next.segments.map((segment, index) => {
             const span = document.createElement("span");
+            span.classList.add("fci-value-segment");
+            span.dataset.index = String(index);
             span.textContent = segment.text;
             if (segment.color) span.style.color = segment.color;
             if (index > 0) span.style.marginLeft = "4px";
@@ -134,6 +148,12 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       if (show) show.title = next.actionTitles.hide;
       if (settings) settings.title = next.actionTitles.settings;
       if (remove) remove.title = next.actionTitles.remove;
+      if (hide) hide.setAttribute("aria-label", next.actionTitles.show);
+      if (show) show.setAttribute("aria-label", next.actionTitles.hide);
+      if (settings) {
+        settings.setAttribute("aria-label", next.actionTitles.settings);
+      }
+      if (remove) remove.setAttribute("aria-label", next.actionTitles.remove);
       applyVisible(next.visible);
     };
 
@@ -161,12 +181,14 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
     });
     root.classList.add("fci-pane-divider");
     root.dataset.id = "pane-divider";
+    root.dataset.key = model.key;
+    root.dataset.themeKey = model.themeKey;
     root.dataset.beforePaneId = String(model.beforePaneId);
     root.dataset.afterPaneId = String(model.afterPaneId);
     root.setAttribute("role", "separator");
     root.setAttribute("aria-orientation", "horizontal");
     root.tabIndex = 0;
-    root.innerHTML = `<div class="fci-pane-divider-line"></div>`;
+    root.innerHTML = `<div class="fci-pane-divider-line" data-id="pane-divider-line"></div>`;
     root.style.cursor = "row-resize";
     root.style.touchAction = "none";
 
@@ -181,6 +203,8 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       root.style.top = next.y + "px";
       root.style.width = next.width + "px";
       root.style.height = next.height + "px";
+      root.dataset.key = next.key;
+      root.dataset.themeKey = next.themeKey;
       root.dataset.beforePaneId = String(next.beforePaneId);
       root.dataset.afterPaneId = String(next.afterPaneId);
     };
