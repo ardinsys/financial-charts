@@ -30,11 +30,11 @@ export * from "./plugin/chart-plugin";
 
 export * from "./ui/chart-ui-adapter";
 export * from "./ui/web-ui-adapter";
+export * from "./ui/icons";
 
 export * from "./drawings";
 
 export * from "./indicators/indicator";
-export * from "./indicators/label-renderer";
 export * from "./indicators/paneled-indicator";
 export * from "./indicators/paneled/test-indicator";
 export * from "./indicators/simple/moving-average";

@@ -1,5 +1,8 @@
-import { DefaultIndicatorOptions, Indicator } from "../indicator";
-import { indicatorLabelTemplate } from "../label-renderer";
+import {
+  DefaultIndicatorOptions,
+  Indicator,
+  type IndicatorLabelContent
+} from "../indicator";
 
 export interface MovingAverageTheme {
   color: string;
@@ -23,7 +26,6 @@ export class MovingAverageIndicator extends Indicator<
     return {
       period: 5,
       source: "close",
-      labelTemplate: indicatorLabelTemplate,
       key: "SMA",
       names: {
         default: "Simple Moving Average"
@@ -44,45 +46,26 @@ export class MovingAverageIndicator extends Indicator<
     };
   }
 
-  public updateLabel(dataTime?: number): void {
-    this.labelContainer.querySelector("[data-id=name]")!.textContent =
-      this.options.names[this.chart.getOptions().locale] ||
-      this.options.names.default ||
-      this.options.key;
-
-    this.labelContainer.querySelector("[data-id=extra]")!.textContent =
+  protected getLabelContent(dataTime?: number): IndicatorLabelContent {
+    const detail =
       this.options.period +
       " " +
       this.chart.getLocaleValues().common.sources[this.options.source];
 
-    if (dataTime == undefined) return;
+    if (dataTime == undefined) return { detail };
 
-    let time: number = dataTime!;
+    const sma = this.cache.get(dataTime);
+    if (sma == undefined) return { detail };
 
-    if (time == undefined) {
-      const lastPoints = this.chart.getLastVisibleDataPoints();
-      const allPoints = this.chart.getData();
-
-      if (lastPoints.length > 0) {
-        time = lastPoints.at(-1)!.time;
-      } else if (allPoints.length > 0) {
-        time = allPoints.at(-1)!.time;
-      } else {
-        return;
-      }
-    }
-
-    const sma = this.cache.get(time);
-    if (sma == undefined) return;
-
-    const valueContainer = this.labelContainer.querySelector(
-      "[data-id=value]"
-    ) as HTMLElement;
-
-    if (valueContainer) {
-      valueContainer.style.color = this.theme.color;
-      valueContainer.textContent = this.chart.getFormatter().formatPrice(sma);
-    }
+    return {
+      detail,
+      segments: [
+        {
+          text: this.chart.getFormatter().formatPrice(sma),
+          color: this.theme.color
+        }
+      ]
+    };
   }
 
   public draw(): void {

@@ -4,7 +4,6 @@ import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
-import type { IndicatorLabelRenderer } from "../src/indicators/label-renderer";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
 
 FinancialChart.registerController(LineController);
@@ -91,44 +90,15 @@ describe("plugin lifecycle", () => {
     ).toBe("Test");
   });
 
-  it("renders indicator labels through an injectable renderer", () => {
+  it("renders indicator label content from the data model", () => {
     const { chart, data } = createChart();
-    const renderer: IndicatorLabelRenderer = {
-      render: vi.fn(
-        ({ themeKey }) => /* html */ `
-          <div data-id="custom-label" data-theme="${themeKey}">
-            <span data-id="label">
-              <span data-id="name"></span>
-              <span data-id="extra"></span>
-              <span data-id="value"></span>
-            </span>
-            <button data-id="show"></button>
-            <button data-id="hide"></button>
-            <button data-id="settings"></button>
-            <button data-id="remove"></button>
-          </div>
-        `
-      )
-    };
     const indicator = new MovingAverageIndicator(null, {
-      labelRenderer: renderer,
-      names: {
-        default: "Injected SMA"
-      }
+      names: { default: "Injected SMA" }
     });
 
     chart.draw(data);
     chart.addIndicator(indicator);
 
-    expect(renderer.render).toHaveBeenCalledWith(
-      expect.objectContaining({ themeKey: "light" })
-    );
-    expect(
-      indicator
-        .getLabelContainer()
-        .querySelector("[data-id=custom-label]")
-        ?.getAttribute("data-theme")
-    ).toBe("light");
     expect(
       indicator.getLabelContainer().querySelector("[data-id=name]")?.textContent
     ).toBe("Injected SMA");

@@ -3,15 +3,15 @@ import {
   ChartOverlayContext,
   ChartUIAdapter,
   IndicatorLabelActions,
-  IndicatorLabelActionTitles,
-  IndicatorLabelDescriptor,
-  IndicatorLabelHandle
+  IndicatorLabelHandle,
+  IndicatorLabelModel
 } from "./chart-ui-adapter";
+import { ICON_HIDE, ICON_REMOVE, ICON_SETTINGS, ICON_SHOW } from "./icons";
 
 /**
- * Default, framework-agnostic UI adapter. Renders indicator labels from their
- * HTML template and wires the show/hide/settings/remove controls via
- * `data-id` hooks — identical to the library's original built-in behavior.
+ * Default, framework-agnostic UI adapter. Renders the indicator label model to
+ * DOM (with the built-in `fci-*` classes and `data-id` hooks) and wires the
+ * show/hide/settings/remove controls — the library's built-in look and behavior.
  */
 export class WebUIAdapter implements ChartUIAdapter {
   createOverlay(host: HTMLElement, context: ChartOverlayContext): ChartOverlay {
@@ -36,7 +36,7 @@ export class WebUIAdapter implements ChartUIAdapter {
   }
 
   createIndicatorLabel(
-    descriptor: IndicatorLabelDescriptor,
+    model: IndicatorLabelModel,
     actions: IndicatorLabelActions
   ): IndicatorLabelHandle {
     const root = document.createElement("div");
@@ -44,17 +44,38 @@ export class WebUIAdapter implements ChartUIAdapter {
     root.style.zIndex = "101";
     root.style.width = "fit-content";
     root.classList.add("financial-indicator");
-    root.innerHTML = descriptor.templateHtml;
 
-    const label = root.querySelector('[data-id="label"]') as HTMLElement | null;
-    const hide = root.querySelector('[data-id="hide"]') as HTMLElement | null;
-    const show = root.querySelector('[data-id="show"]') as HTMLElement | null;
-    const settings = root.querySelector(
-      '[data-id="settings"]'
-    ) as HTMLElement | null;
-    const remove = root.querySelector(
-      '[data-id="remove"]'
-    ) as HTMLElement | null;
+    const button = (id: string, icon: string, extraClass = "") =>
+      `<button class="fci-btn ${extraClass}" data-id="${id}">${icon}</button>`;
+
+    const controls = [
+      model.actions.canHide ? button("show", ICON_SHOW) : "",
+      model.actions.canHide ? button("hide", ICON_HIDE, "fci-hide") : "",
+      model.actions.canOpenSettings ? button("settings", ICON_SETTINGS) : "",
+      model.actions.canRemove ? button("remove", ICON_REMOVE) : ""
+    ].join("");
+
+    root.innerHTML = /* html */ `
+      <div class="fci-wrapper">
+        <div class="fci-label" data-id="label">
+          <span class="fci-name" data-id="name"></span>
+          <span class="fci-extra" data-id="extra"></span>
+          <span class="fci-value" data-id="value"></span>
+        </div>
+        <div class="fci-actions">${controls}</div>
+      </div>
+    `;
+
+    const q = (id: string) =>
+      root.querySelector(`[data-id="${id}"]`) as HTMLElement | null;
+    const label = q("label");
+    const name = q("name");
+    const extra = q("extra");
+    const value = q("value");
+    const show = q("show");
+    const hide = q("hide");
+    const settings = q("settings");
+    const remove = q("remove");
 
     const disposers: Array<() => void> = [];
     const on = (element: HTMLElement | null, listener: () => void) => {
@@ -63,7 +84,7 @@ export class WebUIAdapter implements ChartUIAdapter {
       disposers.push(() => element.removeEventListener("click", listener));
     };
 
-    const setVisible = (visible: boolean) => {
+    const applyVisible = (visible: boolean) => {
       if (visible) {
         show?.classList.remove("fci-hide");
         hide?.classList.add("fci-hide");
@@ -76,31 +97,44 @@ export class WebUIAdapter implements ChartUIAdapter {
     };
 
     on(hide, () => {
-      setVisible(true);
+      applyVisible(true);
       actions.onToggleVisibility(true);
     });
     on(show, () => {
-      setVisible(false);
+      applyVisible(false);
       actions.onToggleVisibility(false);
     });
     on(settings, () => actions.onOpenSettings());
     on(remove, () => actions.onRemove());
 
-    const setActionTitles = (titles: IndicatorLabelActionTitles) => {
+    const update = (next: IndicatorLabelModel) => {
+      if (name) name.textContent = next.name;
+      if (extra) extra.textContent = next.detail ?? "";
+      if (value) {
+        value.replaceChildren(
+          ...next.segments.map((segment, index) => {
+            const span = document.createElement("span");
+            span.textContent = segment.text;
+            if (segment.color) span.style.color = segment.color;
+            if (index > 0) span.style.marginLeft = "4px";
+            return span;
+          })
+        );
+      }
       // Titles are intentionally cross-wired: the "hide" control shows the
       // "show" tooltip and vice versa (matches the original behavior).
-      if (hide) hide.title = titles.show;
-      if (show) show.title = titles.hide;
-      if (settings) settings.title = titles.settings;
-      if (remove) remove.title = titles.remove;
+      if (hide) hide.title = next.actionTitles.show;
+      if (show) show.title = next.actionTitles.hide;
+      if (settings) settings.title = next.actionTitles.settings;
+      if (remove) remove.title = next.actionTitles.remove;
+      applyVisible(next.visible);
     };
 
-    setActionTitles(descriptor.actionTitles);
+    update(model);
 
     return {
       root,
-      setActionTitles,
-      setVisible,
+      update,
       destroy: () => {
         for (const dispose of disposers.splice(0)) dispose();
       }

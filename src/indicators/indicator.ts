@@ -2,32 +2,35 @@ import type { FinancialChart } from "../chart/financial-chart";
 import { mergeThemes } from "../chart/themes";
 import { TimeRange } from "../chart/types";
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
-import type { IndicatorLabelHandle } from "../ui/chart-ui-adapter";
+import type {
+  IndicatorLabelHandle,
+  IndicatorLabelModel,
+  IndicatorLabelSegment
+} from "../ui/chart-ui-adapter";
 import { ScaleRangeModifier } from "../scales/data-scale-model";
-import {
-  defaultIndicatorLabelRenderer,
-  type IndicatorLabelRenderer,
-  type IndicatorLabelTemplate
-} from "./label-renderer";
 
-export {
-  defaultIndicatorLabelRenderer,
-  indicatorLabelTemplate,
-  TemplateIndicatorLabelRenderer
-} from "./label-renderer";
-export type { IndicatorLabelRenderer, IndicatorLabelTemplate };
+export type { IndicatorLabelSegment };
 
 export interface DefaultIndicatorOptions {
-  labelTemplate?: IndicatorLabelTemplate;
-  labelRenderer?: IndicatorLabelRenderer;
   names: Record<string, string>;
   key: string;
+}
+
+/** What a concrete indicator contributes to its label on each update. */
+export interface IndicatorLabelContent {
+  /** Override the display name (defaults to the localized `options.names`). */
+  name?: string;
+  /** Parameter / detail line, e.g. "10 close". */
+  detail?: string;
+  /** Value segment(s) shown at the current crosshair time. */
+  segments?: IndicatorLabelSegment[];
 }
 
 export abstract class Indicator<
   TTheme extends object,
   TOptions extends DefaultIndicatorOptions
-> implements ChartPlugin {
+> implements ChartPlugin
+{
   protected themes!: Record<string, TTheme>;
   protected options!: TOptions;
   protected chart!: FinancialChart;
@@ -59,20 +62,8 @@ export abstract class Indicator<
     this.chart = chart;
     this.theme = this.themes[chart.getOptions().theme.key];
 
-    const actions = chart.getLocaleValues().indicators.actions;
     this.labelHandle = this.chartContext.ui.createIndicatorLabel(
-      {
-        key: this.options.key,
-        themeKey: chart.getOptions().theme.key,
-        templateHtml: this.renderLabel(),
-        actionTitles: {
-          show: actions.show,
-          hide: actions.hide,
-          settings: actions.settings,
-          remove: actions.remove
-        },
-        visible: this.visible
-      },
+      this.buildLabelModel(),
       {
         onToggleVisibility: (visible) => {
           this.visible = visible;
@@ -95,12 +86,31 @@ export abstract class Indicator<
     this.labelContainer = this.labelHandle.root;
   }
 
-  protected renderLabel() {
-    return (this.options.labelRenderer ?? defaultIndicatorLabelRenderer).render(
-      {
-        themeKey: this.chart.getOptions().theme.key,
-        template: this.options.labelTemplate
+  private buildLabelModel(dataTime?: number): IndicatorLabelModel {
+    const content = this.getLabelContent(dataTime);
+    const actions = this.chart.getLocaleValues().indicators.actions;
+    return {
+      key: this.options.key,
+      themeKey: this.chart.getOptions().theme.key,
+      name: content.name ?? this.resolveName(),
+      detail: content.detail,
+      segments: content.segments ?? [],
+      visible: this.visible,
+      actions: { canHide: true, canOpenSettings: true, canRemove: true },
+      actionTitles: {
+        show: actions.show,
+        hide: actions.hide,
+        settings: actions.settings,
+        remove: actions.remove
       }
+    };
+  }
+
+  private resolveName(): string {
+    return (
+      this.options.names[this.chart.getOptions().locale] ||
+      this.options.names.default ||
+      this.options.key
     );
   }
 
@@ -113,21 +123,24 @@ export abstract class Indicator<
   }
 
   public updateLocale() {
-    const actions = this.chart.getLocaleValues().indicators.actions;
-    this.labelHandle?.setActionTitles({
-      show: actions.show,
-      hide: actions.hide,
-      settings: actions.settings,
-      remove: actions.remove
-    });
-
     this.updateLabel();
+  }
+
+  /** Re-render the label. Rebuilds the model from `getLabelContent`. */
+  public updateLabel(dataTime?: number): void {
+    this.labelHandle?.update(this.buildLabelModel(dataTime));
   }
 
   public abstract getDefaultOptions(): TOptions;
   public abstract getDefaultThemes(): Record<string, TTheme>;
   public abstract draw(): void;
-  public abstract updateLabel(dataTime?: number): void;
+
+  /**
+   * Produce the label content for the given crosshair time (undefined = no
+   * hover). The base fills name/actions/visibility; return detail + value
+   * segments.
+   */
+  protected abstract getLabelContent(dataTime?: number): IndicatorLabelContent;
 
   public updateOptions(options: Partial<TOptions>): void {
     this.options = mergeThemes(this.options, options);

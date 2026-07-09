@@ -1,6 +1,8 @@
 import { DataScaleModel } from "../../scales/data-scale-model";
-import { DefaultIndicatorOptions } from "../indicator";
-import { indicatorLabelTemplate } from "../label-renderer";
+import {
+  DefaultIndicatorOptions,
+  type IndicatorLabelContent
+} from "../indicator";
 import { PaneledIndicator } from "../paneled-indicator";
 
 export class TestIndicator extends PaneledIndicator<
@@ -13,11 +15,8 @@ export class TestIndicator extends PaneledIndicator<
     return this.chart.getVisibleScale();
   }
 
-  public updateLabel(_dataTime?: number): void {
-    this.labelContainer.querySelector("[data-id=name]")!.textContent =
-      this.options.names[this.chart.getOptions().locale] ||
-      this.options.names.default ||
-      this.options.key;
+  protected getLabelContent(): IndicatorLabelContent {
+    return {};
   }
 
   public getCrosshairValue(_time: number, _relativeY: number): string {
@@ -47,7 +46,6 @@ export class TestIndicator extends PaneledIndicator<
 
   public getDefaultOptions(): DefaultIndicatorOptions {
     return {
-      labelTemplate: indicatorLabelTemplate,
       key: "test",
       names: {
         default: "Test"

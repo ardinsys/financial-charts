@@ -15,28 +15,41 @@ export interface IndicatorLabelActions {
   onRemove(): void;
 }
 
-export interface IndicatorLabelDescriptor {
-  key: string;
-  themeKey: string;
-  /**
-   * Resolved label markup produced by the indicator's `labelTemplate` /
-   * `labelRenderer`. Indicators still author their own content and query it via
-   * `data-id` hooks, so the markup contract is preserved across adapters.
-   */
-  templateHtml: string;
-  actionTitles: IndicatorLabelActionTitles;
-  visible: boolean;
+export interface IndicatorLabelSegment {
+  text: string;
+  color?: string;
 }
 
 /**
- * A live handle to a mounted indicator label. `root` is the element the
- * indicator writes its content into (its `labelContainer`); the chart mounts
- * `root` into a pane/label container exactly as before.
+ * The declarative state of one indicator label. Indicators produce this (rather
+ * than authoring HTML), so every adapter — web, Vue, React — renders it natively.
+ */
+export interface IndicatorLabelModel {
+  key: string;
+  themeKey: string;
+  /** Localized display name. */
+  name: string;
+  /** Parameter / detail line, e.g. "10 close". */
+  detail?: string;
+  /** Current value(s); multiple segments render as colored parts (Bollinger, MACD, …). */
+  segments: IndicatorLabelSegment[];
+  visible: boolean;
+  /** Which action controls to render. */
+  actions: {
+    canHide: boolean;
+    canOpenSettings: boolean;
+    canRemove: boolean;
+  };
+  actionTitles: IndicatorLabelActionTitles;
+}
+
+/**
+ * A live handle to a mounted indicator label. `root` is the element the chart
+ * mounts into the label region / pane; `update` re-renders from a new model.
  */
 export interface IndicatorLabelHandle {
   readonly root: HTMLElement;
-  setActionTitles(titles: IndicatorLabelActionTitles): void;
-  setVisible(visible: boolean): void;
+  update(model: IndicatorLabelModel): void;
   destroy(): void;
 }
 
@@ -73,7 +86,7 @@ export interface ChartUIAdapter {
    */
   createOverlay(host: HTMLElement, context: ChartOverlayContext): ChartOverlay;
   createIndicatorLabel(
-    descriptor: IndicatorLabelDescriptor,
+    model: IndicatorLabelModel,
     actions: IndicatorLabelActions
   ): IndicatorLabelHandle;
 }

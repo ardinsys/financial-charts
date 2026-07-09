@@ -1,11 +1,35 @@
 import { describe, expect, it, vi } from "vitest";
 import { WebUIAdapter } from "../src/ui/web-ui-adapter";
-import { indicatorLabelTemplate } from "../src/indicators/label-renderer";
-import type { IndicatorLabelActions } from "../src/ui/chart-ui-adapter";
+import type {
+  IndicatorLabelActions,
+  IndicatorLabelModel
+} from "../src/ui/chart-ui-adapter";
 
-const titles = { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" };
+const titles = {
+  show: "Show",
+  hide: "Hide",
+  settings: "Settings",
+  remove: "Remove"
+};
 
-function makeLabel(actions: Partial<IndicatorLabelActions> = {}) {
+function model(overrides: Partial<IndicatorLabelModel> = {}): IndicatorLabelModel {
+  return {
+    key: "sma",
+    themeKey: "light",
+    name: "SMA",
+    detail: "10 close",
+    segments: [{ text: "12.34", color: "#2962FF" }],
+    visible: true,
+    actions: { canHide: true, canOpenSettings: true, canRemove: true },
+    actionTitles: titles,
+    ...overrides
+  };
+}
+
+function makeLabel(
+  actions: Partial<IndicatorLabelActions> = {},
+  initial: IndicatorLabelModel = model()
+) {
   const adapter = new WebUIAdapter();
   const spies = {
     onToggleVisibility: vi.fn(),
@@ -13,28 +37,48 @@ function makeLabel(actions: Partial<IndicatorLabelActions> = {}) {
     onRemove: vi.fn(),
     ...actions
   };
-  const handle = adapter.createIndicatorLabel(
-    {
-      key: "sma",
-      themeKey: "light",
-      templateHtml: indicatorLabelTemplate.light,
-      actionTitles: titles,
-      visible: true
-    },
-    spies
-  );
+  const handle = adapter.createIndicatorLabel(initial, spies);
   const q = (id: string) =>
     handle.root.querySelector(`[data-id="${id}"]`) as HTMLElement;
   return { handle, spies, q };
 }
 
 describe("WebUIAdapter indicator label", () => {
-  it("renders the template with the action controls", () => {
+  it("renders the model name, detail, value segment, and controls", () => {
     const { handle, q } = makeLabel();
     expect(handle.root.classList.contains("financial-indicator")).toBe(true);
-    for (const id of ["name", "value", "show", "hide", "settings", "remove"]) {
+    expect(q("name").textContent).toBe("SMA");
+    expect(q("extra").textContent).toBe("10 close");
+
+    const spans = q("value").querySelectorAll("span");
+    expect(spans).toHaveLength(1);
+    expect(spans[0].textContent).toBe("12.34");
+    expect((spans[0] as HTMLElement).style.color).not.toBe("");
+
+    for (const id of ["show", "hide", "settings", "remove"]) {
       expect(q(id)).toBeTruthy();
     }
+  });
+
+  it("renders multiple colored value segments (e.g. Bollinger/MACD)", () => {
+    const { q } = makeLabel(
+      {},
+      model({
+        segments: [{ text: "1", color: "#ff0000" }, { text: "2" }, { text: "3" }]
+      })
+    );
+    const spans = q("value").querySelectorAll("span");
+    expect([...spans].map((s) => s.textContent)).toEqual(["1", "2", "3"]);
+  });
+
+  it("only renders controls allowed by the model", () => {
+    const { q } = makeLabel(
+      {},
+      model({ actions: { canHide: true, canOpenSettings: false, canRemove: false } })
+    );
+    expect(q("show")).toBeTruthy();
+    expect(q("settings")).toBeNull();
+    expect(q("remove")).toBeNull();
   });
 
   it("cross-wires action tooltips (hide shows the 'show' title and vice versa)", () => {
@@ -58,12 +102,12 @@ describe("WebUIAdapter indicator label", () => {
     expect(spies.onRemove).toHaveBeenCalledTimes(1);
   });
 
-  it("toggles visibility classes via setVisible", () => {
+  it("reflects visibility from the model on update", () => {
     const { handle, q } = makeLabel();
-    handle.setVisible(false);
+    handle.update(model({ visible: false }));
     expect(q("label").classList.contains("fci-hidden")).toBe(true);
     expect(q("show").classList.contains("fci-hide")).toBe(true);
-    handle.setVisible(true);
+    handle.update(model({ visible: true }));
     expect(q("label").classList.contains("fci-hidden")).toBe(false);
     expect(q("hide").classList.contains("fci-hide")).toBe(true);
   });

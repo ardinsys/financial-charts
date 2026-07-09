@@ -141,21 +141,34 @@ can use the generic event emitter types for custom event maps.
 ### Pluggable UI adapter (indicator labels)
 
 DOM UI now goes through a `ChartUIAdapter`. The default `WebUIAdapter`
-reproduces the built-in behavior, so no change is required for existing users —
-core stays dependency-free. The indicator label contract is unchanged:
-indicators still author `labelTemplate` HTML and update `this.labelContainer`
-via `data-id` hooks. What moved is only the generic host/button wiring
-(previously hardcoded in `Indicator`), now owned by the adapter.
+reproduces the built-in look, so no change is required for existing users — core
+stays dependency-free.
+
+**Indicator labels are now a data model, not HTML (BREAKING for indicator
+authors).** The old `labelTemplate` / `labelRenderer` / `data-id` / imperative
+`updateLabel()` DOM mutation is removed. Instead an indicator implements:
+
+```ts
+protected getLabelContent(dataTime?: number): IndicatorLabelContent {
+  // { name?, detail?, segments?: { text, color? }[] }
+  return { detail: "10 close", segments: [{ text: "12.34", color: "#2962FF" }] };
+}
+```
+
+The base `Indicator` builds an `IndicatorLabelModel` (name from localized
+`names`, actions, visibility) and hands it to the adapter; `updateLabel()` is now
+concrete. Multi-color values (Bollinger, MACD) are expressed as multiple
+`segments`. This is what lets Vue/React adapters render labels natively.
 
 - New option: `new FinancialChart(el, range, { ..., uiAdapter })`. Omit it to get
   the default `WebUIAdapter`.
 - Plugins receive the adapter via `ChartContext.ui`.
 - The adapter also builds the composition layer via
-  `createOverlay(host, context)`, which mounts the overlay indicator-label region
-  (and, in framework adapters, any toolbars / legend / settings UI) into the
-  canvas host and returns the label region to the core.
-- This is the seam the forthcoming `@ardinsys/financial-charts-vue` /
-  `-react` packages implement to render the UI with framework components.
+  `createOverlay(host, context)` (overlay label region + framework
+  toolbars/legend/settings).
+- **Migration for indicator authors:** replace `updateLabel()` DOM writes and any
+  `labelTemplate`/`labelRenderer` options with a `getLabelContent()` returning
+  `{ detail, segments }`.
 
 ## Removed or replaced internals
 
