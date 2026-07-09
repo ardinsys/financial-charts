@@ -14,8 +14,6 @@ import {
 } from "../src/indicators/paneled-indicator";
 import { DataScaleModel } from "../src/scales/data-scale-model";
 
-FinancialChart.registerController(LineController);
-
 const charts: FinancialChart[] = [];
 
 class OverlayProbeIndicator extends Indicator<{}, DefaultIndicatorOptions> {
@@ -104,6 +102,7 @@ function createChart(data: ChartData[]) {
     },
     {
       type: "line",
+      controllers: [LineController],
       stepSize: 60_000,
       maxZoom: 10,
       volume: false,

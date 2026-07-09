@@ -5,8 +5,6 @@ import { LineController } from "../src/controllers/line-controller";
 import { PriceScale } from "../src/scales/price-scale";
 import { TimeScale } from "../src/scales/time-scale";
 
-FinancialChart.registerController(LineController);
-
 const charts: FinancialChart[] = [];
 
 afterEach(() => {
@@ -28,6 +26,7 @@ function createChart(
 
   const chart = new FinancialChart(container, timeRange, {
     type: "line",
+    controllers: [LineController],
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,

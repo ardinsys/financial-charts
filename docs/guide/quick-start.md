@@ -14,9 +14,9 @@ Import the distributed stylesheet when you need indicator labels or paneled indi
 import "@ardinsys/financial-charts/dist/style.css";
 ```
 
-## 2. Register controllers once
+## 2. Choose controllers for the chart
 
-Do this at application startup so the chart knows which renderers it can instantiate.
+Pass the controllers your chart can instantiate. Registrations are scoped to each chart instance, so tests, SSR renders, and multiple charts do not share global state.
 
 ```ts
 import {
@@ -30,13 +30,15 @@ import {
   HLCAreaController
 } from "@ardinsys/financial-charts";
 
-FinancialChart.registerController(AreaController);
-FinancialChart.registerController(LineController);
-FinancialChart.registerController(CandlestickController);
-FinancialChart.registerController(BarController);
-FinancialChart.registerController(HollowCandleController);
-FinancialChart.registerController(SteplineController);
-FinancialChart.registerController(HLCAreaController);
+const controllers = [
+  AreaController,
+  LineController,
+  CandlestickController,
+  BarController,
+  HollowCandleController,
+  SteplineController,
+  HLCAreaController
+];
 ```
 
 ## 3. Pick or extend a theme
@@ -69,6 +71,7 @@ const chart = new FinancialChart(
   "auto",
   {
     type: "candle",
+    controllers,
     theme,
     locale: "en",
     maxZoom: 100,

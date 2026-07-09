@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { FinancialChart } from "../src/chart/financial-chart";
 import { LineController } from "../src/controllers/line-controller";
 
-FinancialChart.registerController(LineController);
+class AlternateLineController extends LineController {
+  static override ID = "alternate-line";
+}
 
 describe("FinancialChart test harness", () => {
   it("creates and draws a chart with a mocked canvas context", async () => {
@@ -20,6 +22,7 @@ describe("FinancialChart test harness", () => {
       },
       {
         type: "line",
+        controllers: [LineController],
         stepSize: 60_000,
         maxZoom: 10,
         volume: false
@@ -39,5 +42,58 @@ describe("FinancialChart test harness", () => {
     expect(chart.getContext("main").canvas.width).toBeGreaterThan(0);
 
     chart.dispose();
+  });
+
+  it("keeps controller registrations scoped to the chart instance", () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const lineContainer = document.createElement("div");
+    const alternateContainer = document.createElement("div");
+    for (const container of [lineContainer, alternateContainer]) {
+      container.style.width = "800px";
+      container.style.height = "400px";
+      document.body.appendChild(container);
+    }
+
+    const lineChart = new FinancialChart(
+      lineContainer,
+      {
+        start,
+        end: start + 60_000
+      },
+      {
+        type: "line",
+        controllers: [LineController],
+        stepSize: 60_000,
+        maxZoom: 10,
+        volume: false
+      }
+    );
+    const alternateChart = new FinancialChart(
+      alternateContainer,
+      {
+        start,
+        end: start + 60_000
+      },
+      {
+        type: "alternate-line",
+        controllers: [AlternateLineController],
+        stepSize: 60_000,
+        maxZoom: 10,
+        volume: false
+      }
+    );
+
+    expect(() => lineChart.changeType("alternate-line")).toThrow(
+      "Controller: alternate-line is not registered!"
+    );
+    expect(() => alternateChart.changeType("line")).toThrow(
+      "Controller: line is not registered!"
+    );
+
+    lineChart.registerController(AlternateLineController);
+    expect(() => lineChart.changeType("alternate-line")).not.toThrow();
+
+    lineChart.dispose();
+    alternateChart.dispose();
   });
 });

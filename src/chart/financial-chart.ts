@@ -89,6 +89,7 @@ export interface ChartOptions {
   stepSize: number;
   maxZoom: number;
   volume: boolean;
+  controllers?: readonly ControllerConstructor[];
   locale?: string;
   formatter?: Formatter;
   theme?: ChartTheme;
@@ -103,7 +104,9 @@ type Resizer = {
   ratioResize: () => void;
 };
 
-type IndicatorConstructor = (new (...args: any[]) => Indicator<any, any>) & {
+export type ControllerConstructor = (new (
+  ...args: any[]
+) => ChartController) & {
   ID?: string;
 };
 
@@ -121,44 +124,6 @@ type PaneResizeDrag = {
 };
 
 export class FinancialChart extends EventEmitter {
-  private static controllers: Map<ControllerType, new () => ChartController> =
-    new Map();
-  private static indicatorRegistry = new Map<string, IndicatorConstructor>();
-
-  public static registerController<T extends typeof ChartController>(
-    controllerClass: T
-  ) {
-    // @ts-ignore
-    if (controllerClass.ID === "default" || !controllerClass.ID) {
-      throw new Error("Controller must have a static ID field!");
-    }
-    // @ts-ignore
-    this.controllers.set(controllerClass.ID, controllerClass);
-  }
-
-  public static registerIndicator<T extends IndicatorConstructor>(
-    indicatorClass: T
-  ) {
-    if (indicatorClass.ID === "default" || !indicatorClass.ID) {
-      throw new Error("Indicator must have a static ID field!");
-    }
-
-    this.indicatorRegistry.set(indicatorClass.ID, indicatorClass);
-  }
-
-  public static createIndicator<T extends Indicator<any, any>>(
-    id: string,
-    ...args: any[]
-  ): T {
-    const IndicatorClass = this.indicatorRegistry.get(id);
-
-    if (!IndicatorClass) {
-      throw new Error(`Indicator: ${id} is not registered!`);
-    }
-
-    return new IndicatorClass(...args) as T;
-  }
-
   private readonly types = [
     "main",
     "crosshair",
@@ -167,6 +132,10 @@ export class FinancialChart extends EventEmitter {
     "indicator",
     "drawings"
   ] as const;
+  private readonly controllers = new Map<
+    ControllerType,
+    ControllerConstructor
+  >();
   private controller: ChartController;
   protected outsideContainer: HTMLElement;
   protected container: HTMLElement;
@@ -244,6 +213,40 @@ export class FinancialChart extends EventEmitter {
   ];
 
   private lastXGridCoords: number[] = [];
+
+  public registerController<T extends ControllerConstructor>(
+    controllerClass: T
+  ) {
+    const id = this.getRegistrationId(controllerClass, "Controller");
+    this.controllers.set(id as ControllerType, controllerClass);
+  }
+
+  private registerConstructorOptions(options: ChartOptions) {
+    for (const controller of options.controllers ?? []) {
+      this.registerController(controller);
+    }
+  }
+
+  private getRegistrationId(
+    registrationClass: { ID?: string },
+    label: "Controller"
+  ) {
+    if (registrationClass.ID === "default" || !registrationClass.ID) {
+      throw new Error(`${label} must have a static ID field!`);
+    }
+
+    return registrationClass.ID;
+  }
+
+  private getControllerClass(type: ControllerType) {
+    const ControllerClass = this.controllers.get(type);
+
+    if (!ControllerClass) {
+      throw new Error(`Controller: ${type} is not registered!`);
+    }
+
+    return ControllerClass;
+  }
 
   getYLabelWidth() {
     return this.yLabelWidth;
@@ -964,13 +967,7 @@ export class FinancialChart extends EventEmitter {
 
   public changeType(type: ControllerType) {
     this.options.type = type;
-    const ControllerClass = FinancialChart.controllers.get(
-      this.options.type
-    )! as any;
-
-    if (!ControllerClass) {
-      throw new Error(`Controller: ${this.options.type} is not registered!`);
-    }
+    const ControllerClass = this.getControllerClass(this.options.type);
 
     this.controller = new ControllerClass(this, this.options);
     this.dataScale = this.controller.createDataScale(
@@ -1005,6 +1002,7 @@ export class FinancialChart extends EventEmitter {
   ) {
     super();
     this.options = options as DeepConcrete<ChartOptions>;
+    this.registerConstructorOptions(options);
 
     this.options.volume = this.options.volume || false;
     this.options.locale = this.options.locale || navigator.language || "en-US";
@@ -1048,13 +1046,7 @@ export class FinancialChart extends EventEmitter {
       this.timeRange = timeRange;
     }
 
-    const ControllerClass = FinancialChart.controllers.get(
-      this.options.type
-    )! as any;
-
-    if (!ControllerClass) {
-      throw new Error(`Controller: ${this.options.type} is not registered!`);
-    }
+    const ControllerClass = this.getControllerClass(this.options.type);
 
     this.controller = new ControllerClass(this, this.options);
     this.visibleScale = this.controller.createDataScale([], {

@@ -4,8 +4,6 @@ import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 
-FinancialChart.registerController(LineController);
-
 const charts: FinancialChart[] = [];
 
 afterEach(() => {
@@ -30,11 +28,12 @@ function createChart(data: ChartData[]) {
     },
     {
       type: "line",
+      controllers: [LineController],
       stepSize: 60_000,
       maxZoom: 10,
       volume: false,
       locale: "en-US",
-    }
+    },
   );
   chart.draw(data);
   charts.push(chart);

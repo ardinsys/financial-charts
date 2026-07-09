@@ -1,11 +1,10 @@
 # React (16.8+)
 
-Use refs and effects to manage the chart lifecycle. Register controllers once at module scope to avoid duplicate registrations during hot reload.
+Use refs and effects to manage the chart lifecycle. Keep the controller classes in a shared array and pass them to each chart instance.
 
 ```ts
 // controllers.ts
 import {
-  FinancialChart,
   AreaController,
   LineController,
   BarController,
@@ -15,21 +14,15 @@ import {
   HLCAreaController,
 } from "@ardinsys/financial-charts";
 
-let controllersRegistered = false;
-
-export function registerControllers() {
-  if (controllersRegistered) return;
-
-  FinancialChart.registerController(AreaController);
-  FinancialChart.registerController(LineController);
-  FinancialChart.registerController(BarController);
-  FinancialChart.registerController(HollowCandleController);
-  FinancialChart.registerController(CandlestickController);
-  FinancialChart.registerController(SteplineController);
-  FinancialChart.registerController(HLCAreaController);
-
-  controllersRegistered = true;
-}
+export const controllers = [
+  AreaController,
+  LineController,
+  BarController,
+  HollowCandleController,
+  CandlestickController,
+  SteplineController,
+  HLCAreaController,
+];
 ```
 
 ```tsx
@@ -37,7 +30,7 @@ export function registerControllers() {
 import { useEffect, useRef } from "react";
 import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
 import "@ardinsys/financial-charts/dist/style.css";
-import { registerControllers } from "./controllers";
+import { controllers } from "./controllers";
 
 type Props = { data: ChartData[] };
 
@@ -54,11 +47,11 @@ export function Chart({ data }: Props) {
   };
 
   useEffect(() => {
-    registerControllers();
     if (!containerRef.current) return;
 
     const chart = new FinancialChart(containerRef.current, "auto", {
       type: "candle",
+      controllers,
       stepSize: 15 * 60 * 1000,
       maxZoom: 150,
       volume: true,

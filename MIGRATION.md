@@ -132,6 +132,39 @@ Built-in tools include `TrendLine`, `HorizontalLine`, `RectangleDrawing`, and
 Drawings persist through `manager.toJSON()` and `manager.fromJSON(snapshot)`.
 Storage itself is application-owned.
 
+### Controller registration is instance-scoped
+
+The global mutable controller registry was removed.
+`FinancialChart.registerController` no longer exists.
+
+What to update:
+
+- Pass controller classes in chart options. The `controllers` array must include
+  the class for the initial `type`.
+- For late-loaded controller extensions, call `chart.registerController(...)` on
+  the target chart instance.
+
+```ts
+const chart = new FinancialChart(root, "auto", {
+  type: "candle",
+  controllers: [CandlestickController, LineController],
+  stepSize: 15 * 60 * 1000,
+  maxZoom: 100,
+  volume: true
+});
+
+chart.registerController(CustomController);
+```
+
+`FinancialChart.registerIndicator` and `FinancialChart.createIndicator` were
+removed rather than replaced. Instantiate indicators directly and add them to the
+chart:
+
+```ts
+const indicator = new MovingAverageIndicator(null, { period: 20 });
+chart.addIndicator(indicator);
+```
+
 ### Events are generic and extensible
 
 The event emitter remains compatible with existing `chart.on(...)` calls, while
@@ -211,7 +244,7 @@ The old continuous-time zoom/pan scalars no longer model the index-based scale
 
 ## Suggested upgrade path
 
-1. Update imports and register controllers once at app startup.
+1. Pass controller classes through each chart's `controllers` option.
 2. Confirm charts with missing calendar periods render as desired; blank weekend
    gaps are intentionally gone.
 3. Replace custom overlay code with `ChartPlugin` where possible.

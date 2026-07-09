@@ -4,8 +4,6 @@ import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import { RenderPipeline } from "../src/render/render-pipeline";
 
-FinancialChart.registerController(LineController);
-
 const charts: FinancialChart[] = [];
 
 afterEach(() => {
@@ -30,6 +28,7 @@ function createChart(data: ChartData[]) {
     },
     {
       type: "line",
+      controllers: [LineController],
       stepSize: 60_000,
       maxZoom: 10,
       volume: false,

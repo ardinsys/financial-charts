@@ -16,8 +16,6 @@ import {
 } from "../src/drawings";
 import type { ChartPointerEvent } from "../src/plugin/chart-plugin";
 
-FinancialChart.registerController(LineController);
-
 const charts: FinancialChart[] = [];
 
 afterEach(() => {
@@ -53,6 +51,7 @@ function createChart() {
     },
     {
       type: "line",
+      controllers: [LineController],
       stepSize: 60_000,
       maxZoom: 10,
       volume: false,

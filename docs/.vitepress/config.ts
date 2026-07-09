@@ -34,10 +34,9 @@ export default defineConfig({
       {
         text: "Integrations",
         items: [
-          { text: "Overview", link: "/integrations/overview" }
-          // { text: "React 16.8+", link: "/integrations/react" },
-          // { text: "Vue 3+", link: "/integrations/vue" },
-          // { text: "Svelte 3+", link: "/integrations/svelte" },
+          { text: "Overview", link: "/integrations/overview" },
+          { text: "React 16.8+", link: "/integrations/react" },
+          { text: "Vue 3+", link: "/integrations/vue" }
         ]
       },
       {

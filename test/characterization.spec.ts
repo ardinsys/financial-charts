@@ -14,8 +14,6 @@ type CharacterizedChart = {
   drawXAxis: FinancialChart["drawXAxis"];
 };
 
-FinancialChart.registerController(LineController);
-
 const charts: FinancialChart[] = [];
 
 afterEach(() => {
@@ -37,6 +35,7 @@ function createChart(
 
   const chart = new FinancialChart(container, timeRange, {
     type: "line",
+    controllers: [LineController],
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,

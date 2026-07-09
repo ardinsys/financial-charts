@@ -6,8 +6,6 @@ import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
 
-FinancialChart.registerController(LineController);
-
 const charts: FinancialChart[] = [];
 
 class DetachProbeIndicator extends MovingAverageIndicator {
@@ -51,6 +49,7 @@ function createChart() {
     },
     {
       type: "line",
+      controllers: [LineController],
       stepSize: 60_000,
       maxZoom: 10,
       volume: false,
@@ -63,14 +62,10 @@ function createChart() {
 }
 
 describe("plugin lifecycle", () => {
-  it("creates and attaches built-in indicators from the chart-level registry", () => {
+  it("attaches built-in indicator instances directly", () => {
     const { chart, data } = createChart();
-    FinancialChart.registerIndicator(MovingAverageIndicator);
-    FinancialChart.registerIndicator(TestIndicator);
-
-    const sma =
-      FinancialChart.createIndicator<MovingAverageIndicator>("moving-average");
-    const testIndicator = FinancialChart.createIndicator<TestIndicator>("test");
+    const sma = new MovingAverageIndicator();
+    const testIndicator = new TestIndicator();
 
     chart.draw(data);
     chart.addIndicator(sma);

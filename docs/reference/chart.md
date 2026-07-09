@@ -26,7 +26,9 @@ type ChartOptions = {
   stepSize: number;
   maxZoom: number;
   volume: boolean;
+  controllers?: readonly ControllerConstructor[];
   theme?: ChartTheme;
+  domAdapter?: ChartDOMAdapter;
   locale?: string;
   formatter?: Formatter;
   localeValues?: Record<string, LocaleValues>;
@@ -35,14 +37,28 @@ type ChartOptions = {
 
 | Option         | Description                                                                                          |
 | -------------- | ---------------------------------------------------------------------------------------------------- |
-| `type`         | Identifier for a registered controller such as `"candle"`, `"bar"`, or custom IDs.                   |
+| `type`         | Identifier for an instance-registered controller such as `"candle"`, `"bar"`, or custom IDs.         |
 | `stepSize`     | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                   |
 | `maxZoom`      | Highest zoom factor before clamping user input.                                                      |
 | `volume`       | Enables a histogram below the price chart.                                                           |
+| `controllers`  | Controller classes available to this chart instance. Must include the class matching `type`.         |
 | `theme`        | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.                 |
+| `domAdapter`   | `ChartDOMAdapter` implementation for non-canvas chart chrome. Defaults to `DefaultDOMAdapter`.       |
 | `locale`       | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`. |
 | `formatter`    | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                  |
 | `localeValues` | Localized indicator labels keyed by locale. Merged with built-in English strings.                    |
+
+Controllers are chart-scoped. Pass them in the constructor for the common case:
+
+```ts
+const chart = new FinancialChart(root, "auto", {
+  type: "candle",
+  controllers: [CandlestickController, LineController],
+  stepSize: 15 * 60 * 1000,
+  maxZoom: 100,
+  volume: true
+});
+```
 
 #### Localization options
 
@@ -118,6 +134,14 @@ type LocaleValues = {
 | `updateCoreOptions(range, stepSize, maxZoom)` | Rebuilds the internal state with new core settings. Resets zoom/pan because data is remapped.     |
 | `updateLocale(locale, values?)`               | Changes the formatter locale and (optionally) overrides indicator labels for multiple languages.  |
 
+### Extension registration
+
+| Method                                | Description                                     |
+| ------------------------------------- | ----------------------------------------------- |
+| `registerController(ControllerClass)` | Adds a controller class to this chart instance. |
+
+Use the instance method when controller extensions load after chart construction. Registrations are not shared between charts.
+
 ### Query helpers
 
 | Method                                                              | Description                                                                                 |
@@ -140,7 +164,10 @@ chart.addIndicator(indicator: Indicator): void;
 chart.removeIndicator(indicator: Indicator): void;
 ```
 
-Use overlays for drawings on top of price data and `PaneledIndicator` implementations when you need a dedicated sub-chart. See the [Indicators reference](./indicators.md) for implementation details.
+Create indicators directly with `new MyIndicator(args)` and pass the instance to
+`addIndicator`. Use overlays for drawings on top of price data and
+`PaneledIndicator` implementations when you need a dedicated sub-chart. See the
+[Indicators reference](./indicators.md) for implementation details.
 
 Paneled indicator heights can be resized by dragging the pane divider. Use
 `chart.setPaneHeights({ [paneId]: height })` to restore or persist a custom
@@ -189,7 +216,7 @@ Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 
 ## Controllers
 
-Register controllers once before chart creation. The library ships with the following built-ins:
+Controllers are registered per chart instance through `options.controllers` or `chart.registerController(...)`. The library ships with the following built-ins:
 
 - `AreaController`
 - `LineController`

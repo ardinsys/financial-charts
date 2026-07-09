@@ -23,13 +23,15 @@ import {
   type DrawingFactory
 } from "@ardinsys/financial-charts";
 
-FinancialChart.registerController(AreaController);
-FinancialChart.registerController(LineController);
-FinancialChart.registerController(CandlestickController);
-FinancialChart.registerController(BarController);
-FinancialChart.registerController(HollowCandleController);
-FinancialChart.registerController(SteplineController);
-FinancialChart.registerController(HLCAreaController);
+const controllers = [
+  AreaController,
+  LineController,
+  CandlestickController,
+  BarController,
+  HollowCandleController,
+  SteplineController,
+  HLCAreaController,
+];
 
 const chartContainer = ref<HTMLElement>();
 const clickedData = ref<ChartData>();
@@ -149,6 +151,7 @@ onMounted(() => {
     },
     {
       type: "stepline",
+      controllers,
       theme: darkTheme,
       locale: "hu-HU",
       maxZoom: 100,

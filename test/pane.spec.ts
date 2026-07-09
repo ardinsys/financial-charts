@@ -4,8 +4,6 @@ import { LineController } from "../src/controllers/line-controller";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { Pane } from "../src/panes/pane";
 
-FinancialChart.registerController(LineController);
-
 const charts: FinancialChart[] = [];
 
 class CrosshairProbeIndicator extends TestIndicator {
@@ -29,6 +27,7 @@ function createPaneChart() {
     { start, end: start + 60_000 },
     {
       type: "line",
+      controllers: [LineController],
       stepSize: 60_000,
       maxZoom: 10,
       volume: false,
@@ -91,6 +90,7 @@ describe("Pane", () => {
       { start, end: start + 60_000 },
       {
         type: "line",
+        controllers: [LineController],
         stepSize: 60_000,
         maxZoom: 10,
         volume: false,
