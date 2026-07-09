@@ -20,11 +20,13 @@ export default defineConfig({
         items: [
           { text: "Quick start", link: "/guide/quick-start" },
           { text: "Data and updates", link: "/guide/data-and-updates" },
+          { text: "Custom indicators", link: "/guide/custom-indicators" },
           {
             text: "View and interactions",
             link: "/guide/view-and-interactions"
           },
           { text: "Drawing tools", link: "/guide/drawing-tools" },
+          { text: "i18n", link: "/guide/i18n" },
           {
             text: "Styling and localization",
             link: "/guide/styling-and-localization"
@@ -48,7 +50,10 @@ export default defineConfig({
         items: [
           { text: "FinancialChart", link: "/reference/chart" },
           { text: "Indicators", link: "/reference/indicators" },
-          { text: "Drawings", link: "/reference/drawings" }
+          { text: "Drawings", link: "/reference/drawings" },
+          { text: "Plugins", link: "/reference/plugins" },
+          { text: "Scales", link: "/reference/scales" },
+          { text: "DOM adapter", link: "/reference/dom-adapter" }
         ]
       }
     ],

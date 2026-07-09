@@ -83,29 +83,96 @@ if (saved) {
 application state rather than replaying user actions, so it does not emit
 per-drawing create/delete events.
 
-## Custom drawing types
+## Write a custom drawing tool
 
-Extend `Drawing`, provide a stable `type`, implement `draw()` and `hitTest()`,
-and register a deserializer for persistence:
+Extend `Drawing`, provide a stable `type`, implement `draw()` and `hitTest()`, and register a deserializer when the drawing should be persisted. This example creates a price-band tool from two anchors:
 
 ```ts
-class MyDrawing extends Drawing {
-  readonly type = "my-drawing";
+import {
+  Drawing,
+  DrawingManager,
+  type DrawingHitTestContext,
+  type DrawingJSON,
+  type DrawingOptions,
+  type DrawingPoint,
+  type DrawingRenderContext
+} from "@ardinsys/financial-charts";
 
-  draw(ctx, context) {
-    // render using this.getAnchors() and protected projection helpers
+interface PriceBandData {
+  color: string;
+  label: string;
+}
+
+class PriceBandDrawing extends Drawing {
+  static readonly type = "price-band";
+  readonly type = PriceBandDrawing.type;
+
+  constructor(
+    options: DrawingOptions & {
+      color?: string;
+      label?: string;
+    }
+  ) {
+    super(options);
+    this.color = options.color ?? "rgba(37, 99, 235, 0.16)";
+    this.label = options.label ?? "Price band";
   }
 
-  hitTest(point, context) {
-    return false;
+  private color: string;
+  private label: string;
+
+  static fromJSON(json: DrawingJSON): PriceBandDrawing {
+    const data = json.data as Partial<PriceBandData> | undefined;
+
+    return new PriceBandDrawing({
+      anchors: json.anchors,
+      id: json.id,
+      paneId: json.paneId,
+      color: data?.color,
+      label: data?.label
+    });
+  }
+
+  draw(ctx: CanvasRenderingContext2D, context: DrawingRenderContext): void {
+    const [first, second] = this.projectAnchors(context);
+    if (!first || !second) return;
+
+    const y = Math.min(first.y, second.y);
+    const height = Math.abs(second.y - first.y);
+    const width = context.pane.getRegion().width;
+
+    ctx.save();
+    ctx.fillStyle = this.color;
+    ctx.fillRect(0, y, width, height);
+    ctx.fillStyle = this.isSelected() ? "#f59e0b" : "#1f2937";
+    ctx.fillText(this.label, 8, y + 16);
+    ctx.restore();
+  }
+
+  hitTest(point: DrawingPoint, context: DrawingHitTestContext): boolean {
+    const [first, second] = this.projectAnchors(context);
+    if (!first || !second) return false;
+
+    const top = Math.min(first.y, second.y) - context.tolerance;
+    const bottom = Math.max(first.y, second.y) + context.tolerance;
+
+    return point.y >= top && point.y <= bottom;
+  }
+
+  protected getDataJSON(): PriceBandData {
+    return { color: this.color, label: this.label };
   }
 }
 
-manager.registerDrawingDeserializer("my-drawing", (json) => {
-  return new MyDrawing({
-    anchors: json.anchors,
-    id: json.id,
-    paneId: json.paneId
-  });
+const manager = new DrawingManager({
+  drawingFactory: ({ anchors, paneId }) =>
+    new PriceBandDrawing({ anchors, paneId }),
+  drawingDeserializers: {
+    [PriceBandDrawing.type]: PriceBandDrawing.fromJSON
+  }
 });
+
+chart.addPlugin(manager);
 ```
+
+`draw()` receives the shared drawings canvas and the target pane. `hitTest()` receives pane-local pointer coordinates plus the configured tolerance. Use protected helpers such as `projectAnchors()` so drawings stay attached to index-space bars while the chart pans and zooms.

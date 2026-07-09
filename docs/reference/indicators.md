@@ -114,7 +114,7 @@ Listen to these events via `chart.on(...)` to open modals, persist state, or syn
 ```ts
 import { MovingAverageIndicator } from "@ardinsys/financial-charts";
 
-const sma = new MovingAverageIndicator({
+const sma = new MovingAverageIndicator(null, {
   period: 20,
   source: "close"
 });
@@ -122,4 +122,4 @@ const sma = new MovingAverageIndicator({
 chart.addIndicator(sma);
 ```
 
-For more involved use cases inspect `src/indicators/simple/moving-average.ts` in the repository. It shows how to cache computed values, honour locales, and render on the shared indicator canvas.
+For more involved use cases, see [Custom indicators](/guide/custom-indicators) or inspect `src/indicators/simple/moving-average.ts` in the repository. It shows how to cache computed values, honor locales, and render on the shared indicator canvas.

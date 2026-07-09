@@ -74,7 +74,7 @@ window
 
 ## Localization and formatter overrides
 
-Configure locale, timezone, number/date formatting, and chart UI strings together. Missing UI strings merge into built-in English defaults, so you only override what changes.
+Configure locale, timezone, number/date formatting, and chart UI strings together. Missing UI strings merge into built-in English defaults, so you only override what changes. For the focused i18n path, see [i18n](/guide/i18n).
 
 ```ts
 const chart = new FinancialChart(root, "auto", {
@@ -183,7 +183,7 @@ chart.updateLocalization({
 });
 ```
 
-Remember to import `@ardinsys/financial-charts/dist/style.css` when using indicators so the UI labels inherit the base styling.
+Remember to import `@ardinsys/financial-charts/dist/style.css` when using indicators so the UI labels inherit the base styling. To restyle or replace indicator labels and pane dividers, see [Design-system adapter](/guide/design-system-adapter).
 
 ## Wiring an i18n bundle to the chart
 
@@ -433,4 +433,4 @@ const chart = new FinancialChart(root, "auto", {
 
 ## Theme keys and indicator labels
 
-Themes carry a `key` (`"light"` / `"dark"` by default). Indicator label templates are selected by this key: `labelTemplate[chart.getOptions().theme.key]`. If you provide a custom theme with a different key, add a matching template entry so buttons and labels render correctly.
+Themes carry a `key` (`"light"` / `"dark"` by default). Indicator labels receive this key in `IndicatorLabelModel.themeKey`, and the default DOM adapter also writes it to `data-theme-key`. Custom adapters can use that value to choose app-specific label styling.

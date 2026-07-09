@@ -76,17 +76,21 @@ and `dispose()` call `detach()`.
 
 ### Indicators use the plugin lifecycle
 
-Indicators now implement the same plugin lifecycle internally. Indicator label
-HTML can be provided through `labelTemplate` or a custom `labelRenderer`, and
-label event listeners are detached when indicators are removed.
+Indicators now implement the same plugin lifecycle internally. Indicator labels
+are data models rendered by the active `ChartDOMAdapter`; label event listeners
+are detached when indicators are removed.
 
 What to update:
 
 - Keep using `chart.addIndicator(indicator)` and
   `chart.removeIndicator(indicator)` for built-ins.
-- For custom indicators, implement `draw()`, `updateLabel()`,
-  `getDefaultOptions()`, and `getDefaultThemes()` as before, but use the chart's
-  scale/pane helpers instead of importing removed extent classes.
+- For custom overlay indicators, implement `draw()`, `getLabelContent()`,
+  `getDefaultOptions()`, and `getDefaultThemes()`. Use
+  `getDrawingContext()` for canvas, data, formatter, theme, and projection
+  helpers.
+- For custom paneled indicators, implement `createScale()`, `drawPane()`,
+  `getLabelContent()`, and `getCrosshairValue()` so the base class can own pane
+  layout, canvas sizing, background, grid, and Y-axis drawing.
 - Use `getModifier(visibleTimeRange)` to contribute to price auto-ranging.
 
 ### Paneled indicators are pane-backed
@@ -98,8 +102,9 @@ events are routed by pane hit testing.
 What to update:
 
 - Use the `pane` passed in `InitParams` when you need pane geometry or scales.
-- Keep panel drawing inside `draw()` and call `initDrawing()` before rendering
-  custom panel content.
+- Prefer `drawPane(context)` for panel content. Existing indicators that
+  override `draw()` still work, but new indicators should let the base class
+  handle the pane boilerplate.
 
 ### Formatter options are explicit and SSR-safe
 

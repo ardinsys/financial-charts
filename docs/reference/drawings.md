@@ -63,6 +63,8 @@ manager.registerDrawingDeserializer("my-drawing", (json) => {
 });
 ```
 
+For a complete custom drawing class and factory, see [Drawing tools](/guide/drawing-tools#write-a-custom-drawing-tool).
+
 ## Events
 
 Subscribe with `chart.on(...)`. Each handler receives `{ drawing }`.
