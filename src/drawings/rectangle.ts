@@ -1,5 +1,7 @@
 import {
   Drawing,
+  type DrawingAnchor,
+  type DrawingAnchorHandle,
   type DrawingHitTestContext,
   type DrawingJSON,
   type DrawingOptions,
@@ -72,8 +74,8 @@ export class RectangleDrawing extends Drawing {
     ctx.stroke();
 
     if (this.isSelected()) {
-      for (const point of boundsToCorners(bounds)) {
-        drawAnchorHandle(ctx, point, this.selectedColor);
+      for (const handle of this.getAnchorHandles(context)) {
+        drawAnchorHandle(ctx, handle.point, this.selectedColor);
       }
     }
     ctx.restore();
@@ -110,6 +112,39 @@ export class RectangleDrawing extends Drawing {
     };
   }
 
+  getAnchorHandles(context: DrawingRenderContext): DrawingAnchorHandle[] {
+    const [start, end] = this.projectAnchors(context);
+    if (!start || !end) return [];
+
+    return [
+      { index: 0, point: start },
+      { index: 1, point: { x: end.x, y: start.y } },
+      { index: 2, point: end },
+      { index: 3, point: { x: start.x, y: end.y } }
+    ];
+  }
+
+  moveAnchor(index: number, anchor: DrawingAnchor): void {
+    const [start, end] = this.getAnchors();
+    if (!start || !end) return;
+
+    if (index === 0) {
+      this.setAnchors([anchor, end]);
+    } else if (index === 1) {
+      this.setAnchors([
+        { ...start, price: anchor.price },
+        { ...end, index: anchor.index }
+      ]);
+    } else if (index === 2) {
+      this.setAnchors([start, anchor]);
+    } else if (index === 3) {
+      this.setAnchors([
+        { ...start, index: anchor.index },
+        { ...end, price: anchor.price }
+      ]);
+    }
+  }
+
   private getBounds(context: DrawingRenderContext) {
     const [start, end] = this.projectAnchors(context);
     if (!start || !end) return undefined;
@@ -124,22 +159,6 @@ export class RectangleDrawing extends Drawing {
       height: Math.abs(end.y - start.y)
     };
   }
-}
-
-interface Bounds {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-function boundsToCorners(bounds: Bounds): DrawingPoint[] {
-  return [
-    { x: bounds.x, y: bounds.y },
-    { x: bounds.x + bounds.width, y: bounds.y },
-    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
-    { x: bounds.x, y: bounds.y + bounds.height }
-  ];
 }
 
 function drawAnchorHandle(

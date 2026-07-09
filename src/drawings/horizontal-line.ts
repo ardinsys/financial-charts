@@ -1,6 +1,7 @@
 import {
   Drawing,
   type DrawingAnchor,
+  type DrawingAnchorHandle,
   type DrawingHitTestContext,
   type DrawingJSON,
   type DrawingOptions,
@@ -78,6 +79,19 @@ export class HorizontalLine extends Drawing {
     const anchor = this.projectAnchor(this.getLineAnchor(), context);
 
     return Math.abs(point.y - anchor.y) <= context.tolerance;
+  }
+
+  getAnchorHandles(context: DrawingRenderContext): DrawingAnchorHandle[] {
+    const anchors = this.getAnchors();
+    const index = Math.max(0, anchors.length - 1);
+    const anchor = anchors[index] ?? { index: 0, price: 0 };
+
+    return [
+      {
+        index,
+        point: this.projectAnchor(anchor, context)
+      }
+    ];
   }
 
   private getLineAnchor(): DrawingAnchor {

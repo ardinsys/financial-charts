@@ -19,7 +19,7 @@ import {
 const chartContainer = ref<HTMLElement>();
 const clickedData = ref<ChartData>();
 type DrawingTool = "trendline" | "horizontal-line" | "rectangle" | "text";
-const activeDrawingTool = ref<DrawingTool>("trendline");
+const activeDrawingTool = ref<DrawingTool>();
 const drawingText = ref("Text");
 
 // Date that represents today 17:00
@@ -163,9 +163,7 @@ onMounted(() => {
     }
   );
 
-  drawingManager = new DrawingManager({
-    drawingFactory: createDrawingFactory(activeDrawingTool.value),
-  });
+  drawingManager = new DrawingManager();
   chart.addPlugin(drawingManager);
 
   chart.on("drawing-select", ({ drawing }) => {
@@ -180,6 +178,13 @@ onMounted(() => {
     if (drawing === selectedTextDrawing) {
       selectedTextDrawing = undefined;
     }
+  });
+
+  chart.on("drawing-finished", ({ operation }) => {
+    if (operation !== "create") return;
+
+    activeDrawingTool.value = undefined;
+    drawingManager?.setDrawingFactory(undefined);
   });
 
   const unsub = chart.on("indicator-settings-open", (data) => {

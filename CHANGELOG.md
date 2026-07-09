@@ -44,8 +44,10 @@
   `RectangleDrawing`, and `TextDrawing`.
 - Drawing persistence through `DrawingManager.toJSON()` /
   `DrawingManager.fromJSON()`.
-- Drawing events: `drawing-create`, `drawing-change`, `drawing-select`, and
-  `drawing-delete`.
+- Drawing keyboard controls for delete, undo, and redo through
+  `DrawingManager`.
+- Drawing events: `drawing-create`, `drawing-change`, `drawing-finished`,
+  `drawing-select`, and `drawing-delete`.
 - `ChartDOMAdapter` / `DefaultDOMAdapter` for replacing or restyling DOM chrome
   such as indicator labels/actions and pane dividers.
 - `updateLocalization({ locale, timeZone, formatter, localeValues })` for
@@ -61,6 +63,19 @@
   hello-world chart setup small while avoiding global mutable registries.
 - Indicator authoring now centers on `getDrawingContext()` for overlays and
   `drawPane(context)` for paneled indicators, reducing canvas/axis boilerplate.
+- Pointer-created drawings stay selected after completion, clear the active
+  drawing factory, and emit `drawing-finished` plus final `drawing-select`
+  payloads to chart listeners and plugins.
+- Active drawing tools consume pointer drags so the chart does not pan while a
+  drawing is being created or edited.
+- Drawing tools ignore right-click / non-primary mouse gestures.
+- Drawing anchor indexes snap to whole bar slots during pointer create and edit
+  gestures.
+- `drawing-select` now emits both selected drawing metadata and
+  `{ drawing: undefined }` when selection is cleared.
+- The drawings layer redraws during chart pan and touch zoom so annotations stay
+  visually attached to bars.
+- Selected drawing anchor handles can be dragged independently.
 - X-axis labels now use calendar-aware ticks anchored to real bars.
 - Price tick generation is shared between chart and paneled indicator axes.
 - `DefaultFormatter` is SSR-safe and avoids per-frame formatter allocation in

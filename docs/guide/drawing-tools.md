@@ -30,6 +30,10 @@ manager.setDrawingFactory(({ anchors, paneId }) => {
 });
 ```
 
+The factory is one-shot for pointer-created drawings. After the user finishes a
+drawing, `DrawingManager` clears the active factory; call `setDrawingFactory()`
+again when the user selects the next drawing tool.
+
 ## Built-in tools
 
 - `TrendLine` uses two data-space anchors.
@@ -39,13 +43,14 @@ manager.setDrawingFactory(({ anchors, paneId }) => {
   `setText()`.
 
 All tools use `{ index, price }` anchors so they stay attached to bars while the
-chart pans, zooms, or collapses calendar gaps.
+chart pans, zooms, or collapses calendar gaps. Pointer gestures snap anchor
+indexes to whole bar slots while leaving prices continuous.
 
 ## Selection, deletion, and events
 
 ```ts
 chart.on("drawing-select", ({ drawing }) => {
-  console.log("selected", drawing.id);
+  console.log("selected", drawing?.id);
 });
 
 chart.on("drawing-change", ({ drawing }) => {
@@ -55,14 +60,31 @@ chart.on("drawing-change", ({ drawing }) => {
 manager.deleteSelected();
 ```
 
+Pointer-created drawings stay selected after completion and clear the active
+drawing factory. The manager binds keyboard actions to the chart host when
+attached:
+
+- `Delete` / `Backspace` removes the selected drawing.
+- `Ctrl/Cmd+Z` undoes the last create, delete, or move.
+- `Ctrl+Y` and `Ctrl/Cmd+Shift+Z` redo the last undone action.
+
+Select an existing drawing to reveal its anchor handles. Drag a handle to adjust
+that anchor; drag the drawing body to move the whole drawing. Anchor edits snap
+to whole bar indexes on the time axis.
+While a drawing tool or drawing edit gesture is active, pointer drags are
+reserved for drawings and do not pan the chart.
+Drawing gestures use the primary mouse button; right-clicks are ignored by the
+drawing manager.
+
 The drawing events are:
 
-| Event            | When it fires                                    |
-| ---------------- | ------------------------------------------------ |
-| `drawing-create` | A pointer-created drawing is finalized.          |
-| `drawing-change` | A drawing is changed while creating or dragging. |
-| `drawing-select` | A drawing becomes selected through the manager.  |
-| `drawing-delete` | A drawing is removed through the manager.        |
+| Event              | When it fires                                                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `drawing-create`   | A pointer-created drawing is finalized.                                                                                                    |
+| `drawing-change`   | A drawing is changed while creating, dragging, or undoing/redoing movement.                                                                |
+| `drawing-finished` | A pointer create or drag operation completes with drawing id/type/pane/anchors/json.                                                       |
+| `drawing-select`   | Selection changes. Payload includes `{ drawing, id, type, paneId, anchors, json }` when selected or `{ drawing: undefined }` when cleared. |
+| `drawing-delete`   | A drawing is removed through the manager.                                                                                                  |
 
 ## Persist drawings
 

@@ -55,17 +55,18 @@ dataset changes.
 
 Subscribe with `chart.on(event, handler)` – each call returns an unsubscribe function.
 
-| Event                          | Payload                                     | When it fires                                 |
-| ------------------------------ | ------------------------------------------- | --------------------------------------------- |
-| `click`                        | `{ event: PointerEvent, point: ChartData }` | User clicks the chart with a mouse.           |
-| `touch-click`                  | `{ event: TouchEvent, point: ChartData }`   | User taps the chart on touch devices.         |
-| `indicator-visibility-changed` | `{ indicator, visible }`                    | Indicator show/hide buttons are toggled.      |
-| `indicator-settings-open`      | `{ indicator }`                             | Settings button next to an indicator is used. |
-| `indicator-remove`             | `{ indicator }`                             | Indicator remove button is pressed.           |
-| `drawing-create`               | `{ drawing }`                               | Pointer-created drawing is finalized.         |
-| `drawing-change`               | `{ drawing }`                               | Drawing anchors or content change.            |
-| `drawing-select`               | `{ drawing }`                               | Drawing selection changes to a drawing.       |
-| `drawing-delete`               | `{ drawing }`                               | Drawing is removed through `DrawingManager`.  |
+| Event                          | Payload                                                   | When it fires                                 |
+| ------------------------------ | --------------------------------------------------------- | --------------------------------------------- |
+| `click`                        | `{ event: PointerEvent, point: ChartData }`               | User clicks the chart with a mouse.           |
+| `touch-click`                  | `{ event: TouchEvent, point: ChartData }`                 | User taps the chart on touch devices.         |
+| `indicator-visibility-changed` | `{ indicator, visible }`                                  | Indicator show/hide buttons are toggled.      |
+| `indicator-settings-open`      | `{ indicator }`                                           | Settings button next to an indicator is used. |
+| `indicator-remove`             | `{ indicator }`                                           | Indicator remove button is pressed.           |
+| `drawing-create`               | `{ drawing }`                                             | Pointer-created drawing is finalized.         |
+| `drawing-change`               | `{ drawing }`                                             | Drawing anchors or content change.            |
+| `drawing-finished`             | `{ drawing, operation, id, type, paneId, anchors, json }` | Pointer create or drag operation completes.   |
+| `drawing-select`               | `{ drawing?, id?, type?, paneId?, anchors?, json? }`      | Drawing selection changes or clears.          |
+| `drawing-delete`               | `{ drawing }`                                             | Drawing is removed through `DrawingManager`.  |
 
 Use these hooks to open dialogs, sync layout with other widgets, or log interactions. `ChartData` is exported by the library for strongly typed payloads.
 

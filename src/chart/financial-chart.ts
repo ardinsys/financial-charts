@@ -25,7 +25,7 @@ import { TimeTickGenerator } from "../scales/ticks/time-ticks";
 import { DefaultFormatter, Formatter } from "./formatter";
 import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";
-import { EventEmitter } from "./event-emitter";
+import { EventEmitter, type ChartEventMap } from "./event-emitter";
 import { pixelRatio } from "../utils/screen";
 import {
   bindEvent,
@@ -242,6 +242,7 @@ export class FinancialChart extends EventEmitter {
   protected pointerY = -1;
   protected pointerPane: Pane = this.mainPane;
   private isProgrammaticCrosshair = false;
+  private pointerGestureConsumed = false;
 
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
@@ -266,6 +267,13 @@ export class FinancialChart extends EventEmitter {
     "indicators",
     "drawings",
     "crosshair"
+  ];
+  private readonly viewRedrawParts: readonly RenderLayer[] = [
+    "grid",
+    "axes",
+    "series",
+    "indicators",
+    "drawings"
   ];
 
   private lastXGridCoords: number[] = [];
@@ -597,6 +605,16 @@ export class FinancialChart extends EventEmitter {
     this.requestRedraw(this.allRedrawParts);
   }
 
+  public emit<K extends keyof ChartEventMap>(event: K, data: ChartEventMap[K]) {
+    super.emit(event, data);
+
+    if (event === "drawing-finished") {
+      this.notifyPluginsDrawingFinished(
+        data as ChartEventMap["drawing-finished"]
+      );
+    }
+  }
+
   private createChartContext(): ChartContext {
     return {
       chart: this,
@@ -629,15 +647,27 @@ export class FinancialChart extends EventEmitter {
   }
 
   private notifyPluginsPointer(event: ChartPointerEvent) {
+    let consumed = false;
     for (const plugin of this.plugins) {
-      plugin.onPointer?.(event);
+      consumed = plugin.onPointer?.(event) === true || consumed;
+    }
+
+    return consumed;
+  }
+
+  private notifyPluginsDrawingFinished(
+    event: ChartEventMap["drawing-finished"]
+  ) {
+    for (const plugin of this.plugins) {
+      plugin.onDrawingFinished?.(event);
     }
   }
 
   private createPluginPointerEvent(
     type: ChartPointerEvent["type"],
     x: number,
-    y: number
+    y: number,
+    source?: PointerEvent | MouseEvent
   ): ChartPointerEvent | undefined {
     if (this.dataStore.length === 0) return undefined;
 
@@ -659,7 +689,9 @@ export class FinancialChart extends EventEmitter {
       y: pointerY,
       time: closestDataPoint.time,
       pane: this.getPaneAtY(pointerY) ?? this.mainPane,
-      dataPoint: closestDataPoint
+      dataPoint: closestDataPoint,
+      button: source?.button,
+      buttons: source?.buttons
     };
   }
 
@@ -1485,26 +1517,36 @@ export class FinancialChart extends EventEmitter {
 
   private onMouseDown = (event: PointerEvent) => {
     if (event.pointerType === "touch") return;
+    if (event.button !== 0) return;
     const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
     const pointerEvent = this.createPluginPointerEvent(
       "down",
       event.clientX - rect.left,
-      event.clientY - rect.top
+      event.clientY - rect.top,
+      event
     );
-    if (pointerEvent) {
-      this.notifyPluginsPointer(pointerEvent);
-    }
-    this.lastPointerPosition = { x: event.clientX };
+    this.pointerGestureConsumed = pointerEvent
+      ? this.notifyPluginsPointer(pointerEvent)
+      : false;
+    this.lastPointerPosition = this.pointerGestureConsumed
+      ? undefined
+      : { x: event.clientX };
   };
 
   private onMouseUp = (e: PointerEvent) => {
     if (e.pointerType === "touch") return;
+    if (e.button !== 0) return;
     const topCanvas = this.getContext("crosshair").canvas;
     const rect = topCanvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    if (!this.isPanning) {
+    const pointerEvent = this.createPluginPointerEvent("up", x, y, e);
+    const consumed = pointerEvent
+      ? this.notifyPluginsPointer(pointerEvent)
+      : false;
+
+    if (!this.isPanning && !this.pointerGestureConsumed && !consumed) {
       const rawPoint = this.dataScale.pixelToPoint(
         x,
         y,
@@ -1515,11 +1557,8 @@ export class FinancialChart extends EventEmitter {
         this.emit("click", { event: e, point: closestDataPoint });
       }
     }
-    const pointerEvent = this.createPluginPointerEvent("up", x, y);
-    if (pointerEvent) {
-      this.notifyPluginsPointer(pointerEvent);
-    }
     this.lastPointerPosition = undefined;
+    this.pointerGestureConsumed = false;
     this.isPanning = false;
   };
 
@@ -1534,7 +1573,7 @@ export class FinancialChart extends EventEmitter {
       this.isPanning = true;
       const dx = event.clientX - this.lastPointerPosition.x;
       this.panVisibleIndexRange(dx);
-      this.requestRedraw([...this.controllerRedrawParts, "indicators"]);
+      this.requestRedraw(this.viewRedrawParts);
       this.lastPointerPosition = { x: event.clientX };
     } else {
       this.isPanning = false;
@@ -1671,7 +1710,7 @@ export class FinancialChart extends EventEmitter {
       requestAnimationFrame(() => {
         const rect =
           this.getContext("crosshair").canvas.getBoundingClientRect();
-        this.redraw([...this.controllerRedrawParts, "indicators"]);
+        this.redraw(this.viewRedrawParts);
         if (!this.isTouchCrosshair) return;
         this.pointerMove({
           x: event.touches[0].clientX - rect.left,
@@ -1693,7 +1732,7 @@ export class FinancialChart extends EventEmitter {
         (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left;
       this.adjustZoomLevel(zoomFactor, offsetX);
       requestAnimationFrame(() => {
-        this.redraw([...this.controllerRedrawParts, "indicators"]);
+        this.redraw(this.viewRedrawParts);
       });
       this.lastTouchDistance = distance;
     } else {

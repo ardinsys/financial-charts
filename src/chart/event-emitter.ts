@@ -1,5 +1,5 @@
 import { Indicator } from "../indicators/indicator";
-import type { Drawing } from "../drawings/drawing";
+import type { Drawing, DrawingAnchor, DrawingJSON } from "../drawings/drawing";
 import { ChartData } from "./types";
 
 interface IndicatorVisibilityChangedEvent {
@@ -19,6 +19,26 @@ interface DrawingEvent {
   drawing: Drawing;
 }
 
+export interface DrawingSelectionEvent {
+  drawing?: Drawing;
+  id?: string;
+  type?: string;
+  paneId?: number;
+  anchors?: DrawingAnchor[];
+  json?: DrawingJSON;
+}
+
+export type DrawingFinishedOperation = "create" | "move";
+
+export interface DrawingFinishedEvent extends DrawingEvent {
+  operation: DrawingFinishedOperation;
+  id: string;
+  type: string;
+  paneId: number;
+  anchors: DrawingAnchor[];
+  json: DrawingJSON;
+}
+
 export interface ChartEventMap {
   "indicator-visibility-changed": IndicatorVisibilityChangedEvent;
   "indicator-settings-open": IndicatorSettingsOpenEvent;
@@ -26,7 +46,8 @@ export interface ChartEventMap {
   "drawing-create": DrawingEvent;
   "drawing-change": DrawingEvent;
   "drawing-delete": DrawingEvent;
-  "drawing-select": DrawingEvent;
+  "drawing-finished": DrawingFinishedEvent;
+  "drawing-select": DrawingSelectionEvent;
   click: { event: PointerEvent; point: ChartData };
   "touch-click": { event: TouchEvent; point: ChartData };
 }

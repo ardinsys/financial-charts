@@ -134,8 +134,8 @@ describe("drawing tools", () => {
     );
 
     manager.onPointer(pointerEvent(chart, data[1], "down", { x: 240, y: 200 }));
-    manager.onPointer(pointerEvent(chart, data[2], "move", { x: 300, y: 230 }));
-    manager.onPointer(pointerEvent(chart, data[2], "up", { x: 300, y: 230 }));
+    manager.onPointer(pointerEvent(chart, data[2], "move", { x: 460, y: 230 }));
+    manager.onPointer(pointerEvent(chart, data[2], "up", { x: 460, y: 230 }));
 
     const anchorsAfterMove = drawing.getAnchors();
     expect(anchorsAfterMove[0].index).toBeGreaterThan(
@@ -215,8 +215,8 @@ describe("drawing tools", () => {
     );
 
     manager.onPointer(pointerEvent(chart, data[1], "down", { x: 240, y: 160 }));
-    manager.onPointer(pointerEvent(chart, data[2], "move", { x: 320, y: 190 }));
-    manager.onPointer(pointerEvent(chart, data[2], "up", { x: 320, y: 190 }));
+    manager.onPointer(pointerEvent(chart, data[2], "move", { x: 460, y: 190 }));
+    manager.onPointer(pointerEvent(chart, data[2], "up", { x: 460, y: 190 }));
 
     const anchorsAfterMove = drawing.getAnchors();
     expect(anchorsAfterMove[0].index).toBeGreaterThan(
@@ -249,9 +249,14 @@ describe("drawing tools", () => {
     ) as TextDrawing;
     const anchorsBeforeMove = drawing.getAnchors();
 
-    expect(manager.hitTest({ x: 180, y: 170 }, chart.getMainPane())).toBe(
-      drawing
-    );
+    const textAnchorPoint = projectAnchor(chart, drawing.getAnchors()[0]);
+
+    expect(
+      manager.hitTest(
+        { x: textAnchorPoint.x + 8, y: textAnchorPoint.y + 8 },
+        chart.getMainPane()
+      )
+    ).toBe(drawing);
     expect(drawing.hitTest({ x: 320, y: 260 }, drawingHitContext(chart))).toBe(
       false
     );
@@ -260,9 +265,24 @@ describe("drawing tools", () => {
 
     expect(drawing.getText()).toBe("Guidance");
 
-    manager.onPointer(pointerEvent(chart, data[1], "down", { x: 180, y: 170 }));
-    manager.onPointer(pointerEvent(chart, data[2], "move", { x: 260, y: 210 }));
-    manager.onPointer(pointerEvent(chart, data[2], "up", { x: 260, y: 210 }));
+    manager.onPointer(
+      pointerEvent(chart, data[1], "down", {
+        x: textAnchorPoint.x + 8,
+        y: textAnchorPoint.y + 8
+      })
+    );
+    manager.onPointer(
+      pointerEvent(chart, data[2], "move", {
+        x: textAnchorPoint.x + 220,
+        y: textAnchorPoint.y + 48
+      })
+    );
+    manager.onPointer(
+      pointerEvent(chart, data[2], "up", {
+        x: textAnchorPoint.x + 220,
+        y: textAnchorPoint.y + 48
+      })
+    );
 
     const anchorsAfterMove = drawing.getAnchors();
     expect(anchorsAfterMove[0].index).toBeGreaterThan(

@@ -24,6 +24,8 @@ export interface ChartPointerEvent {
   time: number;
   pane: Pane;
   dataPoint: ChartData;
+  button?: number;
+  buttons?: number;
 }
 
 export interface ChartContext {
@@ -52,6 +54,7 @@ export interface ChartPlugin extends Drawable {
   attach(ctx: ChartContext): void;
   onData?(data: readonly ChartData[]): void;
   onVisibleRangeChanged?(range: TimeRange): void;
-  onPointer?(event: ChartPointerEvent): void;
+  onPointer?(event: ChartPointerEvent): boolean | void;
+  onDrawingFinished?(event: ChartEventMap["drawing-finished"]): void;
   detach?(): void;
 }

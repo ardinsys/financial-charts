@@ -31,17 +31,18 @@ chart.addPlugin(new WatermarkPlugin());
 
 ## ChartPlugin
 
-| Member                         | Description                                                                          |
-| ------------------------------ | ------------------------------------------------------------------------------------ |
-| `key`                          | Stable plugin id for debugging and application bookkeeping.                          |
-| `attach(ctx)`                  | Called once when the plugin is added. Store the context here.                        |
-| `beforeDraw()`                 | Optional draw hook before the render pipeline starts.                                |
-| `draw()`                       | Optional draw hook on the plugin draw pass.                                          |
-| `afterDraw()`                  | Optional draw hook after the render pipeline finishes.                               |
-| `onData(data)`                 | Optional notification after `draw()` or `drawNextPoint()` changes chart data.        |
-| `onVisibleRangeChanged(range)` | Optional notification when pan/zoom changes the visible time range.                  |
-| `onPointer(event)`             | Optional notification for pointer down/move/up events mapped to data and pane space. |
-| `detach()`                     | Optional cleanup hook called by `removePlugin()` or chart disposal.                  |
+| Member                         | Description                                                                                                                        |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `key`                          | Stable plugin id for debugging and application bookkeeping.                                                                        |
+| `attach(ctx)`                  | Called once when the plugin is added. Store the context here.                                                                      |
+| `beforeDraw()`                 | Optional draw hook before the render pipeline starts.                                                                              |
+| `draw()`                       | Optional draw hook on the plugin draw pass.                                                                                        |
+| `afterDraw()`                  | Optional draw hook after the render pipeline finishes.                                                                             |
+| `onData(data)`                 | Optional notification after `draw()` or `drawNextPoint()` changes chart data.                                                      |
+| `onVisibleRangeChanged(range)` | Optional notification when pan/zoom changes the visible time range.                                                                |
+| `onPointer(event)`             | Optional notification for pointer down/move/up events mapped to data and pane space. Return `true` to consume the pointer gesture. |
+| `onDrawingFinished(event)`     | Optional notification when a drawing create or drag operation completes.                                                           |
+| `detach()`                     | Optional cleanup hook called by `removePlugin()` or chart disposal.                                                                |
 
 ## ChartContext
 
@@ -84,6 +85,8 @@ type ChartPointerEvent = {
   time: number;
   pane: Pane;
   dataPoint: ChartData;
+  button?: number;
+  buttons?: number;
 };
 ```
 

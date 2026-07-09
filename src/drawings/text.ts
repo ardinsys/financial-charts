@@ -1,6 +1,7 @@
 import {
   Drawing,
   type DrawingAnchor,
+  type DrawingAnchorHandle,
   type DrawingHitTestContext,
   type DrawingJSON,
   type DrawingOptions,
@@ -111,6 +112,17 @@ export class TextDrawing extends Drawing {
       point.y >= bounds.y - context.tolerance &&
       point.y <= bounds.y + bounds.height + context.tolerance
     );
+  }
+
+  getAnchorHandles(context: DrawingRenderContext): DrawingAnchorHandle[] {
+    const anchor = this.getTextAnchor();
+
+    return [
+      {
+        index: 0,
+        point: this.projectAnchor(anchor, context)
+      }
+    ];
   }
 
   protected getDataJSON(): TextDrawingJSONData {

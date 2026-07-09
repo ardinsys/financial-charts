@@ -168,8 +168,10 @@ describe("plugin lifecycle", () => {
 
     const drawing = {} as Drawing;
     attachedContext?.emit("drawing-select", { drawing });
+    attachedContext?.emit("drawing-select", { drawing: undefined });
 
     expect(selectListener).toHaveBeenCalledWith({ drawing });
+    expect(selectListener).toHaveBeenCalledWith({ drawing: undefined });
     unsubscribe();
   });
 

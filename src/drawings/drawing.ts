@@ -10,6 +10,11 @@ export interface DrawingPoint {
   y: number;
 }
 
+export interface DrawingAnchorHandle {
+  index: number;
+  point: DrawingPoint;
+}
+
 export interface DrawingRenderContext {
   pane: Pane;
   canvas: HTMLCanvasElement;
@@ -82,6 +87,41 @@ export abstract class Drawing {
     }));
   }
 
+  getAnchorHandles(context: DrawingRenderContext): DrawingAnchorHandle[] {
+    return this.projectAnchors(context).map((point, index) => ({
+      index,
+      point
+    }));
+  }
+
+  hitTestAnchor(
+    point: DrawingPoint,
+    context: DrawingHitTestContext
+  ): number | undefined {
+    let closest: { distance: number; index: number } | undefined;
+
+    for (const handle of this.getAnchorHandles(context)) {
+      const distance = Math.hypot(
+        point.x - handle.point.x,
+        point.y - handle.point.y
+      );
+      if (distance > context.tolerance) continue;
+      if (!closest || distance < closest.distance) {
+        closest = { distance, index: handle.index };
+      }
+    }
+
+    return closest?.index;
+  }
+
+  moveAnchor(index: number, anchor: DrawingAnchor): void {
+    if (!this.anchors[index]) return;
+
+    const anchors = this.getAnchors();
+    anchors[index] = anchor;
+    this.setAnchors(anchors);
+  }
+
   toJSON(): DrawingJSON {
     const json: DrawingJSON = {
       anchors: this.getAnchors(),
@@ -149,12 +189,14 @@ export function anchorFromPoint(
     height: region.height
   };
 
+  const index = timeScale.unprojectIndex(point.x, {
+    canvas,
+    devicePixelRatio: 1,
+    barAlignment: "center"
+  });
+
   return {
-    index: timeScale.unprojectIndex(point.x, {
-      canvas,
-      devicePixelRatio: 1,
-      barAlignment: "center"
-    }),
+    index: Math.round(index),
     price: pane.getPriceScale().unproject(point.y, {
       canvas,
       devicePixelRatio: 1
