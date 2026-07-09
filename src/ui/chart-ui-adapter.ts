@@ -40,13 +40,38 @@ export interface IndicatorLabelHandle {
   destroy(): void;
 }
 
+export interface ChartOverlayContext {
+  themeKey: string;
+  /** Top offset (px) for the overlay label region. */
+  labelTopOffset: number;
+}
+
 /**
- * Renders the DOM chrome that sits around the canvases. The default
+ * The composition layer the adapter mounts on top of the canvas host: the
+ * overlay indicator-label region, plus whatever surrounding UI a framework
+ * adapter chooses to render (toolbars, legend, settings panels). The core
+ * only needs the label region back; everything else is the adapter's own.
+ */
+export interface ChartOverlay {
+  readonly indicatorLabelContainer: HTMLElement;
+  update(context: ChartOverlayContext): void;
+  destroy(): void;
+}
+
+/**
+ * Renders the DOM UI that sits around the canvases. The default
  * {@link WebUIAdapter} reproduces the built-in HTML behavior; framework
- * packages provide Vue/React implementations. The core never creates chrome
+ * packages provide Vue/React implementations. The core never creates UI
  * DOM directly — it delegates to the adapter.
  */
 export interface ChartUIAdapter {
+  /**
+   * Build the composition layer inside the chart's canvas host. Called once
+   * during construction. `host` is the core-owned element that also hosts the
+   * canvases; the adapter mounts its overlay into it and returns the region
+   * the core appends indicator labels to.
+   */
+  createOverlay(host: HTMLElement, context: ChartOverlayContext): ChartOverlay;
   createIndicatorLabel(
     descriptor: IndicatorLabelDescriptor,
     actions: IndicatorLabelActions

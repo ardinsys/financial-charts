@@ -138,9 +138,9 @@ The event emitter remains compatible with existing `chart.on(...)` calls, while
 the built-in event map now includes indicator and drawing events. Plugin authors
 can use the generic event emitter types for custom event maps.
 
-### Pluggable UI adapter for chrome (indicator labels)
+### Pluggable UI adapter (indicator labels)
 
-DOM chrome now goes through a `ChartUIAdapter`. The default `WebUIAdapter`
+DOM UI now goes through a `ChartUIAdapter`. The default `WebUIAdapter`
 reproduces the built-in behavior, so no change is required for existing users —
 core stays dependency-free. The indicator label contract is unchanged:
 indicators still author `labelTemplate` HTML and update `this.labelContainer`
@@ -150,8 +150,12 @@ via `data-id` hooks. What moved is only the generic host/button wiring
 - New option: `new FinancialChart(el, range, { ..., uiAdapter })`. Omit it to get
   the default `WebUIAdapter`.
 - Plugins receive the adapter via `ChartContext.ui`.
+- The adapter also builds the composition layer via
+  `createOverlay(host, context)`, which mounts the overlay indicator-label region
+  (and, in framework adapters, any toolbars / legend / settings UI) into the
+  canvas host and returns the label region to the core.
 - This is the seam the forthcoming `@ardinsys/financial-charts-vue` /
-  `-react` packages implement to render chrome with framework components.
+  `-react` packages implement to render the UI with framework components.
 
 ## Removed or replaced internals
 

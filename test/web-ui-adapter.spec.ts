@@ -77,3 +77,28 @@ describe("WebUIAdapter indicator label", () => {
     expect(spies.onToggleVisibility).not.toHaveBeenCalled();
   });
 });
+
+describe("WebUIAdapter overlay", () => {
+  it("mounts an absolutely-positioned label region into the host", () => {
+    const host = document.createElement("div");
+    const overlay = new WebUIAdapter().createOverlay(host, {
+      themeKey: "light",
+      labelTopOffset: 40
+    });
+    expect(overlay.indicatorLabelContainer.parentElement).toBe(host);
+    expect(overlay.indicatorLabelContainer.style.position).toBe("absolute");
+    expect(overlay.indicatorLabelContainer.style.top).toBe("40px");
+  });
+
+  it("repositions on update and detaches on destroy", () => {
+    const host = document.createElement("div");
+    const overlay = new WebUIAdapter().createOverlay(host, {
+      themeKey: "light",
+      labelTopOffset: 40
+    });
+    overlay.update({ themeKey: "dark", labelTopOffset: 60 });
+    expect(overlay.indicatorLabelContainer.style.top).toBe("60px");
+    overlay.destroy();
+    expect(overlay.indicatorLabelContainer.parentElement).toBeNull();
+  });
+});

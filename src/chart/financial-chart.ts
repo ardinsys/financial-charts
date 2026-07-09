@@ -20,7 +20,7 @@ import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
 import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
 import { pixelRatio } from "../utils/screen";
-import type { ChartUIAdapter } from "../ui/chart-ui-adapter";
+import type { ChartOverlay, ChartUIAdapter } from "../ui/chart-ui-adapter";
 import { WebUIAdapter } from "../ui/web-ui-adapter";
 import {
   RenderCallback,
@@ -161,6 +161,7 @@ export class FinancialChart extends EventEmitter {
   protected visibleScale: DataScaleModel;
   private resizer!: Resizer;
   private ui: ChartUIAdapter;
+  private overlay!: ChartOverlay;
   private readonly renderPipeline = new RenderPipeline();
   private readonly mainPane = new Pane(0);
   private readonly panes: Pane[] = [this.mainPane];
@@ -699,16 +700,11 @@ export class FinancialChart extends EventEmitter {
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     this.outsideContainer.appendChild(this.container);
 
-    this.indicatorLabelContainer = document.createElement("div");
-    this.indicatorLabelContainer.style.zIndex = "101";
-
-    this.indicatorLabelContainer.style.overflow = "auto";
-    this.indicatorLabelContainer.style.position = "absolute";
-    this.indicatorLabelContainer.style.top =
-      this.options.theme.crosshair.infoLine.fontSize + 20 + "px";
-    this.indicatorLabelContainer.style.left = "10px";
-    this.indicatorLabelContainer.style.width = "fit-content";
-    this.container.appendChild(this.indicatorLabelContainer);
+    this.overlay = this.ui.createOverlay(this.container, {
+      themeKey: this.options.theme.key,
+      labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20
+    });
+    this.indicatorLabelContainer = this.overlay.indicatorLabelContainer;
 
     if (timeRange === "auto") {
       this.timeRange = {
@@ -893,6 +889,10 @@ export class FinancialChart extends EventEmitter {
       this.requestRedraw(this.allRedrawParts);
     }
     this.container.classList.add(`financial-charts-${theme.key}`);
+    this.overlay.update({
+      themeKey: this.options.theme.key,
+      labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20
+    });
   }
 
   public setVolumeDraw(draw: boolean) {
@@ -1847,6 +1847,7 @@ export class FinancialChart extends EventEmitter {
     this.resizeObserver.unobserve(this.container);
     this.resizeObserver.disconnect();
     this.canvases.forEach((canvas) => canvas.remove());
+    this.overlay.destroy();
     this.container.remove();
     this.canvases.clear();
     window.removeEventListener("resize", this.resizer.ratioResize);

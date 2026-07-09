@@ -1,4 +1,6 @@
 import {
+  ChartOverlay,
+  ChartOverlayContext,
   ChartUIAdapter,
   IndicatorLabelActions,
   IndicatorLabelActionTitles,
@@ -12,6 +14,27 @@ import {
  * `data-id` hooks — identical to the library's original built-in behavior.
  */
 export class WebUIAdapter implements ChartUIAdapter {
+  createOverlay(host: HTMLElement, context: ChartOverlayContext): ChartOverlay {
+    const indicatorLabelContainer = document.createElement("div");
+    indicatorLabelContainer.style.zIndex = "101";
+    indicatorLabelContainer.style.overflow = "auto";
+    indicatorLabelContainer.style.position = "absolute";
+    indicatorLabelContainer.style.top = context.labelTopOffset + "px";
+    indicatorLabelContainer.style.left = "10px";
+    indicatorLabelContainer.style.width = "fit-content";
+    host.appendChild(indicatorLabelContainer);
+
+    return {
+      indicatorLabelContainer,
+      update: (next: ChartOverlayContext) => {
+        indicatorLabelContainer.style.top = next.labelTopOffset + "px";
+      },
+      destroy: () => {
+        indicatorLabelContainer.remove();
+      }
+    };
+  }
+
   createIndicatorLabel(
     descriptor: IndicatorLabelDescriptor,
     actions: IndicatorLabelActions

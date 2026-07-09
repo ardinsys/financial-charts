@@ -14,7 +14,7 @@ Two streams plus release remain, run in order **N → U → Z**:
   (`Extent`→`Scale`, `DataExtent`→`DataScaleModel`) was never carried through the
   *public* surface. Migrate the names — v1.0 is already breaking, so no aliases.
 - **Stream U — framework integration.** Core keeps all **canvas** rendering and
-  stays dependency-free. All **DOM chrome** moves behind a `ChartUIAdapter` seam
+  stays dependency-free. All **DOM UI** moves behind a `ChartUIAdapter` seam
   with a default **web** adapter (current behavior), then first-party **Vue** and
   **React** packages in a pnpm **monorepo**. Svelte left adapter-ready as a
   follow-up.
@@ -142,7 +142,7 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
   with rich per-color multi-segment content and even custom template sub-nodes
   (MACD). So **do NOT convert label content to a data model** — keep the
   `labelContainer`/`updateLabel`/`labelTemplate`/`data-id` contract intact. The
-  adapter abstracts only the generic chrome currently hardcoded in
+  adapter abstracts only the generic UI currently hardcoded in
   `Indicator.setChart`: creating the label host, wiring show/hide/settings/remove,
   localized titles, visibility toggling, cleanup —
   `createIndicatorLabel(descriptor, actions) → { root, setActionTitles, setVisible,
@@ -153,7 +153,7 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
   it via `ChartContext.ui`. Refactor `indicator.ts` to delegate host/button wiring
   to the adapter; subclass-facing API (`labelContainer`, `updateLabel`,
   `renderLabel`) is unchanged.
-- **Out of scope:** non-label chrome / composition (U2); framework packages;
+- **Out of scope:** non-label UI / composition (U2); framework packages;
   any change to the indicator content API (would break `commons-js`).
 - **Acceptance:** with the default `WebUIAdapter`, labels/actions render and behave
   identically; button/host DOM creation removed from `indicator.ts` (confined to
@@ -162,17 +162,17 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
 - **Size:** L (split candidate: adapter interface + WebUIAdapter; then migrate the
   base `Indicator`).
 
-#### U2 — Move remaining core chrome + composition hooks to the adapter
+#### U2 — Move remaining core UI + composition hooks to the adapter
 - **Depends on:** U1  · **Parallel-safe with:** —
-- **Goal:** core owns only canvases; all chrome + composition goes through the adapter.
-- **Changes:** route the root wrapper/container chrome the constructor builds
+- **Goal:** core owns only canvases; all UI + composition goes through the adapter.
+- **Changes:** route the root wrapper/container UI the constructor builds
   (`financial-chart.ts`) through the adapter; define composition **regions/hooks**
   the adapter can populate — drawing toolbar, legend/OHLC controls, settings
   trigger (the pieces `App.vue` hand-rolls today). Confine
   `grep createElement|innerHTML` in core to `WebUIAdapter`.
 - **Out of scope:** framework packages (U4/U5).
 - **Acceptance:** chart still works with zero framework deps via `WebUIAdapter`;
-  no direct DOM-chrome creation left in core outside the adapter; build/tests green.
+  no direct DOM-UI creation left in core outside the adapter; build/tests green.
 - **Size:** M
 
 #### U3 — Monorepo restructure (pnpm workspace)
@@ -192,7 +192,7 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
 
 #### U4 — Vue package (`@ardinsys/financial-charts-vue`)
 - **Depends on:** U3  · **Parallel-safe with:** U5 (separate package)
-- **Goal:** first-party Vue integration for all chrome.
+- **Goal:** first-party Vue integration for all UI.
 - **Changes:** `VueUIAdapter` implementing `ChartUIAdapter` by rendering Vue
   components (teleport/render-to-region) for indicator labels + composition; a
   `<FinancialChart>` component + `useFinancialChart` composable wrapping
@@ -200,7 +200,7 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
   settings slot. Thin over the shared headless binding. Vue as **peerDependency**.
 - **Out of scope:** React (U5).
 - **Acceptance:** a Vue example renders the chart with framework-native
-  labels/toolbar (replacing the hand-rolled `App.vue` chrome); package builds +
+  labels/toolbar (replacing the hand-rolled `App.vue` UI); package builds +
   typechecks; basic mount/unmount test.
 - **Size:** L
 
@@ -209,7 +209,7 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
 - **Goal:** first-party React integration mirroring U4.
 - **Changes:** `ReactUIAdapter` + `<FinancialChart>` component + `useFinancialChart`
   hook + label/toolbar/settings components. React as **peerDependency**.
-- **Acceptance:** a React example renders with framework-native chrome; package
+- **Acceptance:** a React example renders with framework-native UI; package
   builds + typechecks; basic mount/unmount test.
 - **Size:** L
 
@@ -249,10 +249,10 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
 - **Naming (N):** `grep -ri "xtent" src` clean; a consumer using only the public
   API compiles against the new names; MIGRATION.md rename table complete.
 - **Web adapter (U1/U2):** chart renders identically with zero framework deps;
-  add/remove indicators repeatedly → no leaked listeners; no direct DOM-chrome
+  add/remove indicators repeatedly → no leaked listeners; no direct DOM-UI
   creation in core outside `WebUIAdapter`.
 - **Framework packages (U4/U5):** Vue and React examples render the chart with
-  framework-native chrome; mount → interact → unmount leaves no orphaned
+  framework-native UI; mount → interact → unmount leaves no orphaned
   listeners/DOM; core stays free of vue/react in its dependency tree.
 - **Regression:** daily dataset spanning weekends + a holiday → contiguous bars,
   no blank gaps, crosshair on real bars (guards the index-based scale).
