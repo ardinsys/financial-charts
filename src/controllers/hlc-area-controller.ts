@@ -50,10 +50,7 @@ export class HLCAreaController extends OHLCController {
     // Move to the first data point for each path
     let firstHigh!: Point,
       firstClose!: Point,
-      firstLow!: Point,
-      lastHigh!: Point,
-      lastClose!: Point,
-      lastLow!: Point;
+      firstLow!: Point;
 
     let foundFirst = false;
     for (let i = 0; i < visibleDataPoints.length; i++) {
@@ -82,8 +79,6 @@ export class HLCAreaController extends OHLCController {
         lowPath.lineTo(low.x, low.y);
       }
 
-      lastHigh = high;
-      lastLow = low;
     }
 
     foundFirst = false;
@@ -106,7 +101,6 @@ export class HLCAreaController extends OHLCController {
         closePath.lineTo(close.x, close.y);
       }
 
-      lastClose = close;
     }
 
     // Draw the lines

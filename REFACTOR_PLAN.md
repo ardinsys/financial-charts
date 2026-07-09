@@ -85,9 +85,10 @@ Out of scope · Acceptance · Size (S≈<150, M≈150-400, L≈400+ lines)**.
 Wave 1 (sequential, hot file):   N1 → N2
 Wave 2 (sequential, hot file):   U1 → U2                 (depend on N)
 Wave 3 (infra):                  U3  monorepo split      (depends U2)
-Wave 4 (2 parallel packages):    U4 (vue) ∥ U5 (react)   (depend U3)
-Wave 5:                          U6  integration docs    (depends U4, U5)
-Wave 6 (release):                Z1 → Z2                 (depends N2, U6)
+Wave 4 (core label API):         U4  data-driven labels  (depends U3)
+Wave 5 (2 parallel packages):    U5 (vue) ∥ U6 (react)   (depend U4)
+Wave 6:                          U7  integration docs    (depends U5, U6)
+Wave 7 (release):                Z1 → Z2                 (depends N2, U7)
 ```
 
 Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
@@ -181,40 +182,62 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
 - **Changes:** move core into `packages/core` (published name
   `@ardinsys/financial-charts`); scaffold `packages/vue` + `packages/react` with
   peerDeps; add root `pnpm-workspace.yaml` globs, shared `tsconfig.base.json`.
-  **Bundle every package with tsdown** (ESM + CJS + `.d.ts`) — migrate core off
-  `vite build && tsc`. Add a `playground/` (or `examples/`) app per framework
-  built with **vite** for local dev. Relocate docs/CI; keep root `pnpm -r build` /
-  `pnpm -r test` green. No source behavior change.
+  **Bundle every package with tsdown** (ESM + `.d.ts`) — migrate core off
+  `vite build && tsc`. Each package carries its own `playground/` (vite) for local
+  dev. Keep root `pnpm -r build` / `pnpm -r test` / `pnpm -r typecheck` green.
+  No source behavior change (only dead-code removal surfaced by the stricter
+  full-project typecheck).
 - **Out of scope:** implementing the framework adapters (U4/U5).
 - **Acceptance:** `pnpm -r build` + `pnpm -r test` green; core publishes an
   identical public API from its new location; CI updated.
 - **Size:** L (infra)
 
-#### U4 — Vue package (`@ardinsys/financial-charts-vue`)
-- **Depends on:** U3  · **Parallel-safe with:** U5 (separate package)
-- **Goal:** first-party Vue integration for all UI.
-- **Changes:** `VueUIAdapter` implementing `ChartUIAdapter` by rendering Vue
-  components (teleport/render-to-region) for indicator labels + composition; a
-  `<FinancialChart>` component + `useFinancialChart` composable wrapping
-  construct/lifecycle/dispose; components for indicator label, drawing toolbar,
-  settings slot. Thin over the shared headless binding. Vue as **peerDependency**.
-- **Out of scope:** React (U5).
-- **Acceptance:** a Vue example renders the chart with framework-native
-  labels/toolbar (replacing the hand-rolled `App.vue` UI); package builds +
-  typechecks; basic mount/unmount test.
+#### U4 — Data-driven indicator label model
+- **Depends on:** U3  · **Parallel-safe with:** — (reworks the core label API)
+- **Goal:** make indicator labels a structured data model so framework adapters
+  render them natively. **Supersedes the U1 HTML-template label contract** (chosen
+  by the maintainer over keeping HTML labels).
+- **Changes:** replace `IndicatorLabelDescriptor.templateHtml` +
+  `labelTemplate`/`labelRenderer`/`data-id`/`renderLabel` with an
+  `IndicatorLabelModel` (`{ key, name, detail?, segments: {text,color}[], visible,
+  actions, actionTitles }`). `Indicator.updateLabel(dataTime?)` becomes concrete
+  (builds the model from localized `names` + a new abstract
+  `getLabelContent(dataTime?) → { detail?, segments? }`); adapter
+  `createIndicatorLabel(model, actions)` + `handle.update(model)`. `WebUIAdapter`
+  renders the model to DOM (reproducing the current look); remove
+  `label-renderer.ts`. Migrate `MovingAverageIndicator` + `TestIndicator`.
+- **Out of scope:** the Vue/React renderers (U5/U6).
+- **Acceptance:** web output visually matches; multi-color segments supported
+  (covers Bollinger/MACD); build/test/typecheck green. **BREAKING:** indicator
+  authors implement `getLabelContent` instead of mutating `labelContainer`
+  (commons-js indicators migrate downstream — documented in MIGRATION.md).
 - **Size:** L
 
-#### U5 — React package (`@ardinsys/financial-charts-react`)
-- **Depends on:** U3  · **Parallel-safe with:** U4 (separate package)
-- **Goal:** first-party React integration mirroring U4.
+#### U5 — Vue package (`@ardinsys/financial-charts-vue`)
+- **Depends on:** U4  · **Parallel-safe with:** U6 (separate package)
+- **Goal:** first-party Vue integration for all UI.
+- **Changes:** `VueUIAdapter` implementing `ChartUIAdapter` — renders the indicator
+  label model + composition with Vue components; a `<FinancialChart>` component +
+  `useFinancialChart` composable (construct/lifecycle/dispose, reactive
+  data/options); components for indicator label, drawing toolbar, settings slot.
+  Vue as **peerDependency**. In-package `playground/`.
+- **Out of scope:** React (U6).
+- **Acceptance:** a Vue example renders the chart with framework-native labels +
+  toolbar; package builds + typechecks; basic mount/unmount test.
+- **Size:** L
+
+#### U6 — React package (`@ardinsys/financial-charts-react`)
+- **Depends on:** U4  · **Parallel-safe with:** U5 (separate package)
+- **Goal:** first-party React integration mirroring U5.
 - **Changes:** `ReactUIAdapter` + `<FinancialChart>` component + `useFinancialChart`
-  hook + label/toolbar/settings components. React as **peerDependency**.
+  hook + label/toolbar/settings components. React as **peerDependency**. In-package
+  `playground/`.
 - **Acceptance:** a React example renders with framework-native UI; package
   builds + typechecks; basic mount/unmount test.
 - **Size:** L
 
-#### U6 — Integration docs
-- **Depends on:** U4, U5  · **Parallel-safe with:** —
+#### U7 — Integration docs
+- **Depends on:** U5, U6  · **Parallel-safe with:** —
 - **Goal:** document the three integration paths (web / Vue / React).
 - **Changes:** fill in `docs/integrations/vue.md` + `react.md` (currently stubs);
   update `overview.md`; note in `svelte.md` that the adapter is ready and a Svelte
@@ -225,7 +248,7 @@ Legend: `A → B` = B depends on A; `∥` = safe to run concurrently.
 ### Stream Z — Release
 
 #### Z1 — Migration guide + reference docs
-- **Depends on:** N2, U6
+- **Depends on:** N2, U7
 - **Goal:** consumers can upgrade 0.9 → 1.0 across core + framework packages.
 - **Changes:** finalize `MIGRATION.md` (index-range replacing zoom/pan; the N
   naming renames; the `ChartUIAdapter` seam; new monorepo package names); update

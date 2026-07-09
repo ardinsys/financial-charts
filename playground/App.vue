@@ -1,26 +1,27 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
-// import { LineController } from "./controllers/line/line-controller";
-import { ChartData } from "./chart/types";
-import { FinancialChart } from "./chart/financial-chart";
-import { AreaController } from "./controllers/area-controller";
-import { LineController } from "./controllers/line-controller";
-import { BarController } from "./controllers/bar-controller";
-import { HollowCandleController } from "./controllers/hollow-candle-controller";
-import { CandlestickController } from "./controllers/candle-controller";
-import { SteplineController } from "./controllers/step-line-controller";
-import { HLCAreaController } from "./controllers/hlc-area-controller";
-import { defaultDarkTheme, defaultLightTheme, mergeThemes } from "./chart/themes";
-import { MovingAverageIndicator } from "./indicators/simple/moving-average";
-import { TestIndicator } from "./indicators/paneled/test-indicator";
 import {
+  ChartData,
+  FinancialChart,
+  AreaController,
+  LineController,
+  BarController,
+  HollowCandleController,
+  CandlestickController,
+  SteplineController,
+  HLCAreaController,
+  defaultDarkTheme,
+  defaultLightTheme,
+  mergeThemes,
+  MovingAverageIndicator,
+  TestIndicator,
   DrawingManager,
   HorizontalLine,
   RectangleDrawing,
   TextDrawing,
   TrendLine,
   type DrawingFactory
-} from "./drawings";
+} from "@ardinsys/financial-charts";
 
 FinancialChart.registerController(AreaController);
 FinancialChart.registerController(LineController);

@@ -3,13 +3,14 @@
   "version": "0.9.8",
   "type": "module",
   "license": "Apache 2.0",
+  "author": "ARDINSYS Zrt.",
   "packageManager": "pnpm@10.24.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/ardinsys/financial-charts.git"
   },
-  "author": "ARDINSYS Zrt.",
   "main": "dist/index.js",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
     "dist",
@@ -20,19 +21,19 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js"
     },
-    "./dist/style.css": "./dist/style.css"
+    "./style.css": "./dist/index.css"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "dev": "vite --host",
-    "build": "vite build && tsc src/index.ts --declaration --emitDeclarationOnly --esModuleInterop --outDir dist --target es2022 --moduleResolution bundler",
+    "dev": "vite",
+    "build": "tsdown",
+    "playground": "vite",
     "test": "vitest run",
-    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
@@ -43,11 +44,11 @@
     "bumpp": "^10.3.2",
     "jsdom": "^29.1.1",
     "prettier": "^3.6.2",
+    "tsdown": "^0.21.10",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",
     "vitepress": "^1.4.2",
     "vitest": "^4.1.10",
-    "vue": "^3.3.11",
-    "vue-tsc": "^2.2.12"
+    "vue": "^3.3.11"
   }
 }

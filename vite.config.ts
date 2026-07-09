@@ -1,20 +1,21 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { resolve } from "path";
+import { fileURLToPath, URL } from "node:url";
 
-// https://vitejs.dev/config/
+// Dev-only playground. Consumes the package by source for instant HMR.
 export default defineConfig({
+  root: "./playground",
   plugins: [vue()],
-  esbuild: {
-    target: "es2020",
+  resolve: {
+    alias: {
+      "@ardinsys/financial-charts": fileURLToPath(
+        new URL("./src/index.ts", import.meta.url)
+      )
+    }
   },
-  build: {
-    lib: {
-      entry: resolve(__dirname, "src/index.ts"),
-      name: "financial-charts",
-      formats: ["es"],
-      fileName: () => "index.js",
-      cssFileName: "style",
-    },
-  },
+  server: {
+    fs: {
+      allow: [fileURLToPath(new URL(".", import.meta.url))]
+    }
+  }
 });

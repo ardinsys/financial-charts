@@ -4,7 +4,6 @@ import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import {
   Drawing,
-  type DrawingAnchor,
   type DrawingHitTestContext,
   DrawingManager,
   type DrawingPoint,
