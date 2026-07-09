@@ -323,7 +323,7 @@ export class FinancialChart extends EventEmitter {
     return Math.max(this.visibleIndexRange.to - this.visibleIndexRange.from, 1);
   }
 
-  private getPixelPerIndex() {
+  getPixelsPerBar() {
     return this.getDrawingSize().width / this.getVisibleIndexSpan();
   }
 
@@ -392,10 +392,10 @@ export class FinancialChart extends EventEmitter {
   }
 
   private panVisibleIndexRange(dx: number) {
-    const pixelPerIndex = this.getPixelPerIndex();
-    if (pixelPerIndex <= 0) return;
+    const pixelsPerBar = this.getPixelsPerBar();
+    if (pixelsPerBar <= 0) return;
 
-    const delta = dx / pixelPerIndex;
+    const delta = dx / pixelsPerBar;
     this.setVisibleIndexRange({
       from: this.visibleIndexRange.from - delta,
       to: this.visibleIndexRange.to - delta
@@ -1022,10 +1022,6 @@ export class FinancialChart extends EventEmitter {
    *
    * @returns pixels per millisecond-sized bar slot
    */
-  getPixelPerMs(): number {
-    return this.getPixelPerIndex() / this.options.stepSize;
-  }
-
   private onMouseMove = (event: MouseEvent) => {
     if (this.dataStore.length == 0) return;
     if (this.lastPointerPosition) {
@@ -1610,10 +1606,10 @@ export class FinancialChart extends EventEmitter {
   private drawVolumeBars() {
     const ctx = this.getContext("main");
     const spacing = 0.1;
-    const pixelPerMs = this.getPixelPerMs();
+    const pixelsPerBar = this.getPixelsPerBar();
     const visibleDataPoints = this.recalculateVisibleScale();
-    const candleSpacing = this.options.stepSize * pixelPerMs * spacing;
-    const candleWidth = this.options.stepSize * pixelPerMs - candleSpacing;
+    const candleSpacing = pixelsPerBar * spacing;
+    const candleWidth = pixelsPerBar - candleSpacing;
 
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 

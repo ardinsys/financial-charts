@@ -7,11 +7,11 @@ export class CandlestickController extends OHLCController {
 
   draw(): void {
     const ctx = this.chart.getContext("main");
-    const pixelPerMs = this.chart.getPixelPerMs();
+    const pixelsPerBar = this.chart.getPixelsPerBar();
     const visibleDataPoints = this.chart.getLastVisibleDataPoints();
 
-    const candleSpacing = this.options.stepSize * pixelPerMs * this.spacing;
-    const candleWidth = this.options.stepSize * pixelPerMs - candleSpacing;
+    const candleSpacing = pixelsPerBar * this.spacing;
+    const candleWidth = pixelsPerBar - candleSpacing;
 
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 

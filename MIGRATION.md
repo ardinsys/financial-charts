@@ -172,6 +172,9 @@ The old continuous-time zoom/pan scalars no longer model the index-based scale
   `{ canvas, barAlignment? }`.
 - `DataScaleModel.mapToPixel` / `pixelToPoint` / `mapVolToPixel` no longer accept
   `zoomLevel` / `panOffset` arguments.
+- `chart.getPixelPerMs()` → **removed**. Under the index model bar width is a
+  count of pixels per bar, not per millisecond. Use `chart.getPixelsPerBar()`
+  directly (callers no longer multiply by `stepSize`).
 
 ## Suggested upgrade path
 
