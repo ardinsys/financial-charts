@@ -138,9 +138,9 @@ The event emitter remains compatible with existing `chart.on(...)` calls, while
 the built-in event map now includes indicator and drawing events. Plugin authors
 can use the generic event emitter types for custom event maps.
 
-### Pluggable UI adapter (indicator labels)
+### Pluggable DOM adapter (indicator labels)
 
-DOM UI now goes through a `ChartUIAdapter`. The default `WebUIAdapter`
+DOM UI now goes through a `ChartDOMAdapter`. The default `DefaultDOMAdapter`
 reproduces the built-in look, so no change is required for existing users — core
 stays dependency-free.
 
@@ -158,13 +158,14 @@ protected getLabelContent(dataTime?: number): IndicatorLabelContent {
 The base `Indicator` builds an `IndicatorLabelModel` (name from localized
 `names`, actions, visibility) and hands it to the adapter; `updateLabel()` is now
 concrete. Multi-color values (Bollinger, MACD) are expressed as multiple
-`segments`. This is what lets Vue/React adapters render labels natively.
+`segments`. This is what lets DOM adapters render labels using app-owned
+markup, styling, or framework components.
 
-- New option: `new FinancialChart(el, range, { ..., uiAdapter })`. Omit it to get
-  the default `WebUIAdapter`.
-- Plugins receive the adapter via `ChartContext.ui`.
+- New option: `new FinancialChart(el, range, { ..., domAdapter })`. Omit it to
+  get the default `DefaultDOMAdapter`.
+- Plugins receive the adapter via `ChartContext.domAdapter`.
 - The adapter also builds the composition layer via
-  `createOverlay(host, context)` (overlay label region + framework
+  `createOverlay(host, context)` (overlay label region + DOM
   toolbars/legend/settings).
 - **Migration for indicator authors:** replace `updateLabel()` DOM writes and any
   `labelTemplate`/`labelRenderer` options with a `getLabelContent()` returning
@@ -183,13 +184,13 @@ The internal `Extent`/`DataExtent` rename to `Scale`/`DataScaleModel` is now
 carried through the public surface. These names changed (no compatibility
 aliases):
 
-| Old (0.9)                             | New (1.0)                              |
-| ------------------------------------- | -------------------------------------- |
-| `chart.getVisibleExtent()`            | `chart.getVisibleScale()`              |
-| `chart.recalculateVisibleExtent()`    | `chart.recalculateVisibleScale()`      |
-| `PaneledIndicator.createExtent()`     | `PaneledIndicator.createScale()`       |
-| `PaneledIndicator` protected `extent` | protected `scale`                      |
-| `PaneYAxisRenderOptions.extent`       | `PaneYAxisRenderOptions.scale`         |
+| Old (0.9)                             | New (1.0)                         |
+| ------------------------------------- | --------------------------------- |
+| `chart.getVisibleExtent()`            | `chart.getVisibleScale()`         |
+| `chart.recalculateVisibleExtent()`    | `chart.recalculateVisibleScale()` |
+| `PaneledIndicator.createExtent()`     | `PaneledIndicator.createScale()`  |
+| `PaneledIndicator` protected `extent` | protected `scale`                 |
+| `PaneYAxisRenderOptions.extent`       | `PaneYAxisRenderOptions.scale`    |
 
 ### Zoom/pan vocabulary removed in favor of the index range
 

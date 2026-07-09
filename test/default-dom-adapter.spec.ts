@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { WebUIAdapter } from "../src/ui/web-ui-adapter";
+import { DefaultDOMAdapter } from "../src/ui/default-dom-adapter";
 import type {
   IndicatorLabelActions,
   IndicatorLabelModel
-} from "../src/ui/chart-ui-adapter";
+} from "../src/ui/chart-dom-adapter";
 
 const titles = {
   show: "Show",
@@ -12,7 +12,9 @@ const titles = {
   remove: "Remove"
 };
 
-function model(overrides: Partial<IndicatorLabelModel> = {}): IndicatorLabelModel {
+function model(
+  overrides: Partial<IndicatorLabelModel> = {}
+): IndicatorLabelModel {
   return {
     key: "sma",
     themeKey: "light",
@@ -30,7 +32,7 @@ function makeLabel(
   actions: Partial<IndicatorLabelActions> = {},
   initial: IndicatorLabelModel = model()
 ) {
-  const adapter = new WebUIAdapter();
+  const adapter = new DefaultDOMAdapter();
   const spies = {
     onToggleVisibility: vi.fn(),
     onOpenSettings: vi.fn(),
@@ -43,7 +45,7 @@ function makeLabel(
   return { handle, spies, q };
 }
 
-describe("WebUIAdapter indicator label", () => {
+describe("DefaultDOMAdapter indicator label", () => {
   it("renders the model name, detail, value segment, and controls", () => {
     const { handle, q } = makeLabel();
     expect(handle.root.classList.contains("financial-indicator")).toBe(true);
@@ -64,7 +66,11 @@ describe("WebUIAdapter indicator label", () => {
     const { q } = makeLabel(
       {},
       model({
-        segments: [{ text: "1", color: "#ff0000" }, { text: "2" }, { text: "3" }]
+        segments: [
+          { text: "1", color: "#ff0000" },
+          { text: "2" },
+          { text: "3" }
+        ]
       })
     );
     const spans = q("value").querySelectorAll("span");
@@ -74,7 +80,9 @@ describe("WebUIAdapter indicator label", () => {
   it("only renders controls allowed by the model", () => {
     const { q } = makeLabel(
       {},
-      model({ actions: { canHide: true, canOpenSettings: false, canRemove: false } })
+      model({
+        actions: { canHide: true, canOpenSettings: false, canRemove: false }
+      })
     );
     expect(q("show")).toBeTruthy();
     expect(q("settings")).toBeNull();
@@ -122,10 +130,10 @@ describe("WebUIAdapter indicator label", () => {
   });
 });
 
-describe("WebUIAdapter overlay", () => {
+describe("DefaultDOMAdapter overlay", () => {
   it("mounts an absolutely-positioned label region into the host", () => {
     const host = document.createElement("div");
-    const overlay = new WebUIAdapter().createOverlay(host, {
+    const overlay = new DefaultDOMAdapter().createOverlay(host, {
       themeKey: "light",
       labelTopOffset: 40
     });
@@ -136,7 +144,7 @@ describe("WebUIAdapter overlay", () => {
 
   it("repositions on update and detaches on destroy", () => {
     const host = document.createElement("div");
-    const overlay = new WebUIAdapter().createOverlay(host, {
+    const overlay = new DefaultDOMAdapter().createOverlay(host, {
       themeKey: "light",
       labelTopOffset: 40
     });
@@ -144,5 +152,53 @@ describe("WebUIAdapter overlay", () => {
     expect(overlay.indicatorLabelContainer.style.top).toBe("60px");
     overlay.destroy();
     expect(overlay.indicatorLabelContainer.parentElement).toBeNull();
+  });
+});
+
+describe("DefaultDOMAdapter pane divider", () => {
+  it("renders, updates, and disposes a pane divider handle", () => {
+    const adapter = new DefaultDOMAdapter();
+    const onPointerDown = vi.fn();
+    const handle = adapter.createPaneDivider(
+      {
+        key: "divider",
+        themeKey: "light",
+        beforePaneId: 0,
+        afterPaneId: 1,
+        x: 0,
+        y: 100,
+        width: 800,
+        height: 8
+      },
+      { onPointerDown }
+    );
+
+    expect(handle.root.classList.contains("fci-pane-divider")).toBe(true);
+    expect(handle.root.dataset.beforePaneId).toBe("0");
+    expect(handle.root.dataset.afterPaneId).toBe("1");
+    expect(handle.root.style.top).toBe("100px");
+    expect(handle.root.style.height).toBe("8px");
+
+    handle.root.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    expect(onPointerDown).toHaveBeenCalledTimes(1);
+
+    handle.update({
+      key: "divider",
+      themeKey: "dark",
+      beforePaneId: 1,
+      afterPaneId: 2,
+      x: 0,
+      y: 180,
+      width: 640,
+      height: 10
+    });
+    expect(handle.root.dataset.beforePaneId).toBe("1");
+    expect(handle.root.dataset.afterPaneId).toBe("2");
+    expect(handle.root.style.top).toBe("180px");
+    expect(handle.root.style.width).toBe("640px");
+
+    handle.destroy();
+    handle.root.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    expect(onPointerDown).toHaveBeenCalledTimes(1);
   });
 });

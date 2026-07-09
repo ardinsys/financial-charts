@@ -21,8 +21,8 @@ export interface IndicatorLabelSegment {
 }
 
 /**
- * The declarative state of one indicator label. Indicators produce this (rather
- * than authoring HTML), so every adapter — web, Vue, React — renders it natively.
+ * The declarative state of one indicator label. Indicators produce this rather
+ * than authoring HTML, so DOM adapters can render it in app-native markup.
  */
 export interface IndicatorLabelModel {
   key: string;
@@ -53,7 +53,28 @@ export interface IndicatorLabelHandle {
   destroy(): void;
 }
 
-export interface ChartOverlayContext {
+export interface PaneDividerModel {
+  key: string;
+  themeKey: string;
+  beforePaneId: number;
+  afterPaneId: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PaneDividerActions {
+  onPointerDown(event: PointerEvent): void;
+}
+
+export interface PaneDividerHandle {
+  readonly root: HTMLElement;
+  update(model: PaneDividerModel): void;
+  destroy(): void;
+}
+
+export interface ChartDOMOverlayContext {
   themeKey: string;
   /** Top offset (px) for the overlay label region. */
   labelTopOffset: number;
@@ -61,32 +82,39 @@ export interface ChartOverlayContext {
 
 /**
  * The composition layer the adapter mounts on top of the canvas host: the
- * overlay indicator-label region, plus whatever surrounding UI a framework
- * adapter chooses to render (toolbars, legend, settings panels). The core
+ * overlay indicator-label region, plus whatever surrounding DOM an adapter
+ * chooses to render (toolbars, legend, settings panels). The core
  * only needs the label region back; everything else is the adapter's own.
  */
-export interface ChartOverlay {
+export interface ChartDOMOverlay {
   readonly indicatorLabelContainer: HTMLElement;
-  update(context: ChartOverlayContext): void;
+  update(context: ChartDOMOverlayContext): void;
   destroy(): void;
 }
 
 /**
- * Renders the DOM UI that sits around the canvases. The default
- * {@link WebUIAdapter} reproduces the built-in HTML behavior; framework
- * packages provide Vue/React implementations. The core never creates UI
- * DOM directly — it delegates to the adapter.
+ * Renders the DOM chrome that sits around the canvases. The default
+ * {@link DefaultDOMAdapter} reproduces the built-in HTML behavior. The core
+ * delegates non-canvas DOM to this adapter so applications can restyle or
+ * replace it while staying in an HTMLElement-based environment.
  */
-export interface ChartUIAdapter {
+export interface ChartDOMAdapter {
   /**
    * Build the composition layer inside the chart's canvas host. Called once
    * during construction. `host` is the core-owned element that also hosts the
    * canvases; the adapter mounts its overlay into it and returns the region
    * the core appends indicator labels to.
    */
-  createOverlay(host: HTMLElement, context: ChartOverlayContext): ChartOverlay;
+  createOverlay(
+    host: HTMLElement,
+    context: ChartDOMOverlayContext
+  ): ChartDOMOverlay;
   createIndicatorLabel(
     model: IndicatorLabelModel,
     actions: IndicatorLabelActions
   ): IndicatorLabelHandle;
+  createPaneDivider?(
+    model: PaneDividerModel,
+    actions: PaneDividerActions
+  ): PaneDividerHandle;
 }

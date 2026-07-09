@@ -6,7 +6,7 @@ import type {
   IndicatorLabelHandle,
   IndicatorLabelModel,
   IndicatorLabelSegment
-} from "../ui/chart-ui-adapter";
+} from "../ui/chart-dom-adapter";
 import type { Formatter } from "../chart/formatter";
 import type { DeepConcrete } from "../chart/financial-chart";
 import type { ChartTheme } from "../chart/themes";
@@ -99,7 +99,7 @@ export abstract class Indicator<
     this.chart = chart;
     this.theme = this.themes[chart.getOptions().theme.key];
 
-    this.labelHandle = this.chartContext.ui.createIndicatorLabel(
+    this.labelHandle = this.chartContext.domAdapter.createIndicatorLabel(
       this.buildLabelModel(),
       {
         onToggleVisibility: (visible) => {

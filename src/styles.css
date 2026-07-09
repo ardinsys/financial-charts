@@ -1,6 +1,8 @@
 .financial-charts-light .financial-indicator,
 .financial-charts-dark .financial-indicator {
-  font: 14px system-ui, sans-serif;
+  font:
+    14px system-ui,
+    sans-serif;
   transition: all 0.1s ease-in-out;
 
   border-radius: 4px;
@@ -112,4 +114,44 @@
 
 .financial-charts .financial-indicator .fci-extra {
   opacity: 0.6;
+}
+
+.financial-charts .fci-pane-divider {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.financial-charts .fci-pane-divider-line {
+  height: 2px;
+  pointer-events: none;
+  transition:
+    background-color 0.12s ease,
+    opacity 0.12s ease;
+  width: 100%;
+}
+
+.financial-charts-light .fci-pane-divider-line {
+  background-color: rgba(0, 0, 0, 0.22);
+}
+
+.financial-charts-dark .fci-pane-divider-line {
+  background-color: rgba(255, 255, 255, 0.28);
+}
+
+.financial-charts .fci-pane-divider:hover .fci-pane-divider-line,
+.financial-charts .fci-pane-divider:focus-visible .fci-pane-divider-line {
+  opacity: 1;
+}
+
+.financial-charts-light .fci-pane-divider:hover .fci-pane-divider-line,
+.financial-charts-light .fci-pane-divider:focus-visible .fci-pane-divider-line {
+  background-color: rgba(0, 0, 0, 0.45);
+}
+
+.financial-charts-dark .fci-pane-divider:hover .fci-pane-divider-line,
+.financial-charts-dark .fci-pane-divider:focus-visible .fci-pane-divider-line {
+  background-color: rgba(255, 255, 255, 0.58);
 }

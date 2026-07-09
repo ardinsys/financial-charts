@@ -109,13 +109,14 @@ type LocaleValues = {
 
 ### View and styling
 
-| Method                                        | Description                                                                                      |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `changeType(type)`                            | Switches the active controller (candles, bars, area, etc.) while preserving zoom and pan state.  |
-| `updateTheme(theme)`                          | Deep merges a theme patch and redraws the view. Useful when toggling light/dark mode.            |
-| `setVolumeDraw(enabled)`                      | Shows or hides the volume histogram without recreating the chart.                                |
-| `updateCoreOptions(range, stepSize, maxZoom)` | Rebuilds the internal state with new core settings. Resets zoom/pan because data is remapped.    |
-| `updateLocale(locale, values?)`               | Changes the formatter locale and (optionally) overrides indicator labels for multiple languages. |
+| Method                                        | Description                                                                                       |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `changeType(type)`                            | Switches the active controller (candles, bars, area, etc.) while preserving zoom and pan state.   |
+| `updateTheme(theme)`                          | Deep merges a theme patch and redraws the view. Useful when toggling light/dark mode.             |
+| `setVolumeDraw(enabled)`                      | Shows or hides the volume histogram without recreating the chart.                                 |
+| `setPaneHeights(heights)`                     | Applies logical pixel pane heights keyed by pane id or pane order. Values are min-height clamped. |
+| `updateCoreOptions(range, stepSize, maxZoom)` | Rebuilds the internal state with new core settings. Resets zoom/pan because data is remapped.     |
+| `updateLocale(locale, values?)`               | Changes the formatter locale and (optionally) overrides indicator labels for multiple languages.  |
 
 ### Query helpers
 
@@ -128,6 +129,7 @@ type LocaleValues = {
 | `getController()`                                                   | Returns the currently instantiated controller instance.                                     |
 | `getTimeScale()` / `getPriceScale()` / `getVolumeScale()`           | Returns the active scales for custom renderers and plugins.                                 |
 | `getPanes()` / `getMainPane()`                                      | Lists pane models or returns the main price pane.                                           |
+| `getPaneHeights()`                                                  | Returns current logical pixel heights keyed by pane id.                                     |
 | `getPlugins()`                                                      | Lists attached plugins.                                                                     |
 | `getIndicators()` / `getPaneledIndicators()` / `getAllIndicators()` | Lists overlay indicators, paneled indicators, or both combined.                             |
 
@@ -139,6 +141,10 @@ chart.removeIndicator(indicator: Indicator): void;
 ```
 
 Use overlays for drawings on top of price data and `PaneledIndicator` implementations when you need a dedicated sub-chart. See the [Indicators reference](./indicators.md) for implementation details.
+
+Paneled indicator heights can be resized by dragging the pane divider. Use
+`chart.setPaneHeights({ [paneId]: height })` to restore or persist a custom
+layout programmatically; values are clamped to pane minimum heights.
 
 ### Plugins
 

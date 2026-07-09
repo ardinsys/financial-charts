@@ -24,11 +24,17 @@ import {
   bindEvent,
   createCanvasLayer,
   createPositionedContainer,
+  type Dispose,
   resizeCanvasLayer,
   scaleCanvasContext
 } from "../utils/dom";
-import type { ChartOverlay, ChartUIAdapter } from "../ui/chart-ui-adapter";
-import { WebUIAdapter } from "../ui/web-ui-adapter";
+import type {
+  ChartDOMOverlay,
+  ChartDOMAdapter,
+  PaneDividerHandle,
+  PaneDividerModel
+} from "../ui/chart-dom-adapter";
+import { DefaultDOMAdapter } from "../ui/default-dom-adapter";
 import {
   RenderCallback,
   RenderLayer,
@@ -86,7 +92,7 @@ export interface ChartOptions {
   locale?: string;
   formatter?: Formatter;
   theme?: ChartTheme;
-  uiAdapter?: ChartUIAdapter;
+  domAdapter?: ChartDOMAdapter;
   localeValues?: {
     [key: string]: LocaleValues;
   };
@@ -102,6 +108,17 @@ type IndicatorConstructor = (new (...args: any[]) => Indicator<any, any>) & {
 };
 
 export type ChartRedrawPart = RenderLayer | "controller";
+export type PaneHeightsInput =
+  | Partial<Record<number, number>>
+  | readonly number[];
+
+type PaneResizeDrag = {
+  dividerIndex: number;
+  startClientY: number;
+  beforeStartHeight: number;
+  afterStartHeight: number;
+  disposers: Dispose[];
+};
 
 export class FinancialChart extends EventEmitter {
   private static controllers: Map<ControllerType, new () => ChartController> =
@@ -167,8 +184,8 @@ export class FinancialChart extends EventEmitter {
   protected dataScale!: DataScaleModel;
   protected visibleScale: DataScaleModel;
   private resizer!: Resizer;
-  private ui: ChartUIAdapter;
-  private overlay!: ChartOverlay;
+  private domAdapter: ChartDOMAdapter;
+  private overlay!: ChartDOMOverlay;
   private readonly renderPipeline = new RenderPipeline();
   private readonly mainPane = new Pane(0);
   private readonly panes: Pane[] = [this.mainPane];
@@ -181,6 +198,10 @@ export class FinancialChart extends EventEmitter {
     Pane,
     PaneledIndicator<any, any>
   >();
+  private readonly paneHeights = new Map<Pane, number>();
+  private paneHeightsCustomized = false;
+  private readonly paneDividerHandles: PaneDividerHandle[] = [];
+  private paneResizeDrag?: PaneResizeDrag;
 
   protected indicators: Indicator<any, any>[] = [];
   protected panaledIndicators: PaneledIndicator<any, any>[] = [];
@@ -188,6 +209,9 @@ export class FinancialChart extends EventEmitter {
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
+  protected mainPaneMinHeight = 80;
+  protected indicatorPaneMinHeight = 50;
+  protected paneDividerHeight = 8;
 
   protected pointerTime = -1;
   protected crosshairDataPoint: ChartData | null = null;
@@ -218,9 +242,6 @@ export class FinancialChart extends EventEmitter {
     "drawings",
     "crosshair"
   ];
-
-  private chartHeight: number = 0;
-  private indicatorHeight: number = 0;
 
   private lastXGridCoords: number[] = [];
 
@@ -455,6 +476,31 @@ export class FinancialChart extends EventEmitter {
     return this.mainPane;
   }
 
+  getPaneHeights(): Record<number, number> {
+    return Object.fromEntries(
+      this.panes.map((pane) => [
+        pane.getId(),
+        this.paneHeights.get(pane) ?? pane.getRegion().height
+      ])
+    );
+  }
+
+  setPaneHeights(heights: PaneHeightsInput): void {
+    const desired = new Map(this.paneHeights);
+
+    this.panes.forEach((pane, index) => {
+      const value = Array.isArray(heights)
+        ? heights[index]
+        : heights[pane.getId()];
+      if (value == undefined) return;
+      desired.set(pane, value);
+    });
+
+    this.paneHeightsCustomized = true;
+    this.normalizePaneHeights(desired);
+    this.applyPaneLayout({ redraw: true, immediate: true });
+  }
+
   getPlugins() {
     return [...this.plugins];
   }
@@ -481,7 +527,7 @@ export class FinancialChart extends EventEmitter {
   private createChartContext(): ChartContext {
     return {
       chart: this,
-      ui: this.ui,
+      domAdapter: this.domAdapter,
       getPanes: () => this.getPanes(),
       getVisibleTimeRange: () => this.getVisibleTimeRange(),
       on: (event, listener) => this.on(event, listener),
@@ -598,6 +644,284 @@ export class FinancialChart extends EventEmitter {
     }
   }
 
+  private getPaneLayoutHeight() {
+    return Math.max(0, this.container.offsetHeight - this.xLabelHeight);
+  }
+
+  private getPaneMinHeight(pane: Pane) {
+    return pane === this.mainPane
+      ? this.mainPaneMinHeight
+      : this.indicatorPaneMinHeight;
+  }
+
+  private getDefaultIndicatorPaneHeight(totalHeight: number) {
+    const indicatorCount = this.panaledIndicators.length;
+    if (indicatorCount === 0) return 0;
+
+    const canUseQuarter =
+      totalHeight / (indicatorCount + 1) > totalHeight * 0.25;
+
+    return canUseQuarter
+      ? totalHeight * 0.25
+      : (totalHeight * 0.75) / indicatorCount;
+  }
+
+  private resetDefaultPaneHeights(totalHeight: number) {
+    const indicatorHeight = this.getDefaultIndicatorPaneHeight(totalHeight);
+    const desired = new Map<Pane, number>();
+    desired.set(
+      this.mainPane,
+      totalHeight - indicatorHeight * this.panaledIndicators.length
+    );
+
+    for (const indicator of this.panaledIndicators) {
+      const pane = this.paneByIndicator.get(indicator);
+      if (pane) desired.set(pane, indicatorHeight);
+    }
+
+    this.normalizePaneHeights(desired, totalHeight);
+  }
+
+  private normalizePaneHeights(
+    desired: Map<Pane, number>,
+    totalHeight = this.getPaneLayoutHeight()
+  ) {
+    const panes = this.panes;
+    const next = new Map<Pane, number>();
+    if (panes.length === 0) return;
+
+    const minHeightSum = panes.reduce(
+      (sum, pane) => sum + this.getPaneMinHeight(pane),
+      0
+    );
+    const minScale =
+      minHeightSum > 0 && minHeightSum > totalHeight
+        ? totalHeight / minHeightSum
+        : 1;
+    const getEffectiveMinHeight = (pane: Pane) =>
+      this.getPaneMinHeight(pane) * minScale;
+
+    for (const pane of panes) {
+      const fallback =
+        pane === this.mainPane
+          ? totalHeight
+          : this.getDefaultIndicatorPaneHeight(totalHeight);
+      const height =
+        desired.get(pane) ?? this.paneHeights.get(pane) ?? fallback;
+      next.set(
+        pane,
+        Math.max(
+          getEffectiveMinHeight(pane),
+          Number.isFinite(height) ? height : 0
+        )
+      );
+    }
+
+    let delta =
+      totalHeight - [...next.values()].reduce((sum, height) => sum + height, 0);
+
+    if (delta > 0) {
+      next.set(this.mainPane, (next.get(this.mainPane) ?? 0) + delta);
+    } else if (delta < 0) {
+      let remaining = -delta;
+      const shrinkOrder = [
+        this.mainPane,
+        ...panes.filter((pane) => pane !== this.mainPane).reverse()
+      ];
+
+      for (const pane of shrinkOrder) {
+        if (remaining <= 0) break;
+        const minHeight = getEffectiveMinHeight(pane);
+        const height = next.get(pane) ?? minHeight;
+        const shrink = Math.min(height - minHeight, remaining);
+        if (shrink <= 0) continue;
+        next.set(pane, height - shrink);
+        remaining -= shrink;
+      }
+
+      if (remaining > 0 && totalHeight > 0) {
+        const currentTotal = [...next.values()].reduce(
+          (sum, height) => sum + height,
+          0
+        );
+        const scale = totalHeight / currentTotal;
+        for (const pane of panes) {
+          next.set(pane, (next.get(pane) ?? 0) * scale);
+        }
+      }
+    }
+
+    this.paneHeights.clear();
+    for (const pane of panes) {
+      this.paneHeights.set(pane, next.get(pane) ?? 0);
+    }
+  }
+
+  private layoutPanes() {
+    const totalHeight = this.getPaneLayoutHeight();
+    const width = Math.max(0, this.container.offsetWidth - this.yLabelWidth);
+
+    if (!this.paneHeightsCustomized) {
+      this.resetDefaultPaneHeights(totalHeight);
+    } else {
+      this.normalizePaneHeights(this.paneHeights, totalHeight);
+    }
+
+    let y = 0;
+    for (const pane of this.panes) {
+      const height = this.paneHeights.get(pane) ?? 0;
+      pane.setRegion({
+        x: 0,
+        y,
+        width,
+        height
+      });
+      pane.setYAxisRegion({
+        x: width,
+        y,
+        width: this.yLabelWidth,
+        height
+      });
+      y += height;
+    }
+
+    this.updatePaneDividers();
+  }
+
+  private applyPaneLayout({
+    resizeCanvases = true,
+    resizeIndicators = true,
+    redraw = false,
+    immediate = false
+  }: {
+    resizeCanvases?: boolean;
+    resizeIndicators?: boolean;
+    redraw?: boolean;
+    immediate?: boolean;
+  } = {}) {
+    this.layoutPanes();
+
+    if (resizeCanvases) {
+      this.resizeCanvases();
+    }
+
+    if (resizeIndicators) {
+      for (const indicator of this.panaledIndicators) {
+        const pane = this.paneByIndicator.get(indicator);
+        if (!pane) continue;
+        indicator.resize(this.getPaneInitParams(pane));
+      }
+    }
+
+    if (redraw) {
+      this.requestRedraw(this.allRedrawParts, immediate);
+    }
+  }
+
+  private createPaneDividerHandle(
+    model: PaneDividerModel,
+    dividerIndex: number
+  ) {
+    const fallbackAdapter = new DefaultDOMAdapter();
+    const createPaneDivider =
+      this.domAdapter.createPaneDivider?.bind(this.domAdapter) ??
+      fallbackAdapter.createPaneDivider.bind(fallbackAdapter);
+
+    return createPaneDivider(model, {
+      onPointerDown: (event) => this.startPaneResize(dividerIndex, event)
+    });
+  }
+
+  private updatePaneDividers() {
+    const dividerCount = Math.max(0, this.panes.length - 1);
+
+    while (this.paneDividerHandles.length > dividerCount) {
+      this.paneDividerHandles.pop()?.destroy();
+    }
+
+    for (let index = 0; index < dividerCount; index++) {
+      const beforePane = this.panes[index];
+      const afterPane = this.panes[index + 1];
+      const beforeRegion = beforePane.getRegion();
+      const model: PaneDividerModel = {
+        key: `pane-divider-${beforePane.getId()}-${afterPane.getId()}`,
+        themeKey: this.options.theme.key,
+        beforePaneId: beforePane.getId(),
+        afterPaneId: afterPane.getId(),
+        x: 0,
+        y: beforeRegion.y + beforeRegion.height - this.paneDividerHeight / 2,
+        width: this.container.offsetWidth,
+        height: this.paneDividerHeight
+      };
+
+      let handle = this.paneDividerHandles[index];
+      if (!handle) {
+        handle = this.createPaneDividerHandle(model, index);
+        this.paneDividerHandles[index] = handle;
+        this.container.appendChild(handle.root);
+      } else {
+        handle.update(model);
+      }
+    }
+  }
+
+  private startPaneResize(dividerIndex: number, event: PointerEvent) {
+    const beforePane = this.panes[dividerIndex];
+    const afterPane = this.panes[dividerIndex + 1];
+    if (!beforePane || !afterPane) return;
+
+    this.stopPaneResize();
+    this.paneHeightsCustomized = true;
+    this.paneResizeDrag = {
+      dividerIndex,
+      startClientY: event.clientY,
+      beforeStartHeight:
+        this.paneHeights.get(beforePane) ?? beforePane.getRegion().height,
+      afterStartHeight:
+        this.paneHeights.get(afterPane) ?? afterPane.getRegion().height,
+      disposers: [
+        bindEvent(window, "pointermove", this.onPaneResizeMove),
+        bindEvent(window, "pointerup", this.onPaneResizeEnd),
+        bindEvent(window, "pointercancel", this.onPaneResizeEnd)
+      ]
+    };
+  }
+
+  private onPaneResizeMove = (event: PointerEvent) => {
+    if (!this.paneResizeDrag) return;
+    event.preventDefault();
+
+    const drag = this.paneResizeDrag;
+    const beforePane = this.panes[drag.dividerIndex];
+    const afterPane = this.panes[drag.dividerIndex + 1];
+    if (!beforePane || !afterPane) return;
+
+    const dy = event.clientY - drag.startClientY;
+    const beforeMin = this.getPaneMinHeight(beforePane);
+    const afterMin = this.getPaneMinHeight(afterPane);
+    const clampedDy = Math.max(
+      beforeMin - drag.beforeStartHeight,
+      Math.min(dy, drag.afterStartHeight - afterMin)
+    );
+
+    const desired = new Map(this.paneHeights);
+    desired.set(beforePane, drag.beforeStartHeight + clampedDy);
+    desired.set(afterPane, drag.afterStartHeight - clampedDy);
+    this.normalizePaneHeights(desired);
+    this.applyPaneLayout({ redraw: true, immediate: true });
+  };
+
+  private onPaneResizeEnd = (event: PointerEvent) => {
+    event.preventDefault();
+    this.stopPaneResize();
+  };
+
+  private stopPaneResize() {
+    if (!this.paneResizeDrag) return;
+    for (const dispose of this.paneResizeDrag.disposers.splice(0)) dispose();
+    this.paneResizeDrag = undefined;
+  }
+
   private getPaneInitParams(pane: Pane): InitParams {
     const region = pane.getRegion();
     const yAxisRegion = pane.getYAxisRegion();
@@ -692,7 +1016,7 @@ export class FinancialChart extends EventEmitter {
       ...this.options.localeValues
     };
 
-    this.ui = options.uiAdapter ?? new WebUIAdapter();
+    this.domAdapter = options.domAdapter ?? new DefaultDOMAdapter();
 
     this.outsideContainer = container;
     this.container = createPositionedContainer({
@@ -708,7 +1032,7 @@ export class FinancialChart extends EventEmitter {
     );
     this.outsideContainer.appendChild(this.container);
 
-    this.overlay = this.ui.createOverlay(this.container, {
+    this.overlay = this.domAdapter.createOverlay(this.container, {
       themeKey: this.options.theme.key,
       labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20
     });
@@ -738,7 +1062,7 @@ export class FinancialChart extends EventEmitter {
       end: 0
     });
     this.configureRenderPipeline();
-    this.calcSpaceDistribution(this.panaledIndicators.length);
+    this.applyPaneLayout({ resizeCanvases: false, resizeIndicators: false });
     // Init and scale canveses
     this.types.forEach((type) => this.getCanvas(type));
     const topCanvas = this.getCanvas("crosshair");
@@ -776,14 +1100,7 @@ export class FinancialChart extends EventEmitter {
           alreadyResized = false;
           return;
         }
-        this.calcSpaceDistribution(this.panaledIndicators.length);
-        this.resizeCanvases();
-
-        for (const indicator of this.panaledIndicators) {
-          const pane = this.paneByIndicator.get(indicator);
-          if (!pane) continue;
-          indicator.resize(this.getPaneInitParams(pane));
-        }
+        this.applyPaneLayout();
 
         this.indicatorLabelContainer.style.maxHeight =
           this.getLogicalCanvas("main").height -
@@ -897,6 +1214,7 @@ export class FinancialChart extends EventEmitter {
       themeKey: this.options.theme.key,
       labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20
     });
+    this.updatePaneDividers();
   }
 
   public setVolumeDraw(draw: boolean) {
@@ -1397,7 +1715,7 @@ export class FinancialChart extends EventEmitter {
    */
   public draw(data: ChartData[]) {
     if (data.length == 0) return;
-    this.calcSpaceDistribution(this.panaledIndicators.length);
+    this.applyPaneLayout();
     this.originalDataStore = new DataStore(data);
     this.dataStore = new DataStore(
       this.mapDataToStepSize(data, this.options.stepSize)
@@ -1443,13 +1761,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private recalcPaneledIndicators() {
-    this.calcSpaceDistribution(this.panaledIndicators.length);
-    for (const indicator of this.panaledIndicators) {
-      const pane = this.paneByIndicator.get(indicator);
-      if (!pane) continue;
-      indicator.resize(this.getPaneInitParams(pane));
-    }
-    this.resizeCanvases();
+    this.applyPaneLayout();
   }
 
   /**
@@ -1466,7 +1778,10 @@ export class FinancialChart extends EventEmitter {
       indicator.attach(this.createChartContext());
       this.panaledIndicators.push(indicator);
       const pane = this.createPaneForIndicator(indicator);
-      this.calcSpaceDistribution(this.panaledIndicators.length);
+      this.applyPaneLayout({
+        resizeCanvases: false,
+        resizeIndicators: false
+      });
       indicator.init(this.getPaneInitParams(pane));
 
       this.container.appendChild(indicator.getContainer());
@@ -1481,62 +1796,6 @@ export class FinancialChart extends EventEmitter {
       this.requestRedraw(this.allRedrawParts);
       this.indicatorLabelContainer.appendChild(indicator.getLabelContainer());
       indicator.updateLabel();
-    }
-  }
-
-  private calcSpaceDistribution(indicatorCount: number) {
-    const height = this.container.offsetHeight - this.xLabelHeight;
-    // If the height of the chart is less than 25% of the height of the indicators
-    const th = height / (indicatorCount + 1) > height * 0.25;
-
-    const indicatorHeight = !th
-      ? (height * 0.75) / indicatorCount
-      : height * 0.25;
-
-    this.chartHeight = height - indicatorHeight * indicatorCount;
-    this.indicatorHeight = indicatorHeight;
-    this.layoutMainPane();
-    this.layoutPaneledIndicatorPanes();
-  }
-
-  private layoutMainPane() {
-    const width = Math.max(0, this.container.offsetWidth - this.yLabelWidth);
-
-    this.mainPane.setRegion({
-      x: 0,
-      y: 0,
-      width,
-      height: this.chartHeight
-    });
-    this.mainPane.setYAxisRegion({
-      x: width,
-      y: 0,
-      width: this.yLabelWidth,
-      height: this.chartHeight
-    });
-  }
-
-  private layoutPaneledIndicatorPanes() {
-    const width = Math.max(0, this.container.offsetWidth - this.yLabelWidth);
-
-    for (let i = 0; i < this.panaledIndicators.length; i++) {
-      const indicator = this.panaledIndicators[i];
-      const pane = this.paneByIndicator.get(indicator);
-      if (!pane) continue;
-      const y = this.chartHeight + this.indicatorHeight * i;
-
-      pane.setRegion({
-        x: 0,
-        y,
-        width,
-        height: this.indicatorHeight
-      });
-      pane.setYAxisRegion({
-        x: width,
-        y,
-        width: this.yLabelWidth,
-        height: this.indicatorHeight
-      });
     }
   }
 
@@ -1816,6 +2075,7 @@ export class FinancialChart extends EventEmitter {
    * Properly dispose the chart.
    */
   public dispose() {
+    this.stopPaneResize();
     for (const dispose of this.eventDisposers.splice(0)) dispose();
     for (const indicator of this.getAllIndicators()) {
       indicator.detach();
@@ -1831,6 +2091,9 @@ export class FinancialChart extends EventEmitter {
     this.removeAllListeners();
     this.resizeObserver.unobserve(this.container);
     this.resizeObserver.disconnect();
+    for (const divider of this.paneDividerHandles.splice(0)) {
+      divider.destroy();
+    }
     this.canvases.forEach((canvas) => canvas.remove());
     this.overlay.destroy();
     this.container.remove();

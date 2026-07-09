@@ -1,21 +1,27 @@
 import {
-  ChartOverlay,
-  ChartOverlayContext,
-  ChartUIAdapter,
+  ChartDOMOverlay,
+  ChartDOMOverlayContext,
+  ChartDOMAdapter,
   IndicatorLabelActions,
   IndicatorLabelHandle,
-  IndicatorLabelModel
-} from "./chart-ui-adapter";
+  IndicatorLabelModel,
+  PaneDividerActions,
+  PaneDividerHandle,
+  PaneDividerModel
+} from "./chart-dom-adapter";
 import { ICON_HIDE, ICON_REMOVE, ICON_SETTINGS, ICON_SHOW } from "./icons";
 import { bindEvent, createPositionedContainer } from "../utils/dom";
 
 /**
- * Default, framework-agnostic UI adapter. Renders the indicator label model to
- * DOM (with the built-in `fci-*` classes and `data-id` hooks) and wires the
- * show/hide/settings/remove controls — the library's built-in look and behavior.
+ * Default DOM adapter. Renders the indicator label model to DOM (with the
+ * built-in `fci-*` classes and `data-id` hooks), wires the
+ * show/hide/settings/remove controls, and renders pane dividers.
  */
-export class WebUIAdapter implements ChartUIAdapter {
-  createOverlay(host: HTMLElement, context: ChartOverlayContext): ChartOverlay {
+export class DefaultDOMAdapter implements ChartDOMAdapter {
+  createOverlay(
+    host: HTMLElement,
+    context: ChartDOMOverlayContext
+  ): ChartDOMOverlay {
     const indicatorLabelContainer = createPositionedContainer({
       zIndex: 101,
       overflow: "auto",
@@ -27,7 +33,7 @@ export class WebUIAdapter implements ChartUIAdapter {
 
     return {
       indicatorLabelContainer,
-      update: (next: ChartOverlayContext) => {
+      update: (next: ChartDOMOverlayContext) => {
         indicatorLabelContainer.style.top = next.labelTopOffset + "px";
       },
       destroy: () => {
@@ -138,6 +144,55 @@ export class WebUIAdapter implements ChartUIAdapter {
       update,
       destroy: () => {
         for (const dispose of disposers.splice(0)) dispose();
+      }
+    };
+  }
+
+  createPaneDivider(
+    model: PaneDividerModel,
+    actions: PaneDividerActions
+  ): PaneDividerHandle {
+    const root = createPositionedContainer({
+      zIndex: 102,
+      left: model.x,
+      top: model.y,
+      width: model.width,
+      height: model.height
+    });
+    root.classList.add("fci-pane-divider");
+    root.dataset.id = "pane-divider";
+    root.dataset.beforePaneId = String(model.beforePaneId);
+    root.dataset.afterPaneId = String(model.afterPaneId);
+    root.setAttribute("role", "separator");
+    root.setAttribute("aria-orientation", "horizontal");
+    root.tabIndex = 0;
+    root.innerHTML = `<div class="fci-pane-divider-line"></div>`;
+    root.style.cursor = "row-resize";
+    root.style.touchAction = "none";
+
+    const dispose = bindEvent(root, "pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      actions.onPointerDown(event);
+    });
+
+    const update = (next: PaneDividerModel) => {
+      root.style.left = next.x + "px";
+      root.style.top = next.y + "px";
+      root.style.width = next.width + "px";
+      root.style.height = next.height + "px";
+      root.dataset.beforePaneId = String(next.beforePaneId);
+      root.dataset.afterPaneId = String(next.afterPaneId);
+    };
+
+    update(model);
+
+    return {
+      root,
+      update,
+      destroy: () => {
+        dispose();
+        root.remove();
       }
     };
   }

@@ -18,6 +18,33 @@ class CrosshairProbeIndicator extends TestIndicator {
   }
 }
 
+function createPaneChart() {
+  const container = document.createElement("div");
+  container.style.width = "800px";
+  container.style.height = "400px";
+  document.body.appendChild(container);
+  const start = Date.UTC(2024, 0, 1, 9);
+  const chart = new FinancialChart(
+    container,
+    { start, end: start + 60_000 },
+    {
+      type: "line",
+      stepSize: 60_000,
+      maxZoom: 10,
+      volume: false,
+      locale: "en-US"
+    }
+  );
+
+  chart.draw([
+    { time: start, close: 10 },
+    { time: start + 60_000, close: 12 }
+  ]);
+  charts.push(chart);
+
+  return { chart, container, start };
+}
+
 afterEach(() => {
   while (charts.length > 0) {
     charts.pop()?.dispose();
@@ -102,30 +129,10 @@ describe("Pane", () => {
   });
 
   it("mounts paneled indicators as panes and routes crosshair by pane", () => {
-    const container = document.createElement("div");
-    container.style.width = "800px";
-    container.style.height = "400px";
-    document.body.appendChild(container);
-    const start = Date.UTC(2024, 0, 1, 9);
-    const chart = new FinancialChart(
-      container,
-      { start, end: start + 60_000 },
-      {
-        type: "line",
-        stepSize: 60_000,
-        maxZoom: 10,
-        volume: false,
-        locale: "en-US"
-      }
-    );
+    const { chart, start } = createPaneChart();
     const indicator = new CrosshairProbeIndicator();
 
-    chart.draw([
-      { time: start, close: 10 },
-      { time: start + 60_000, close: 12 }
-    ]);
     chart.addIndicator(indicator);
-    charts.push(chart);
 
     const [, indicatorPane] = chart.getPanes();
     const indicatorContainer = indicator.getContainer();
@@ -161,5 +168,116 @@ describe("Pane", () => {
     expect(indicator.crosshairCalls).toHaveLength(1);
     expect(indicator.crosshairCalls[0].time).toBe(start + 60_000);
     expect(indicator.crosshairCalls[0].relativeY).toBeCloseTo(22.5);
+  });
+
+  it("exposes and applies pane heights through the public API", () => {
+    const { chart } = createPaneChart();
+    const indicator = new TestIndicator();
+
+    chart.addIndicator(indicator);
+
+    const [mainPane, indicatorPane] = chart.getPanes();
+    expect(chart.getPaneHeights()).toEqual({
+      [mainPane.getId()]: 277.5,
+      [indicatorPane.getId()]: 92.5
+    });
+
+    chart.setPaneHeights({
+      [mainPane.getId()]: 220,
+      [indicatorPane.getId()]: 150
+    });
+
+    expect(chart.getPaneHeights()).toEqual({
+      [mainPane.getId()]: 220,
+      [indicatorPane.getId()]: 150
+    });
+    expect(mainPane.getRegion().height).toBe(220);
+    expect(indicatorPane.getRegion()).toEqual({
+      x: 0,
+      y: 220,
+      width: 720,
+      height: 150
+    });
+    expect(indicator.getContainer().style.top).toBe("220px");
+    expect(indicator.getContainer().style.height).toBe("150px");
+  });
+
+  it("clamps explicit pane heights to the pane minimums", () => {
+    const { chart } = createPaneChart();
+    const indicator = new TestIndicator();
+
+    chart.addIndicator(indicator);
+
+    const [mainPane, indicatorPane] = chart.getPanes();
+    chart.setPaneHeights({
+      [mainPane.getId()]: 10,
+      [indicatorPane.getId()]: 360
+    });
+
+    expect(chart.getPaneHeights()).toEqual({
+      [mainPane.getId()]: 80,
+      [indicatorPane.getId()]: 290
+    });
+    expect(mainPane.getRegion().height).toBe(80);
+    expect(indicatorPane.getRegion()).toEqual({
+      x: 0,
+      y: 80,
+      width: 720,
+      height: 290
+    });
+  });
+
+  it("resizes adjacent panes by dragging the adapter-rendered divider", () => {
+    const { chart, container } = createPaneChart();
+    const indicator = new TestIndicator();
+
+    chart.addIndicator(indicator);
+
+    const [mainPane, indicatorPane] = chart.getPanes();
+    const divider = container.querySelector(
+      '[data-id="pane-divider"]'
+    ) as HTMLElement;
+
+    expect(divider).toBeTruthy();
+    expect(divider.dataset.beforePaneId).toBe(String(mainPane.getId()));
+    expect(divider.dataset.afterPaneId).toBe(String(indicatorPane.getId()));
+
+    divider.dispatchEvent(
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        clientY: 277.5
+      })
+    );
+    window.dispatchEvent(
+      new MouseEvent("pointermove", {
+        bubbles: true,
+        clientY: 307.5
+      })
+    );
+
+    expect(chart.getPaneHeights()).toEqual({
+      [mainPane.getId()]: 307.5,
+      [indicatorPane.getId()]: 62.5
+    });
+
+    window.dispatchEvent(
+      new MouseEvent("pointermove", {
+        bubbles: true,
+        clientY: 477.5
+      })
+    );
+    window.dispatchEvent(
+      new MouseEvent("pointerup", {
+        bubbles: true,
+        clientY: 477.5
+      })
+    );
+
+    expect(chart.getPaneHeights()).toEqual({
+      [mainPane.getId()]: 320,
+      [indicatorPane.getId()]: 50
+    });
+    expect(indicator.getContainer().style.top).toBe("320px");
+    expect(indicator.getContainer().style.height).toBe("50px");
   });
 });
