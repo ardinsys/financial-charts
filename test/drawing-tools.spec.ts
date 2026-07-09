@@ -397,7 +397,7 @@ function projectAnchor(chart: FinancialChart, anchor: DrawingAnchor) {
   return {
     x: pane.getTimeScale()!.projectIndex(anchor.index, {
       canvas,
-      barAlignment: "center"
+      barAlignment: pane.getTimeAnchorAlignment()
     }),
     y: pane.getPriceScale().project(anchor.price, { canvas })
   };

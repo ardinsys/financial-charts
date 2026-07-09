@@ -1,5 +1,6 @@
 import {
   Drawing,
+  drawAnchorHandle,
   type DrawingHitTestContext,
   type DrawingJSON,
   type DrawingOptions,
@@ -58,7 +59,7 @@ export class TrendLine extends Drawing {
 
     ctx.save();
     ctx.lineWidth = this.lineWidth;
-    ctx.strokeStyle = this.isSelected() ? this.selectedColor : this.color;
+    ctx.strokeStyle = this.color;
     ctx.beginPath();
     ctx.moveTo(start.x, start.y);
     ctx.lineTo(end.x, end.y);
@@ -109,15 +110,4 @@ function distanceToSegment(
   );
 
   return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
-}
-
-function drawAnchorHandle(
-  ctx: CanvasRenderingContext2D,
-  point: DrawingPoint,
-  color: string
-) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-  ctx.fill();
 }

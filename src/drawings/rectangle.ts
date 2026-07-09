@@ -1,5 +1,6 @@
 import {
   Drawing,
+  drawAnchorHandle,
   type DrawingAnchor,
   type DrawingAnchorHandle,
   type DrawingHitTestContext,
@@ -66,7 +67,7 @@ export class RectangleDrawing extends Drawing {
 
     ctx.save();
     ctx.lineWidth = this.lineWidth;
-    ctx.strokeStyle = this.isSelected() ? this.selectedColor : this.strokeColor;
+    ctx.strokeStyle = this.strokeColor;
     ctx.fillStyle = this.fillColor;
     ctx.beginPath();
     ctx.rect(bounds.x, bounds.y, bounds.width, bounds.height);
@@ -159,15 +160,4 @@ export class RectangleDrawing extends Drawing {
       height: Math.abs(end.y - start.y)
     };
   }
-}
-
-function drawAnchorHandle(
-  ctx: CanvasRenderingContext2D,
-  point: DrawingPoint,
-  color: string
-) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-  ctx.fill();
 }

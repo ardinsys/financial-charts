@@ -14,6 +14,7 @@ Themes, locales, and formatters let you align the chart with your brand and lang
 | `volume`                                   | Up/down fill colors for the histogram.                         |
 | `xAxis`, `yAxis`                           | Typography, colors, and separators for labels.                 |
 | `crosshair`                                | Line color/dash plus tooltip styling and info-line labels.     |
+| `drawingAxisBounds`                        | Selected drawing axis-bound labels and translucent ranges.     |
 | `randomColors`                             | Palette used when multiple indicators request auto colors.     |
 
 Merge your overrides with the shipped themes – missing values are backfilled automatically.

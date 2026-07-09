@@ -73,6 +73,109 @@ Register a hook on `series` when a plugin should draw immediately above the
 active controller but below indicators, drawings, and crosshair. This is useful
 for comparison-series overlays that have their own data stream.
 
+## Built-in plugins
+
+### DrawingSelectionPlugin
+
+`DrawingSelectionPlugin` is a headless helper for app-owned selection UI. It
+listens to drawing selection events and invokes your callback with the selected
+drawing and the full selection event. It does not render DOM or mutate drawing
+styles.
+
+```ts
+import {
+  DrawingSelectionPlugin,
+  type Drawing
+} from "@ardinsys/financial-charts";
+
+chart.addPlugin(
+  new DrawingSelectionPlugin((drawing: Drawing | undefined) => {
+    showDrawingToolbar(drawing);
+  })
+);
+```
+
+The default callback is a no-op, so `new DrawingSelectionPlugin()` is valid.
+You can also pass an options object:
+
+```ts
+chart.addPlugin(
+  new DrawingSelectionPlugin({
+    onSelect: (drawing, event) => {
+      updateDrawingToolbar({ drawing, id: event.id, anchors: event.anchors });
+    }
+  })
+);
+```
+
+### DrawingAxisBoundsPlugin
+
+`DrawingAxisBoundsPlugin` highlights the selected drawing's start/end values on
+the X and Y axes. It works with `DrawingManager` events and is optional:
+
+```ts
+import {
+  DrawingAxisBoundsPlugin,
+  DrawingManager
+} from "@ardinsys/financial-charts";
+
+chart.addPlugin(new DrawingManager());
+chart.addPlugin(new DrawingAxisBoundsPlugin());
+```
+
+It has defaults for labels, formatting, colors, and drawing types. Text drawings
+are blacklisted by default because their axis bounds tend to add noise; pass
+`blacklist: []` to enable every drawing type, or provide drawing type ids to
+hide specific tools.
+
+Date text uses the active chart formatter (`formatter.formatTooltipDate()`), so
+`locale`, `timeZone`, and custom formatter options are respected automatically.
+Price text uses `formatter.formatPrice()`.
+
+Plugin-owned labels can be localized without adding anything to global
+`localeValues`:
+
+```ts
+chart.addPlugin(
+  new DrawingAxisBoundsPlugin({
+    labels: {
+      "en-US": { start: "S", end: "E" },
+      "hu-HU": { start: "K", end: "V" },
+      "*": { start: "S", end: "E" }
+    }
+  })
+);
+```
+
+Colors and sizing default from `theme.drawingAxisBounds`, and can also be
+overridden per plugin instance:
+
+```ts
+const theme = mergeThemes(defaultDarkTheme, {
+  drawingAxisBounds: {
+    strokeColor: "rgba(234, 179, 8, 0.9)",
+    labelBackgroundColor: "#3A2E0F",
+    rangeBackgroundColor: "rgba(234, 179, 8, 0.18)",
+    textColor: "#FDE68A"
+  }
+});
+
+chart.addPlugin(
+  new DrawingAxisBoundsPlugin({
+    blacklist: ["text"],
+    showXAxis: true,
+    showYAxis: true,
+    showRange: true,
+    formatText: ({ label, value }) => (label ? `${label} ${value}` : value)
+  })
+);
+```
+
+Custom drawings can control the values shown by overriding
+`getAxisBounds(context)`. Return `x` anchors, `y` anchors, or both; duplicate
+axis values are collapsed automatically so single-line tools can expose only the
+meaningful axis.
+
 ## Pointer events
 
 `onPointer(event)` receives data-aware pointer payloads:

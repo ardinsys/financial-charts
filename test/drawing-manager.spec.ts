@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
+import type { BarAlignment } from "../src/scales/time-scale";
 import {
   Drawing,
   type DrawingHitTestContext,
@@ -44,6 +45,14 @@ class StubDrawing extends Drawing {
   }
 }
 
+class EdgeAnchorLineController extends LineController {
+  static ID = "edge-line";
+
+  getTimeAnchorAlignment(): BarAlignment {
+    return "edge";
+  }
+}
+
 afterEach(() => {
   while (charts.length > 0) {
     charts.pop()?.dispose();
@@ -62,7 +71,13 @@ function createData(): ChartData[] {
   ];
 }
 
-function createChart() {
+function createChart({
+  controllers = [LineController],
+  type = "line"
+}: {
+  controllers?: (typeof LineController)[];
+  type?: string;
+} = {}) {
   const data = createData();
   const container = document.createElement("div");
   container.style.width = "800px";
@@ -76,8 +91,8 @@ function createChart() {
       end: data.at(-1)!.time + 60_000
     },
     {
-      type: "line",
-      controllers: [LineController],
+      type,
+      controllers,
       stepSize: 60_000,
       maxZoom: 10,
       volume: false,
@@ -372,6 +387,37 @@ describe("DrawingManager", () => {
     expect(
       drawing.getAnchors().every((anchor) => Number.isInteger(anchor.index))
     ).toBe(true);
+  });
+
+  it("projects drawing anchors with the controller time-anchor alignment", () => {
+    const { chart, data } = createChart({
+      controllers: [EdgeAnchorLineController],
+      type: "edge-line"
+    });
+    const manager = createManager(chart);
+
+    manager.onPointer(pointerEvent(chart, data[0], "down", { x: 127, y: 120 }));
+    manager.onPointer(pointerEvent(chart, data[1], "move", { x: 293, y: 220 }));
+    manager.onPointer(pointerEvent(chart, data[1], "up", { x: 293, y: 220 }));
+
+    const drawing = manager.getDrawings()[0] as StubDrawing;
+    const [anchor] = drawing.getAnchors();
+    const [projectedAnchor] = drawing.projectForTest(drawingContext(chart));
+    const canvas = chart.getContext("drawings").canvas;
+
+    expect(chart.getTimeAnchorAlignment()).toBe("edge");
+    expect(projectedAnchor.x).toBeCloseTo(
+      chart.getTimeScale().projectIndex(anchor.index, {
+        canvas,
+        barAlignment: "edge"
+      })
+    );
+    expect(projectedAnchor.x).not.toBeCloseTo(
+      chart.getTimeScale().projectIndex(anchor.index, {
+        canvas,
+        barAlignment: "center"
+      })
+    );
   });
 
   it("moves selected drawing anchors independently", () => {

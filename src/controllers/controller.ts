@@ -22,6 +22,9 @@ export abstract class ChartController {
 
   abstract getEffectiveCrosshairValues(): boolean[];
   abstract getBarAlignment(): BarAlignment;
+  getTimeAnchorAlignment(): BarAlignment {
+    return "center";
+  }
   abstract getTimeFromRawDataPoint(rawPoint: ChartData): number;
   abstract draw(): void;
 }

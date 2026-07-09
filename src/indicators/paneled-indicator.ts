@@ -183,9 +183,10 @@ export abstract class PaneledIndicator<
     const yAxisRegion = this.pane?.getYAxisRegion();
     const timeScale = this.chart.getTimeScale();
     const priceScale = this.pane?.getPriceScale() ?? this.chart.getPriceScale();
+    const timeAnchorAlignment = this.chart.getTimeAnchorAlignment();
     const scaleOptions = {
       canvas,
-      barAlignment: "center" as const
+      barAlignment: timeAnchorAlignment
     };
 
     return {
@@ -201,10 +202,10 @@ export abstract class PaneledIndicator<
       width: paneRegion?.width ?? this.width(),
       height: paneRegion?.height ?? this.height(),
       axisWidth: yAxisRegion?.width ?? this.axisCanvas.width / pixelRatio(),
-      projectTime: (time, barAlignment = "center") =>
+      projectTime: (time, barAlignment = timeAnchorAlignment) =>
         timeScale.project(time, { canvas, barAlignment }),
       projectPrice: (value) => priceScale.project(value, scaleOptions),
-      projectPoint: (time, value, barAlignment = "center") => ({
+      projectPoint: (time, value, barAlignment = timeAnchorAlignment) => ({
         x: timeScale.project(time, { canvas, barAlignment }),
         y: priceScale.project(value, scaleOptions)
       })

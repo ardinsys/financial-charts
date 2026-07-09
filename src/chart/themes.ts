@@ -9,7 +9,7 @@ export function mergeThemes<T extends object = ChartTheme>(
   const theme: T = {};
   const allKeys = new Set([
     ...Object.keys(defaultTheme),
-    ...Object.keys(providedTheme),
+    ...Object.keys(providedTheme)
   ]);
   for (const key of allKeys) {
     const defaultVal = defaultTheme[key];
@@ -116,6 +116,18 @@ export interface ChartTheme {
       font?: string;
     };
   };
+  drawingAxisBounds?: {
+    strokeColor?: string;
+    labelBackgroundColor?: string;
+    rangeBackgroundColor?: string;
+    textColor?: string;
+    fontSize?: number;
+    font?: string;
+    lineWidth?: number;
+    borderRadius?: number;
+    labelHeight?: number;
+    labelPaddingX?: number;
+  };
 }
 
 export const defaultLightTheme: DeepConcrete<ChartTheme> = {
@@ -129,62 +141,62 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
     "#FF6B6B",
     "#FF9047",
     "#FFBC2D",
-    "#2BFF3E",
+    "#2BFF3E"
   ],
   volume: {
     upColor: "rgba(8, 153, 129, 0.35)",
-    downColor: "rgba(242, 54, 69, 0.35)",
+    downColor: "rgba(242, 54, 69, 0.35)"
   },
   grid: {
     color: "#F2F3F3",
-    width: 1,
+    width: 1
   },
   candle: {
     upColor: "#609895",
     downColor: "#F23645",
     upWickColor: "#609895",
-    downWickColor: "#F23645",
+    downWickColor: "#F23645"
   },
   line: {
     color: "#2962FF",
-    width: 1,
+    width: 1
   },
   area: {
     color: "#2962FF",
     width: 1,
     fill: [
       [0, "rgba(41, 98, 254, 0.4)"],
-      [1, "rgba(41, 98, 254, 0)"],
-    ],
+      [1, "rgba(41, 98, 254, 0)"]
+    ]
   },
   hlcArea: {
     width: 1,
     closeColor: "#2962FF",
     high: {
       color: "#609895",
-      fill: "rgba(96, 152, 149, 0.1)",
+      fill: "rgba(96, 152, 149, 0.1)"
     },
     low: {
       color: "#F23645",
-      fill: "rgba(242, 54, 69, 0.1)",
-    },
+      fill: "rgba(242, 54, 69, 0.1)"
+    }
   },
   bar: {
     upColor: "#609895",
-    downColor: "#F23645",
+    downColor: "#F23645"
   },
   xAxis: {
     color: "#000000",
     fontSize: 12,
     font: "Roboto Mono",
     backgroundColor: "#FFFFFF",
-    separatorColor: "#FFFFFF",
+    separatorColor: "#FFFFFF"
   },
   yAxis: {
     color: "#000000",
     fontSize: 12,
     font: "Roboto Mono",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FFFFFF"
   },
   crosshair: {
     color: "#9598A1",
@@ -196,15 +208,27 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
       fontSize: 12,
       font: "Roboto Mono",
       color: "#000000",
-      labels: { "*": ["O: ", "H: ", "L: ", "C: ", "V: "] },
+      labels: { "*": ["O: ", "H: ", "L: ", "C: ", "V: "] }
     },
     tooltip: {
       backgroundColor: "#131722",
       color: "#FFFFFF",
       fontSize: 12,
-      font: "Roboto Mono",
-    },
+      font: "Roboto Mono"
+    }
   },
+  drawingAxisBounds: {
+    strokeColor: "rgba(217, 158, 0, 0.9)",
+    labelBackgroundColor: "#FFF4CC",
+    rangeBackgroundColor: "rgba(217, 158, 0, 0.18)",
+    textColor: "#7C5800",
+    fontSize: 11,
+    font: "Roboto Mono",
+    lineWidth: 1,
+    borderRadius: 5,
+    labelHeight: 22,
+    labelPaddingX: 8
+  }
 };
 
 export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
@@ -218,62 +242,62 @@ export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
     "#FF6B6B",
     "#FF9047",
     "#FFBC2D",
-    "#2BFF3E",
+    "#2BFF3E"
   ],
   volume: {
     upColor: "rgba(8, 153, 129, 0.35)",
-    downColor: "rgba(242, 54, 69, 0.35)",
+    downColor: "rgba(242, 54, 69, 0.35)"
   },
   grid: {
     color: "#232632",
-    width: 1,
+    width: 1
   },
   candle: {
     upColor: "#089981",
     downColor: "#F23645",
     upWickColor: "#089981",
-    downWickColor: "#F23645",
+    downWickColor: "#F23645"
   },
   line: {
     color: "#2962FE",
-    width: 1,
+    width: 1
   },
   area: {
     color: "#2962FE",
     width: 1,
     fill: [
       [0, "rgba(41, 98, 254, 0.4)"],
-      [1, "rgba(41, 98, 254, 0)"],
-    ],
+      [1, "rgba(41, 98, 254, 0)"]
+    ]
   },
   hlcArea: {
     width: 1,
     closeColor: "#2962FF",
     high: {
       color: "#609895",
-      fill: "rgba(96, 152, 149, 0.1)",
+      fill: "rgba(96, 152, 149, 0.1)"
     },
     low: {
       color: "#F23645",
-      fill: "rgba(242, 54, 69, 0.1)",
-    },
+      fill: "rgba(242, 54, 69, 0.1)"
+    }
   },
   bar: {
     upColor: "#089981",
-    downColor: "#F23645",
+    downColor: "#F23645"
   },
   xAxis: {
     color: "#B2B5BE",
     fontSize: 12,
     font: "Roboto",
     separatorColor: "#161A25",
-    backgroundColor: "#161A25",
+    backgroundColor: "#161A25"
   },
   yAxis: {
     color: "#B2B5BE",
     fontSize: 12,
     font: "Roboto",
-    backgroundColor: "#161A25",
+    backgroundColor: "#161A25"
   },
   crosshair: {
     color: "#9598A1",
@@ -285,13 +309,25 @@ export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
       fontSize: 12,
       font: "Roboto Mono",
       color: "#FFFFFF",
-      labels: { "*": ["O: ", "H: ", "L: ", "C: ", "V: "] },
+      labels: { "*": ["O: ", "H: ", "L: ", "C: ", "V: "] }
     },
     tooltip: {
       backgroundColor: "#363A45",
       color: "#FFFFFF",
       fontSize: 12,
-      font: "Roboto Mono",
-    },
+      font: "Roboto Mono"
+    }
   },
+  drawingAxisBounds: {
+    strokeColor: "rgba(234, 179, 8, 0.9)",
+    labelBackgroundColor: "#3A2E0F",
+    rangeBackgroundColor: "rgba(234, 179, 8, 0.18)",
+    textColor: "#FDE68A",
+    fontSize: 11,
+    font: "Roboto Mono",
+    lineWidth: 1,
+    borderRadius: 5,
+    labelHeight: 22,
+    labelPaddingX: 8
+  }
 };

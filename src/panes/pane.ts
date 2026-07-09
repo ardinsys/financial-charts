@@ -7,7 +7,7 @@ import {
   calculateStepSize as calculatePriceStepSize,
   calculateYAxisLabels as calculatePriceYAxisLabels
 } from "../scales/ticks/price-ticks";
-import type { TimeScale } from "../scales/time-scale";
+import type { BarAlignment, TimeScale } from "../scales/time-scale";
 
 export interface PaneRegion {
   x: number;
@@ -36,6 +36,7 @@ export class Pane {
   private yAxisRegion: PaneRegion = { x: 0, y: 0, width: 0, height: 0 };
   private readonly priceScale = new PriceScale({ min: 0, max: 1 });
   private timeScale?: TimeScale;
+  private timeAnchorAlignment: BarAlignment = "center";
   private readonly drawables = new Set<PaneDrawable>();
 
   constructor(private readonly id: number) {}
@@ -74,6 +75,14 @@ export class Pane {
 
   getTimeScale() {
     return this.timeScale;
+  }
+
+  setTimeAnchorAlignment(alignment: BarAlignment) {
+    this.timeAnchorAlignment = alignment;
+  }
+
+  getTimeAnchorAlignment() {
+    return this.timeAnchorAlignment;
   }
 
   getPriceScale() {

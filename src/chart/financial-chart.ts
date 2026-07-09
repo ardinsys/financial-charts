@@ -16,7 +16,7 @@ import {
   DataScaleModel,
   DataScaleTimeOptions
 } from "../scales/data-scale-model";
-import { TimeScaleRange } from "../scales/time-scale";
+import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
 import {
   calculateStepSize as calculatePriceStepSize,
   calculateYAxisLabels as calculatePriceYAxisLabels
@@ -358,6 +358,10 @@ export class FinancialChart extends EventEmitter {
     return this.controller;
   }
 
+  getTimeAnchorAlignment(): BarAlignment {
+    return this.controller.getTimeAnchorAlignment();
+  }
+
   getOptions() {
     return this.options;
   }
@@ -380,8 +384,10 @@ export class FinancialChart extends EventEmitter {
     if (this.dataScale) {
       this.dataScale.configureTimeScale(options);
     }
+    const timeAnchorAlignment = this.getTimeAnchorAlignment();
     for (const pane of this.panes) {
       pane.setTimeScale(this.visibleScale.getTimeScale());
+      pane.setTimeAnchorAlignment(timeAnchorAlignment);
     }
   }
 
@@ -1111,7 +1117,7 @@ export class FinancialChart extends EventEmitter {
 
     const x = this.getTimeScale().project(dataPoint.time, {
       canvas: this.getContext("main").canvas,
-      barAlignment: "center"
+      barAlignment: this.getTimeAnchorAlignment()
     });
     if (x < 0 || x > this.getDrawingSize().width) return undefined;
 
@@ -1614,6 +1620,40 @@ export class FinancialChart extends EventEmitter {
     ctx.fillRect(0, 0, sizes.width, sizes.height);
 
     this.recalculateVisibleScale();
+    this.drawControllerGrid();
+  }
+
+  private drawControllerGrid() {
+    const mainCtx = this.getContext("main");
+    const mainSize = this.getLogicalCanvas("main");
+    const yAxisSize = this.getLogicalCanvas("y-label");
+    const yAxisValues = this.calculateYAxisLabels(30);
+
+    mainCtx.lineWidth = this.options.theme.grid.width;
+    mainCtx.strokeStyle = this.options.theme.grid.color;
+
+    for (const value of yAxisValues) {
+      const y = value.position;
+      if (y - this.options.theme.yAxis.fontSize < 0) continue;
+      if (y + this.options.theme.yAxis.fontSize > yAxisSize.height) continue;
+
+      mainCtx.beginPath();
+      mainCtx.moveTo(0, y);
+      mainCtx.lineTo(mainSize.width, y);
+      mainCtx.stroke();
+    }
+
+    const xAxisCtx = this.getContext("x-label");
+    xAxisCtx.font = `${this.options.theme.xAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
+    this.lastXGridCoords = [];
+
+    for (const label of this.getXAxisLabels(xAxisCtx)) {
+      mainCtx.beginPath();
+      mainCtx.moveTo(label.x, 0);
+      mainCtx.lineTo(label.x, mainSize.height);
+      mainCtx.stroke();
+      this.lastXGridCoords.push(label.x);
+    }
   }
 
   private drawControllerAxes() {
@@ -2179,7 +2219,7 @@ export class FinancialChart extends EventEmitter {
 
     const x = this.getTimeScale().project(this.pointerTime, {
       canvas: this.getContext("main").canvas,
-      barAlignment: "center"
+      barAlignment: this.getTimeAnchorAlignment()
     });
     ctx.strokeStyle = this.options.theme.crosshair.color;
     ctx.lineWidth = this.options.theme.crosshair.width;
@@ -2407,6 +2447,58 @@ export class FinancialChart extends EventEmitter {
     return calculatePriceStepSize(range, maxLabels);
   }
 
+  private getXAxisLabels(ctx: CanvasRenderingContext2D) {
+    const canvasWidth = ctx.canvas.width - this.p(this.yLabelWidth);
+    const logicalCanvasWidth = this.l(canvasWidth);
+    const padding = 20;
+    const targetTickCount = Math.max(2, Math.floor(logicalCanvasWidth / 90));
+    const labels = this.timeTickGenerator.generate({
+      dataStore: this.dataStore,
+      visibleRange: this.visibleIndexRange,
+      formatter: this.options.formatter,
+      targetTickCount
+    });
+
+    const drawnLabels: { start: number; end: number }[] = [];
+    const visibleLabels: Array<{
+      label: string;
+      x: number;
+      start: number;
+    }> = [];
+
+    labels.sort((a, b) => b.priority - a.priority);
+
+    labels.forEach((label) => {
+      const x = this.dataScale.getTimeScale().project(label.time, {
+        canvas: { width: canvasWidth, height: 0 },
+        barAlignment: this.getTimeAnchorAlignment()
+      });
+
+      const textWidth = ctx.measureText(label.label).width;
+      const labelPos = { start: x - textWidth / 2, end: x + textWidth / 2 };
+
+      const overlaps = drawnLabels.some(
+        (drawnLabel) =>
+          labelPos.start < drawnLabel.end + padding &&
+          labelPos.end > drawnLabel.start - padding
+      );
+
+      if (!overlaps && labelPos.end < logicalCanvasWidth) {
+        if (labelPos.start >= 0) {
+          visibleLabels.push({
+            label: label.label,
+            x,
+            start: labelPos.start
+          });
+        }
+
+        drawnLabels.push(labelPos);
+      }
+    });
+
+    return visibleLabels;
+  }
+
   drawYAxis(): void {
     const yAxisValues = this.calculateYAxisLabels(30);
 
@@ -2416,8 +2508,7 @@ export class FinancialChart extends EventEmitter {
     ctx.fillRect(0, 0, sizes.width, sizes.height);
 
     ctx.fillStyle = this.options.theme.yAxis.color;
-    ctx.font =
-      ctx.font = `${this.options.theme.yAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
+    ctx.font = `${this.options.theme.yAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 
@@ -2434,21 +2525,11 @@ export class FinancialChart extends EventEmitter {
         (this.l(ctx.canvas.width) - textWidth) / 2 + textWidth,
         y
       );
-      const mainCtx = this.getContext("main");
-
-      mainCtx.lineWidth = this.options.theme.grid.width;
-      mainCtx.strokeStyle = this.options.theme.grid.color;
-      mainCtx.beginPath();
-      mainCtx.moveTo(0, y);
-      mainCtx.lineTo(this.getLogicalCanvas("main").width, y);
-      mainCtx.stroke();
     }
   }
 
   drawXAxis(): void {
-    this.lastXGridCoords = [];
     const ctx = this.getContext("x-label");
-    const mainCtx = this.getContext("main");
     const sizes = this.getLogicalCanvas("x-label");
 
     // Setting up the canvas
@@ -2466,54 +2547,13 @@ export class FinancialChart extends EventEmitter {
     ctx.fillStyle = this.options.theme.xAxis.color;
     ctx.font = `${this.options.theme.xAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
     ctx.textBaseline = "middle";
-    const canvasWidth = ctx.canvas.width - this.p(this.yLabelWidth);
-    const logicalCanvasWidth = this.l(canvasWidth);
-    const padding = 20;
-    const targetTickCount = Math.max(2, Math.floor(logicalCanvasWidth / 90));
-    const labels = this.timeTickGenerator.generate({
-      dataStore: this.dataStore,
-      visibleRange: this.visibleIndexRange,
-      formatter: this.options.formatter,
-      targetTickCount
-    });
 
-    let drawnLabels: { start: number; end: number }[] = [];
+    const labels = this.getXAxisLabels(ctx);
+    this.lastXGridCoords = labels.map((label) => label.x);
 
-    labels.sort((a, b) => b.priority - a.priority);
-
-    labels.forEach((label) => {
-      const x = this.dataScale.getTimeScale().project(label.time, {
-        canvas: { width: canvasWidth, height: 0 },
-        barAlignment: "center"
-      });
-
-      const textWidth = ctx.measureText(label.label).width;
-      const labelPos = { start: x - textWidth / 2, end: x + textWidth / 2 };
-
-      // Check for overlap with already drawn labels
-      const overlaps = drawnLabels.some(
-        (drawnLabel) =>
-          labelPos.start < drawnLabel.end + padding &&
-          labelPos.end > drawnLabel.start - padding
-      );
-
-      if (!overlaps && labelPos.end < logicalCanvasWidth) {
-        if (labelPos.start >= 0) {
-          ctx.fillText(label.label, labelPos.start, sizes.height - 15);
-
-          // Draw grid line
-          mainCtx.lineWidth = this.options.theme.grid.width;
-          mainCtx.strokeStyle = this.options.theme.grid.color;
-          mainCtx.beginPath();
-          mainCtx.moveTo(x, 0);
-          mainCtx.lineTo(x, this.l(mainCtx.canvas.height));
-          mainCtx.stroke();
-          this.lastXGridCoords.push(x);
-        }
-
-        drawnLabels.push(labelPos);
-      }
-    });
+    for (const label of labels) {
+      ctx.fillText(label.label, label.start, sizes.height - 15);
+    }
   }
 
   private lastVisibleDataPoints: ChartData[] = [];

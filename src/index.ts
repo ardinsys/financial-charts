@@ -29,6 +29,7 @@ export * from "./render/render-pipeline";
 export * from "./panes/pane";
 
 export * from "./plugin/chart-plugin";
+export * from "./plugins";
 
 export * from "./ui/chart-dom-adapter";
 export * from "./ui/default-dom-adapter";

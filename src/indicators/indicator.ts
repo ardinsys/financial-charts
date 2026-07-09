@@ -165,9 +165,10 @@ export abstract class Indicator<
     const canvas = ctx.canvas;
     const timeScale = this.chart.getTimeScale();
     const priceScale = this.chart.getPriceScale();
+    const timeAnchorAlignment = this.chart.getTimeAnchorAlignment();
     const scaleOptions = {
       canvas,
-      barAlignment: "center" as const
+      barAlignment: timeAnchorAlignment
     };
 
     return {
@@ -185,10 +186,10 @@ export abstract class Indicator<
       scaleOptions,
       formatter: this.chart.getFormatter(),
       theme: this.chart.getTheme(),
-      projectTime: (time, barAlignment = "center") =>
+      projectTime: (time, barAlignment = timeAnchorAlignment) =>
         timeScale.project(time, { canvas, barAlignment }),
       projectPrice: (value) => priceScale.project(value, scaleOptions),
-      projectPoint: (time, value, barAlignment = "center") => ({
+      projectPoint: (time, value, barAlignment = timeAnchorAlignment) => ({
         x: timeScale.project(time, { canvas, barAlignment }),
         y: priceScale.project(value, scaleOptions)
       })

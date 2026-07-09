@@ -255,4 +255,4 @@ Controllers are registered per chart instance. The library ships with the follow
 - `SteplineController`
 - `HLCAreaController`
 
-Custom controllers can extend the base types to add renderers tailored to your application. Controllers receive access to the chart instance, canvas contexts, visible data, and active scales.
+Custom controllers can extend the base types to add renderers tailored to your application. Controllers receive access to the chart instance, canvas contexts, visible data, and active scales. Override `getTimeAnchorAlignment()` when drawings, crosshair, axis labels, and indicator helpers should snap to a different point inside each time slot than the default center.

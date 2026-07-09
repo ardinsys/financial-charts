@@ -15,6 +15,11 @@ export interface DrawingAnchorHandle {
   point: DrawingPoint;
 }
 
+export interface DrawingAxisBounds {
+  x?: DrawingAnchor[];
+  y?: DrawingAnchor[];
+}
+
 export interface DrawingRenderContext {
   pane: Pane;
   canvas: HTMLCanvasElement;
@@ -94,6 +99,17 @@ export abstract class Drawing {
     }));
   }
 
+  getAxisBounds(context: DrawingRenderContext): DrawingAxisBounds {
+    const anchors = this.getAnchorHandles(context).map((handle) =>
+      this.unprojectPoint(handle.point, context)
+    );
+
+    return {
+      x: anchors,
+      y: anchors
+    };
+  }
+
   hitTestAnchor(
     point: DrawingPoint,
     context: DrawingHitTestContext
@@ -153,7 +169,7 @@ export abstract class Drawing {
     return {
       x: timeScale.projectIndex(anchor.index, {
         canvas,
-        barAlignment: "center"
+        barAlignment: pane.getTimeAnchorAlignment()
       }),
       y: pane.getPriceScale().project(anchor.price, { canvas })
     };
@@ -161,6 +177,26 @@ export abstract class Drawing {
 
   protected projectAnchors(context: DrawingRenderContext) {
     return this.anchors.map((anchor) => this.projectAnchor(anchor, context));
+  }
+
+  protected unprojectPoint(
+    point: DrawingPoint,
+    { pane, canvas }: DrawingRenderContext
+  ): DrawingAnchor {
+    const timeScale = pane.getTimeScale();
+    if (!timeScale) {
+      return { index: 0, price: 0 };
+    }
+
+    return {
+      index: Math.round(
+        timeScale.unprojectIndex(point.x, {
+          canvas,
+          barAlignment: pane.getTimeAnchorAlignment()
+        })
+      ),
+      price: pane.getPriceScale().unproject(point.y, { canvas })
+    };
   }
 
   abstract draw(
@@ -172,6 +208,27 @@ export abstract class Drawing {
     point: DrawingPoint,
     context: DrawingHitTestContext
   ): boolean;
+}
+
+export function drawAnchorHandle(
+  ctx: CanvasRenderingContext2D,
+  point: DrawingPoint,
+  color = "#f59e0b"
+) {
+  ctx.save();
+  ctx.lineWidth = 2;
+  ctx.fillStyle = "rgba(19, 23, 34, 0.95)";
+  ctx.strokeStyle = color;
+  ctx.beginPath();
+  ctx.arc(point.x, point.y, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = "#fde68a";
+  ctx.beginPath();
+  ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
 }
 
 export function anchorFromPoint(
@@ -192,7 +249,7 @@ export function anchorFromPoint(
   const index = timeScale.unprojectIndex(point.x, {
     canvas,
     devicePixelRatio: 1,
-    barAlignment: "center"
+    barAlignment: pane.getTimeAnchorAlignment()
   });
 
   return {

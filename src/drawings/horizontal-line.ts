@@ -1,7 +1,9 @@
 import {
   Drawing,
+  drawAnchorHandle,
   type DrawingAnchor,
   type DrawingAnchorHandle,
+  type DrawingAxisBounds,
   type DrawingHitTestContext,
   type DrawingJSON,
   type DrawingOptions,
@@ -60,17 +62,14 @@ export class HorizontalLine extends Drawing {
 
     ctx.save();
     ctx.lineWidth = this.lineWidth;
-    ctx.strokeStyle = this.isSelected() ? this.selectedColor : this.color;
+    ctx.strokeStyle = this.color;
     ctx.beginPath();
     ctx.moveTo(region.x, point.y);
     ctx.lineTo(region.x + region.width, point.y);
     ctx.stroke();
 
     if (this.isSelected()) {
-      ctx.fillStyle = this.selectedColor;
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-      ctx.fill();
+      drawAnchorHandle(ctx, point, this.selectedColor);
     }
     ctx.restore();
   }
@@ -92,6 +91,12 @@ export class HorizontalLine extends Drawing {
         point: this.projectAnchor(anchor, context)
       }
     ];
+  }
+
+  getAxisBounds(): DrawingAxisBounds {
+    return {
+      y: [this.getLineAnchor()]
+    };
   }
 
   private getLineAnchor(): DrawingAnchor {

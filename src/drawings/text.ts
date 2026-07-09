@@ -1,5 +1,6 @@
 import {
   Drawing,
+  drawAnchorHandle,
   type DrawingAnchor,
   type DrawingAnchorHandle,
   type DrawingHitTestContext,
@@ -89,14 +90,16 @@ export class TextDrawing extends Drawing {
     ctx.fillStyle = this.backgroundColor;
     ctx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
 
-    if (this.isSelected()) {
-      ctx.strokeStyle = this.selectedColor;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
-    }
-
     ctx.fillStyle = this.color;
     ctx.fillText(this.text, bounds.x + this.padding, bounds.y + this.padding);
+
+    if (this.isSelected()) {
+      drawAnchorHandle(
+        ctx,
+        this.projectAnchor(this.getTextAnchor(), context),
+        this.selectedColor
+      );
+    }
     ctx.restore();
   }
 

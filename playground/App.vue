@@ -1,491 +1,329 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from "vue";
+import "./app-styles.css";
+
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
-  ChartData,
+  DrawingAxisBoundsPlugin,
+  DrawingManager,
+  DrawingSelectionPlugin,
   FinancialChart,
-  defaultDarkTheme,
-  defaultLightTheme,
-  mergeThemes,
   MovingAverageIndicator,
   TestIndicator,
-  DrawingManager,
-  HorizontalLine,
-  RectangleDrawing,
-  TextDrawing,
-  TrendLine,
-  type DrawingFactory
+  type Indicator,
+  type MovingAverageOptions
 } from "@ardinsys/financial-charts";
+import {
+  createDrawingFactory,
+  drawingTools,
+  type DrawingTool
+} from "./drawing-tools";
+import { indicatorCatalog, type IndicatorKind } from "./indicator-catalog";
+import {
+  darkTheme,
+  formatNumber,
+  initialData,
+  lastPoint,
+  previousPoint,
+  stepSize
+} from "./market-data";
+import { SelectedDrawingToolbarPlugin } from "./plugins/selected-drawing-toolbar";
 
 const chartContainer = ref<HTMLElement>();
-const clickedData = ref<ChartData>();
-type DrawingTool = "trendline" | "horizontal-line" | "rectangle" | "text";
 const activeDrawingTool = ref<DrawingTool>();
-const drawingText = ref("Text");
+const indicatorDialogOpen = ref(false);
+const indicatorSettingsOpen = ref(false);
+const selectedIndicator = ref<Indicator<any, any>>();
+const movingAveragePeriod = ref(9);
+const movingAverageSource = ref<MovingAverageOptions["source"]>("close");
 
-// Date that represents today 17:00
-const fivepm = new Date();
-fivepm.setHours(17, 0, 0, 0);
+const priceChange = (lastPoint.close ?? 0) - (previousPoint.close ?? 0);
+const priceChangeClass = computed(() =>
+  priceChange >= 0 ? "price-up" : "price-down"
+);
+const selectedIndicatorTitle = computed(() => {
+  const indicator = selectedIndicator.value;
+  if (!indicator) return "";
 
-// Date that represents today 09:00
-const nineam = new Date();
-nineam.setHours(9, 0, 0, 0);
-
-const chartData = ref<ChartData[]>([]);
-let chart: FinancialChart;
-let drawingManager: DrawingManager | undefined;
-let selectedTextDrawing: TextDrawing | undefined;
-
-const fiveYear = new Date();
-fiveYear.setFullYear(fiveYear.getFullYear() - 5);
-
-const darkTheme = mergeThemes(defaultDarkTheme, {
-  backgroundColor: "rgb(53, 55, 60)",
-  xAxis: {
-    backgroundColor: "rgb(53, 55, 60)",
-    separatorColor: "rgb(50, 50, 50)",
-  },
-  yAxis: {
-    backgroundColor: "rgb(53, 55, 60)",
-  },
-  grid: {
-    color: "rgb(70, 72, 77)",
-  },
-  area: {
-    color: "#ededed",
-    fill: [
-      [0, "rgba(255, 215, 0, 0.5)"],
-      [0.3, "rgba(255, 211, 0, 0.4)"],
-      [1, "rgba(255, 211, 0, 0.1)"],
-    ],
-  },
-  crosshair: {
-    infoLine: {
-      labels: {
-        EN: ["O: ", "H: ", "L: ", "P: ", "V: "],
-        "hu-HU": ["O: ", "H: ", "L: ", "Á: ", "V: "],
-      },
-    },
-  },
+  return indicator.getOptions().names.default ?? indicator.getKey();
 });
 
-console.log(darkTheme);
-
-function createDrawingFactory(tool: DrawingTool): DrawingFactory {
-  return ({ anchors, paneId }) => {
-    if (tool === "horizontal-line") {
-      return new HorizontalLine({
-        anchors,
-        paneId,
-        color: "#5eead4",
-      });
-    }
-
-    if (tool === "rectangle") {
-      return new RectangleDrawing({
-        anchors,
-        paneId,
-        strokeColor: "#c084fc",
-        fillColor: "rgba(192, 132, 252, 0.12)",
-      });
-    }
-
-    if (tool === "text") {
-      return new TextDrawing({
-        anchors,
-        paneId,
-        text: drawingText.value || "Text",
-        color: "#fef3c7",
-      });
-    }
-
-    return new TrendLine({
-      anchors,
-      paneId,
-      color: "#93c5fd",
-    });
-  };
-}
+let chart: FinancialChart | undefined;
+let drawingManager: DrawingManager | undefined;
+let indicatorIndex = 0;
 
 function setDrawingTool(tool: DrawingTool) {
+  if (activeDrawingTool.value === tool) {
+    clearDrawingTool();
+    return;
+  }
+
   activeDrawingTool.value = tool;
   drawingManager?.setDrawingFactory(createDrawingFactory(tool));
+}
+
+function clearDrawingTool() {
+  activeDrawingTool.value = undefined;
+  drawingManager?.setDrawingFactory(undefined);
 }
 
 function deleteSelectedDrawing() {
   drawingManager?.deleteSelected();
 }
 
-function updateSelectedTextDrawing() {
-  const selectedDrawing = drawingManager?.getSelectedDrawing();
-  selectedTextDrawing =
-    selectedDrawing instanceof TextDrawing ? selectedDrawing : undefined;
-  selectedTextDrawing?.setText(drawingText.value || "Text");
-  chart?.requestRedraw("drawings", true);
+function addIndicator(kind: IndicatorKind) {
+  if (!chart) return;
+
+  indicatorIndex += 1;
+  if (kind === "moving-average") {
+    chart.addIndicator(
+      new MovingAverageIndicator(null, {
+        key: `SMA-${indicatorIndex}`,
+        names: { default: "Moving Average" },
+        period: 9,
+        source: "close"
+      })
+    );
+  } else {
+    chart.addIndicator(
+      new TestIndicator(null, {
+        key: `MARKERS-${indicatorIndex}`,
+        names: { default: "Pane Markers" }
+      })
+    );
+  }
+
+  indicatorDialogOpen.value = false;
+}
+
+function openIndicatorSettings(indicator: Indicator<any, any>) {
+  selectedIndicator.value = indicator;
+
+  if (indicator instanceof MovingAverageIndicator) {
+    const options = indicator.getOptions();
+    movingAveragePeriod.value = options.period;
+    movingAverageSource.value = options.source;
+  }
+
+  indicatorSettingsOpen.value = true;
+}
+
+function applyIndicatorSettings() {
+  const indicator = selectedIndicator.value;
+  if (indicator instanceof MovingAverageIndicator) {
+    indicator.updateOptions({
+      period: Math.max(1, Math.round(movingAveragePeriod.value)),
+      source: movingAverageSource.value
+    });
+  }
+
+  indicatorSettingsOpen.value = false;
+}
+
+function removeSelectedIndicator() {
+  if (chart && selectedIndicator.value) {
+    chart.removeIndicator(selectedIndicator.value);
+  }
+  indicatorSettingsOpen.value = false;
+  selectedIndicator.value = undefined;
 }
 
 onMounted(() => {
   chart = new FinancialChart(
     chartContainer.value!,
-    // "auto",
     {
-      start: nineam.getTime(),
-      end: fivepm.getTime(),
-      // end: nineam.getTime() + 1000 * 60 * 180,
+      start: initialData[0].time,
+      end: initialData.at(-1)!.time + stepSize
     },
     {
-      type: "stepline",
+      type: "candle",
       theme: darkTheme,
-      locale: "hu-HU",
-      maxZoom: 100,
-      stepSize: 15 * 60 * 1000,
-      volume: false,
-      localeValues: {
-        "hu-HU": {
-          indicators: {
-            actions: {
-              hide: "Elrejtés",
-              settings: "Beállítások",
-              remove: "Törlés",
-              show: "Megjelenítés",
-            },
-          },
-          common: {
-            sources: {
-              close: "záró",
-              high: "magas",
-              low: "alacsony",
-              open: "nyitó",
-              volume: "volumen",
-            },
-          },
-        },
-      },
+      locale: "en-US",
+      maxZoom: 90,
+      stepSize,
+      volume: true
     }
   );
 
   drawingManager = new DrawingManager();
+  const selectedDrawingToolbar = new SelectedDrawingToolbarPlugin(
+    drawingManager
+  );
   chart.addPlugin(drawingManager);
-
-  chart.on("drawing-select", ({ drawing }) => {
-    selectedTextDrawing =
-      drawing instanceof TextDrawing ? drawing : undefined;
-    if (selectedTextDrawing) {
-      drawingText.value = selectedTextDrawing.getText();
-    }
-  });
-
-  chart.on("drawing-delete", ({ drawing }) => {
-    if (drawing === selectedTextDrawing) {
-      selectedTextDrawing = undefined;
-    }
-  });
+  chart.addPlugin(new DrawingAxisBoundsPlugin());
+  chart.addPlugin(selectedDrawingToolbar);
+  chart.addPlugin(
+    new DrawingSelectionPlugin((drawing) => {
+      selectedDrawingToolbar.setSelectedDrawing(drawing);
+    })
+  );
 
   chart.on("drawing-finished", ({ operation }) => {
-    if (operation !== "create") return;
-
-    activeDrawingTool.value = undefined;
-    drawingManager?.setDrawingFactory(undefined);
+    if (operation === "create") {
+      clearDrawingTool();
+    }
   });
 
-  const unsub = chart.on("indicator-settings-open", (data) => {
-    console.log("indicator-settings-open", data.indicator.getKey());
-    unsub();
+  chart.on("indicator-settings-open", ({ indicator }) => {
+    openIndicatorSettings(indicator);
   });
 
-  // setTimeout(() => {
-  //   chart.addIndicator(new MovingAverageIndicator({ dark: { color: "lime" } }));
-  //   chart.addIndicator(
-  //     new MovingAverageIndicator(
-  //       { dark: { color: "wheat" } },
-  //       { period: 3, source: "open" }
-  //     )
-  //   );
-  // }, 100);
+  chart.on("indicator-remove", ({ indicator }) => {
+    if (selectedIndicator.value === indicator) {
+      selectedIndicator.value = undefined;
+      indicatorSettingsOpen.value = false;
+    }
+  });
 
-  // controller.setEventListener("click", (_: MouseEvent, data) => {
-  //   clickedData.value = data;
-  // });
-  // controller.setEventListener("touch-click", (_: TouchEvent, data) => {
-  //   // @ts-ignore
-  //   clickedData.value = { ...data, touch: true };
-  // });
-
-  chart.draw([
-    // 1. candle
-    {
-      time: nineam.getTime(),
-      open: 11,
-      high: 15,
-      low: 9,
-      close: 12,
-      volume: 100_000,
-    },
-    {
-      time: nineam.getTime() + 1000 * 60 * 15,
-      open: 10,
-      high: 15,
-      low: 8,
-      close: 12,
-      volume: 1_200_000,
-    },
-    {
-      time: nineam.getTime() + 1000 * 60 * 30,
-      open: 15,
-      high: 17,
-      low: 11,
-      close: 12,
-      volume: 800_000,
-    },
-    // 2. candle
-    {
-      time: nineam.getTime() + 1000 * 60 * 45,
-      open: 12,
-      high: 15,
-      low: 10,
-      close: 13,
-      volume: 1_500_000,
-    },
-    {
-      time: nineam.getTime() + 1000 * 60 * 60,
-      open: 13,
-      high: 13,
-      low: 8,
-      close: 11,
-      volume: 1_400_000,
-    },
-    {
-      time: nineam.getTime() + 1000 * 60 * 75,
-      open: 11,
-      high: 14,
-      low: 10,
-      close: 14,
-      volume: 1_450_000,
-    },
-    // 3. candle
-    {
-      time: nineam.getTime() + 1000 * 60 * 90,
-      open: 13,
-      high: 15,
-      low: 10,
-      close: 12,
-      volume: 1_600_000,
-    },
-    {
-      time: nineam.getTime() + 1000 * 60 * 115,
-      open: 11,
-      high: 16,
-      low: 10,
-      close: 12,
-      volume: 1_800_000,
-    },
-    {
-      time: nineam.getTime() + 1000 * 60 * 130,
-      open: 14,
-      high: 15,
-      low: 10,
-      close: 12,
-      volume: 1_550_000,
-    },
-    // 4. candle
-    {
-      time: nineam.getTime() + 1000 * 60 * 145,
-      open: 12,
-      high: 15,
-      low: 8,
-      close: 10,
-      volume: 1_200_000,
-    },
-    {
-      time: nineam.getTime() + 1000 * 60 * 160,
-      open: 10,
-      high: 15,
-      low: 8,
-      close: 12,
-      volume: 1_300_000,
-    },
-  ]);
-
-  const indicator = new TestIndicator();
-  chart.addIndicator(indicator);
-  const ind = new MovingAverageIndicator();
-  chart.addIndicator(ind);
-  chart.addIndicator(new MovingAverageIndicator());
-  setTimeout(() => {
-    ind.updateOptions({ period: 10, source: "open" });
-  }, 1000);
-
-  // setTimeout(() => {
-  //   chart.updateLocalization({ locale: "en-US" });
-  // }, 5000);
-
-  // setTimeout(() => {
-  //   controller.updateCoreOptions(
-  //     {
-  //       start: nineam.getTime(),
-  //       end: fivepm.getTime(),
-  //     },
-  //     15 * 60 * 1000,
-  //     10
-  //   );
-  // }, 2000);
-
-  // setTimeout(() => {
-  //     controller.drawNextPoint({
-  //       time: nineam.getTime() + 1000 * 60 * 175,
-  //       close: 14,
-  //       high: 13,
-  //       low: 10,
-  //       open: 11,
-  //     });
-
-  //     setTimeout(() => {
-  //       controller.drawNextPoint({
-  //         time: nineam.getTime() + 1000 * 60 * 175,
-  //         close: 13,
-  //         high: 14,
-  //         low: 10,
-  //         open: 11,
-  //       });
-
-  //       setTimeout(() => {
-  //         controller.drawNextPoint({
-  //           time: nineam.getTime() + 1000 * 60 * 190,
-  //           close: 14,
-  //           high: 16,
-  //           low: 11,
-  //           open: 13,
-  //         });
-
-  //         setTimeout(() => {
-  //           controller.drawNextPoint({
-  //             time: nineam.getTime() + 1000 * 60 * 205,
-  //             close: 12,
-  //             high: 15,
-  //             low: 8,
-  //             open: 14,
-  //           });
-  //         }, 2000);
-  //       }, 2000);
-  //     }, 2000);
-  //   }, 2000);
+  chart.draw(initialData);
 });
 
-watch(chartData, (newVal, oldVal) => {
-  if (!chart) return;
-  if (oldVal.length > 0 && newVal.length > 0) {
-    chart.drawNextPoint(newVal[newVal.length - 1]);
-  } else {
-    chart.draw(newVal);
-  }
+onBeforeUnmount(() => {
+  chart?.dispose();
+  chart = undefined;
+  drawingManager = undefined;
 });
 </script>
 
 <template>
-  <div
-    style="
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      flex-direction: column;
-      user-select: none;
-    "
-  >
-    <div class="drawing-toolbar">
+  <div class="terminal">
+    <aside class="drawing-rail" aria-label="Drawing tools">
       <button
-        :class="{ active: activeDrawingTool === 'trendline' }"
+        v-for="tool in drawingTools"
+        :key="tool.id"
+        :class="{ active: activeDrawingTool === tool.id }"
+        :title="tool.label"
+        class="tool-button"
         type="button"
-        @click="setDrawingTool('trendline')"
+        @click="setDrawingTool(tool.id)"
       >
-        Trendline
+        <span :class="['tool-icon', `tool-icon--${tool.icon}`]"></span>
       </button>
+
+      <div class="rail-divider"></div>
+
       <button
-        :class="{ active: activeDrawingTool === 'horizontal-line' }"
+        class="tool-button tool-button--danger"
+        title="Delete selected drawing"
         type="button"
-        @click="setDrawingTool('horizontal-line')"
+        @click="deleteSelectedDrawing"
       >
-        Horizontal
+        <span class="tool-icon tool-icon--delete"></span>
       </button>
-      <button
-        :class="{ active: activeDrawingTool === 'rectangle' }"
-        type="button"
-        @click="setDrawingTool('rectangle')"
-      >
-        Rectangle
-      </button>
-      <button
-        :class="{ active: activeDrawingTool === 'text' }"
-        type="button"
-        @click="setDrawingTool('text')"
-      >
-        Text
-      </button>
-      <input
-        v-model="drawingText"
-        aria-label="Drawing text"
-        type="text"
-        @input="updateSelectedTextDrawing"
-      />
-      <button type="button" @click="deleteSelectedDrawing">Delete</button>
-    </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="symbol-block">
+          <span class="exchange">NASDAQ</span>
+          <strong>ARDS</strong>
+          <span>15m</span>
+          <span :class="['last-price', priceChangeClass]">
+            {{ formatNumber(lastPoint.close ?? 0) }}
+          </span>
+          <span :class="priceChangeClass">
+            {{ priceChange >= 0 ? "+" : "" }}{{ formatNumber(priceChange) }}
+          </span>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="command-button" type="button">15m</button>
+          <button class="command-button" type="button">Candles</button>
+          <button
+            class="command-button command-button--primary"
+            type="button"
+            @click="indicatorDialogOpen = true"
+          >
+            Indicators
+          </button>
+        </div>
+      </header>
+
+      <section class="chart-stage">
+        <div ref="chartContainer" class="chart-host"></div>
+      </section>
+    </main>
+
     <div
-      style="
-        width: min(80%, 1600px);
-        height: min(80vh, 800px);
-        /* width: 100%;
-        height: 100%; */
-        position: relative;
-        overflow: hidden;
-        border-radius: 15px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-        padding: 20px;
-        padding-right: 5px;
-        background: #161a25;
-      "
-      ref="chartContainer"
-    ></div>
-    <div style="margin-top: 20px">{{ clickedData }}</div>
-    <div id="test"></div>
+      v-if="indicatorDialogOpen"
+      class="modal-backdrop"
+      @click.self="indicatorDialogOpen = false"
+    >
+      <section class="modal">
+        <header class="modal-header">
+          <h2>Indicators</h2>
+          <button type="button" @click="indicatorDialogOpen = false">
+            Close
+          </button>
+        </header>
+
+        <div class="indicator-list">
+          <button
+            v-for="indicator in indicatorCatalog"
+            :key="indicator.id"
+            class="indicator-option"
+            type="button"
+            @click="addIndicator(indicator.id)"
+          >
+            <strong>{{ indicator.name }}</strong>
+            <span>{{ indicator.detail }}</span>
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <div
+      v-if="indicatorSettingsOpen"
+      class="modal-backdrop"
+      @click.self="indicatorSettingsOpen = false"
+    >
+      <section class="modal modal--settings">
+        <header class="modal-header">
+          <h2>{{ selectedIndicatorTitle }}</h2>
+          <button type="button" @click="indicatorSettingsOpen = false">
+            Close
+          </button>
+        </header>
+
+        <div
+          v-if="selectedIndicator instanceof MovingAverageIndicator"
+          class="settings-grid"
+        >
+          <label>
+            Period
+            <input v-model.number="movingAveragePeriod" min="1" type="number" />
+          </label>
+          <label>
+            Source
+            <select v-model="movingAverageSource">
+              <option value="open">Open</option>
+              <option value="high">High</option>
+              <option value="low">Low</option>
+              <option value="close">Close</option>
+            </select>
+          </label>
+        </div>
+
+        <p v-else class="settings-empty">
+          This pane indicator has no editable inputs.
+        </p>
+
+        <footer class="modal-actions">
+          <button
+            class="ghost-button"
+            type="button"
+            @click="removeSelectedIndicator"
+          >
+            Remove
+          </button>
+          <button
+            class="primary-button"
+            type="button"
+            @click="applyIndicatorSettings"
+          >
+            Apply
+          </button>
+        </footer>
+      </section>
+    </div>
   </div>
 </template>
-
-<style>
-body {
-  margin: 0;
-}
-
-.drawing-toolbar {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.drawing-toolbar button {
-  border: 1px solid #334155;
-  border-radius: 6px;
-  background: #111827;
-  color: #dbeafe;
-  cursor: pointer;
-  font:
-    13px/1.2 system-ui,
-    sans-serif;
-  padding: 8px 12px;
-}
-
-.drawing-toolbar button.active {
-  background: #1d4ed8;
-  border-color: #60a5fa;
-}
-
-.drawing-toolbar input {
-  border: 1px solid #334155;
-  border-radius: 6px;
-  background: #0f172a;
-  color: #f8fafc;
-  font:
-    13px/1.2 system-ui,
-    sans-serif;
-  min-width: 140px;
-  padding: 8px 10px;
-}
-</style>
