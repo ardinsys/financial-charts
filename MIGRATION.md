@@ -122,6 +122,9 @@ const formatter = new DefaultFormatter({
 
 `Formatter` also supports seconds/sub-minute labels and `setTimeZone()` /
 `getTimeZone()` for runtime changes.
+`ChartOptions.timeZone` forwards the IANA timezone to compatible formatters, and
+`chart.updateLocalization({ locale, timeZone, formatter, localeValues })`
+updates the full localization bundle in one redraw.
 
 ### Drawings are first-class plugins
 

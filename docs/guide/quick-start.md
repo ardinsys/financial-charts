@@ -70,7 +70,7 @@ const chart = new FinancialChart(
 );
 ```
 
-Localization is configurable via `updateLocale`. See [Guide > Styling and localization](/guide/styling-and-localization) for a full example that rebuilds the chart's locale bundle when the active locale changes.
+Localization is configurable via `updateLocalization`. See [Guide > Styling and localization](/guide/styling-and-localization) for a full example that rebuilds the chart's locale bundle when the active locale changes.
 
 ## 5. Push data
 

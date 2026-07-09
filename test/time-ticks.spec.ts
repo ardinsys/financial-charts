@@ -24,6 +24,54 @@ function generateTicks(times: number[], targetTickCount = 8) {
 }
 
 describe("TimeTickGenerator", () => {
+  it("uses sub-minute labels for millisecond ranges", () => {
+    const start = Date.UTC(2024, 0, 2, 3, 4, 5);
+    const times = Array.from({ length: 5 }, (_, index) => {
+      return start + index * 100;
+    });
+
+    const ticks = generateTicks(times, 10);
+
+    expect(ticks.map((tick) => tick.kind)).toEqual([
+      "subMinute",
+      "subMinute",
+      "subMinute",
+      "subMinute",
+      "subMinute",
+    ]);
+    expect(ticks.map((tick) => tick.label)).toEqual([
+      "04:05.000",
+      "04:05.100",
+      "04:05.200",
+      "04:05.300",
+      "04:05.400",
+    ]);
+  });
+
+  it("uses second labels for short intraminute ranges", () => {
+    const start = Date.UTC(2024, 0, 2, 3, 4, 5);
+    const times = Array.from({ length: 5 }, (_, index) => {
+      return start + index * 1_000;
+    });
+
+    const ticks = generateTicks(times, 10);
+
+    expect(ticks.map((tick) => tick.kind)).toEqual([
+      "second",
+      "second",
+      "second",
+      "second",
+      "second",
+    ]);
+    expect(ticks.map((tick) => tick.label)).toEqual([
+      "3:04:05 AM",
+      "3:04:06 AM",
+      "3:04:07 AM",
+      "3:04:08 AM",
+      "3:04:09 AM",
+    ]);
+  });
+
   it("chooses stable intraday hour ticks", () => {
     const start = Date.UTC(2024, 0, 2, 9);
     const times = Array.from({ length: 15 }, (_, index) => {

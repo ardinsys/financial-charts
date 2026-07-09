@@ -30,6 +30,7 @@ type ChartOptions = {
   theme?: ChartTheme;
   domAdapter?: ChartDOMAdapter;
   locale?: string;
+  timeZone?: string;
   formatter?: Formatter;
   localeValues?: Record<string, LocaleValues>;
 };
@@ -45,6 +46,7 @@ type ChartOptions = {
 | `theme`        | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.                 |
 | `domAdapter`   | `ChartDOMAdapter` implementation for non-canvas chart chrome. Defaults to `DefaultDOMAdapter`.       |
 | `locale`       | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`. |
+| `timeZone`     | IANA timezone forwarded to formatters that support `setTimeZone()`.                                  |
 | `formatter`    | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                  |
 | `localeValues` | Localized indicator labels keyed by locale. Merged with built-in English strings.                    |
 
@@ -61,7 +63,8 @@ const chart = new FinancialChart(root, "auto", {
 
 #### Localization options
 
-- `locale` keeps the formatter and indicator UI in sync. `updateLocale(nextLocale, values?)` recomputes labels and rerenders the chart.
+- `locale` keeps the formatter and indicator UI in sync. `updateLocalization({ locale })` recomputes labels and rerenders the chart.
+- `timeZone` controls date/time labels when the active formatter supports `setTimeZone()`. It is used by `DefaultFormatter`.
 - `localeValues` is merged with the internal `default` block (`Show/Hide/Settings/Remove` + OHLCV names). Supply only the locales you need; missing entries fall back to `default`.
 - `formatter` can extend `DefaultFormatter` to reuse axis formatting while customizing tooltip dates/prices.
 
@@ -131,7 +134,8 @@ type LocaleValues = {
 | `setVolumeDraw(enabled)`                      | Shows or hides the volume histogram without recreating the chart.                                 |
 | `setPaneHeights(heights)`                     | Applies logical pixel pane heights keyed by pane id or pane order. Values are min-height clamped. |
 | `updateCoreOptions(range, stepSize, maxZoom)` | Rebuilds the internal state with new core settings. Resets zoom/pan because data is remapped.     |
-| `updateLocale(locale, values?)`               | Changes the formatter locale and (optionally) overrides indicator labels for multiple languages.  |
+| `updateLocalization(options)`                 | Changes locale, timezone, formatter, and/or localized UI strings in one redraw.                   |
+| `updateLocale(locale, values?)`               | Compatibility shorthand for `updateLocalization({ locale, localeValues: values })`.               |
 
 ### Extension registration
 

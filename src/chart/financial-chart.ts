@@ -57,9 +57,11 @@ import type {
 
 export type DeepConcrete<T> = T extends Function
   ? T
-  : T extends object
-    ? { [P in keyof T]-?: DeepConcrete<T[P]> }
-    : T;
+  : T extends Formatter
+    ? T
+    : T extends object
+      ? { [P in keyof T]-?: DeepConcrete<T[P]> }
+      : T;
 
 export type ControllerID =
   | "area"
@@ -91,6 +93,17 @@ export interface LocaleValues {
   };
 }
 
+export type LocaleValuesMap = {
+  [key: string]: LocaleValues;
+};
+
+export interface ChartLocalizationOptions {
+  locale?: string;
+  timeZone?: string;
+  formatter?: Formatter;
+  localeValues?: LocaleValuesMap;
+}
+
 export interface ChartOptions {
   type: ControllerType;
   stepSize: number;
@@ -98,12 +111,11 @@ export interface ChartOptions {
   volume: boolean;
   controllers?: readonly ControllerConstructor[];
   locale?: string;
+  timeZone?: string;
   formatter?: Formatter;
   theme?: ChartTheme;
   domAdapter?: ChartDOMAdapter;
-  localeValues?: {
-    [key: string]: LocaleValues;
-  };
+  localeValues?: LocaleValuesMap;
 }
 
 type Resizer = {
@@ -256,6 +268,14 @@ export class FinancialChart extends EventEmitter {
     for (const controller of options.controllers ?? []) {
       this.registerController(controller);
     }
+  }
+
+  private static resolveRuntimeLocale() {
+    if (typeof navigator !== "undefined" && navigator.language) {
+      return navigator.language;
+    }
+
+    return "en-US";
   }
 
   private getRegistrationId(
@@ -1042,9 +1062,20 @@ export class FinancialChart extends EventEmitter {
     this.registerConstructorOptions(options);
 
     this.options.volume = this.options.volume || false;
-    this.options.locale = this.options.locale || navigator.language || "en-US";
-    this.options.formatter = this.options.formatter || new DefaultFormatter();
+    this.options.locale =
+      this.options.locale ||
+      this.options.formatter?.getLocale() ||
+      FinancialChart.resolveRuntimeLocale();
+    this.options.timeZone =
+      this.options.timeZone ?? this.options.formatter?.getTimeZone?.();
+    this.options.formatter =
+      this.options.formatter ||
+      new DefaultFormatter({
+        locale: this.options.locale,
+        timeZone: this.options.timeZone
+      });
     this.options.formatter.setLocale(this.options.locale);
+    this.options.formatter.setTimeZone?.(this.options.timeZone);
     this.options.theme = mergeThemes(defaultLightTheme, this.options.theme);
     this.options.localeValues = {
       ...this.getDefaultLocaleValues(),
@@ -1177,7 +1208,7 @@ export class FinancialChart extends EventEmitter {
     this.resizeObserver.observe(this.container);
   }
 
-  private getDefaultLocaleValues() {
+  private getDefaultLocaleValues(): LocaleValuesMap {
     return {
       default: {
         indicators: {
@@ -1309,22 +1340,7 @@ export class FinancialChart extends EventEmitter {
     this.requestRedraw(this.allRedrawParts);
   }
 
-  public updateLocale(
-    locale: string,
-    values?: {
-      [key: string]: LocaleValues;
-    }
-  ) {
-    this.options.locale = locale;
-    this.options.formatter.setLocale(locale);
-
-    if (values) {
-      this.options.localeValues = {
-        ...this.getDefaultLocaleValues(),
-        ...values
-      };
-    }
-
+  private applyLocalizationUpdate() {
     for (const indicator of this.indicators) {
       indicator.updateLocale();
     }
@@ -1333,6 +1349,48 @@ export class FinancialChart extends EventEmitter {
     }
 
     this.requestRedraw(this.allRedrawParts);
+  }
+
+  public updateLocalization(localization: ChartLocalizationOptions) {
+    const hasTimeZone = Object.prototype.hasOwnProperty.call(
+      localization,
+      "timeZone"
+    );
+
+    if (localization.formatter) {
+      this.options.formatter = localization.formatter;
+    }
+
+    this.options.locale =
+      localization.locale ??
+      (localization.formatter
+        ? localization.formatter.getLocale()
+        : this.options.locale);
+    this.options.formatter.setLocale(this.options.locale);
+
+    if (hasTimeZone) {
+      this.options.timeZone =
+        localization.timeZone as DeepConcrete<ChartOptions>["timeZone"];
+    } else if (localization.formatter) {
+      this.options.timeZone =
+        localization.formatter.getTimeZone?.() ?? this.options.timeZone;
+    }
+
+    this.options.formatter.setTimeZone?.(this.options.timeZone);
+
+    if (localization.localeValues) {
+      this.options.localeValues = {
+        ...this.getDefaultLocaleValues(),
+        ...this.options.localeValues,
+        ...localization.localeValues
+      };
+    }
+
+    this.applyLocalizationUpdate();
+  }
+
+  public updateLocale(locale: string, values?: LocaleValuesMap) {
+    this.updateLocalization({ locale, localeValues: values });
   }
 
   private onMouseDown = (event: PointerEvent) => {

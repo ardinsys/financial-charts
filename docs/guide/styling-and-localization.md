@@ -72,28 +72,62 @@ window
   });
 ```
 
-## Locale and formatter overrides
+## Localization and formatter overrides
 
-Provide locale strings when constructing the chart or later with `updateLocale`. Missing values merge into built-in English defaults, so you only override what changes.
+Configure locale, timezone, number/date formatting, and chart UI strings together. Missing UI strings merge into built-in English defaults, so you only override what changes.
 
 ```ts
-chart.updateLocale("en", {
-  EN: {
-    common: {
-      sources: {
-        open: "Open price",
-        high: "High",
-        low: "Low",
-        close: "Close",
-        volume: "Volume"
+const chart = new FinancialChart(root, "auto", {
+  type: "candle",
+  stepSize: 15 * 60 * 1000,
+  maxZoom: 150,
+  volume: true,
+  locale: "en-US",
+  timeZone: "UTC",
+  localeValues: {
+    "en-US": {
+      common: {
+        sources: {
+          open: "Open price",
+          high: "High",
+          low: "Low",
+          close: "Close",
+          volume: "Volume"
+        }
+      },
+      indicators: {
+        actions: {
+          show: "Show",
+          hide: "Hide",
+          settings: "Settings",
+          remove: "Remove"
+        }
       }
-    },
-    indicators: {
-      actions: {
-        show: "Show",
-        hide: "Hide",
-        settings: "Settings",
-        remove: "Remove"
+    }
+  }
+});
+
+chart.updateLocalization({
+  locale: "hu-HU",
+  timeZone: "Europe/Budapest",
+  localeValues: {
+    "hu-HU": {
+      common: {
+        sources: {
+          open: "Nyitó",
+          high: "Max",
+          low: "Min",
+          close: "Záró",
+          volume: "Forgalom"
+        }
+      },
+      indicators: {
+        actions: {
+          show: "Megjelenítés",
+          hide: "Elrejtés",
+          settings: "Beállítás",
+          remove: "Törlés"
+        }
       }
     }
   }
@@ -109,7 +143,13 @@ const formatter = new DefaultFormatter({
   locale: "en-US",
   timeZone: "UTC",
   dateTimeFormatOptions: {
-    tooltipDate: { dateStyle: "medium", timeStyle: "short" }
+    tooltipDate: { dateStyle: "medium", timeStyle: "short" },
+    second: { hour: "numeric", minute: "2-digit", second: "2-digit" },
+    subMinute: {
+      minute: "2-digit",
+      second: "2-digit",
+      fractionalSecondDigits: 3
+    }
   },
   numberFormatOptions: {
     price: { maximumFractionDigits: 2 }
@@ -136,10 +176,9 @@ class CustomFormatter extends DefaultFormatter {
   }
 }
 
-const chart = new FinancialChart(root, "auto", {
-  type: "candle",
-  theme: baseTheme,
-  locale: "en",
+chart.updateLocalization({
+  locale: "en-US",
+  timeZone: "America/New_York",
   formatter: new CustomFormatter()
 });
 ```
@@ -204,50 +243,33 @@ const chart = new FinancialChart(root, "auto", {
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
   volume: true,
-  locale: "en",
-  localeValues: {
-    default: {
-      indicators: {
-        actions: {
-          show: "Show",
-          hide: "Hide",
-          settings: "Settings",
-          remove: "Remove"
-        }
-      },
-      common: {
-        sources: {
-          open: "Open",
-          high: "High",
-          low: "Low",
-          close: "Close",
-          volume: "Volume"
-        }
-      }
-    }
-  }
+  locale: "en"
 });
 
 // Keep chart labels in sync with the active app locale
-function switchLocale(nextLocale: string) {
+function switchLocale(nextLocale: string, timeZone?: string) {
   setLocale(nextLocale);
-  chart.updateLocale(nextLocale, {
-    [nextLocale]: {
-      indicators: {
-        actions: {
-          show: t("indicators.actions.show"),
-          hide: t("indicators.actions.hide"),
-          settings: t("indicators.actions.settings"),
-          remove: t("indicators.actions.remove")
-        }
-      },
-      common: {
-        sources: {
-          open: t("common.sources.open"),
-          high: t("common.sources.high"),
-          low: t("common.sources.low"),
-          close: t("common.sources.close"),
-          volume: t("common.sources.volume")
+  chart.updateLocalization({
+    locale: nextLocale,
+    timeZone,
+    localeValues: {
+      [nextLocale]: {
+        indicators: {
+          actions: {
+            show: t("indicators.actions.show"),
+            hide: t("indicators.actions.hide"),
+            settings: t("indicators.actions.settings"),
+            remove: t("indicators.actions.remove")
+          }
+        },
+        common: {
+          sources: {
+            open: t("common.sources.open"),
+            high: t("common.sources.high"),
+            low: t("common.sources.low"),
+            close: t("common.sources.close"),
+            volume: t("common.sources.volume")
+          }
         }
       }
     }
@@ -315,6 +337,7 @@ const { locale, setLocale, t } = createIntl("en", {
 
 const container = ref<HTMLElement | null>(null);
 const chart = ref<FinancialChart | null>(null);
+const appTimeZone = ref("UTC");
 
 const chartLocaleBundle = computed(() => ({
   [locale.value.toUpperCase()]: {
@@ -346,7 +369,8 @@ onMounted(() => {
     stepSize: 15 * 60 * 1000,
     maxZoom: 150,
     volume: true,
-    locale: locale.value.toUpperCase()
+    locale: locale.value.toUpperCase(),
+    timeZone: appTimeZone.value
   });
 
   chart.value = instance;
@@ -355,7 +379,11 @@ onMounted(() => {
 watchEffect(() => {
   if (!chart.value) return;
   const nextLocale = locale.value.toUpperCase();
-  chart.value.updateLocale(nextLocale, chartLocaleBundle.value);
+  chart.value.updateLocalization({
+    locale: nextLocale,
+    timeZone: appTimeZone.value,
+    localeValues: chartLocaleBundle.value
+  });
 });
 
 onBeforeUnmount(() => chart.value?.dispose());
@@ -398,7 +426,8 @@ const chart = new FinancialChart(root, "auto", {
   stepSize: 5 * 60 * 1000,
   maxZoom: 200,
   formatter: new IntlFormatter(),
-  locale: "en"
+  locale: "en",
+  timeZone: "UTC"
 });
 ```
 

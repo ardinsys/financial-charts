@@ -28,7 +28,7 @@ chart.updateCoreOptions(
 - **Zoom:** pinch or scroll – combine with programmatic zoom for fixed increments.
 - **Pan:** click-drag or touch-drag.
 - **Volume overlay:** toggle with `setVolumeDraw(true | false)`.
-- **Theme/locale:** call `updateTheme` or `updateLocale` whenever user preferences change.
+- **Theme/localization:** call `updateTheme` or `updateLocalization` whenever user preferences change.
 - **Drawings:** attach `DrawingManager` and choose a drawing factory. See [Drawing tools](/guide/drawing-tools).
 
 ## Controllers, indicators, and plugins

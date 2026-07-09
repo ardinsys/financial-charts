@@ -57,7 +57,10 @@ export function Chart({ data }: Props) {
   }, [data]);
 
   useEffect(() => {
-    chartRef.current?.updateLocale(appLocale, localeValues);
+    chartRef.current?.updateLocalization({
+      locale: appLocale,
+      localeValues
+    });
   }, [appLocale]);
 
   return <div ref={containerRef} style={{ height: 400 }} />;

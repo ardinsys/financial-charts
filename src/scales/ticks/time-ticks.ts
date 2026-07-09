@@ -2,7 +2,14 @@ import type { Formatter } from "../../chart/formatter";
 import { DataStore } from "../../data/data-store";
 import type { TimeScaleRange } from "../time-scale";
 
-export type TimeTickKind = "year" | "month" | "week" | "day" | "hour";
+export type TimeTickKind =
+  | "year"
+  | "month"
+  | "week"
+  | "day"
+  | "hour"
+  | "second"
+  | "subMinute";
 
 export interface TimeTick {
   index: number;
@@ -31,6 +38,9 @@ interface CalendarParts {
   month: number;
   day: number;
   hour: number;
+  minute: number;
+  second: number;
+  millisecond: number;
   weekday: number;
   dayNumber: number;
   weekNumber: number;
@@ -48,6 +58,8 @@ const priorityByKind: Record<TimeTickKind, number> = {
   week: 3,
   day: 2,
   hour: 1,
+  second: 0.5,
+  subMinute: 0.25,
 };
 
 const weekdayByShortName: Record<string, number> = {
@@ -100,6 +112,25 @@ export class TimeTickGenerator {
   }
 
   private getCandidatesForDuration(duration: number): TickCandidate[] {
+    if (duration <= 2_000) {
+      return [
+        { granularity: "subMinute", step: 100 },
+        { granularity: "subMinute", step: 250 },
+        { granularity: "subMinute", step: 500 },
+        { granularity: "second", step: 1 },
+      ];
+    }
+
+    if (duration <= 2 * 60_000) {
+      return [
+        { granularity: "second", step: 1 },
+        { granularity: "second", step: 5 },
+        { granularity: "second", step: 15 },
+        { granularity: "second", step: 30 },
+        { granularity: "hour", step: 1 },
+      ];
+    }
+
     if (duration <= 2 * DAY_MS) {
       return [
         { granularity: "hour", step: 1 },
@@ -165,7 +196,11 @@ export class TimeTickGenerator {
       if (!this.isBoundary(current, previous, candidate)) continue;
       if (usedIndices.has(index)) continue;
 
-      const kind = classifyBoundary(current, previous);
+      const kind =
+        candidate.granularity === "subMinute" ||
+        candidate.granularity === "second"
+          ? candidate.granularity
+          : classifyBoundary(current, previous);
       ticks.push({
         index,
         time,
@@ -201,6 +236,21 @@ export class TimeTickGenerator {
           current.hour !== previous.hour ||
           current.dayNumber !== previous.dayNumber
         );
+      case "second":
+        return (
+          current.second !== previous.second ||
+          current.minute !== previous.minute ||
+          current.hour !== previous.hour ||
+          current.dayNumber !== previous.dayNumber
+        );
+      case "subMinute":
+        return (
+          current.millisecond !== previous.millisecond ||
+          current.second !== previous.second ||
+          current.minute !== previous.minute ||
+          current.hour !== previous.hour ||
+          current.dayNumber !== previous.dayNumber
+        );
     }
   }
 }
@@ -221,6 +271,10 @@ function isAligned(parts: CalendarParts, candidate: TickCandidate) {
       return parts.dayNumber % candidate.step === 0;
     case "hour":
       return parts.hour % candidate.step === 0;
+    case "second":
+      return parts.second % candidate.step === 0 && parts.millisecond === 0;
+    case "subMinute":
+      return parts.millisecond % candidate.step === 0;
   }
 }
 
@@ -242,6 +296,14 @@ function classifyBoundary(
   if (current.monthNumber !== previous.monthNumber) return "month";
   if (current.weekNumber !== previous.weekNumber) return "week";
   if (current.dayNumber !== previous.dayNumber) return "day";
+  if (current.hour !== previous.hour) return "hour";
+  if (
+    current.second !== previous.second ||
+    current.minute !== previous.minute
+  ) {
+    return "second";
+  }
+  if (current.millisecond !== previous.millisecond) return "subMinute";
   return "hour";
 }
 
@@ -260,6 +322,16 @@ function formatTickLabel(
       return formatter.formatDay(timestamp);
     case "hour":
       return formatter.formatHour(timestamp);
+    case "second":
+      return (
+        formatter.formatSecond?.(timestamp) ?? formatter.formatHour(timestamp)
+      );
+    case "subMinute":
+      return (
+        formatter.formatSubMinute?.(timestamp) ??
+        formatter.formatSecond?.(timestamp) ??
+        formatter.formatHour(timestamp)
+      );
   }
 }
 
@@ -307,6 +379,9 @@ function getLocalCalendarParts(timestamp: number) {
     month: date.getMonth() + 1,
     day: date.getDate(),
     hour: date.getHours(),
+    minute: date.getMinutes(),
+    second: date.getSeconds(),
+    millisecond: date.getMilliseconds(),
     weekday: date.getDay(),
   };
 }
@@ -318,6 +393,9 @@ function createTimeZoneCalendarFormatter(timeZone: string) {
     month: "numeric",
     day: "numeric",
     hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    fractionalSecondDigits: 3,
     hourCycle: "h23",
     weekday: "short",
   });
@@ -336,6 +414,9 @@ function getTimeZoneCalendarParts(
     month: Number(part("month")),
     day: Number(part("day")),
     hour: Number(part("hour")),
+    minute: Number(part("minute")),
+    second: Number(part("second")),
+    millisecond: Number(part("fractionalSecond") ?? 0),
     weekday: weekdayByShortName[part("weekday") ?? "Sun"] ?? 0,
   };
 }

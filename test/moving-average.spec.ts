@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { DefaultFormatter } from "../src/chart/formatter";
 import { FinancialChart } from "../src/chart/financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
@@ -13,7 +14,10 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-function createChart(data: ChartData[]) {
+function createChart(
+  data: ChartData[],
+  overrides: Partial<ConstructorParameters<typeof FinancialChart>[2]> = {},
+) {
   const container = document.createElement("div");
   container.style.width = "800px";
   container.style.height = "400px";
@@ -33,6 +37,7 @@ function createChart(data: ChartData[]) {
       maxZoom: 10,
       volume: false,
       locale: "en-US",
+      ...overrides,
     },
   );
   chart.draw(data);
@@ -45,6 +50,99 @@ function waitForRedraw() {
 }
 
 describe("MovingAverageIndicator", () => {
+  it("updates locale strings and formatter timezone together", async () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const formatter = new DefaultFormatter({
+      locale: "en-US",
+      timeZone: "UTC",
+    });
+    const chart = createChart(
+      [
+        { time: start, close: 10 },
+        { time: start + 60_000, close: 12 },
+        { time: start + 120_000, close: 14 },
+      ],
+      { formatter, timeZone: "UTC" },
+    );
+    const indicator = new MovingAverageIndicator();
+
+    chart.addIndicator(indicator);
+    await waitForRedraw();
+
+    expect(chart.getOptions().timeZone).toBe("UTC");
+    expect(chart.getFormatter().getTimeZone?.()).toBe("UTC");
+    expect(
+      indicator.getLabelContainer().querySelector("[data-id=extra]")
+        ?.textContent,
+    ).toBe("5 close");
+
+    chart.updateLocalization({
+      locale: "hu-HU",
+      timeZone: "Europe/Budapest",
+      localeValues: {
+        "hu-HU": {
+          common: {
+            sources: {
+              open: "nyitó",
+              high: "magas",
+              low: "alacsony",
+              close: "záró",
+              volume: "volumen",
+            },
+          },
+          indicators: {
+            actions: {
+              show: "Megjelenítés",
+              hide: "Elrejtés",
+              settings: "Beállítások",
+              remove: "Törlés",
+            },
+          },
+        },
+      },
+    });
+
+    expect(chart.getOptions().locale).toBe("hu-HU");
+    expect(chart.getOptions().timeZone).toBe("Europe/Budapest");
+    expect(chart.getFormatter().getLocale()).toBe("hu-HU");
+    expect(chart.getFormatter().getTimeZone?.()).toBe("Europe/Budapest");
+    expect(
+      indicator.getLabelContainer().querySelector("[data-id=extra]")
+        ?.textContent,
+    ).toBe("5 záró");
+    expect(
+      (
+        indicator
+          .getLabelContainer()
+          .querySelector("[data-id=settings]") as HTMLButtonElement
+      ).title,
+    ).toBe("Beállítások");
+  });
+
+  it("can replace the formatter at runtime", () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 12 },
+      { time: start + 120_000, close: 14 },
+    ]);
+    const formatter = new DefaultFormatter({
+      locale: "de-DE",
+      timeZone: "Europe/Berlin",
+    });
+
+    chart.updateLocalization({ formatter });
+
+    expect(chart.getFormatter()).toBe(formatter);
+    expect(chart.getOptions().locale).toBe("de-DE");
+    expect(chart.getOptions().timeZone).toBe("Europe/Berlin");
+    expect(chart.getFormatter().getLocale()).toBe("de-DE");
+
+    chart.updateLocalization({ timeZone: "Europe/Budapest" });
+
+    expect(chart.getFormatter().getTimeZone?.()).toBe("Europe/Budapest");
+  });
+
   it("uses its configured theme color for the line stroke", async () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([

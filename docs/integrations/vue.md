@@ -39,7 +39,10 @@ onMounted(() => {
   lastTimestamp.value = props.data.at(-1)?.time ?? null;
   chart.value = instance;
 
-  chart.value.updateLocale(appLocale.value, localeValues);
+  chart.value.updateLocalization({
+    locale: appLocale.value,
+    localeValues
+  });
 });
 
 watch(
@@ -61,7 +64,10 @@ watch(
 );
 
 watch(appLocale, (locale) => {
-  chart.value?.updateLocale(locale, localeValues);
+  chart.value?.updateLocalization({
+    locale,
+    localeValues
+  });
 });
 
 onBeforeUnmount(() => chart.value?.dispose());

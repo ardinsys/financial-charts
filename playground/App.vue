@@ -310,7 +310,7 @@ onMounted(() => {
   }, 1000);
 
   // setTimeout(() => {
-  //   chart.updateLocale("en-US");
+  //   chart.updateLocalization({ locale: "en-US" });
   // }, 5000);
 
   // setTimeout(() => {
