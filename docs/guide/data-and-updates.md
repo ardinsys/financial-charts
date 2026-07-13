@@ -58,7 +58,9 @@ remain visually compact.
 
 ## Reading mapped data
 
-`chart.getData()` returns the dataset **after** it has been mapped to the active `stepSize`. Use it to hydrate UI lists, run calculations, or persist state without reprocessing your raw feed.
+`chart.getData()` returns a frozen readonly snapshot of the dataset **after** it
+has been mapped to the active `stepSize`. Use it to hydrate UI lists, run
+calculations, or persist state without reprocessing your raw feed.
 
 ## Handling late or out-of-order data
 

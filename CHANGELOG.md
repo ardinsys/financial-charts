@@ -66,6 +66,9 @@
   its convenient built-in set.
 - `getOptions()` returns an immutable resolved configuration snapshot instead of
   the chart's mutable internal options object.
+- Public data, pane, indicator, and plugin collection getters return frozen
+  readonly snapshots. Duplicate extension registrations are rejected, add
+  methods return idempotent disposers, and chart disposal is idempotent.
 - Built-in controllers are registered on each chart instance by default, keeping
   hello-world chart setup small while avoiding global mutable registries.
 - Indicator authoring now centers on `getDrawingContext()` for overlays and

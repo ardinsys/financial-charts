@@ -261,9 +261,10 @@ export class FinancialChart extends EventEmitter {
   private readonly paneDividerHandles: PaneDividerHandle[] = [];
   private paneResizeDrag?: PaneResizeDrag;
 
-  protected indicators: Indicator<any, any>[] = [];
-  protected panaledIndicators: PaneledIndicator<any, any>[] = [];
-  private plugins: ChartPlugin[] = [];
+  private readonly indicators: Indicator<any, any>[] = [];
+  private readonly paneledIndicators: PaneledIndicator<any, any>[] = [];
+  private readonly plugins: ChartPlugin[] = [];
+  private disposed = false;
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
@@ -310,7 +311,7 @@ export class FinancialChart extends EventEmitter {
     "drawings"
   ];
 
-  private lastXGridCoords: number[] = [];
+  private lastXGridCoords: readonly number[] = Object.freeze([]);
 
   public registerController(controllerClass: ControllerConstructor) {
     const id = this.getRegistrationId(controllerClass);
@@ -463,8 +464,8 @@ export class FinancialChart extends EventEmitter {
     return this.optionsSnapshot;
   }
 
-  getData() {
-    return this.dataStore.toArray();
+  getData(): readonly ChartData[] {
+    return freezeSnapshot(this.dataStore.toArray());
   }
 
   private getTimeScaleOptions(): DataScaleTimeOptions {
@@ -669,20 +670,20 @@ export class FinancialChart extends EventEmitter {
     return this.options.theme;
   }
 
-  getIndicators() {
-    return this.indicators;
+  getIndicators(): readonly Indicator<any, any>[] {
+    return freezeSnapshot([...this.indicators]);
   }
 
-  getPaneledIndicators() {
-    return this.panaledIndicators;
+  getPaneledIndicators(): readonly PaneledIndicator<any, any>[] {
+    return freezeSnapshot([...this.paneledIndicators]);
   }
 
-  getAllIndicators() {
-    return [...this.indicators, ...this.panaledIndicators];
+  getAllIndicators(): readonly Indicator<any, any>[] {
+    return freezeSnapshot([...this.indicators, ...this.paneledIndicators]);
   }
 
-  getPanes() {
-    return [...this.panes];
+  getPanes(): readonly Pane[] {
+    return freezeSnapshot([...this.panes]);
   }
 
   getMainPane() {
@@ -714,27 +715,49 @@ export class FinancialChart extends EventEmitter {
     this.applyPaneLayout({ redraw: true, immediate: true });
   }
 
-  getPlugins() {
-    return [...this.plugins];
+  getPlugins(): readonly ChartPlugin[] {
+    return freezeSnapshot([...this.plugins]);
   }
 
-  addPlugin(plugin: ChartPlugin) {
+  addPlugin(plugin: ChartPlugin): () => void {
+    if (this.disposed) {
+      throw new Error("Cannot add a plugin to a disposed chart.");
+    }
+    if (this.plugins.includes(plugin)) {
+      throw new Error("Plugin instance is already attached to this chart.");
+    }
+    if (this.plugins.some((item) => item.key === plugin.key)) {
+      throw new Error(
+        `Plugin key "${plugin.key}" is already registered on this chart.`
+      );
+    }
+
     this.plugins.push(plugin);
     try {
       plugin.attach(this.createChartContext());
       this.requestRedraw(this.allRedrawParts);
     } catch (error) {
-      this.plugins = this.plugins.filter((item) => item !== plugin);
+      const index = this.plugins.indexOf(plugin);
+      if (index !== -1) this.plugins.splice(index, 1);
       throw error;
     }
+
+    return () => {
+      this.removePlugin(plugin);
+    };
   }
 
-  removePlugin(plugin: ChartPlugin) {
-    if (!this.plugins.includes(plugin)) return;
+  removePlugin(plugin: ChartPlugin): boolean {
+    const index = this.plugins.indexOf(plugin);
+    if (index === -1) return false;
 
-    plugin.detach?.();
-    this.plugins = this.plugins.filter((item) => item !== plugin);
-    this.requestRedraw(this.allRedrawParts);
+    this.plugins.splice(index, 1);
+    try {
+      plugin.detach?.();
+    } finally {
+      this.requestRedraw(this.allRedrawParts);
+    }
+    return true;
   }
 
   public emit<K extends keyof ChartEventMap>(event: K, data: ChartEventMap[K]) {
@@ -903,7 +926,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private getDefaultIndicatorPaneHeight(totalHeight: number) {
-    const indicatorCount = this.panaledIndicators.length;
+    const indicatorCount = this.paneledIndicators.length;
     if (indicatorCount === 0) return 0;
 
     const canUseQuarter =
@@ -919,10 +942,10 @@ export class FinancialChart extends EventEmitter {
     const desired = new Map<Pane, number>();
     desired.set(
       this.mainPane,
-      totalHeight - indicatorHeight * this.panaledIndicators.length
+      totalHeight - indicatorHeight * this.paneledIndicators.length
     );
 
-    for (const indicator of this.panaledIndicators) {
+    for (const indicator of this.paneledIndicators) {
       const pane = this.paneByIndicator.get(indicator);
       if (pane) desired.set(pane, indicatorHeight);
     }
@@ -1054,7 +1077,7 @@ export class FinancialChart extends EventEmitter {
     }
 
     if (resizeIndicators) {
-      for (const indicator of this.panaledIndicators) {
+      for (const indicator of this.paneledIndicators) {
         const pane = this.paneByIndicator.get(indicator);
         if (!pane) continue;
         indicator.resize(this.getPaneInitParams(pane));
@@ -1202,7 +1225,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private refreshIndicatorLabels(dataTime?: number) {
-    for (const indicator of this.panaledIndicators) {
+    for (const indicator of this.paneledIndicators) {
       indicator.refreshLabel(dataTime);
     }
     for (const indicator of this.indicators) {
@@ -1589,7 +1612,7 @@ export class FinancialChart extends EventEmitter {
     for (const indicator of this.indicators) {
       indicator.refreshLabel();
     }
-    for (const indicator of this.panaledIndicators) {
+    for (const indicator of this.paneledIndicators) {
       indicator.refreshLabel();
     }
 
@@ -1762,15 +1785,16 @@ export class FinancialChart extends EventEmitter {
 
     const xAxisCtx = this.getContext("x-label");
     xAxisCtx.font = `${this.options.theme.xAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
-    this.lastXGridCoords = [];
+    const xGridCoords: number[] = [];
 
     for (const label of this.getXAxisLabels(xAxisCtx)) {
       mainCtx.beginPath();
       mainCtx.moveTo(label.x, 0);
       mainCtx.lineTo(label.x, mainSize.height);
       mainCtx.stroke();
-      this.lastXGridCoords.push(label.x);
+      xGridCoords.push(label.x);
     }
+    this.lastXGridCoords = freezeSnapshot(xGridCoords);
   }
 
   private drawControllerAxes() {
@@ -2163,14 +2187,25 @@ export class FinancialChart extends EventEmitter {
   public addIndicator(
     indicator: Indicator<any, any>,
     options: IndicatorMutationOptions = {}
-  ) {
+  ): () => void {
+    const emit = options.emit ?? true;
+    if (this.disposed) {
+      throw new Error("Cannot add an indicator to a disposed chart.");
+    }
+    if (
+      this.indicators.includes(indicator) ||
+      this.paneledIndicators.some((item) => item === indicator)
+    ) {
+      throw new Error("Indicator instance is already attached to this chart.");
+    }
+
     if (this.isPaneledIndicator(indicator)) {
       // Main chart must have at least 25% of the height
       // every indicator by default gets 25% of the height
       // if it is possible. Otherwise they equally get less.
 
       indicator.attach(this.createChartContext());
-      this.panaledIndicators.push(indicator);
+      this.paneledIndicators.push(indicator);
       const pane = this.createPaneForIndicator(indicator);
       this.applyPaneLayout({
         resizeCanvases: false,
@@ -2185,16 +2220,19 @@ export class FinancialChart extends EventEmitter {
       this.requestRedraw(this.allRedrawParts);
       indicator.refreshLabel();
     } else {
-      this.indicators.push(indicator);
       indicator.attach(this.createChartContext());
+      this.indicators.push(indicator);
       this.requestRedraw(this.allRedrawParts);
       this.indicatorLabelContainer.appendChild(indicator.getLabelContainer());
       indicator.refreshLabel();
     }
 
-    if (options.emit ?? true) {
+    if (emit) {
       this.emit("indicator-add", { indicator });
     }
+    return () => {
+      this.removeIndicator(indicator, { emit });
+    };
   }
 
   /**
@@ -2207,33 +2245,41 @@ export class FinancialChart extends EventEmitter {
   public removeIndicator(
     indicator: Indicator<any, any>,
     options: IndicatorMutationOptions = {}
-  ) {
+  ): boolean {
     if (this.isPaneledIndicator(indicator)) {
-      if (!this.panaledIndicators.includes(indicator)) return false;
+      const index = this.paneledIndicators.indexOf(indicator);
+      if (index === -1) return false;
 
-      indicator.detach();
-      if (indicator.getContainer().parentElement === this.container) {
-        this.container.removeChild(indicator.getContainer());
+      this.paneledIndicators.splice(index, 1);
+      try {
+        indicator.detach();
+      } finally {
+        if (indicator.getContainer().parentElement === this.container) {
+          this.container.removeChild(indicator.getContainer());
+        }
+        this.removePaneForIndicator(indicator);
+        this.recalcPaneledIndicators();
+        this.requestRedraw(this.allRedrawParts);
       }
-      this.panaledIndicators = this.panaledIndicators.filter(
-        (i) => i !== indicator
-      );
-      this.removePaneForIndicator(indicator);
-      this.recalcPaneledIndicators();
-      this.requestRedraw(this.allRedrawParts);
     } else {
-      if (!this.indicators.includes(indicator)) return false;
+      const index = this.indicators.indexOf(indicator);
+      if (index === -1) return false;
 
-      indicator.detach();
-      this.visibleScale.removeModifier(indicator);
-      if (
-        indicator.getLabelContainer().parentElement ===
-        this.indicatorLabelContainer
-      ) {
-        this.indicatorLabelContainer.removeChild(indicator.getLabelContainer());
+      this.indicators.splice(index, 1);
+      try {
+        indicator.detach();
+      } finally {
+        this.visibleScale.removeModifier(indicator);
+        if (
+          indicator.getLabelContainer().parentElement ===
+          this.indicatorLabelContainer
+        ) {
+          this.indicatorLabelContainer.removeChild(
+            indicator.getLabelContainer()
+          );
+        }
+        this.requestRedraw(this.allRedrawParts);
       }
-      this.indicators = this.indicators.filter((i) => i !== indicator);
-      this.requestRedraw(this.allRedrawParts);
     }
 
     if (options.emit ?? true) {
@@ -2375,7 +2421,7 @@ export class FinancialChart extends EventEmitter {
     for (const indicator of this.indicators) {
       indicator.draw();
     }
-    for (const indicator of this.panaledIndicators) {
+    for (const indicator of this.paneledIndicators) {
       indicator.draw();
     }
   }
@@ -2538,17 +2584,23 @@ export class FinancialChart extends EventEmitter {
    * Properly dispose the chart.
    */
   public dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+
+    const indicators = [...this.indicators, ...this.paneledIndicators];
+    const plugins = [...this.plugins].reverse();
+
     this.stopPaneResize();
     for (const dispose of this.eventDisposers.splice(0)) dispose();
-    for (const indicator of this.getAllIndicators()) {
+    for (const indicator of indicators) {
       indicator.detach();
     }
-    for (const plugin of [...this.plugins].reverse()) {
+    for (const plugin of plugins) {
       plugin.detach?.();
     }
-    this.indicators = [];
-    this.panaledIndicators = [];
-    this.plugins = [];
+    this.indicators.length = 0;
+    this.paneledIndicators.length = 0;
+    this.plugins.length = 0;
     this.paneByIndicator.clear();
     this.indicatorByPane.clear();
     this.removeAllListeners();
@@ -2732,14 +2784,14 @@ export class FinancialChart extends EventEmitter {
     ctx.textBaseline = "middle";
 
     const labels = this.getXAxisLabels(ctx);
-    this.lastXGridCoords = labels.map((label) => label.x);
+    this.lastXGridCoords = freezeSnapshot(labels.map((label) => label.x));
 
     for (const label of labels) {
       ctx.fillText(label.label, label.start, sizes.height - 15);
     }
   }
 
-  private lastVisibleDataPoints: ChartData[] = [];
+  private lastVisibleDataPoints: readonly ChartData[] = Object.freeze([]);
 
   recalculateVisibleScale() {
     this.refreshIndexBounds();
@@ -2765,15 +2817,15 @@ export class FinancialChart extends EventEmitter {
     );
     this.syncMainPanePriceScale();
 
-    this.lastVisibleDataPoints = visibleDataPoints;
-    return visibleDataPoints;
-  }
-
-  getLastVisibleDataPoints() {
+    this.lastVisibleDataPoints = freezeSnapshot(visibleDataPoints);
     return this.lastVisibleDataPoints;
   }
 
-  getLastXGridCoords() {
+  getLastVisibleDataPoints(): readonly ChartData[] {
+    return this.lastVisibleDataPoints;
+  }
+
+  getLastXGridCoords(): readonly number[] {
     return this.lastXGridCoords;
   }
 
@@ -2853,4 +2905,8 @@ function freezeDeep<T>(value: T): DeepReadonly<T> {
     freezeDeep(nested);
   }
   return Object.freeze(value) as DeepReadonly<T>;
+}
+
+function freezeSnapshot<T>(values: T[]): readonly T[] {
+  return Object.freeze(values);
 }

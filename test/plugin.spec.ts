@@ -145,6 +145,96 @@ describe("plugin lifecycle", () => {
     expect(plugin.detach).toHaveBeenCalledOnce();
   });
 
+  it("returns immutable snapshots for public collections", () => {
+    const { chart, data } = createChart();
+    const overlay = new MovingAverageIndicator();
+    const paneled = new TestIndicator();
+    const plugin: ChartPlugin = {
+      key: "snapshot-probe",
+      attach: vi.fn()
+    };
+
+    chart.draw(data);
+    chart.addIndicator(overlay);
+    chart.addIndicator(paneled);
+    chart.addPlugin(plugin);
+
+    const snapshots: readonly (readonly unknown[])[] = [
+      chart.getData(),
+      chart.getLastVisibleDataPoints(),
+      chart.getLastXGridCoords(),
+      chart.getIndicators(),
+      chart.getPaneledIndicators(),
+      chart.getAllIndicators(),
+      chart.getPanes(),
+      chart.getPlugins()
+    ];
+
+    for (const snapshot of snapshots) {
+      expect(Object.isFrozen(snapshot)).toBe(true);
+      expect(() => (snapshot as unknown[]).push({})).toThrow(TypeError);
+    }
+
+    expect(chart.getLastVisibleDataPoints()).toBe(
+      chart.getLastVisibleDataPoints()
+    );
+    expect(chart.getLastXGridCoords()).toBe(chart.getLastXGridCoords());
+    expect(chart.getData()).toHaveLength(data.length);
+    expect(chart.getIndicators()).toEqual([overlay]);
+    expect(chart.getPaneledIndicators()).toEqual([paneled]);
+    expect(chart.getPlugins()).toEqual([plugin]);
+  });
+
+  it("rejects duplicate plugin registrations and indicator instances", () => {
+    const { chart } = createChart();
+    const plugin: ChartPlugin = {
+      key: "unique-probe",
+      attach: vi.fn()
+    };
+    const duplicateKeyPlugin: ChartPlugin = {
+      key: "unique-probe",
+      attach: vi.fn()
+    };
+    const indicator = new MovingAverageIndicator();
+
+    chart.addPlugin(plugin);
+    chart.addIndicator(indicator);
+
+    expect(() => chart.addPlugin(plugin)).toThrow(
+      "Plugin instance is already attached to this chart."
+    );
+    expect(() => chart.addPlugin(duplicateKeyPlugin)).toThrow(
+      'Plugin key "unique-probe" is already registered on this chart.'
+    );
+    expect(() => chart.addIndicator(indicator)).toThrow(
+      "Indicator instance is already attached to this chart."
+    );
+    expect(plugin.attach).toHaveBeenCalledOnce();
+    expect(duplicateKeyPlugin.attach).not.toHaveBeenCalled();
+  });
+
+  it("returns idempotent disposers from extension registration", () => {
+    const { chart } = createChart();
+    const indicator = new DetachProbeIndicator();
+    const plugin: ChartPlugin = {
+      key: "disposer-probe",
+      attach: vi.fn(),
+      detach: vi.fn()
+    };
+
+    const removeIndicator = chart.addIndicator(indicator);
+    const removePlugin = chart.addPlugin(plugin);
+
+    removeIndicator();
+    removeIndicator();
+    removePlugin();
+    removePlugin();
+    expect(chart.removeIndicator(indicator)).toBe(false);
+    expect(chart.removePlugin(plugin)).toBe(false);
+    expect(indicator.detachCalls).toBe(1);
+    expect(plugin.detach).toHaveBeenCalledOnce();
+  });
+
   it("exposes canvas and event helpers through the plugin context", () => {
     const { chart } = createChart();
     let attachedContext: Parameters<ChartPlugin["attach"]>[0] | undefined;
@@ -270,10 +360,17 @@ describe("plugin lifecycle", () => {
     expect(chart.listenerCount("click")).toBe(1);
 
     chart.dispose();
+    chart.dispose();
     charts.pop();
 
     expect(indicator.detachCalls).toBe(1);
     expect(plugin.detach).toHaveBeenCalledOnce();
     expect(chart.listenerCount("click")).toBe(0);
+    expect(() => chart.addIndicator(new DetachProbeIndicator())).toThrow(
+      "Cannot add an indicator to a disposed chart."
+    );
+    expect(() => chart.addPlugin(plugin)).toThrow(
+      "Cannot add a plugin to a disposed chart."
+    );
   });
 });

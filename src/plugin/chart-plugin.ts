@@ -34,11 +34,11 @@ export interface ChartContext {
   emit<K extends keyof ChartEventMap>(event: K, data: ChartEventMap[K]): void;
   getCanvasContext(layer: ChartCanvasLayer): CanvasRenderingContext2D;
   getLogicalCanvas(layer: ChartCanvasLayer): { width: number; height: number };
-  getPanes(): Pane[];
+  getPanes(): readonly Pane[];
   getPlugin<TPlugin extends ChartPlugin = ChartPlugin>(
     key: string
   ): TPlugin | undefined;
-  getPlugins(): ChartPlugin[];
+  getPlugins(): readonly ChartPlugin[];
   getVisibleTimeWindow(): TimeRange;
   getVisibleTimeRange(): TimeRange;
   on<K extends keyof ChartEventMap>(

@@ -180,6 +180,10 @@ What to update:
   `FinancialChart` from `@ardinsys/financial-charts/core` and each required
   controller from its `@ardinsys/financial-charts/controllers/*` entry point.
   The root entry remains the convenient all-controller setup.
+- Collection getters now return frozen readonly snapshots. Plugin keys and
+  plugin/indicator instances cannot be registered twice on one chart.
+  `addPlugin()` and `addIndicator()` return idempotent disposers, while their
+  remove counterparts return whether an attached extension was removed.
 
 ```ts
 const chart = new FinancialChart(root, "auto", {

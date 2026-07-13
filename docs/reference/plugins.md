@@ -2,6 +2,9 @@
 
 Plugins are extension objects attached with `chart.addPlugin(plugin)`. They can render into chart layers, listen to data and pointer changes, emit chart events, and clean up in `detach()`.
 
+Each attached plugin must have a unique `key`, and the same plugin instance
+cannot be attached twice. `addPlugin()` returns an idempotent disposer.
+
 ```ts
 import type { ChartContext, ChartPlugin } from "@ardinsys/financial-charts";
 
@@ -53,9 +56,9 @@ chart.addPlugin(new WatermarkPlugin());
 | `emit(event, data)`               | Emits a chart event.                                                                                           |
 | `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `grid`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`. |
 | `getLogicalCanvas(layer)`         | Returns logical pixel size for the layer.                                                                      |
-| `getPanes()`                      | Returns pane models, including the main pane and paneled indicators.                                           |
-| `getPlugin(key)`                  | Returns the first attached plugin with the matching `key`, useful for plugin-to-plugin integration.            |
-| `getPlugins()`                    | Returns all currently attached plugins.                                                                        |
+| `getPanes()`                      | Returns a readonly pane snapshot, including the main pane and paneled indicators.                             |
+| `getPlugin(key)`                  | Returns the attached plugin with the matching unique `key`, useful for plugin-to-plugin integration.          |
+| `getPlugins()`                    | Returns a readonly snapshot of currently attached plugins.                                                     |
 | `getVisibleTimeWindow()`          | Returns the precise fractional visible timestamp window for pan/zoom replication.                              |
 | `getVisibleTimeRange()`           | Returns the current visible timestamp range.                                                                   |
 | `on(event, listener)`             | Subscribes to chart events and returns an unsubscribe function.                                                |

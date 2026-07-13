@@ -124,7 +124,7 @@ type LocaleValues = {
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `draw(data)`           | Replaces the full dataset and redraws the chart. Call this when symbols or timeframes change.                                                           |
 | `drawNextPoint(point)` | Streams data: appends a new candle or merges into the latest slot when the timestamp falls in the same `stepSize` bucket. Keeps zoom/pan when possible. |
-| `getData()`            | Returns the current dataset after it has been mapped to the active `stepSize`.                                                                          |
+| `getData()`            | Returns a frozen readonly snapshot of the dataset after it has been mapped to the active `stepSize`.                                                    |
 
 `drawNextPoint` behavior:
 
@@ -209,10 +209,10 @@ root entry.
 | `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
 | `getOptions()`                                                      | Returns an immutable data-only snapshot of the resolved chart configuration.               |
 | `getTheme()`                                                        | Returns the active `ChartTheme`.                                                            |
-| `getPanes()` / `getMainPane()`                                      | Lists pane models or returns the main price pane.                                           |
+| `getPanes()` / `getMainPane()`                                      | Returns a readonly pane snapshot or the main price pane.                                    |
 | `getPaneHeights()`                                                  | Returns current logical pixel heights keyed by pane id.                                     |
-| `getPlugins()`                                                      | Lists attached plugins.                                                                     |
-| `getIndicators()` / `getPaneledIndicators()` / `getAllIndicators()` | Lists overlay indicators, paneled indicators, or both combined.                             |
+| `getPlugins()`                                                      | Returns a readonly snapshot of attached plugins.                                            |
+| `getIndicators()` / `getPaneledIndicators()` / `getAllIndicators()` | Returns readonly snapshots of overlay, paneled, or all indicators.                          |
 | `getCrosshairState()`                                               | Returns the current crosshair state, or `undefined` when hidden.                            |
 
 `getOptions()` returns controller, timeframe, theme, and localization data. Its
@@ -223,14 +223,17 @@ available to extensions through `ChartContext`.
 ### Indicator management
 
 ```ts
-chart.addIndicator(indicator: Indicator): void;
-chart.removeIndicator(indicator: Indicator): void;
+chart.addIndicator(indicator: Indicator): () => void;
+chart.removeIndicator(indicator: Indicator): boolean;
 ```
 
 Create indicators directly with `new MyIndicator(args)` and pass the instance to
 `addIndicator`. Use overlays for drawings on top of price data and
 `PaneledIndicator` implementations when you need a dedicated sub-chart. See the
 [Indicators reference](./indicators.md) for implementation details.
+
+The disposer returned by `addIndicator()` removes that instance once; later
+calls are no-ops. Adding an already attached instance throws.
 
 Paneled indicator heights can be resized by dragging the pane divider. Use
 `chart.setPaneHeights({ [paneId]: height })` to restore or persist a custom
@@ -239,8 +242,8 @@ layout programmatically; values are clamped to pane minimum heights.
 ### Plugins
 
 ```ts
-chart.addPlugin(plugin: ChartPlugin): void;
-chart.removePlugin(plugin: ChartPlugin): void;
+chart.addPlugin(plugin: ChartPlugin): () => void;
+chart.removePlugin(plugin: ChartPlugin): boolean;
 ```
 
 Plugins receive a `ChartContext` during `attach(ctx)`, can render via
@@ -249,6 +252,10 @@ Plugins receive a `ChartContext` during `attach(ctx)`, can render via
 Use the context's `getCanvasContext(layer)`, `getLogicalCanvas(layer)`,
 `getPanes()`, `emit(...)`, and `requestRedraw(...)` helpers for extension-level
 rendering and events.
+
+Plugin instances and keys must be unique within a chart. The disposer returned
+by `addPlugin()` is idempotent; direct removal likewise returns whether the
+plugin was attached.
 
 Register render hooks with `ctx.onRenderStage(stage, callback)` when you need a
 specific stage. Stages run in this order:
