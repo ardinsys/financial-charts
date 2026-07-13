@@ -4,7 +4,10 @@ import type {
   PaneledIndicator,
   InitParams
 } from "../indicators/paneled-indicator";
-import { Indicator } from "../indicators/indicator";
+import {
+  Indicator,
+  type IndicatorInvalidationOptions
+} from "../indicators/indicator";
 import {
   DataScaleModel,
   DataScaleTimeOptions
@@ -300,6 +303,10 @@ export class FinancialChart extends EventEmitter {
   private readonly indicators: Indicator<any, any>[] = [];
   private readonly paneledIndicators: PaneledIndicator<any, any>[] = [];
   private readonly plugins: ChartPlugin[] = [];
+  private readonly extensionAbortControllers = new WeakMap<
+    ChartPlugin,
+    AbortController
+  >();
   private disposed = false;
 
   protected yLabelWidth = 80;
@@ -844,10 +851,11 @@ export class FinancialChart extends EventEmitter {
 
     this.plugins.push(plugin);
     try {
-      plugin.attach(this.createChartContext());
+      plugin.attach(this.createChartContext(plugin));
       this.deliverInitialExtensionState(plugin);
       this.requestRedraw(this.allRedrawParts);
     } catch (error) {
+      this.disposeExtensionScope(plugin);
       const index = this.plugins.indexOf(plugin);
       if (index !== -1) this.plugins.splice(index, 1);
       throw error;
@@ -863,6 +871,7 @@ export class FinancialChart extends EventEmitter {
     if (index === -1) return false;
 
     this.plugins.splice(index, 1);
+    this.disposeExtensionScope(plugin);
     try {
       plugin.detach?.();
     } finally {
@@ -885,10 +894,13 @@ export class FinancialChart extends EventEmitter {
     }
   }
 
-  private createChartContext(): ChartContext {
+  private createChartContext(extension: ChartPlugin): ChartContext {
+    const abortController = new AbortController();
+    this.extensionAbortControllers.set(extension, abortController);
     return {
       chart: this,
       domAdapter: this.domAdapter,
+      signal: abortController.signal,
       emit: (event, data) => this.emit(event, data),
       getCanvasContext: (layer) => this.getContext(layer),
       getLogicalCanvas: (layer) => this.getLogicalCanvas(layer),
@@ -906,6 +918,11 @@ export class FinancialChart extends EventEmitter {
       setCrosshair: (options) => this.setCrosshair(options),
       clearCrosshair: () => this.clearCrosshair()
     };
+  }
+
+  private disposeExtensionScope(extension: ChartPlugin) {
+    this.extensionAbortControllers.get(extension)?.abort();
+    this.extensionAbortControllers.delete(extension);
   }
 
   private getLifecycleExtensions(): ChartPlugin[] {
@@ -973,6 +990,16 @@ export class FinancialChart extends EventEmitter {
 
   private notifyExtensionsOptionsChanged(event: ChartOptionsChangeEvent) {
     this.forEachLifecycleExtension((extension) => {
+      const indicator = extension as Indicator<any, any>;
+      if (
+        this.indicators.includes(indicator) ||
+        this.paneledIndicators.includes(
+          indicator as PaneledIndicator<any, any>
+        )
+      ) {
+        indicator.applyChartOptions(event);
+      }
+      if (!this.isExtensionAttached(extension)) return;
       extension.onOptionsChanged?.(event);
     });
   }
@@ -2498,6 +2525,31 @@ export class FinancialChart extends EventEmitter {
     this.applyPaneLayout();
   }
 
+  /** @internal Called by an attached indicator's protected invalidation helper. */
+  public invalidateIndicator(
+    indicator: Indicator<any, any>,
+    options: IndicatorInvalidationOptions = {}
+  ): void {
+    if (!this.isExtensionAttached(indicator)) return;
+
+    const redrawParts = new Set<ChartRedrawPart>();
+    if (options.scale && this.dataStore.length > 0) {
+      this.recalculateVisibleScale();
+      redrawParts.add("controller");
+      redrawParts.add("indicators");
+      redrawParts.add("crosshair");
+    }
+    if (options.label ?? true) {
+      indicator.refreshLabel(
+        this.pointerTime === -1 ? undefined : this.pointerTime
+      );
+    }
+    if (options.drawing ?? true) redrawParts.add("indicators");
+    if (options.crosshair ?? true) redrawParts.add("crosshair");
+
+    if (redrawParts.size > 0) this.requestRedraw([...redrawParts]);
+  }
+
   /**
    * Adds and draws a new indicator.
    *
@@ -2518,12 +2570,19 @@ export class FinancialChart extends EventEmitter {
       throw new Error("Indicator instance is already attached to this chart.");
     }
 
+    try {
+      indicator.attach(this.createChartContext(indicator));
+    } catch (error) {
+      this.disposeExtensionScope(indicator);
+      indicator.releaseAttachment();
+      throw error;
+    }
+
     if (this.isPaneledIndicator(indicator)) {
       // Main chart must have at least 25% of the height
       // every indicator by default gets 25% of the height
       // if it is possible. Otherwise they equally get less.
 
-      indicator.attach(this.createChartContext());
       this.paneledIndicators.push(indicator);
       const pane = this.createPaneForIndicator(indicator);
       this.applyPaneLayout({
@@ -2539,7 +2598,6 @@ export class FinancialChart extends EventEmitter {
       this.requestRedraw(this.allRedrawParts);
       indicator.refreshLabel();
     } else {
-      indicator.attach(this.createChartContext());
       this.indicators.push(indicator);
       this.requestRedraw(this.allRedrawParts);
       this.indicatorLabelContainer.appendChild(indicator.getLabelContainer());
@@ -2580,9 +2638,11 @@ export class FinancialChart extends EventEmitter {
       if (index === -1) return false;
 
       this.paneledIndicators.splice(index, 1);
+      this.disposeExtensionScope(indicator);
       try {
         indicator.detach();
       } finally {
+        indicator.releaseAttachment();
         if (indicator.getContainer().parentElement === this.container) {
           this.container.removeChild(indicator.getContainer());
         }
@@ -2595,9 +2655,11 @@ export class FinancialChart extends EventEmitter {
       if (index === -1) return false;
 
       this.indicators.splice(index, 1);
+      this.disposeExtensionScope(indicator);
       try {
         indicator.detach();
       } finally {
+        indicator.releaseAttachment();
         this.visibleScale.removeModifier(indicator);
         if (
           indicator.getLabelContainer().parentElement ===
@@ -2928,9 +2990,15 @@ export class FinancialChart extends EventEmitter {
     this.stopPaneResize();
     for (const dispose of this.eventDisposers.splice(0)) dispose();
     for (const indicator of indicators) {
-      indicator.detach();
+      this.disposeExtensionScope(indicator);
+      try {
+        indicator.detach();
+      } finally {
+        indicator.releaseAttachment();
+      }
     }
     for (const plugin of plugins) {
+      this.disposeExtensionScope(plugin);
       plugin.detach?.();
     }
     this.indicators.length = 0;
@@ -3133,6 +3201,7 @@ export class FinancialChart extends EventEmitter {
     );
 
     for (const indicator of this.indicators) {
+      this.visibleScale.removeModifier(indicator);
       const modifier = indicator.getModifier(visibleTimeRange);
       if (modifier) {
         this.visibleScale.addModifier(modifier);

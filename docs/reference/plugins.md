@@ -66,6 +66,7 @@ drawn by the ordinary plugin pass.
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `chart`                           | The `FinancialChart` instance. Prefer context helpers for extension work when available.                       |
 | `domAdapter`                      | Active `ChartDOMAdapter`, useful when plugins need app-owned DOM chrome.                                       |
+| `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()` and on chart disposal.                              |
 | `emit(event, data)`               | Emits a chart event.                                                                                           |
 | `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `grid`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`. |
 | `getLogicalCanvas(layer)`         | Returns logical pixel size for the layer.                                                                      |

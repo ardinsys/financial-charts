@@ -1,4 +1,7 @@
-import type { FinancialChart } from "../chart/financial-chart";
+import type {
+  ChartOptionsChangeEvent,
+  FinancialChart
+} from "../chart/financial-chart";
 import type { ChartData, TimeRange } from "../chart/types";
 import { mergeThemes } from "../chart/themes";
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
@@ -67,6 +70,17 @@ export interface IndicatorUpdateOptions {
   emit?: boolean;
 }
 
+export interface IndicatorInvalidationOptions {
+  /** Recalculate the visible price scale before redrawing. */
+  scale?: boolean;
+  /** Rebuild the adapter-rendered label. Defaults to `true`. */
+  label?: boolean;
+  /** Redraw the indicator layer. Defaults to `true`. */
+  drawing?: boolean;
+  /** Redraw crosshair content derived from the indicator. Defaults to `true`. */
+  crosshair?: boolean;
+}
+
 export abstract class Indicator<
   TTheme extends object,
   TOptions extends DefaultIndicatorOptions
@@ -79,6 +93,7 @@ export abstract class Indicator<
   protected labelContainer!: HTMLElement;
   protected visible = true;
   private labelHandle?: IndicatorLabelHandle;
+  private attached = false;
 
   constructor(
     themes?: Record<string, Partial<TTheme>> | undefined | null,
@@ -96,7 +111,8 @@ export abstract class Indicator<
     this.chartContext = ctx;
     this.labelHandle?.destroy();
     this.chart = ctx.chart;
-    this.theme = this.themes[ctx.chart.getOptions().theme.key];
+    this.theme = this.resolveTheme(ctx.chart.getOptions().theme.key);
+    this.attached = true;
 
     this.labelHandle = this.chartContext.domAdapter.createIndicatorLabel(
       this.buildLabelModel(),
@@ -144,8 +160,38 @@ export abstract class Indicator<
     );
   }
 
+  private resolveTheme(themeKey: string): TTheme {
+    return (
+      this.themes[themeKey] ??
+      this.themes.default ??
+      this.themes.light ??
+      Object.values(this.themes)[0] ??
+      ({} as TTheme)
+    );
+  }
+
   public detach(): void {
+    this.releaseAttachment();
+  }
+
+  /** @internal Ensures base cleanup even when a subclass overrides `detach()`. */
+  public releaseAttachment(): void {
     this.labelHandle?.destroy();
+    this.labelHandle = undefined;
+    this.attached = false;
+  }
+
+  /** @internal Synchronizes base indicator state before user lifecycle hooks. */
+  public applyChartOptions(event: ChartOptionsChangeEvent): void {
+    if (!this.attached || !event.changedKeys.includes("theme")) return;
+    this.theme = this.resolveTheme(event.current.theme.key);
+    this.refreshLabel();
+  }
+
+  /** Invalidates external indicator state without depending on attachment state. */
+  protected invalidate(options: IndicatorInvalidationOptions = {}): void {
+    if (!this.attached) return;
+    this.chart.invalidateIndicator(this, options);
   }
 
   public getModifier(_visibleTimeRange: TimeRange): ScaleRangeModifier | null {
@@ -209,7 +255,7 @@ export abstract class Indicator<
     updateOptions: IndicatorUpdateOptions = {}
   ): void {
     this.options = mergeThemes(this.options, options);
-    if (!this.chart) return;
+    if (!this.attached) return;
     this.chart.requestRedraw(["indicators", "crosshair", "controller"]);
     this.refreshLabel();
     if (updateOptions.emit ?? true) {
@@ -224,7 +270,7 @@ export abstract class Indicator<
     if (this.visible === visible) return;
 
     this.visible = visible;
-    if (!this.chart) return;
+    if (!this.attached) return;
 
     this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
     this.refreshLabel();
@@ -262,9 +308,9 @@ export abstract class Indicator<
     this.options = cloneIndicatorValue(source.options);
     this.visible = source.visible;
 
-    if (!this.chart) return;
+    if (!this.attached) return;
 
-    this.theme = this.themes[this.chart.getOptions().theme.key];
+    this.theme = this.resolveTheme(this.chart.getOptions().theme.key);
     this.chart.requestRedraw(["indicators", "crosshair", "controller"]);
     this.refreshLabel();
 

@@ -53,9 +53,15 @@ The default adapter renders and wires:
 - `draw()` runs on each indicator render pass. Call `getDrawingContext()` to access the indicator canvas, data, visible data, visible range, scales, formatter/theme, and `projectTime` / `projectPrice` / `projectPoint` helpers without wiring canvas or scale plumbing yourself.
 - `getLabelContent(dataTime?)` is invoked after renders and when locales or themes change. Return label detail text and optional value segments here; the base class updates the adapter-rendered label.
 - `getModifier(visibleTimeRange)` lets you modify the price range. Return a `ScaleRangeModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).
+- `invalidate(options?)` is the protected update path for indicator-owned external state. It is safe before attachment and after detachment. Labels, indicator drawing, and crosshair drawing are invalidated by default; pass `{ scale: true }` when `getModifier()` may have changed.
 - `updateOptions(partial)` merges new options, requests a redraw, and re-renders the label.
 - `clone()` creates another indicator instance with the same themes, options, and visibility. Override it if your custom indicator has constructor dependencies beyond the standard `(themes, options)` shape.
-- `detach()` is called when an indicator is removed or the chart is disposed; the base class uses it to remove label listeners.
+- `detach()` is called when an indicator is removed or the chart is disposed. `chartContext.signal` is aborted first. Chart-owned label cleanup always runs afterward, so subclass cleanup cannot accidentally bypass it by omitting `super.detach()`.
+
+The base re-resolves `this.theme` and rebuilds the label before delivering a
+theme change to `onOptionsChanged`. Changes to `timeRange` and `stepSize` are
+included in that hook's `changedKeys`, allowing external-data indicators to
+refetch against the current timeframe.
 
 Non-pointer lifecycle delivery runs through overlay indicators, paneled
 indicators, and ordinary plugins in attachment order. Pointer delivery reverses

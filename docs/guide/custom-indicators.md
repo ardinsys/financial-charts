@@ -210,3 +210,55 @@ indicator.updateOptions({ source: "close" });
 ```
 
 The label is rebuilt from `getLabelContent()` when options, locale, theme, or crosshair state changes. If an indicator should affect auto-scaling, override `getModifier(visibleTimeRange)` and return a `ScaleRangeModifier`.
+
+## External data and async work
+
+Use the attachment-scoped signal for requests and subscriptions. A request
+version prevents an older response from replacing a newer one, while
+`invalidate({ scale: true })` recalculates modifiers before scheduling the
+indicator redraw:
+
+```ts
+class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
+  private orders: Order[] = [];
+  private requestVersion = 0;
+
+  async load(symbol: string) {
+    const version = ++this.requestVersion;
+    const { signal } = this.chartContext;
+    const orders = await fetchOrders(symbol, {
+      signal
+    });
+
+    if (version !== this.requestVersion || signal.aborted) {
+      return;
+    }
+
+    this.orders = orders;
+    this.invalidate({ scale: true });
+  }
+
+  onOptionsChanged({ changedKeys }: ChartOptionsChangeEvent) {
+    if (changedKeys.includes("timeRange") || changedKeys.includes("stepSize")) {
+      void this.load(this.options.symbol);
+    }
+  }
+
+  getModifier(): ScaleRangeModifier | null {
+    if (this.orders.length === 0) return null;
+    const prices = this.orders.map(({ price }) => price);
+    return {
+      actor: this,
+      enabled: true,
+      yMin: Math.min(...prices),
+      yMax: Math.max(...prices)
+    };
+  }
+}
+```
+
+`invalidate()` is a no-op before attachment and after detachment. Its label,
+drawing, and crosshair targets default to `true`; `scale` defaults to `false` so
+ordinary external updates do not pay for price-scale recalculation. Chart-owned
+label cleanup runs after a subclass `detach()` hook even when the override does
+not call `super.detach()`.

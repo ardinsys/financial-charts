@@ -32,6 +32,8 @@ export interface ChartPointerEvent {
 export interface ChartContext {
   chart: FinancialChart;
   domAdapter: ChartDOMAdapter;
+  /** Aborted when the owning extension is detached or the chart is disposed. */
+  signal: AbortSignal;
   emit<K extends keyof ChartEventMap>(event: K, data: ChartEventMap[K]): void;
   getCanvasContext(layer: ChartCanvasLayer): CanvasRenderingContext2D;
   getLogicalCanvas(layer: ChartCanvasLayer): { width: number; height: number };
