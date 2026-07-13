@@ -343,8 +343,8 @@ function removeSelectedIndicator() {
 function createChart(root: HTMLElement, slot: ChartSlot): PlaygroundChart {
   const chart = new FinancialChart(
     root,
-    getChartTimeRange(slot.data, slot.stepSize),
     {
+      timeRange: getChartTimeRange(slot.data, slot.stepSize),
       type: selectedChartType.value,
       theme: darkTheme,
       locale: "en-US",

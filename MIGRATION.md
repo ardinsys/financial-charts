@@ -206,7 +206,8 @@ What to update:
   remove counterparts return whether an attached extension was removed.
 
 ```ts
-const chart = new FinancialChart(root, "auto", {
+const chart = new FinancialChart(root, {
+  timeRange: "auto",
   type: "candle",
   stepSize: 15 * 60 * 1000,
   maxZoom: 100,
@@ -256,7 +257,7 @@ The base `Indicator` builds an `IndicatorLabelModel` (name from localized
 `segments`. This is what lets DOM adapters render labels using app-owned
 markup, styling, or framework components.
 
-- New option: `new FinancialChart(el, range, { ..., domAdapter })`. Omit it to
+- New option: `new FinancialChart(el, { timeRange: range, ..., domAdapter })`. Omit it to
   get the default `DefaultDOMAdapter`.
 - Plugins receive the adapter via `ChartContext.domAdapter`.
 - The adapter also builds the composition layer via

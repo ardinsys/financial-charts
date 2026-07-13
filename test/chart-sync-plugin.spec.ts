@@ -95,10 +95,10 @@ function createSyncedChart(group: string) {
   const chart = new FinancialChart(
     container,
     {
-      start: data[0].time,
-      end: data.at(-1)!.time + 60_000
-    },
-    {
+      timeRange: {
+        start: data[0].time,
+        end: data.at(-1)!.time + 60_000
+      },
       type: "line",
       controllers: [LineController],
       stepSize: 60_000,
@@ -127,10 +127,10 @@ function createSyncedChartWithDeferredData(group: string) {
   const chart = new FinancialChart(
     container,
     {
-      start: data[0].time,
-      end: data.at(-1)!.time + 60_000
-    },
-    {
+      timeRange: {
+        start: data[0].time,
+        end: data.at(-1)!.time + 60_000
+      },
       type: "line",
       controllers: [LineController],
       stepSize: 60_000,
@@ -161,10 +161,10 @@ function createDeferredChartWithSync(
   const chart = new FinancialChart(
     container,
     {
-      start: data[0].time,
-      end: data.at(-1)!.time + 60_000
-    },
-    {
+      timeRange: {
+        start: data[0].time,
+        end: data.at(-1)!.time + 60_000
+      },
       type: "line",
       controllers: [LineController],
       stepSize: 60_000,

@@ -21,7 +21,8 @@ The built-in controllers are available by default on each chart instance. The ba
 ```ts
 import { FinancialChart } from "@ardinsys/financial-charts";
 
-const chart = new FinancialChart(root, "auto", {
+const chart = new FinancialChart(root, {
+  timeRange: "auto",
   type: "candle",
   stepSize: 15 * 60 * 1000,
   maxZoom: 100,
@@ -58,8 +59,8 @@ Pass a container element, a base time range (or `"auto"`), and chart options.
 ```ts
 const chart = new FinancialChart(
   document.getElementById("chart-root")!,
-  "auto",
   {
+    timeRange: "auto",
     type: "candle",
     theme,
     locale: "en",

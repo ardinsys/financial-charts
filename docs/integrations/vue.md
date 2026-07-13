@@ -28,7 +28,8 @@ const lastTimestamp = ref<number | null>(null);
 onMounted(() => {
   if (!container.value) return;
 
-  const instance = new FinancialChart(container.value, "auto", {
+  const instance = new FinancialChart(container.value, {
+    timeRange: "auto",
     type: "hlc-area",
     stepSize: 15 * 60 * 1000,
     maxZoom: 150,

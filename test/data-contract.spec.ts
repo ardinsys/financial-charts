@@ -18,7 +18,8 @@ function createChart(type: ControllerType) {
   container.style.height = "400px";
   document.body.appendChild(container);
 
-  const chart = new FinancialChart(container, "auto", {
+  const chart = new FinancialChart(container, {
+    timeRange: "auto",
     type,
     controllers: [LineController, CandlestickController, HLCAreaController],
     includeDefaultControllers: false,

@@ -3,7 +3,6 @@ import {
   type ChartOptions,
   type ControllerConstructor,
 } from "./financial-chart";
-import type { TimeRange } from "./types";
 
 export type CoreChartOptions = Omit<
   ChartOptions,
@@ -17,9 +16,8 @@ export type CoreChartOptions = Omit<
 export class FinancialChart extends FinancialChartBase {
   constructor(
     container: HTMLElement,
-    timeRange: TimeRange | "auto",
     options: CoreChartOptions,
   ) {
-    super(container, timeRange, options);
+    super(container, options);
   }
 }

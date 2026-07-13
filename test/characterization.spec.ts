@@ -26,14 +26,15 @@ afterEach(() => {
 function createChart(
   data: ChartData[],
   timeRange: TimeRange,
-  overrides: Partial<ConstructorParameters<typeof FinancialChart>[2]> = {}
+  overrides: Partial<ConstructorParameters<typeof FinancialChart>[1]> = {}
 ) {
   const container = document.createElement("div");
   container.style.width = "800px";
   container.style.height = "400px";
   document.body.appendChild(container);
 
-  const chart = new FinancialChart(container, timeRange, {
+  const chart = new FinancialChart(container, {
+    timeRange,
     type: "line",
     controllers: [LineController],
     stepSize: 60_000,

@@ -25,7 +25,8 @@ export function Chart({ data }: Props) {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const chart = new FinancialChart(containerRef.current, "auto", {
+    const chart = new FinancialChart(containerRef.current, {
+      timeRange: "auto",
       type: "candle",
       stepSize: 15 * 60 * 1000,
       maxZoom: 150,

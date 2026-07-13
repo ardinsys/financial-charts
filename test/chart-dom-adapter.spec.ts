@@ -96,8 +96,8 @@ function createChart(adapter: ChartDOMAdapter) {
   const start = Date.UTC(2024, 0, 1, 9);
   const chart = new FinancialChart(
     container,
-    { start, end: start + 60_000 },
     {
+      timeRange: { start, end: start + 60_000 },
       type: "line",
       controllers: [LineController],
       stepSize: 60_000,

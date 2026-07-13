@@ -27,10 +27,10 @@ describe("FinancialChart test harness", () => {
     const chart = new FinancialChart(
       container,
       {
-        start,
-        end: start + 2 * 60_000
-      },
-      {
+        timeRange: {
+          start,
+          end: start + 2 * 60_000
+        },
         type: "line",
         stepSize: 60_000,
         maxZoom: 10,
@@ -67,10 +67,10 @@ describe("FinancialChart test harness", () => {
     const lineChart = new FinancialChart(
       lineContainer,
       {
-        start,
-        end: start + 60_000
-      },
-      {
+        timeRange: {
+          start,
+          end: start + 60_000
+        },
         type: "line",
         controllers: [LineController],
         includeDefaultControllers: false,
@@ -82,10 +82,10 @@ describe("FinancialChart test harness", () => {
     const alternateChart = new FinancialChart(
       alternateContainer,
       {
-        start,
-        end: start + 60_000
-      },
-      {
+        timeRange: {
+          start,
+          end: start + 60_000
+        },
         type: "alternate-line",
         controllers: [AlternateLineController],
         includeDefaultControllers: false,
@@ -115,7 +115,8 @@ describe("FinancialChart test harness", () => {
     container.style.height = "400px";
     document.body.appendChild(container);
 
-    const chart = new FinancialChart(container, "auto", {
+    const chart = new FinancialChart(container, {
+      timeRange: "auto",
       type: "alternate-line",
       controllers: [AlternateLineController],
       stepSize: 60_000,
@@ -146,7 +147,8 @@ describe("FinancialChart test harness", () => {
     container.style.height = "400px";
     document.body.appendChild(container);
 
-    const chart = new CoreFinancialChart(container, "auto", {
+    const chart = new CoreFinancialChart(container, {
+      timeRange: "auto",
       type: "line",
       controllers: [LineController],
       stepSize: 60_000,
@@ -171,7 +173,8 @@ describe("FinancialChart test harness", () => {
     container.style.height = "400px";
     document.body.appendChild(container);
 
-    const chart = new FinancialChart(container, "auto", {
+    const chart = new FinancialChart(container, {
+      timeRange: "auto",
       type: "line",
       stepSize: 60_000,
       maxZoom: 10,

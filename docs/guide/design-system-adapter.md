@@ -164,7 +164,8 @@ class DesignSystemAdapter extends DefaultDOMAdapter {
   }
 }
 
-const chart = new FinancialChart(root, "auto", {
+const chart = new FinancialChart(root, {
+  timeRange: "auto",
   type: "candle",
   stepSize: 15 * 60 * 1000,
   maxZoom: 100,

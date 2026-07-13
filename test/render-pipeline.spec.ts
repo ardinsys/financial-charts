@@ -23,10 +23,10 @@ function createChart(data: ChartData[]) {
   const chart = new FinancialChart(
     container,
     {
-      start,
-      end: data.at(-1)!.time
-    },
-    {
+      timeRange: {
+        start,
+        end: data.at(-1)!.time
+      },
       type: "line",
       controllers: [LineController],
       stepSize: 60_000,

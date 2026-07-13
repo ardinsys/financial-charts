@@ -45,10 +45,10 @@ function createChart() {
   const chart = new FinancialChart(
     container,
     {
-      start: data[0].time,
-      end: data.at(-1)!.time + 60_000
-    },
-    {
+      timeRange: {
+        start: data[0].time,
+        end: data.at(-1)!.time + 60_000
+      },
       type: "line",
       controllers: [LineController],
       stepSize: 60_000,

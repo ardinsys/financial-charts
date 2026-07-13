@@ -103,6 +103,18 @@ export interface ChartLocalizationOptions {
   localeValues?: LocaleValuesMap;
 }
 
+/** Runtime options accepted by `FinancialChart.updateOptions()`. */
+export interface ChartOptionsUpdate extends ChartLocalizationOptions {
+  type?: ControllerType;
+  timeRange?: TimeRange | "auto";
+  stepSize?: number;
+  maxZoom?: number;
+  volume?: boolean;
+  theme?: ChartTheme;
+}
+
+export type ChartOptionKey = keyof ChartOptionsUpdate;
+
 export interface ControllerConstructor {
   new (
     chart: FinancialChart,
@@ -112,10 +124,11 @@ export interface ControllerConstructor {
 }
 
 export interface ChartOptions {
-  type: ControllerType;
+  type?: ControllerType;
+  timeRange?: TimeRange | "auto";
   stepSize: number;
-  maxZoom: number;
-  volume: boolean;
+  maxZoom?: number;
+  volume?: boolean;
   controllers?: readonly ControllerConstructor[];
   /**
    * Controls registration of class-provided defaults. Use the core entry to
@@ -133,6 +146,7 @@ export interface ChartOptions {
 /** Fully resolved options supplied to controller instances. */
 export interface ResolvedChartOptions {
   readonly type: ControllerType;
+  readonly timeRange: TimeRange | "auto";
   readonly stepSize: number;
   readonly maxZoom: number;
   readonly volume: boolean;
@@ -149,6 +163,7 @@ export interface ResolvedChartOptions {
 /** Immutable data-only snapshot returned by `FinancialChart.getOptions()`. */
 export interface ChartOptionsSnapshot {
   readonly type: ControllerType;
+  readonly timeRange: DeepReadonly<TimeRange> | "auto";
   readonly stepSize: number;
   readonly maxZoom: number;
   readonly volume: boolean;
@@ -158,6 +173,25 @@ export interface ChartOptionsSnapshot {
   readonly timeZone?: string;
   readonly theme: DeepReadonly<ResolvedChartTheme>;
   readonly localeValues: DeepReadonly<LocaleValuesMap>;
+}
+
+export interface ChartOptionsState {
+  readonly type: ControllerType;
+  readonly timeRange: DeepReadonly<TimeRange> | "auto";
+  readonly stepSize: number;
+  readonly maxZoom: number;
+  readonly volume: boolean;
+  readonly theme: DeepReadonly<ResolvedChartTheme>;
+  readonly locale: string;
+  readonly timeZone?: string;
+  readonly formatter: Formatter;
+  readonly localeValues: DeepReadonly<LocaleValuesMap>;
+}
+
+export interface ChartOptionsChangeEvent {
+  readonly previous: ChartOptionsState;
+  readonly current: ChartOptionsState;
+  readonly changedKeys: readonly ChartOptionKey[];
 }
 
 type MutableResolvedChartOptions = {
@@ -368,6 +402,22 @@ export class FinancialChart extends EventEmitter {
     options: ChartOptions,
     includeDefaultControllers: boolean
   ): MutableResolvedChartOptions {
+    const type =
+      options.type ??
+      (includeDefaultControllers && this.controllers.has("candle")
+        ? "candle"
+        : this.controllers.keys().next().value);
+    if (!type) {
+      throw new Error(
+        "A chart type or at least one controller must be provided."
+      );
+    }
+
+    const timeRange = options.timeRange ?? "auto";
+    assertTimeRange(timeRange);
+    assertPositiveOption("stepSize", options.stepSize);
+    assertPositiveOption("maxZoom", options.maxZoom ?? 100);
+
     const locale =
       options.locale ||
       options.formatter?.getLocale() ||
@@ -384,10 +434,11 @@ export class FinancialChart extends EventEmitter {
     formatter.setTimeZone?.(timeZone);
 
     return {
-      type: options.type,
+      type,
+      timeRange,
       stepSize: options.stepSize,
-      maxZoom: options.maxZoom,
-      volume: options.volume,
+      maxZoom: options.maxZoom ?? 100,
+      volume: options.volume ?? true,
       controllers: [...this.controllers.values()],
       includeDefaultControllers,
       locale,
@@ -405,6 +456,10 @@ export class FinancialChart extends EventEmitter {
   private refreshOptionsSnapshot() {
     this.optionsSnapshot = Object.freeze({
       type: this.options.type,
+      timeRange:
+        this.options.timeRange === "auto"
+          ? "auto"
+          : Object.freeze({ ...this.options.timeRange }),
       stepSize: this.options.stepSize,
       maxZoom: this.options.maxZoom,
       volume: this.options.volume,
@@ -1365,24 +1420,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   public changeType(type: ControllerType) {
-    const ControllerClass = this.getControllerClass(type);
-    this.options.type = type;
-    this.refreshOptionsSnapshot();
-
-    this.controller = new ControllerClass(this, this.options);
-    this.dataScale = this.controller.createDataScale(
-      this.dataStore.toArray(),
-      this.timeRange
-    );
-    this.visibleScale = this.controller.createDataScale([], {
-      start: 0,
-      end: 0
-    });
-    this.syncTimeScales();
-
-    this.recalculateVisibleScale();
-
-    this.requestRedraw(this.allRedrawParts);
+    this.updateOptions({ type });
   }
 
   private findClosestDataPoint(rawPoint: ChartData): ChartData | undefined {
@@ -1395,11 +1433,7 @@ export class FinancialChart extends EventEmitter {
     return this.outsideContainer;
   }
 
-  constructor(
-    container: HTMLElement,
-    timeRange: TimeRange | "auto",
-    options: ChartOptions
-  ) {
+  constructor(container: HTMLElement, options: ChartOptions) {
     super();
     this.defaultControllerConstructors =
       getDefaultControllerConstructors(options);
@@ -1431,14 +1465,14 @@ export class FinancialChart extends EventEmitter {
     });
     this.indicatorLabelContainer = this.overlay.indicatorLabelContainer;
 
-    if (timeRange === "auto") {
+    if (this.options.timeRange === "auto") {
       this.timeRange = {
         start: 0,
         end: 0
       };
       this.autoTimeRange = true;
     } else {
-      this.timeRange = timeRange;
+      this.timeRange = { ...this.options.timeRange };
     }
 
     const ControllerClass = this.getControllerClass(this.options.type);
@@ -1586,39 +1620,25 @@ export class FinancialChart extends EventEmitter {
     }
   }
 
-  public updateTheme(theme: ChartTheme) {
-    this.container.classList.remove(
-      `financial-charts-${this.options.theme.key}`
-    );
-    this.options.theme = mergeThemes(this.options.theme, theme);
-    this.refreshOptionsSnapshot();
-    this.container.style.backgroundColor = this.options.theme.backgroundColor;
-    if (this.dataStore.length > 0) {
-      this.requestRedraw(this.allRedrawParts);
-    }
-    this.container.classList.add(`financial-charts-${theme.key}`);
-    this.overlay.update({
-      themeKey: this.options.theme.key,
-      labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20
+  private createOptionsState(): ChartOptionsState {
+    return Object.freeze({
+      type: this.options.type,
+      timeRange:
+        this.options.timeRange === "auto"
+          ? "auto"
+          : Object.freeze({ ...this.options.timeRange }),
+      stepSize: this.options.stepSize,
+      maxZoom: this.options.maxZoom,
+      volume: this.options.volume,
+      theme: cloneAndFreeze(this.options.theme),
+      locale: this.options.locale,
+      timeZone: this.options.timeZone,
+      formatter: this.options.formatter,
+      localeValues: cloneAndFreeze(this.options.localeValues)
     });
-    this.updatePaneDividers();
   }
 
-  public setVolumeDraw(draw: boolean) {
-    this.options.volume = draw;
-    this.refreshOptionsSnapshot();
-    this.requestRedraw(this.allRedrawParts);
-  }
-
-  public updateCoreOptions(
-    timeRange: TimeRange | "auto",
-    stepSize: number,
-    maxZoom: number
-  ) {
-    this.options.maxZoom = maxZoom;
-    this.options.stepSize = stepSize;
-    this.refreshOptionsSnapshot();
-
+  private resetViewInteractionState() {
     this.visibleIndexRange = { from: 0, to: 1 };
     this.indexBounds = { from: 0, to: 1 };
     this.isPanning = false;
@@ -1627,31 +1647,23 @@ export class FinancialChart extends EventEmitter {
     this.lastPointerPosition = undefined;
     this.isTouchCrosshair = false;
     this.isTouchCrosshairTimeout = undefined;
-    if (timeRange !== "auto") {
-      this.autoTimeRange = false;
-      this.timeRange = timeRange;
+  }
+
+  private applyConfiguredTimeRange() {
+    const configuredTimeRange = this.options.timeRange;
+    this.autoTimeRange = configuredTimeRange === "auto";
+    if (configuredTimeRange === "auto") {
+      if (this.dataStore.length > 0) {
+        this.updateAutoTimeRange(false);
+      } else {
+        this.timeRange = { start: 0, end: 0 };
+      }
+    } else {
+      this.timeRange = { ...configuredTimeRange };
     }
+  }
 
-    if (this.originalDataStore.length == 0) {
-      this.autoTimeRange = timeRange === "auto";
-      this.dataScale = this.controller.createDataScale([], this.timeRange);
-      this.visibleScale = this.controller.createDataScale([], {
-        start: 0,
-        end: 0
-      });
-      this.resetVisibleIndexRange();
-      return;
-    }
-
-    this.dataStore = new DataStore(
-      this.mapDataToStepSize(this.originalDataStore.toArray(), stepSize)
-    );
-
-    if (timeRange === "auto") {
-      this.autoTimeRange = true;
-      this.updateAutoTimeRange(false);
-    }
-
+  private rebuildScales(resetVisibleRange: boolean) {
     this.dataScale = this.controller.createDataScale(
       this.dataStore.toArray(),
       this.timeRange
@@ -1660,61 +1672,191 @@ export class FinancialChart extends EventEmitter {
       start: 0,
       end: 0
     });
-    this.resetVisibleIndexRange();
-    this.recalculateVisibleScale();
-    this.notifyPluginsVisibleRangeChanged();
-    this.notifyPluginsData(this.dataStore.toArray());
-
-    this.requestRedraw(this.allRedrawParts);
+    if (resetVisibleRange) this.resetVisibleIndexRange();
+    this.syncTimeScales();
+    if (this.dataStore.length > 0) this.recalculateVisibleScale();
   }
 
-  private applyLocalizationUpdate() {
+  private applyThemeChrome(previousThemeKey: string) {
+    this.container.classList.remove(`financial-charts-${previousThemeKey}`);
+    this.container.classList.add(
+      `financial-charts-${this.options.theme.key}`
+    );
+    this.container.style.backgroundColor = this.options.theme.backgroundColor;
+    this.overlay.update({
+      themeKey: this.options.theme.key,
+      labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20
+    });
+    this.updatePaneDividers();
+  }
+
+  private refreshLocalizationLabels() {
     for (const indicator of this.indicators) {
       indicator.refreshLabel();
     }
     for (const indicator of this.paneledIndicators) {
       indicator.refreshLabel();
     }
-
-    this.requestRedraw(this.allRedrawParts);
   }
 
-  public updateLocalization(localization: ChartLocalizationOptions) {
-    const hasTimeZone = Object.prototype.hasOwnProperty.call(
-      localization,
-      "timeZone"
-    );
+  /** Applies an options patch in one reset, remap, and redraw cycle. */
+  public updateOptions(update: ChartOptionsUpdate): void {
+    const has = (key: ChartOptionKey) =>
+      Object.prototype.hasOwnProperty.call(update, key);
 
-    if (localization.formatter) {
-      this.options.formatter = localization.formatter;
+    const type = update.type ?? this.options.type;
+    const timeRange = update.timeRange ?? this.options.timeRange;
+    const stepSize = update.stepSize ?? this.options.stepSize;
+    const maxZoom = update.maxZoom ?? this.options.maxZoom;
+    const volume = update.volume ?? this.options.volume;
+    const formatter = update.formatter ?? this.options.formatter;
+    const hasFormatter = update.formatter !== undefined;
+    const locale =
+      update.locale ??
+      (hasFormatter ? formatter.getLocale() : this.options.locale);
+    const timeZone = has("timeZone")
+      ? update.timeZone
+      : hasFormatter
+        ? formatter.getTimeZone?.() ?? this.options.timeZone
+        : this.options.timeZone;
+    const theme = has("theme")
+      ? mergeThemes<ResolvedChartTheme>(this.options.theme, update.theme)
+      : this.options.theme;
+    const localeValues = has("localeValues")
+      ? {
+          ...this.getDefaultLocaleValues(),
+          ...this.options.localeValues,
+          ...(update.localeValues ?? {})
+        }
+      : this.options.localeValues;
+
+    assertTimeRange(timeRange);
+    assertPositiveOption("stepSize", stepSize);
+    assertPositiveOption("maxZoom", maxZoom);
+    if (type !== this.options.type) this.getControllerClass(type);
+
+    const changes: Array<[ChartOptionKey, boolean]> = [
+      ["type", type !== this.options.type],
+      ["timeRange", !timeRangesEqual(timeRange, this.options.timeRange)],
+      ["stepSize", stepSize !== this.options.stepSize],
+      ["maxZoom", maxZoom !== this.options.maxZoom],
+      ["volume", volume !== this.options.volume],
+      ["theme", !deepEqual(theme, this.options.theme)],
+      ["locale", locale !== this.options.locale],
+      ["timeZone", timeZone !== this.options.timeZone],
+      ["formatter", formatter !== this.options.formatter],
+      ["localeValues", !deepEqual(localeValues, this.options.localeValues)]
+    ];
+    const changedKeys = changes
+      .filter(([, changed]) => changed)
+      .map(([key]) => key);
+    if (changedKeys.length === 0) return;
+
+    const previous = this.createOptionsState();
+    const changed = new Set(changedKeys);
+    const typeChanged = changed.has("type");
+    const stepSizeChanged = changed.has("stepSize");
+    const coreChanged = stepSizeChanged || changed.has("timeRange");
+    const localizationChanged =
+      changed.has("locale") ||
+      changed.has("timeZone") ||
+      changed.has("formatter") ||
+      changed.has("localeValues");
+    const previousThemeKey = this.options.theme.key;
+
+    if (localizationChanged) {
+      formatter.setLocale(locale);
+      formatter.setTimeZone?.(timeZone);
+    }
+    this.options.type = type;
+    this.options.timeRange =
+      timeRange === "auto" ? "auto" : { ...timeRange };
+    this.options.stepSize = stepSize;
+    this.options.maxZoom = maxZoom;
+    this.options.volume = volume;
+    this.options.theme = theme;
+    this.options.locale = locale;
+    this.options.timeZone = timeZone;
+    this.options.formatter = formatter;
+    this.options.localeValues = localeValues;
+
+    if (typeChanged) {
+      const ControllerClass = this.getControllerClass(type);
+      this.controller = new ControllerClass(this, this.options);
     }
 
-    this.options.locale =
-      localization.locale ??
-      (localization.formatter
-        ? localization.formatter.getLocale()
-        : this.options.locale);
-    this.options.formatter.setLocale(this.options.locale);
-
-    if (hasTimeZone) {
-      this.options.timeZone = localization.timeZone;
-    } else if (localization.formatter) {
-      this.options.timeZone =
-        localization.formatter.getTimeZone?.() ?? this.options.timeZone;
+    if (coreChanged) {
+      this.resetViewInteractionState();
+      if (stepSizeChanged) {
+        this.dataStore = new DataStore(
+          this.mapDataToStepSize(
+            this.originalDataStore.toArray(),
+            this.options.stepSize
+          )
+        );
+      }
+      this.applyConfiguredTimeRange();
+      this.rebuildScales(true);
+      if (this.dataStore.length > 0) {
+        this.notifyPluginsVisibleRangeChanged();
+        if (stepSizeChanged) {
+          this.notifyPluginsData(this.dataStore.toArray());
+        }
+      }
+    } else if (typeChanged) {
+      this.rebuildScales(false);
+      if (this.dataStore.length > 0) {
+        this.notifyPluginsVisibleRangeChanged();
+      }
     }
 
-    this.options.formatter.setTimeZone?.(this.options.timeZone);
+    if (changed.has("theme")) this.applyThemeChrome(previousThemeKey);
+    if (localizationChanged) this.refreshLocalizationLabels();
 
-    if (localization.localeValues) {
-      this.options.localeValues = {
-        ...this.getDefaultLocaleValues(),
-        ...this.options.localeValues,
-        ...localization.localeValues
-      };
+    const redrawParts = new Set<RenderLayer>();
+    const includeRedrawParts = (parts: readonly RenderLayer[]) => {
+      for (const part of parts) redrawParts.add(part);
+    };
+    if (this.dataStore.length > 0) {
+      if (typeChanged || coreChanged || changed.has("theme")) {
+        includeRedrawParts(this.allRedrawParts);
+      }
+      if (changed.has("volume")) {
+        includeRedrawParts(["series", "crosshair"]);
+      }
+      if (localizationChanged) {
+        includeRedrawParts(["axes", "indicators", "crosshair"]);
+      }
     }
 
     this.refreshOptionsSnapshot();
-    this.applyLocalizationUpdate();
+    if (redrawParts.size > 0) this.requestRedraw([...redrawParts]);
+    this.emit("options-change", {
+      previous,
+      current: this.createOptionsState(),
+      changedKeys: Object.freeze(changedKeys)
+    });
+  }
+
+  public updateTheme(theme: ChartTheme) {
+    this.updateOptions({ theme });
+  }
+
+  public setVolumeDraw(draw: boolean) {
+    this.updateOptions({ volume: draw });
+  }
+
+  /** @deprecated Use `updateOptions()` instead. */
+  public updateCoreOptions(
+    timeRange: TimeRange | "auto",
+    stepSize: number,
+    maxZoom: number
+  ) {
+    this.updateOptions({ timeRange, stepSize, maxZoom });
+  }
+
+  public updateLocalization(localization: ChartLocalizationOptions) {
+    this.updateOptions(localization);
   }
 
   public updateLocale(locale: string, values?: LocaleValuesMap) {
@@ -3028,4 +3170,55 @@ function freezeDeep<T>(value: T): DeepReadonly<T> {
 
 function freezeSnapshot<T>(values: T[]): readonly T[] {
   return Object.freeze(values);
+}
+
+function assertTimeRange(timeRange: TimeRange | "auto") {
+  if (timeRange === "auto") return;
+  if (
+    !Number.isFinite(timeRange.start) ||
+    !Number.isFinite(timeRange.end) ||
+    timeRange.end < timeRange.start
+  ) {
+    throw new RangeError(
+      "timeRange must contain finite values with end greater than or equal to start."
+    );
+  }
+}
+
+function assertPositiveOption(name: "stepSize" | "maxZoom", value: number) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new RangeError(`${name} must be a finite number greater than zero.`);
+  }
+}
+
+function timeRangesEqual(
+  left: TimeRange | "auto",
+  right: TimeRange | "auto"
+) {
+  if (left === "auto" || right === "auto") return left === right;
+  return left.start === right.start && left.end === right.end;
+}
+
+function deepEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== "object" ||
+    typeof right !== "object"
+  ) {
+    return false;
+  }
+
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord);
+  const rightKeys = Object.keys(rightRecord);
+  if (leftKeys.length !== rightKeys.length) return false;
+
+  return leftKeys.every(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(rightRecord, key) &&
+      deepEqual(leftRecord[key], rightRecord[key])
+  );
 }

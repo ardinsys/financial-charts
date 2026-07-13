@@ -58,7 +58,8 @@ Detect the active color scheme and switch themes live.
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 const theme = prefersDark ? defaultDarkTheme : baseTheme;
 
-const chart = new FinancialChart(root, "auto", {
+const chart = new FinancialChart(root, {
+  timeRange: "auto",
   type: "hlc-area",
   theme,
   stepSize: 15 * 60 * 1000,
@@ -78,7 +79,8 @@ window
 Configure locale, timezone, number/date formatting, and chart UI strings together. Missing UI strings merge into built-in English defaults, so you only override what changes. For the focused i18n path, see [i18n](/guide/i18n).
 
 ```ts
-const chart = new FinancialChart(root, "auto", {
+const chart = new FinancialChart(root, {
+  timeRange: "auto",
   type: "candle",
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
@@ -239,7 +241,8 @@ const { locale, setLocale, t } = createIntl("en", {
   }
 });
 
-const chart = new FinancialChart(root, "auto", {
+const chart = new FinancialChart(root, {
+  timeRange: "auto",
   type: "candle",
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
@@ -365,7 +368,8 @@ const chartLocaleBundle = computed(() => ({
 onMounted(() => {
   if (!container.value) return;
 
-  const instance = new FinancialChart(container.value, "auto", {
+  const instance = new FinancialChart(container.value, {
+    timeRange: "auto",
     type: "candle",
     stepSize: 15 * 60 * 1000,
     maxZoom: 150,
@@ -422,7 +426,8 @@ class IntlFormatter extends DefaultFormatter {
   }
 }
 
-const chart = new FinancialChart(root, "auto", {
+const chart = new FinancialChart(root, {
+  timeRange: "auto",
   type: "candle",
   stepSize: 5 * 60 * 1000,
   maxZoom: 200,

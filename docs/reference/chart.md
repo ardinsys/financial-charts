@@ -7,7 +7,6 @@
 ```ts
 new FinancialChart(
   container: HTMLElement,
-  timeRange: TimeRange | "auto",
   options: ChartOptions
 );
 ```
@@ -15,17 +14,17 @@ new FinancialChart(
 ### Parameters
 
 - `container` – Element that hosts the chart canvases. The chart observes its size via `ResizeObserver`.
-- `timeRange` – Initial visible span. Pass `"auto"` to derive it from incoming data.
 - `options` – Controller, theme, and locale configuration (details below).
 
 ### ChartOptions
 
 ```ts
 type ChartOptions = {
-  type: ControllerType;
+  type?: ControllerType;
+  timeRange?: TimeRange | "auto";
   stepSize: number;
-  maxZoom: number;
-  volume: boolean;
+  maxZoom?: number;
+  volume?: boolean;
   controllers?: readonly ControllerConstructor[];
   includeDefaultControllers?: boolean;
   theme?: ChartTheme;
@@ -39,10 +38,11 @@ type ChartOptions = {
 
 | Option                      | Description                                                                                                                             |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`                      | Identifier for an instance-registered controller such as `"candle"`, `"bar"`, or custom IDs.                                            |
+| `type`                      | Identifier for an instance-registered controller. Defaults to `"candle"` on the root chart and the first supplied controller on the core chart. |
+| `timeRange`                 | Initial visible span. Defaults to `"auto"`, which derives the range from incoming data.                                                 |
 | `stepSize`                  | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                                                      |
-| `maxZoom`                   | Highest zoom factor before clamping user input.                                                                                         |
-| `volume`                    | Enables a histogram below the price chart.                                                                                              |
+| `maxZoom`                   | Highest zoom factor before clamping user input. Defaults to `100`.                                                                      |
+| `volume`                    | Enables a histogram below the price chart. Defaults to `true`.                                                                          |
 | `controllers`               | Additional controller classes registered after the built-ins.                                                                          |
 | `includeDefaultControllers` | Controls class-provided defaults. The root chart defaults to `true`; the controller-neutral core defaults to `false`.                   |
 | `theme`                     | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.                                                    |
@@ -55,11 +55,9 @@ type ChartOptions = {
 Built-in controllers are registered on each chart by default:
 
 ```ts
-const chart = new FinancialChart(root, "auto", {
-  type: "candle",
-  stepSize: 15 * 60 * 1000,
-  maxZoom: 100,
-  volume: true
+const chart = new FinancialChart(root, {
+  timeRange: "auto",
+  stepSize: 15 * 60 * 1000
 });
 ```
 
@@ -142,17 +140,30 @@ type LocaleValues = {
 
 ### View and styling
 
-| Method                                        | Description                                                                                       |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `changeType(type)`                            | Switches the active controller (candles, bars, area, etc.) while preserving zoom and pan state.   |
-| `updateTheme(theme)`                          | Deep merges a theme patch and redraws the view. Useful when toggling light/dark mode.             |
-| `setVolumeDraw(enabled)`                      | Shows or hides the volume histogram without recreating the chart.                                 |
-| `setPaneHeights(heights)`                     | Applies logical pixel pane heights keyed by pane id or pane order. Values are min-height clamped. |
-| `updateCoreOptions(range, stepSize, maxZoom)` | Rebuilds the internal state with new core settings. Resets zoom/pan because data is remapped.     |
-| `updateLocalization(options)`                 | Changes locale, timezone, formatter, and/or localized UI strings in one redraw.                   |
-| `updateLocale(locale, values?)`               | Compatibility shorthand for `updateLocalization({ locale, localeValues: values })`.               |
-| `setCrosshair(options)`                       | Sets the native crosshair to the nearest visible data point for a timestamp.                      |
-| `clearCrosshair()`                            | Clears the native crosshair and resets pointer-aware indicator labels.                            |
+| Method                          | Description                                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `updateOptions(patch)`          | Updates any runtime chart options in one classified reset/remap/redraw cycle.                     |
+| `changeType(type)`              | Shorthand for `updateOptions({ type })`.                                                          |
+| `updateTheme(theme)`            | Shorthand for `updateOptions({ theme })`; theme patches are deeply merged.                        |
+| `setVolumeDraw(enabled)`        | Shorthand for `updateOptions({ volume: enabled })`.                                               |
+| `setPaneHeights(heights)`       | Applies logical pixel pane heights keyed by pane id or pane order. Values are min-height clamped. |
+| `updateLocalization(options)`   | Shorthand for updating locale, timezone, formatter, and/or localized UI strings.                  |
+| `updateLocale(locale, values?)` | Compatibility shorthand for updating `locale` and `localeValues`.                                |
+| `setCrosshair(options)`         | Sets the native crosshair to the nearest visible data point for a timestamp.                      |
+| `clearCrosshair()`              | Clears the native crosshair and resets pointer-aware indicator labels.                            |
+
+```ts
+chart.updateOptions({
+  type: "line",
+  theme: darkTheme,
+  locale: "hu-HU"
+});
+```
+
+The patch is applied atomically. Unchanged effective values do not reset the
+view or schedule a redraw. Changing `stepSize` remaps the original dataset;
+changing `timeRange` or `stepSize` resets zoom and pan. The deprecated
+`updateCoreOptions(range, stepSize, maxZoom)` method delegates to this API.
 
 `setCrosshair({ time, y?, price?, paneId? })` is intended for synchronized
 charts and other external pointer controllers. It resolves `time` against the
@@ -188,12 +199,9 @@ import the controller-neutral chart and individual controller entry points:
 import { FinancialChart } from "@ardinsys/financial-charts/core";
 import { LineController } from "@ardinsys/financial-charts/controllers/line";
 
-const chart = new FinancialChart(container, "auto", {
-  type: "line",
+const chart = new FinancialChart(container, {
   controllers: [LineController],
-  stepSize: 60_000,
-  maxZoom: 10,
-  volume: false,
+  stepSize: 60_000
 });
 ```
 
@@ -301,6 +309,7 @@ Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 | `touch-click`                  | `{ event: TouchEvent, point: ChartData }`                 | User taps the chart on touch devices.         |
 | `crosshair-change`             | `{ time, y, pane, dataPoint }`                            | Native or programmatic crosshair moves.       |
 | `crosshair-clear`              | `{}`                                                      | Native or programmatic crosshair clears.      |
+| `options-change`               | `{ previous, current, changedKeys }`                      | Effective runtime options change.             |
 | `indicator-add`                | `{ indicator }`                                           | Indicator is added to the chart.              |
 | `indicator-change`             | `{ indicator }`                                           | Indicator options are updated.                |
 | `indicator-visibility-changed` | `{ indicator, visible }`                                  | Indicator show/hide buttons are toggled.      |

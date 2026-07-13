@@ -21,7 +21,8 @@ function createChart(withData = true) {
   container.style.height = "400px";
   document.body.appendChild(container);
 
-  const chart = new FinancialChart(container, "auto", {
+  const chart = new FinancialChart(container, {
+    timeRange: "auto",
     type: "line",
     controllers: [LineController],
     stepSize: 60_000,
