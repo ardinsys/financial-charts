@@ -54,6 +54,8 @@ import type {
 } from "../plugin/chart-plugin";
 import { getDefaultControllerConstructors } from "./internal-default-controllers";
 
+const logicalRangeEpsilon = 1e-9;
+
 type DeepReadonly<T> = T extends Function
   ? T
   : T extends object
@@ -308,7 +310,8 @@ export class FinancialChart extends EventEmitter {
     "axes",
     "series",
     "indicators",
-    "drawings"
+    "drawings",
+    "crosshair"
   ];
 
   private lastXGridCoords: readonly number[] = Object.freeze([]);
@@ -448,6 +451,7 @@ export class FinancialChart extends EventEmitter {
     return this.visibleScale.getVolumeScale();
   }
 
+  /** Returns the precise fractional logical-index window. */
   getVisibleLogicalRange(): TimeScaleRange {
     return { ...this.visibleIndexRange };
   }
@@ -555,7 +559,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private resetVisibleIndexRange() {
-    this.refreshIndexBounds({ reset: true });
+    return this.refreshIndexBounds({ reset: true });
   }
 
   private refreshIndexBounds(
@@ -568,39 +572,58 @@ export class FinancialChart extends EventEmitter {
     const span = options.span ?? this.getVisibleIndexSpan();
     this.indexBounds = this.calculateIndexBounds();
 
+    let range = this.visibleIndexRange;
+
     if (options.reset) {
-      this.visibleIndexRange = {
-        ...this.indexBounds
-      };
+      range = { ...this.indexBounds };
     } else if (options.preserveRightEdge) {
       const clampedSpan = Math.min(span, this.getIndexBoundsSpan());
-      this.visibleIndexRange = {
+      range = {
         from: this.indexBounds.to - clampedSpan,
         to: this.indexBounds.to
       };
     }
 
-    this.clampVisibleIndexRange();
-    this.syncTimeScales();
+    return this.updateVisibleIndexRange(range);
   }
 
-  public setVisibleIndexRange(range: TimeScaleRange) {
-    this.visibleIndexRange = range;
-    this.clampVisibleIndexRange();
-    this.syncTimeScales();
+  /**
+   * Sets the precise fractional logical-index window.
+   * The range is clamped to the chart's index bounds with a minimum one-bar
+   * span.
+   * This is a no-op while the chart has no data.
+   *
+   * @throws {RangeError} when either boundary is not finite
+   */
+  public setVisibleIndexRange(range: TimeScaleRange): void {
+    if (this.dataStore.length === 0) return;
+    this.applyVisibleIndexRange(range);
   }
 
-  public setVisibleTimeRange(range: TimeRange) {
+  /**
+   * Selects whole bars whose timestamps fall in `[start, end)`.
+   * This is a no-op while the chart has no data.
+   *
+   * @throws {RangeError} when either boundary is not finite
+   */
+  public setVisibleTimeRange(range: TimeRange): void {
+    if (this.dataStore.length === 0) return;
+    this.assertFiniteVisibleTimeRange(range);
     const end = Math.max(range.start, range.end - 1);
     this.setVisibleIndexRange(
       this.dataStore.indexRangeForTimeRange(range.start, end)
     );
-    this.recalculateVisibleScale();
-    this.requestRedraw(this.viewRedrawParts);
   }
 
-  public setVisibleTimeWindow(range: TimeRange) {
+  /**
+   * Sets a precise timestamp window while preserving fractional bar indexes.
+   * This is a no-op while the chart has no data.
+   *
+   * @throws {RangeError} when either boundary is not finite
+   */
+  public setVisibleTimeWindow(range: TimeRange): void {
     if (this.dataStore.length === 0) return;
+    this.assertFiniteVisibleTimeRange(range);
 
     const alignmentOffset = this.getBarAlignmentOffset();
     const from =
@@ -611,14 +634,47 @@ export class FinancialChart extends EventEmitter {
       alignmentOffset;
 
     this.setVisibleIndexRange({ from, to: Math.max(from + 1, to) });
-    this.recalculateVisibleScale();
-    this.requestRedraw(this.viewRedrawParts);
   }
 
-  private clampVisibleIndexRange() {
+  private assertFiniteVisibleTimeRange(range: TimeRange): void {
+    if (!Number.isFinite(range.start) || !Number.isFinite(range.end)) {
+      throw new RangeError("Visible time range values must be finite.");
+    }
+  }
+
+  private applyVisibleIndexRange(range: TimeScaleRange): boolean {
+    const changed = this.updateVisibleIndexRange(range);
+    if (!changed) return false;
+
+    this.recalculateVisibleScale();
+    this.notifyPluginsVisibleRangeChanged();
+    this.requestRedraw(this.viewRedrawParts);
+    return true;
+  }
+
+  private updateVisibleIndexRange(range: TimeScaleRange): boolean {
+    const previous = this.visibleIndexRange;
+    const next = this.clampVisibleIndexRange(range);
+    const changed =
+      Math.abs(previous.from - next.from) > logicalRangeEpsilon ||
+      Math.abs(previous.to - next.to) > logicalRangeEpsilon;
+
+    this.visibleIndexRange = changed
+      ? next
+      : { ...previous, rightOffset: next.rightOffset };
+    this.syncTimeScales();
+    return changed;
+  }
+
+  private clampVisibleIndexRange(range: TimeScaleRange): TimeScaleRange {
+    if (!Number.isFinite(range.from) || !Number.isFinite(range.to)) {
+      throw new RangeError("Visible index range values must be finite.");
+    }
+
     const boundsSpan = this.getIndexBoundsSpan();
-    const span = Math.min(this.getVisibleIndexSpan(), boundsSpan);
-    let from = this.visibleIndexRange.from;
+    const requestedSpan = Math.max(range.to - range.from, 1);
+    const span = Math.min(requestedSpan, boundsSpan);
+    let from = range.from;
     let to = from + span;
 
     if (to > this.indexBounds.to) {
@@ -631,12 +687,11 @@ export class FinancialChart extends EventEmitter {
       to = from + span;
     }
 
-    this.visibleIndexRange = {
+    return {
       from,
       to,
       rightOffset: Math.max(0, to - this.dataStore.length)
     };
-    this.notifyPluginsVisibleRangeChanged();
   }
 
   private panVisibleIndexRange(dx: number) {
@@ -1443,11 +1498,15 @@ export class FinancialChart extends EventEmitter {
             this.updateAutoTimeRange(true);
           }
 
-          this.refreshIndexBounds({
+          const rangeChanged = this.refreshIndexBounds({
             reset: span === this.getIndexBoundsSpan(),
             preserveRightEdge,
             span
           });
+          if (rangeChanged) {
+            this.recalculateVisibleScale();
+            this.notifyPluginsVisibleRangeChanged();
+          }
 
           this.requestRedraw(this.allRedrawParts, true);
         }
@@ -1603,6 +1662,7 @@ export class FinancialChart extends EventEmitter {
     });
     this.resetVisibleIndexRange();
     this.recalculateVisibleScale();
+    this.notifyPluginsVisibleRangeChanged();
     this.notifyPluginsData(this.dataStore.toArray());
 
     this.requestRedraw(this.allRedrawParts);
@@ -1719,7 +1779,6 @@ export class FinancialChart extends EventEmitter {
       this.isPanning = true;
       const dx = event.clientX - this.lastPointerPosition.x;
       this.panVisibleIndexRange(dx);
-      this.requestRedraw(this.viewRedrawParts);
       this.lastPointerPosition = { x: event.clientX };
     } else {
       this.isPanning = false;
@@ -1748,8 +1807,6 @@ export class FinancialChart extends EventEmitter {
     const offsetX = event.clientX - this.container.getBoundingClientRect().left;
 
     this.adjustZoomLevel(zoomFactor, offsetX);
-
-    this.requestRedraw(this.allRedrawParts);
   };
 
   private prepareControllerDraw() {
@@ -1898,16 +1955,6 @@ export class FinancialChart extends EventEmitter {
       }
       const dx = event.touches[0].clientX - this.lastPointerPosition.x;
       this.panVisibleIndexRange(dx);
-      requestAnimationFrame(() => {
-        const rect =
-          this.getContext("crosshair").canvas.getBoundingClientRect();
-        this.redraw(this.viewRedrawParts);
-        if (!this.isTouchCrosshair) return;
-        this.pointerMove({
-          x: event.touches[0].clientX - rect.left,
-          y: event.touches[0].clientY - rect.top
-        });
-      });
       this.lastPointerPosition = {
         x: event.touches[0].clientX
       };
@@ -1922,9 +1969,6 @@ export class FinancialChart extends EventEmitter {
       const offsetX =
         (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left;
       this.adjustZoomLevel(zoomFactor, offsetX);
-      requestAnimationFrame(() => {
-        this.redraw(this.viewRedrawParts);
-      });
       this.lastTouchDistance = distance;
     } else {
       const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
@@ -2079,8 +2123,8 @@ export class FinancialChart extends EventEmitter {
   }
 
   /**
-   * Get the currently visible time range.
-   * This is rounded to visible data-point boundaries.
+   * Gets the whole-bar visible range. `end` is one `stepSize` after the last
+   * included bar and is therefore exclusive.
    *
    * @returns the currently visible time range
    */
@@ -2111,8 +2155,8 @@ export class FinancialChart extends EventEmitter {
   }
 
   /**
-   * Get the precise visible time window.
-   * This preserves fractional logical indexes for pan/zoom replication.
+   * Gets interpolated timestamps for the precise fractional logical window.
+   * Use this representation for lossless pan/zoom replication.
    */
   public getVisibleTimeWindow(): TimeRange {
     if (this.dataStore.length === 0) return this.timeRange;
@@ -2164,9 +2208,10 @@ export class FinancialChart extends EventEmitter {
       this.timeRange
     );
 
-    this.resetVisibleIndexRange();
+    const rangeChanged = this.resetVisibleIndexRange();
     this.recalculateVisibleScale();
     this.clearCrosshair();
+    if (rangeChanged) this.notifyPluginsVisibleRangeChanged();
     this.notifyPluginsData(this.dataStore.toArray());
 
     this.requestRedraw(this.allRedrawParts);
@@ -2203,7 +2248,11 @@ export class FinancialChart extends EventEmitter {
       this.updateAutoTimeRange(true);
     }
 
-    this.refreshIndexBounds({ preserveRightEdge, span });
+    const rangeChanged = this.refreshIndexBounds({ preserveRightEdge, span });
+    if (rangeChanged) {
+      this.recalculateVisibleScale();
+      this.notifyPluginsVisibleRangeChanged();
+    }
     this.notifyPluginsData(this.dataStore.toArray());
     this.requestRedraw(this.allRedrawParts);
   }

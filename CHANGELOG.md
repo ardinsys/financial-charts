@@ -76,6 +76,9 @@
 - Full datasets are copied and sorted before bucket merging. Streaming accepts
   equal or newer timestamps and rejects older corrections with guidance to use
   `setData`.
+- Logical-index, whole-bar time, and precise time-window setters now share one
+  clamped view mutation that synchronously rescales, notifies once, and redraws
+  all dependent layers.
 - Built-in controllers are registered on each chart instance by default, keeping
   hello-world chart setup small while avoiding global mutable registries.
 - Indicator authoring now centers on `getDrawingContext()` for overlays and

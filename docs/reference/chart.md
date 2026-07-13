@@ -208,11 +208,12 @@ root entry.
 
 | Method                                                              | Description                                                                                 |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `getVisibleTimeRange()`                                             | Returns `{ start, end }` for the currently visible index window, mapped back to timestamps. |
-| `setVisibleTimeRange(range)`                                        | Sets the visible window by timestamp range and redraws view layers.                         |
-| `getVisibleTimeWindow()`                                            | Returns the precise fractional visible timestamp window used for pan/zoom replication.      |
-| `setVisibleTimeWindow(range)`                                       | Sets the precise fractional visible timestamp window and redraws view layers.               |
-| `setVisibleIndexRange(range)`                                       | Sets the visible window directly in logical index units.                                    |
+| `getVisibleLogicalRange()`                                          | Returns the precise fractional logical-index window.                                        |
+| `setVisibleIndexRange(range)`                                       | Sets, clamps, rescales, notifies, and redraws a fractional logical-index window.             |
+| `getVisibleTimeRange()`                                             | Returns the whole-bar window as an end-exclusive timestamp range.                            |
+| `setVisibleTimeRange(range)`                                        | Selects whole bars with timestamps in the end-exclusive range.                               |
+| `getVisibleTimeWindow()`                                            | Returns interpolated timestamps that preserve the fractional logical window.                 |
+| `setVisibleTimeWindow(range)`                                       | Restores an interpolated fractional window, primarily for pan/zoom synchronization.          |
 | `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
 | `getOptions()`                                                      | Returns an immutable data-only snapshot of the resolved chart configuration.               |
 | `getTheme()`                                                        | Returns the active `ChartTheme`.                                                            |
@@ -226,6 +227,13 @@ root entry.
 nested theme, locale, and controller collections are immutable and cannot mutate
 the chart. Use `getFormatter()` for the active formatter; DOM adapters are
 available to extensions through `ChartContext`.
+
+View setters enforce a minimum one-bar span and clamp to the chart's current
+index bounds. They synchronously update the visible price scale, notify
+`onVisibleRangeChanged` once per effective change, and redraw all dependent
+layers, including drawings and crosshair. Reapplying the current range does
+nothing. All view setters are no-ops until data exists, and non-finite
+boundaries throw `RangeError` once data is present.
 
 ### Indicator management
 

@@ -59,6 +59,11 @@ to persist or inspect index-space view state.
 What to update:
 
 - Prefer `getVisibleTimeRange()` for UI state.
+- Use `getVisibleTimeWindow()` when synchronization must preserve fractional
+  pan/zoom positions; use `getVisibleLogicalRange()` for index-space state.
+- Public logical, whole-bar time, and precise time-window setters now all
+  clamp, rescale, notify extensions once, and redraw without a follow-up call.
+  They are no-ops before data is loaded.
 - Use `updateCoreOptions(range, stepSize, maxZoom)` when changing symbol,
   timeframe, or base range.
 - Avoid persisting old zoom/pan scalar values from v0.9; persist the data range,

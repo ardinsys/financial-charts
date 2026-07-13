@@ -58,6 +58,7 @@ export interface ChartPlugin extends Drawable {
   readonly key: string;
   attach(ctx: ChartContext): void;
   onData?(data: readonly ChartData[]): void;
+  /** Called once after an effective view change with the whole-bar range. */
   onVisibleRangeChanged?(range: TimeRange): void;
   onPointer?(event: ChartPointerEvent): boolean | void;
   onDrawingFinished?(event: ChartEventMap["drawing-finished"]): void;

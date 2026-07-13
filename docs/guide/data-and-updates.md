@@ -74,6 +74,21 @@ You can always read the current values with `chart.getOptions()` and `chart.getV
 Internally, panning and zooming use a fractional index range so sparse calendars
 remain visually compact.
 
+The three public view representations have distinct precision:
+
+- `getVisibleLogicalRange()` / `setVisibleIndexRange()` use exact fractional
+  bar indexes.
+- `getVisibleTimeWindow()` / `setVisibleTimeWindow()` preserve that fractional
+  position through interpolated timestamps, making them suitable for chart
+  synchronization.
+- `getVisibleTimeRange()` / `setVisibleTimeRange()` use whole bars and an
+  end-exclusive timestamp range.
+
+Every setter clamps to the chart's current index bounds with a minimum one-bar
+span, recalculates the visible price scale, notifies extensions once, and
+redraws all view-dependent layers. Reapplying the effective range does not
+notify or redraw. All three setters are no-ops while the chart has no data.
+
 ## Reading mapped data
 
 `chart.getData()` returns a frozen readonly snapshot of the dataset **after** it
