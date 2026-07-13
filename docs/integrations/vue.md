@@ -35,7 +35,7 @@ onMounted(() => {
     volume: true,
   });
 
-  instance.draw(props.data);
+  instance.setData(props.data);
   lastTimestamp.value = props.data.at(-1)?.time ?? null;
   chart.value = instance;
 
@@ -53,9 +53,9 @@ watch(
     const prev = lastTimestamp.value;
 
     if (next && prev && next.time > prev) {
-      chart.value.drawNextPoint(next);
+      chart.value.updateData(next);
     } else {
-      chart.value.draw(data);
+      chart.value.setData(data);
     }
 
     lastTimestamp.value = next?.time ?? null;
@@ -82,5 +82,5 @@ onBeforeUnmount(() => chart.value?.dispose());
 
 - Avoid creating the chart before the container is measurable (e.g. inside collapsed tabs).
 - Keep the `FinancialChart` instance outside of reactive renders to prevent re-creation.
-- Prefer one `data` array. Memoize or compute it in the parent so identical feeds don't trigger redundant `draw` calls.
+- Prefer one `data` array. Memoize or compute it in the parent so identical feeds don't trigger redundant `setData` calls.
 - Drive theme or controller changes via methods on `chart.value` in event handlers.

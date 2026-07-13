@@ -20,18 +20,18 @@ type ChartData = {
 - Bars render in ordinal index slots, so missing market sessions do not create horizontal time gaps.
 - Missing values (`null`/`undefined`) are allowed – the library draws gaps rather than crashing.
 
-## Initial load with `draw`
+## Initial load with `setData`
 
-Use `draw(data)` to replace the full dataset. Provide either a concrete range or `"auto"` when constructing the chart:
+Use `setData(data)` to replace the full dataset. Provide either a concrete range or `"auto"` when constructing the chart:
 
 - **Explicit range:** the view starts at `{ start, end }`, then maps the matching bars into an index-based visible window.
 - **Auto:** the window starts at the first candle and extends to either the last candle plus one `stepSize` or a viewport-sized span (roughly 30-50 steps), whichever is larger.
 
-When the range is `"auto"`, subsequent `draw` calls recompute the visible span automatically.
+When the range is `"auto"`, subsequent `setData` calls recompute the visible span automatically. Pass `[]` or call `clearData()` to clear data, scales, crosshair state, indicator values, and rendered chart layers.
 
-## Streaming with `drawNextPoint`
+## Streaming with `updateData`
 
-`drawNextPoint(point)` appends a new candle or merges into the newest slot:
+`updateData(point)` initializes an empty chart or appends/merges one candle:
 
 - If the timestamp falls after the last candle's slot, a new candle is appended.
 - If the incoming timestamp falls into the same slot as the last candle (based on `stepSize`), the data is merged.
@@ -64,10 +64,10 @@ calculations, or persist state without reprocessing your raw feed.
 
 ## Handling late or out-of-order data
 
-`drawNextPoint` assumes new data belongs to the newest time slot. If you receive corrections for older candles, re-run `draw` with the full (sorted) array so the remapping step can rebuild the series correctly.
+`updateData` assumes new data belongs to the newest time slot. If you receive corrections for older candles, call `setData` with the full (sorted) array so the remapping step can rebuild the series correctly.
 
 - New points that land in the same `stepSize` bucket as the last candle are merged: high/low extend, close is replaced.
-- Timestamps are snapped **down** to the nearest `stepSize` boundary. If that is not desired, align them before calling `drawNextPoint`.
+- Timestamps are snapped **down** to the nearest `stepSize` boundary. If that is not desired, align them before calling `updateData`.
 - Keep feeds sorted ascending by `time` to avoid “holes” or duplicated labels.
 - When a duplicate timestamp merges into the latest slot, send full OHLCV values so the merge math does not produce `NaN`.
 

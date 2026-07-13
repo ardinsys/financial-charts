@@ -274,7 +274,7 @@ function applyTimeframe() {
       nextSlot.stepSize,
       90
     );
-    item.chart.draw(nextSlot.data);
+    item.chart.setData(nextSlot.data);
   }
 }
 
@@ -385,7 +385,7 @@ function createChart(root: HTMLElement, slot: ChartSlot): PlaygroundChart {
     }
   });
 
-  chart.draw(slot.data);
+  chart.setData(slot.data);
 
   return { chart, drawingManager, slot };
 }

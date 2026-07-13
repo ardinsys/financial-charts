@@ -16,7 +16,7 @@ import "@ardinsys/financial-charts/style.css";
 
 ## 2. Create the chart
 
-The built-in controllers are available by default on each chart instance. The basic flow is constructor, then `draw(data)`.
+The built-in controllers are available by default on each chart instance. The basic flow is constructor, then `setData(data)`.
 
 ```ts
 import { FinancialChart } from "@ardinsys/financial-charts";
@@ -28,7 +28,7 @@ const chart = new FinancialChart(root, "auto", {
   volume: true
 });
 
-chart.draw(data);
+chart.setData(data);
 ```
 
 ## 3. Pick or extend a theme
@@ -89,10 +89,10 @@ type ChartData = {
 
 - Use `null` for missing values. Optional fields exist so controllers can ignore what they don't use.
 
-Call `draw` with sorted candles. The chart snaps timestamps to `stepSize` and merges duplicates.
+Call `setData` with sorted candles. The chart snaps timestamps to `stepSize` and merges duplicates.
 
 ```ts
-chart.draw([
+chart.setData([
   {
     time: Date.UTC(2024, 0, 1, 9, 0),
     open: 11,
@@ -114,10 +114,10 @@ chart.draw([
 
 ## 6. Stream updates and dispose
 
-Use `drawNextPoint` for streaming data: it appends a new candle by default, and only merges into the latest one when the timestamp lands in the same `stepSize` bucket. That keeps the live feed smooth without rebuilding the whole dataset.
+Use `updateData` for streaming data: it initializes an empty chart, appends a new candle, or merges into the current `stepSize` bucket. That keeps the live feed smooth without rebuilding the whole dataset.
 
 ```ts
-chart.drawNextPoint({
+chart.updateData({
   time: Date.UTC(2024, 0, 1, 9, 30),
   open: 11,
   high: 14,
@@ -135,7 +135,7 @@ chart.dispose();
 
 ## Next steps
 
-- [Guide > Data and updates](/guide/data-and-updates) explains how `draw`/`drawNextPoint` interact with step size and auto ranges.
+- [Guide > Data and updates](/guide/data-and-updates) explains how `setData`/`updateData` interact with step size and auto ranges.
 - [Guide > View and interactions](/guide/view-and-interactions) covers zooming, panning, and core runtime options.
 - [Guide > Drawing tools](/guide/drawing-tools) shows how to add trendlines, rectangles, text, and persistence.
 - [Guide > Styling and localization](/guide/styling-and-localization) walks through themes, custom formatters, and locales.

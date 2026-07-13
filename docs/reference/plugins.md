@@ -41,7 +41,7 @@ chart.addPlugin(new WatermarkPlugin());
 | `beforeDraw()`                 | Optional draw hook before the render pipeline starts.                                                                              |
 | `draw()`                       | Optional draw hook on the plugin draw pass.                                                                                        |
 | `afterDraw()`                  | Optional draw hook after the render pipeline finishes.                                                                             |
-| `onData(data)`                 | Optional notification after `draw()` or `drawNextPoint()` changes chart data.                                                      |
+| `onData(data)`                 | Optional notification after `setData()` or `updateData()` changes chart data.                                                       |
 | `onVisibleRangeChanged(range)` | Optional notification when pan/zoom changes the visible time range.                                                                |
 | `onPointer(event)`             | Optional notification for pointer down/move/up events mapped to data and pane space. Return `true` to consume the pointer gesture. |
 | `onDrawingFinished(event)`     | Optional notification when a drawing create or drag operation completes.                                                           |

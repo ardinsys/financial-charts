@@ -83,6 +83,14 @@ export class DataScaleModel {
       this.yMax = Math.max(this.yMax, modifier.yMax || -Infinity);
     }
 
+    if (!Number.isFinite(this.yMin) || !Number.isFinite(this.yMax)) {
+      this.yMin = 0;
+      this.yMax = 1;
+    }
+    if (!Number.isFinite(this.volMax)) {
+      this.volMax = 0;
+    }
+
     this.applyOffsets();
     this.syncScales();
   }
@@ -103,6 +111,10 @@ export class DataScaleModel {
 
   removeModifier(actor: any) {
     this.modifiers.delete(actor);
+  }
+
+  clearModifiers() {
+    this.modifiers.clear();
   }
 
   addDataPoint(data: ChartData) {

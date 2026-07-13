@@ -34,7 +34,7 @@ function createChart(
     ...overrides
   });
 
-  chart.draw(data);
+  chart.setData(data);
   charts.push(chart);
   return chart;
 }
@@ -83,7 +83,7 @@ describe("index-based time scales", () => {
       indexedChart.indexBounds.to
     );
 
-    chart.drawNextPoint({
+    chart.updateData({
       time: start + 60 * 60_000,
       close: 60
     });

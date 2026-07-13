@@ -122,16 +122,20 @@ type LocaleValues = {
 
 | Method                 | Description                                                                                                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `draw(data)`           | Replaces the full dataset and redraws the chart. Call this when symbols or timeframes change.                                                           |
-| `drawNextPoint(point)` | Streams data: appends a new candle or merges into the latest slot when the timestamp falls in the same `stepSize` bucket. Keeps zoom/pan when possible. |
+| `setData(data)`        | Replaces the full dataset and redraws the chart. Passing `[]` clears all data-dependent state immediately.                                             |
+| `updateData(point)`    | Streams one point: appends or merges it into its `stepSize` bucket while preserving zoom/pan where possible.                                           |
+| `clearData()`          | Convenience equivalent of `setData([])`.                                                                                                                |
 | `getData()`            | Returns a frozen readonly snapshot of the dataset after it has been mapped to the active `stepSize`.                                                    |
 
-`drawNextPoint` behavior:
+`updateData` behavior:
 
 - Timestamps are snapped down to the nearest `stepSize`.
 - If the new point lands after the last candle's slot, a new candle is appended.
 - If the new point lands in the same slot as the last candle, high/low extend and close is replaced.
 - With auto range enabled, the window expands and keeps the right edge in view unless you have panned away.
+
+`draw(data)` and `drawNextPoint(point)` are deprecated migration aliases for
+`setData(data)` and `updateData(point)`.
 
 ### View and styling
 

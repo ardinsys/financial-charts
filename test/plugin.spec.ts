@@ -68,7 +68,7 @@ describe("plugin lifecycle", () => {
     const sma = new MovingAverageIndicator();
     const testIndicator = new TestIndicator();
 
-    chart.draw(data);
+    chart.setData(data);
     chart.addIndicator(sma);
     chart.addIndicator(testIndicator);
 
@@ -92,7 +92,7 @@ describe("plugin lifecycle", () => {
       names: { default: "Injected SMA" }
     });
 
-    chart.draw(data);
+    chart.setData(data);
     chart.addIndicator(indicator);
 
     expect(
@@ -115,7 +115,7 @@ describe("plugin lifecycle", () => {
     };
 
     chart.addPlugin(plugin);
-    chart.draw(data);
+    chart.setData(data);
     chart.requestRedraw("drawings", true);
 
     const pointerChart = chart as unknown as {
@@ -154,7 +154,7 @@ describe("plugin lifecycle", () => {
       attach: vi.fn()
     };
 
-    chart.draw(data);
+    chart.setData(data);
     chart.addIndicator(overlay);
     chart.addIndicator(paneled);
     chart.addPlugin(plugin);
@@ -290,7 +290,7 @@ describe("plugin lifecycle", () => {
       pointerY: number;
     };
 
-    chart.draw(data);
+    chart.setData(data);
     chart.addPlugin(plugin);
 
     const state = attachedContext?.setCrosshair({
@@ -319,7 +319,7 @@ describe("plugin lifecycle", () => {
 
   it("detaches indicator label listeners when indicators are removed", () => {
     const { chart, data } = createChart();
-    chart.draw(data);
+    chart.setData(data);
     const indicator = new DetachProbeIndicator();
     const emitSpy = vi.spyOn(chart, "emit");
 
@@ -352,7 +352,7 @@ describe("plugin lifecycle", () => {
       detach: vi.fn()
     };
 
-    chart.draw(data);
+    chart.setData(data);
     chart.addIndicator(indicator);
     chart.addPlugin(plugin);
     chart.on("click", vi.fn());

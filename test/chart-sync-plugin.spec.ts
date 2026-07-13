@@ -109,7 +109,7 @@ function createSyncedChart(group: string) {
   );
   const drawingManager = new DrawingManager();
   const syncPlugin = new ChartSyncPlugin({ group, drawingManager });
-  chart.draw(data);
+  chart.setData(data);
   chart.addPlugin(drawingManager);
   chart.addPlugin(syncPlugin);
   charts.push(chart);
@@ -282,7 +282,7 @@ describe("ChartSyncPlugin", () => {
     expect(target.chart.getData()).toEqual([]);
     expect(target.drawingManager.getDrawings()).toEqual([]);
 
-    target.chart.draw(target.data);
+    target.chart.setData(target.data);
 
     expect(target.chart.getVisibleTimeRange()).toEqual(
       source.chart.getVisibleTimeRange()
@@ -334,7 +334,7 @@ describe("ChartSyncPlugin", () => {
     expect(getSyncGroupSize(group)).toBe(0);
 
     const target = createSyncedChartWithDeferredData(group);
-    target.chart.draw(target.data);
+    target.chart.setData(target.data);
 
     expect(target.chart.getVisibleTimeRange()).toEqual(retainedVisibleRange);
     expect(target.drawingManager.getDrawings()[0]?.id).toBe("retained-trend");
@@ -359,7 +359,7 @@ describe("ChartSyncPlugin", () => {
     );
 
     const target = createDeferredChartWithSync(group, { initialSync: false });
-    target.chart.draw(target.data);
+    target.chart.setData(target.data);
 
     expect(target.chart.getIndicators()).toEqual([]);
   });

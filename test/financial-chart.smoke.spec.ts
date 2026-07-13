@@ -38,7 +38,7 @@ describe("FinancialChart test harness", () => {
       }
     );
 
-    chart.draw([
+    chart.setData([
       { time: start, close: 10 },
       { time: start + 60_000, close: 11 },
       { time: start + 120_000, close: 9 }

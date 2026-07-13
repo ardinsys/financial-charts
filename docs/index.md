@@ -17,7 +17,7 @@ features:
   - title: Fast rendering
     details: "Canvas rendering keeps the chart responsive even with large datasets."
   - title: Streaming ready
-    details: "'draw' and 'drawNextPoint' handle full reloads and streaming updates."
+    details: "'setData' and 'updateData' handle full reloads, clearing, and streaming updates."
   - title: Framework agnostic
     details: "Written in vanilla JS so you can use it anywhere."
   - title: Customizable

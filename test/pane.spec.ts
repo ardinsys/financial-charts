@@ -35,7 +35,7 @@ function createPaneChart() {
     }
   );
 
-  chart.draw([
+  chart.setData([
     { time: start, close: 10 },
     { time: start + 60_000, close: 12 }
   ]);
@@ -98,7 +98,7 @@ describe("Pane", () => {
       }
     );
 
-    chart.draw([
+    chart.setData([
       { time: start, close: 10 },
       { time: start + 60_000, close: 12 }
     ]);

@@ -33,7 +33,7 @@ export function Chart({ data }: Props) {
       locale: "en",
     });
 
-    chart.draw(data);
+    chart.setData(data);
     lastTimestampRef.current = data.at(-1)?.time ?? null;
     chartRef.current = chart;
 
@@ -48,9 +48,9 @@ export function Chart({ data }: Props) {
     const lastSeen = lastTimestampRef.current;
 
     if (next && lastSeen && next.time > lastSeen) {
-      chart.drawNextPoint(next);
+      chart.updateData(next);
     } else {
-      chart.draw(data);
+      chart.setData(data);
     }
 
     lastTimestampRef.current = next?.time ?? null;
@@ -69,5 +69,5 @@ export function Chart({ data }: Props) {
 
 - Keep the container height stable via inline styles or CSS.
 - Store the `FinancialChart` instance outside render to avoid re-instantiation.
-- Favor a single `data` array. Wrap expensive transforms with `useMemo` so identical feeds don't trigger redundant `draw` calls.
+- Favor a single `data` array. Wrap expensive transforms with `useMemo` so identical feeds don't trigger redundant `setData` calls.
 - Call `chart.updateTheme` or `chart.changeType` from event handlers as needed.

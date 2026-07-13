@@ -153,6 +153,11 @@ export abstract class PaneledIndicator<
     this.drawPane(this.getPaneDrawingContext());
   }
 
+  /** @internal */
+  public clearDrawing(): void {
+    this.initDrawing();
+  }
+
   protected drawPane(_context: PaneledIndicatorDrawingContext): void {}
 
   protected initDrawing() {

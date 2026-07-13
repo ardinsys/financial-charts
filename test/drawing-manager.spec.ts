@@ -99,7 +99,7 @@ function createChart({
       locale: "en-US"
     }
   );
-  chart.draw(data);
+  chart.setData(data);
   charts.push(chart);
 
   return { chart, data };

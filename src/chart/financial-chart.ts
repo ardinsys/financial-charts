@@ -1759,6 +1759,7 @@ export class FinancialChart extends EventEmitter {
     ctx.fillStyle = this.options.theme.backgroundColor;
     ctx.fillRect(0, 0, sizes.width, sizes.height);
 
+    if (this.dataStore.length === 0) return;
     this.recalculateVisibleScale();
     this.drawControllerGrid();
   }
@@ -1798,11 +1799,20 @@ export class FinancialChart extends EventEmitter {
   }
 
   private drawControllerAxes() {
+    if (this.dataStore.length === 0) {
+      for (const layer of ["x-label", "y-label"] as const) {
+        const ctx = this.getContext(layer);
+        const size = this.getLogicalCanvas(layer);
+        ctx.clearRect(0, 0, size.width, size.height);
+      }
+      return;
+    }
     this.drawYAxis();
     this.drawXAxis();
   }
 
   private drawControllerSeries() {
+    if (this.dataStore.length === 0) return;
     if (this.options.volume) {
       this.drawVolumeBars();
     }
@@ -2121,20 +2131,20 @@ export class FinancialChart extends EventEmitter {
     };
   }
 
-  /**
-   * Draws/Redraws the whole chart with the given data.
-   * If you only have one sequentially new point, use drawNewChartPoint
-   * instead for better performance.
-   *
-   * @param data chart data to draw
-   */
-  public draw(data: ChartData[]) {
-    if (data.length == 0) return;
+  /** Replaces the complete chart dataset. Passing an empty array clears it. */
+  public setData(data: readonly ChartData[]): void {
     this.applyPaneLayout();
     this.originalDataStore = new DataStore(data);
     this.dataStore = new DataStore(
       this.mapDataToStepSize(data, this.options.stepSize)
     );
+
+    if (this.dataStore.length === 0) {
+      this.resetEmptyDataState();
+      this.notifyPluginsData([]);
+      this.requestRedraw(this.allRedrawParts, true);
+      return;
+    }
 
     if (this.autoTimeRange) {
       this.updateAutoTimeRange(false);
@@ -2147,19 +2157,19 @@ export class FinancialChart extends EventEmitter {
 
     this.resetVisibleIndexRange();
     this.recalculateVisibleScale();
+    this.clearCrosshair();
     this.notifyPluginsData(this.dataStore.toArray());
 
     this.requestRedraw(this.allRedrawParts);
   }
 
-  /**
-   * Draws the next point to the chart.
-   * If you have only one new point, use this
-   * for better performance.
-   *
-   * @param data chart data to draw
-   */
-  public drawNextPoint(data: ChartData) {
+  /** Appends or merges one streaming point into the current dataset. */
+  public updateData(data: ChartData): void {
+    if (this.dataStore.length === 0) {
+      this.setData([data]);
+      return;
+    }
+
     const preserveRightEdge = this.isPinnedToRightEdge();
     const span = this.getVisibleIndexSpan();
 
@@ -2173,6 +2183,41 @@ export class FinancialChart extends EventEmitter {
     this.refreshIndexBounds({ preserveRightEdge, span });
     this.notifyPluginsData(this.dataStore.toArray());
     this.requestRedraw(this.allRedrawParts);
+  }
+
+  public clearData(): void {
+    this.setData([]);
+  }
+
+  /** @deprecated Use `setData(data)`. */
+  public draw(data: readonly ChartData[]): void {
+    this.setData(data);
+  }
+
+  /** @deprecated Use `updateData(point)`. */
+  public drawNextPoint(data: ChartData): void {
+    this.updateData(data);
+  }
+
+  private resetEmptyDataState(): void {
+    if (this.autoTimeRange) {
+      this.timeRange = { start: 0, end: 0 };
+    }
+
+    this.indexBounds = { from: 0, to: 1, rightOffset: 0 };
+    this.visibleIndexRange = { ...this.indexBounds };
+    this.lastVisibleDataPoints = Object.freeze([]);
+    this.lastXGridCoords = Object.freeze([]);
+    this.dataScale = this.controller.createDataScale([], this.timeRange);
+    this.visibleScale.clearModifiers();
+    this.visibleScale.recalculate(
+      [],
+      this.timeRange,
+      this.getTimeScaleOptions()
+    );
+    this.syncTimeScales();
+    this.syncMainPanePriceScale();
+    this.clearCrosshair();
   }
 
   private recalcPaneledIndicators() {
@@ -2412,11 +2457,17 @@ export class FinancialChart extends EventEmitter {
   }
 
   private drawIndicators() {
-    if (this.dataStore.length == 0) return;
     const ctx = this.getContext("indicator");
     const sizes = this.getLogicalCanvas("indicator");
 
     ctx.clearRect(0, 0, sizes.width, sizes.height);
+
+    if (this.dataStore.length === 0) {
+      for (const indicator of this.paneledIndicators) {
+        indicator.clearDrawing();
+      }
+      return;
+    }
 
     for (const indicator of this.indicators) {
       indicator.draw();
@@ -2647,7 +2698,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   protected mapDataToStepSize(
-    data: ChartData[],
+    data: readonly ChartData[],
     stepSize: number
   ): ChartData[] {
     return DataStore.merge(data, stepSize);

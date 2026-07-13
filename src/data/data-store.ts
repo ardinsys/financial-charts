@@ -3,7 +3,7 @@ import type { ChartData } from "../chart/types";
 export class DataStore {
   private data: ChartData[];
 
-  constructor(data: ChartData[] = []) {
+  constructor(data: readonly ChartData[] = []) {
     this.data = [...data];
   }
 
@@ -149,7 +149,7 @@ export class DataStore {
     );
   }
 
-  static merge(data: ChartData[], stepSize: number): ChartData[] {
+  static merge(data: readonly ChartData[], stepSize: number): ChartData[] {
     const store = new DataStore();
     for (const point of data) {
       store.merge(point, stepSize);

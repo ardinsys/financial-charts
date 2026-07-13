@@ -19,6 +19,15 @@ Replace any previous
 `@ardinsys/financial-charts/dist/style.css` import. Package-internal output paths
 are not part of the public API.
 
+### Data replacement and streaming have explicit names
+
+Use `setData(data)` for full replacement, `setData([])` or `clearData()` for
+clearing, and `updateData(point)` for one streaming update. Streaming can now
+initialize an empty chart safely.
+
+`draw(data)` and `drawNextPoint(point)` remain as deprecated migration aliases;
+they delegate directly to `setData` and `updateData`.
+
 ### X coordinates are index-based
 
 Bars are now projected by ordinal index instead of continuous elapsed time.

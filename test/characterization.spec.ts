@@ -43,7 +43,7 @@ function createChart(
     ...overrides
   });
 
-  chart.draw(data);
+  chart.setData(data);
   charts.push(chart);
   return chart as unknown as CharacterizedChart;
 }

@@ -108,7 +108,7 @@ function createChart(adapter: ChartDOMAdapter) {
     }
   );
 
-  chart.draw([
+  chart.setData([
     { time: start, close: 10 },
     { time: start + 60_000, close: 12 }
   ]);

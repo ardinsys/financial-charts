@@ -40,7 +40,7 @@ function createChart(
       ...overrides,
     },
   );
-  chart.draw(data);
+  chart.setData(data);
   charts.push(chart);
   return chart;
 }
@@ -177,7 +177,7 @@ describe("MovingAverageIndicator", () => {
     expect(cache.cache.has(start)).toBe(true);
 
     const nextStart = start + 60_000;
-    chart.draw([
+    chart.setData([
       { time: nextStart, close: 20 },
       { time: nextStart + 60_000, close: 24 },
     ]);

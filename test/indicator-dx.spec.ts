@@ -109,7 +109,7 @@ function createChart(data: ChartData[]) {
       locale: "en-US"
     }
   );
-  chart.draw(data);
+  chart.setData(data);
   charts.push(chart);
   return chart;
 }

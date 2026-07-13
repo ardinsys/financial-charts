@@ -32,6 +32,8 @@
 
 ### Added
 
+- `setData`, `updateData`, and `clearData` provide explicit replacement,
+  streaming, and clearing behavior, including safe stream-first initialization.
 - `DataStore` for sorted bar storage, binary lookup, merge, and visible slicing.
 - Scale exports: `Scale`, `TimeScale`, `PriceScale`, `DataScaleModel`, price
   tick helpers, and `TimeTickGenerator`.
@@ -69,6 +71,8 @@
 - Public data, pane, indicator, and plugin collection getters return frozen
   readonly snapshots. Duplicate extension registrations are rejected, add
   methods return idempotent disposers, and chart disposal is idempotent.
+- `draw` and `drawNextPoint` are deprecated aliases that delegate to `setData`
+  and `updateData`.
 - Built-in controllers are registered on each chart instance by default, keeping
   hello-world chart setup small while avoiding global mutable registries.
 - Indicator authoring now centers on `getDrawingContext()` for overlays and

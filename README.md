@@ -8,7 +8,7 @@ framework-agnostic API.
 
 - Index-based financial X-axis that collapses weekends, holidays, and missing bars.
 - Candlestick, bar, hollow candle, line, step line, area, and HLC area controllers.
-- Streaming updates with `drawNextPoint` and step-size bucket merging.
+- Explicit replacement and streaming updates with `setData` and `updateData`.
 - Overlay and paneled indicators with plugin lifecycle cleanup.
 - Interactive drawings: trendline, horizontal line, rectangle, text, and JSON persistence.
 - Custom controllers, plugins, themes, locales, and formatters.

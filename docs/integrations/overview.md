@@ -5,8 +5,8 @@
 ## Integration checklist
 
 - Create the chart inside the framework's mount hook (`useEffect`, `onMounted`, `ngAfterViewInit`).
-- Store the instance so you can call `draw`, `drawNextPoint`, and `updateCoreOptions` when props change.
-- Prefer a single sorted `data` array. Call `drawNextPoint` for the newest candle and fall back to `draw` when correcting existing data.
+- Store the instance so you can call `setData`, `updateData`, and `updateCoreOptions` when props change.
+- Prefer a single sorted `data` array. Call `updateData` for the newest candle and fall back to `setData` when correcting existing data.
 - Dispose the chart during teardown (`useEffect` cleanup, `onBeforeUnmount`, `ngOnDestroy`).
 - Keep the container height stable – the chart reacts to `ResizeObserver` events automatically.
 - Custom `controllers` are added to the built-ins. Set `includeDefaultControllers: false` only when you need an exact controller set.
