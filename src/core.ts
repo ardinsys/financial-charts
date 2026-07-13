@@ -5,6 +5,10 @@ export * from "./chart/event-emitter";
 export * from "./chart/formatter";
 export * from "./chart/themes";
 export * from "./chart/types";
+export type {
+  PriceAxisAnnotation,
+  PriceAxisAnnotationOffscreenBehavior
+} from "./annotations/price-axis-annotation";
 
 export * from "./utils/color";
 export * from "./utils/dom";

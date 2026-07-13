@@ -101,6 +101,18 @@ export interface ChartTheme {
     font?: string;
     backgroundColor?: string;
   };
+  priceAxisAnnotation?: {
+    color?: string;
+    labelColor?: string;
+    textColor?: string;
+    lineWidth?: number;
+    emphasisLineWidth?: number;
+    lineDash?: number[];
+    fontSize?: number;
+    font?: string;
+    labelHeight?: number;
+    labelPaddingX?: number;
+  };
   crosshair?: {
     color?: string;
     width?: number;
@@ -204,6 +216,18 @@ export const defaultLightTheme: ResolvedChartTheme = {
     font: "Roboto Mono",
     backgroundColor: "#FFFFFF"
   },
+  priceAxisAnnotation: {
+    color: "#2962FF",
+    labelColor: "#1565C0",
+    textColor: "#FFFFFF",
+    lineWidth: 1,
+    emphasisLineWidth: 2.5,
+    lineDash: [],
+    fontSize: 12,
+    font: "Roboto Mono",
+    labelHeight: 18,
+    labelPaddingX: 4
+  },
   crosshair: {
     color: "#9598A1",
     width: 1,
@@ -304,6 +328,18 @@ export const defaultDarkTheme: ResolvedChartTheme = {
     fontSize: 12,
     font: "Roboto",
     backgroundColor: "#161A25"
+  },
+  priceAxisAnnotation: {
+    color: "#FFA726",
+    labelColor: "#F57C00",
+    textColor: "#FFFFFF",
+    lineWidth: 1.5,
+    emphasisLineWidth: 3,
+    lineDash: [],
+    fontSize: 12,
+    font: "Roboto Mono",
+    labelHeight: 18,
+    labelPaddingX: 4
   },
   crosshair: {
     color: "#9598A1",

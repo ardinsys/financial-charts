@@ -70,6 +70,7 @@ describe("visible range contracts", () => {
       "series",
       "indicators",
       "drawings",
+      "annotations",
       "crosshair"
     ]);
 

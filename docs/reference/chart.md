@@ -275,8 +275,8 @@ Plugins receive a `ChartContext` during `attach(ctx)`, can render via
 should release external resources in `detach()`. Current options, data, and
 visible range are delivered immediately after attachment.
 Use the context's `getCanvasContext(layer)`, `getLogicalCanvas(layer)`,
-`getPanes()`, `emit(...)`, and `requestRedraw(...)` helpers for extension-level
-rendering and events.
+`getPanes()`, `setPriceAxisAnnotations(...)`, `emit(...)`, and
+`requestRedraw(...)` helpers for extension-level rendering and events.
 
 Plugin instances and keys must be unique within a chart. The disposer returned
 by `addPlugin()` is idempotent; direct removal likewise returns whether the
@@ -285,10 +285,10 @@ plugin was attached.
 Register render hooks with `ctx.onRenderStage(stage, callback)` when you need a
 specific stage. Stages run in this order:
 
-`beforeDraw → grid → axes → series → indicators → drawings → crosshair → afterDraw`
+`beforeDraw → grid → axes → series → indicators → drawings → annotations → crosshair → afterDraw`
 
 Hooks registered for `series` run after the active controller's series draw and
-before indicators, drawings, and crosshair. That is the right layer for
+before indicators, drawings, annotations, and crosshair. That is the right layer for
 comparison-series plugins that should sit above the main controller but below
 everything else.
 
@@ -297,7 +297,7 @@ everything else.
 | Method                             | Description                                                                                                                                                                                      |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `dispose()`                        | Tears down event listeners, the resize observer, and removes canvases plus paneled indicator containers. Call this before removing the DOM node.                                                 |
-| `requestRedraw(parts, immediate?)` | Schedules a render pass for one or more layers. Use `"grid"`, `"axes"`, `"series"`, `"indicators"`, `"drawings"`, `"crosshair"`, or the compatibility alias `"controller"` for grid/axes/series. |
+| `requestRedraw(parts, immediate?)` | Schedules a render pass for one or more layers. Use `"grid"`, `"axes"`, `"series"`, `"indicators"`, `"drawings"`, `"annotations"`, `"crosshair"`, or the compatibility alias `"controller"` for grid/axes/series. |
 
 Because `FinancialChart` extends an event emitter, the usual `on(event, handler)` and `off(event, handler)` helpers are also available.
 

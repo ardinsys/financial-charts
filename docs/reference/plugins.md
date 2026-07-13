@@ -68,7 +68,7 @@ drawn by the ordinary plugin pass.
 | `domAdapter`                      | Active `ChartDOMAdapter`, useful when plugins need app-owned DOM chrome.                                       |
 | `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()` and on chart disposal.                              |
 | `emit(event, data)`               | Emits a chart event.                                                                                           |
-| `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `grid`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`. |
+| `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`.         |
 | `getLogicalCanvas(layer)`         | Returns logical pixel size for the layer.                                                                      |
 | `getPanes()`                      | Returns a readonly pane snapshot, including the main pane and paneled indicators.                             |
 | `getPlugin(key)`                  | Returns the attached plugin with the matching unique `key`, useful for plugin-to-plugin integration.          |
@@ -78,6 +78,8 @@ drawn by the ordinary plugin pass.
 | `on(event, listener)`             | Subscribes to chart events and returns an unsubscribe function.                                                |
 | `onRenderStage(stage, callback)`  | Registers a render-pipeline hook.                                                                              |
 | `requestRedraw(part, immediate?)` | Schedules one or more redraw parts.                                                                            |
+| `setPriceAxisAnnotations(items)`  | Replaces this extension's price lines and Y-axis labels and schedules their layer.                            |
+| `clearPriceAxisAnnotations()`     | Removes this extension's price-axis annotations.                                                               |
 | `setCrosshair(options)`           | Sets the native crosshair from plugin code and returns the resolved state.                                     |
 | `clearCrosshair()`                | Clears the native crosshair and pointer-aware indicator labels.                                                |
 
@@ -85,13 +87,50 @@ drawn by the ordinary plugin pass.
 
 Render stages run in this order:
 
-`beforeDraw -> grid -> axes -> series -> indicators -> drawings -> crosshair -> afterDraw`
+`beforeDraw -> grid -> axes -> series -> indicators -> drawings -> annotations -> crosshair -> afterDraw`
 
-Redraw parts are layer-oriented: `grid`, `axes`, `series`, `indicators`, `drawings`, `crosshair`, and the compatibility alias `controller` for `grid` + `axes` + `series`.
+Redraw parts are layer-oriented: `grid`, `axes`, `series`, `indicators`, `drawings`, `annotations`, `crosshair`, and the compatibility alias `controller` for `grid` + `axes` + `series`.
 
 Register a hook on `series` when a plugin should draw immediately above the
-active controller but below indicators, drawings, and crosshair. This is useful
-for comparison-series overlays that have their own data stream.
+active controller but below indicators, drawings, annotations, and crosshair.
+This is useful for comparison-series overlays that have their own data stream.
+
+## Price-axis annotations
+
+Extensions can contribute price lines and Y-axis labels without accessing or
+clearing an axis canvas. The collection is owned by the attachment that submits
+it, and each call replaces that attachment's previous collection:
+
+```ts
+attach(ctx) {
+  ctx.setPriceAxisAnnotations([
+    {
+      id: "working-order-42",
+      paneId: ctx.getPanes()[0].getId(),
+      value: 124.5,
+      text: "124.50",
+      color: "#1565c0",
+      labelColor: "#0d47a1",
+      textColor: "#fff",
+      lineDash: [4, 3],
+      emphasized: hovered
+    }
+  ]);
+}
+```
+
+`visible`, `line`, and `label` default to `true`. `text` defaults to the chart's
+formatted price. Values outside their pane are hidden by default; set
+`offscreen: "clamp"` to render at the nearest pane edge. Lines are clipped to
+the plot region. When labels overlap, emphasized labels win, then provider and
+array order; colliding lower-priority labels are omitted while their lines
+remain visible. Missing pane IDs are ignored. Annotation colors, typography,
+line widths, dashes, and label dimensions can be set through
+`theme.priceAxisAnnotation`, with per-item overrides where supported.
+
+Calling `clearPriceAxisAnnotations()` or submitting an empty array removes the
+collection. Detaching the extension removes it automatically. The owned canvas
+renders above drawings and below the crosshair.
 
 ## Built-in plugins
 

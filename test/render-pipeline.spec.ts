@@ -52,15 +52,17 @@ describe("RenderPipeline", () => {
     pipeline.addHook("series", () => calls.push("series"));
     pipeline.addHook("indicators", () => calls.push("indicators"));
     pipeline.addHook("drawings", () => calls.push("drawings"));
+    pipeline.addHook("annotations", () => calls.push("annotations"));
     pipeline.addHook("crosshair", () => calls.push("crosshair"));
     pipeline.addHook("afterDraw", () => calls.push("afterDraw"));
 
-    pipeline.render(["series", "crosshair", "grid"]);
+    pipeline.render(["series", "crosshair", "grid", "annotations"]);
 
     expect(calls).toEqual([
       "beforeDraw",
       "grid",
       "series",
+      "annotations",
       "crosshair",
       "afterDraw"
     ]);

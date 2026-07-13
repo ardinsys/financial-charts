@@ -25,6 +25,7 @@ const createCanvasContext = (
   beginPath: vi.fn(),
   arc: vi.fn(),
   clearRect: vi.fn(),
+  clip: vi.fn(),
   createLinearGradient: vi.fn(() => new CanvasGradientMock()),
   fill: vi.fn(),
   fillRect: vi.fn(),

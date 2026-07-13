@@ -141,6 +141,7 @@ describe("external-data indicators", () => {
     expect(requestRedraw).toHaveBeenCalledWith([
       "controller",
       "indicators",
+      "annotations",
       "crosshair"
     ]);
 

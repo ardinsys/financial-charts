@@ -5,6 +5,7 @@ export type RenderStage =
   | "series"
   | "indicators"
   | "drawings"
+  | "annotations"
   | "crosshair"
   | "afterDraw";
 
@@ -19,6 +20,7 @@ export const renderStageOrder: readonly RenderStage[] = [
   "series",
   "indicators",
   "drawings",
+  "annotations",
   "crosshair",
   "afterDraw"
 ];

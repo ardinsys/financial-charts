@@ -47,7 +47,7 @@ describe("FinancialChart test harness", () => {
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
     expect(chart.getData()).toHaveLength(3);
-    expect(container.querySelectorAll("canvas")).toHaveLength(6);
+    expect(container.querySelectorAll("canvas")).toHaveLength(7);
     expect(chart.getContext("main").canvas.width).toBeGreaterThan(0);
     expect(() => chart.changeType("candle")).not.toThrow();
 

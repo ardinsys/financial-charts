@@ -74,12 +74,19 @@ What to update:
 `requestRedraw()` now targets render layers:
 
 ```ts
-chart.requestRedraw(["grid", "axes", "series", "indicators", "drawings"]);
+chart.requestRedraw([
+  "grid",
+  "axes",
+  "series",
+  "indicators",
+  "drawings",
+  "annotations"
+]);
 ```
 
 The compatibility alias `"controller"` invalidates `grid`, `axes`, and `series`.
 The full layer set is `"grid"`, `"axes"`, `"series"`, `"indicators"`,
-`"drawings"`, and `"crosshair"`.
+`"drawings"`, `"annotations"`, and `"crosshair"`.
 
 ### Plugins own lifecycle hooks
 

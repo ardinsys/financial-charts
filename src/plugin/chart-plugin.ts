@@ -6,6 +6,7 @@ import type {
   ChartRedrawPart,
   FinancialChart
 } from "../chart/financial-chart";
+import type { PriceAxisAnnotation } from "../annotations/price-axis-annotation";
 import type { ChartEventMap } from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";
 import type { Pane } from "../panes/pane";
@@ -53,6 +54,10 @@ export interface ChartContext {
     part: ChartRedrawPart | ReadonlyArray<ChartRedrawPart>,
     immediate?: boolean
   ): void;
+  /** Replaces the annotations owned by this attachment. */
+  setPriceAxisAnnotations(annotations: readonly PriceAxisAnnotation[]): void;
+  /** Removes every price-axis annotation owned by this attachment. */
+  clearPriceAxisAnnotations(): void;
   setCrosshair(options: ChartCrosshairOptions): ChartCrosshairState | undefined;
   clearCrosshair(): void;
 }

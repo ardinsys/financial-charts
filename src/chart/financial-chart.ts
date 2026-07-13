@@ -1,3 +1,8 @@
+import {
+  renderPriceAxisAnnotations,
+  snapshotPriceAxisAnnotations,
+  type PriceAxisAnnotation
+} from "../annotations/price-axis-annotation";
 import { ChartController } from "../controllers/controller";
 import { DataStore } from "../data/data-store";
 import type {
@@ -214,6 +219,8 @@ export type ChartCanvasLayer =
   | "indicator"
   | "drawings";
 
+type ChartOwnedCanvasLayer = ChartCanvasLayer | "annotations";
+
 export type ChartRedrawPart = RenderLayer | "controller";
 export type PaneHeightsInput =
   | Partial<Record<number, number>>
@@ -250,13 +257,14 @@ type PaneResizeDrag = {
 };
 
 export class FinancialChart extends EventEmitter {
-  private readonly types: readonly ChartCanvasLayer[] = [
+  private readonly types: readonly ChartOwnedCanvasLayer[] = [
     "main",
     "crosshair",
     "x-label",
     "y-label",
     "indicator",
-    "drawings"
+    "drawings",
+    "annotations"
   ] as const;
   private readonly controllers = new Map<
     ControllerType,
@@ -303,6 +311,10 @@ export class FinancialChart extends EventEmitter {
   private readonly indicators: Indicator<any, any>[] = [];
   private readonly paneledIndicators: PaneledIndicator<any, any>[] = [];
   private readonly plugins: ChartPlugin[] = [];
+  private readonly priceAxisAnnotations = new Map<
+    ChartPlugin,
+    readonly PriceAxisAnnotation[]
+  >();
   private readonly extensionAbortControllers = new WeakMap<
     ChartPlugin,
     AbortController
@@ -344,6 +356,7 @@ export class FinancialChart extends EventEmitter {
     "series",
     "indicators",
     "drawings",
+    "annotations",
     "crosshair"
   ];
   private readonly viewRedrawParts: readonly RenderLayer[] = [
@@ -352,6 +365,7 @@ export class FinancialChart extends EventEmitter {
     "series",
     "indicators",
     "drawings",
+    "annotations",
     "crosshair"
   ];
 
@@ -915,6 +929,10 @@ export class FinancialChart extends EventEmitter {
       on: (event, listener) => this.on(event, listener),
       onRenderStage: (stage, callback) => this.onRenderStage(stage, callback),
       requestRedraw: (part, immediate) => this.requestRedraw(part, immediate),
+      setPriceAxisAnnotations: (annotations) =>
+        this.setPriceAxisAnnotations(extension, annotations),
+      clearPriceAxisAnnotations: () =>
+        this.setPriceAxisAnnotations(extension, []),
       setCrosshair: (options) => this.setCrosshair(options),
       clearCrosshair: () => this.clearCrosshair()
     };
@@ -923,6 +941,23 @@ export class FinancialChart extends EventEmitter {
   private disposeExtensionScope(extension: ChartPlugin) {
     this.extensionAbortControllers.get(extension)?.abort();
     this.extensionAbortControllers.delete(extension);
+    this.priceAxisAnnotations.delete(extension);
+  }
+
+  private setPriceAxisAnnotations(
+    extension: ChartPlugin,
+    annotations: readonly PriceAxisAnnotation[]
+  ) {
+    const scope = this.extensionAbortControllers.get(extension);
+    if (!scope || scope.signal.aborted) return;
+
+    const snapshot = snapshotPriceAxisAnnotations(annotations);
+    if (snapshot.length === 0) {
+      this.priceAxisAnnotations.delete(extension);
+    } else {
+      this.priceAxisAnnotations.set(extension, snapshot);
+    }
+    this.requestRedraw("annotations");
   }
 
   private getLifecycleExtensions(): ChartPlugin[] {
@@ -1491,6 +1526,9 @@ export class FinancialChart extends EventEmitter {
     this.renderPipeline.addHook("series", () => this.drawControllerSeries());
     this.renderPipeline.addHook("indicators", () => this.drawIndicators());
     this.renderPipeline.addHook("drawings", () => this.drawPlugins());
+    this.renderPipeline.addHook("annotations", () =>
+      this.drawPriceAxisAnnotations()
+    );
     this.renderPipeline.addHook("crosshair", () => this.drawCrosshair());
     this.renderPipeline.addHook("afterDraw", () => this.afterDrawPlugins());
   }
@@ -1572,7 +1610,7 @@ export class FinancialChart extends EventEmitter {
     this.configureRenderPipeline();
     this.applyPaneLayout({ resizeCanvases: false, resizeIndicators: false });
     // Init and scale canveses
-    this.types.forEach((type) => this.getCanvas(type));
+    this.types.forEach((type) => this.getOwnedCanvas(type));
     const topCanvas = this.getCanvas("crosshair");
     this.eventDisposers.push(
       bindEvent(topCanvas, "pointerdown", this.onMouseDown),
@@ -1912,8 +1950,19 @@ export class FinancialChart extends EventEmitter {
         includeRedrawParts(["series", "crosshair"]);
       }
       if (localizationChanged) {
-        includeRedrawParts(["axes", "indicators", "crosshair"]);
+        includeRedrawParts([
+          "axes",
+          "indicators",
+          "annotations",
+          "crosshair"
+        ]);
       }
+    }
+    if (
+      this.priceAxisAnnotations.size > 0 &&
+      (changed.has("theme") || localizationChanged)
+    ) {
+      redrawParts.add("annotations");
     }
 
     this.refreshOptionsSnapshot();
@@ -2209,7 +2258,7 @@ export class FinancialChart extends EventEmitter {
   };
 
   private adjustCanvas(
-    type: (typeof this.types)[number],
+    type: ChartOwnedCanvasLayer,
     canvas: HTMLCanvasElement
   ) {
     const devicePixelRatio = pixelRatio();
@@ -2223,6 +2272,9 @@ export class FinancialChart extends EventEmitter {
       right = 0;
       width = yAxisRegion.width;
       height = yAxisRegion.height;
+    } else if (type === "annotations") {
+      width = this.container.offsetWidth;
+      height = this.getPaneLayoutHeight();
     } else if (type === "x-label" || type === "crosshair") {
       width = this.container.offsetWidth;
       height =
@@ -2246,7 +2298,11 @@ export class FinancialChart extends EventEmitter {
     });
   }
 
-  protected getCanvas(type: (typeof this.types)[number]): HTMLCanvasElement {
+  protected getCanvas(type: ChartCanvasLayer): HTMLCanvasElement {
+    return this.getOwnedCanvas(type);
+  }
+
+  private getOwnedCanvas(type: ChartOwnedCanvasLayer): HTMLCanvasElement {
     const canvas: HTMLCanvasElement =
       this.canvases.get(type) || createCanvasLayer();
 
@@ -2256,9 +2312,11 @@ export class FinancialChart extends EventEmitter {
           ? "100"
           : type === "drawings"
             ? "60"
-            : type === "indicator"
-              ? "50"
-              : "1";
+            : type === "annotations"
+              ? "70"
+              : type === "indicator"
+                ? "50"
+                : "1";
       this.container.appendChild(canvas);
       this.canvases.set(type, canvas);
     }
@@ -2307,8 +2365,14 @@ export class FinancialChart extends EventEmitter {
   }
 
   getContext(type: ChartCanvasLayer): CanvasRenderingContext2D {
+    return this.getOwnedContext(type);
+  }
+
+  private getOwnedContext(
+    type: ChartOwnedCanvasLayer
+  ): CanvasRenderingContext2D {
     if (!this.contexts.has(type)) {
-      const ctx = this.getCanvas(type).getContext("2d")!;
+      const ctx = this.getOwnedCanvas(type).getContext("2d")!;
       scaleCanvasContext(ctx);
       this.contexts.set(type, ctx);
     }
@@ -2323,9 +2387,13 @@ export class FinancialChart extends EventEmitter {
    * @returns    the logical canvas size
    */
   getLogicalCanvas(type: ChartCanvasLayer) {
+    return this.getOwnedLogicalCanvas(type);
+  }
+
+  private getOwnedLogicalCanvas(type: ChartOwnedCanvasLayer) {
     const ratio = pixelRatio();
-    const width = this.getContext(type).canvas.width / ratio;
-    const height = this.getContext(type).canvas.height / ratio;
+    const width = this.getOwnedContext(type).canvas.width / ratio;
+    const height = this.getOwnedContext(type).canvas.height / ratio;
     return { width, height };
   }
 
@@ -2537,6 +2605,7 @@ export class FinancialChart extends EventEmitter {
       this.recalculateVisibleScale();
       redrawParts.add("controller");
       redrawParts.add("indicators");
+      redrawParts.add("annotations");
       redrawParts.add("crosshair");
     }
     if (options.label ?? true) {
@@ -2823,6 +2892,35 @@ export class FinancialChart extends EventEmitter {
     }
   }
 
+  private drawPriceAxisAnnotations() {
+    const context = this.getOwnedContext("annotations");
+    const size = this.getOwnedLogicalCanvas("annotations");
+    renderPriceAxisAnnotations({
+      context,
+      width: size.width,
+      height: size.height,
+      panes: this.panes,
+      annotations: this.getPriceAxisAnnotations(),
+      theme: this.options.theme,
+      formatter: this.options.formatter
+    });
+  }
+
+  private *getPriceAxisAnnotations(): IterableIterator<PriceAxisAnnotation> {
+    for (const indicator of this.indicators) {
+      const annotations = this.priceAxisAnnotations.get(indicator);
+      if (annotations) yield* annotations;
+    }
+    for (const indicator of this.paneledIndicators) {
+      const annotations = this.priceAxisAnnotations.get(indicator);
+      if (annotations) yield* annotations;
+    }
+    for (const plugin of this.plugins) {
+      const annotations = this.priceAxisAnnotations.get(plugin);
+      if (annotations) yield* annotations;
+    }
+  }
+
   private drawCrosshair(): void {
     const ctx = this.getContext("crosshair");
     const sizes = this.getLogicalCanvas("crosshair");
@@ -3004,6 +3102,7 @@ export class FinancialChart extends EventEmitter {
     this.indicators.length = 0;
     this.paneledIndicators.length = 0;
     this.plugins.length = 0;
+    this.priceAxisAnnotations.clear();
     this.paneByIndicator.clear();
     this.indicatorByPane.clear();
     this.removeAllListeners();
