@@ -25,7 +25,7 @@ Rollup, or any environment that can consume modern JavaScript. When using
 indicator labels, include the distributed stylesheet.
 
 ```ts
-import "@ardinsys/financial-charts/dist/style.css";
+import "@ardinsys/financial-charts/style.css";
 ```
 
 ## Documentation

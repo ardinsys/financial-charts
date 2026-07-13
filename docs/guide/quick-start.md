@@ -11,7 +11,7 @@ npm install @ardinsys/financial-charts
 Import the distributed stylesheet when you need indicator labels or paneled indicators.
 
 ```ts
-import "@ardinsys/financial-charts/dist/style.css";
+import "@ardinsys/financial-charts/style.css";
 ```
 
 ## 2. Create the chart

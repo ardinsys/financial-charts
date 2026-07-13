@@ -6,6 +6,19 @@ ordinal financial bars, panes, plugins, and drawing tools.
 
 ## Breaking changes
 
+### Styles use the public package subpath
+
+Import the optional chart stylesheet through the package export rather than its
+internal `dist` directory:
+
+```ts
+import "@ardinsys/financial-charts/style.css";
+```
+
+Replace any previous
+`@ardinsys/financial-charts/dist/style.css` import. Package-internal output paths
+are not part of the public API.
+
 ### X coordinates are index-based
 
 Bars are now projected by ordinal index instead of continuous elapsed time.

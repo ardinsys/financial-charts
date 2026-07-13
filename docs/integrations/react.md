@@ -6,7 +6,7 @@ Use refs and effects to manage the chart lifecycle. Built-in chart types are ava
 // Chart.tsx
 import { useEffect, useRef } from "react";
 import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
-import "@ardinsys/financial-charts/dist/style.css";
+import "@ardinsys/financial-charts/style.css";
 
 type Props = { data: ChartData[] };
 

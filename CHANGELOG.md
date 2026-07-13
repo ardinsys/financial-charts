@@ -85,6 +85,8 @@
 
 ### Fixed
 
+- The documented `@ardinsys/financial-charts/style.css` export now resolves to
+  the stylesheet emitted by the package build.
 - Indicator detach paths remove label listeners and clear lifecycle resources.
 - Moving average rendering uses configured theme color and clears stale caches
   when data is replaced.

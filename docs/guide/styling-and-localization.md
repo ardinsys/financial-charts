@@ -184,7 +184,7 @@ chart.updateLocalization({
 });
 ```
 
-Remember to import `@ardinsys/financial-charts/dist/style.css` when using indicators so the UI labels inherit the base styling. To restyle or replace indicator labels and pane dividers, see [Design-system adapter](/guide/design-system-adapter).
+Remember to import `@ardinsys/financial-charts/style.css` when using indicators so the UI labels inherit the base styling. To restyle or replace indicator labels and pane dividers, see [Design-system adapter](/guide/design-system-adapter).
 
 ## Wiring an i18n bundle to the chart
 
@@ -288,7 +288,7 @@ Use a computed value to regenerate the chart's locale bundle whenever your i18n 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watchEffect } from "vue";
 import { FinancialChart } from "@ardinsys/financial-charts";
-import "@ardinsys/financial-charts/dist/style.css";
+import "@ardinsys/financial-charts/style.css";
 import { createIntl } from "@ardinsys/intl";
 
 const { locale, setLocale, t } = createIntl("en", {

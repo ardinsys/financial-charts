@@ -23,17 +23,18 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./style.css": "./dist/index.css"
+    "./style.css": "./dist/style.css"
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsdown",
+    "build": "tsdown && pnpm verify:package",
     "playground": "vite",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "verify:package": "node scripts/verify-package-exports.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
