@@ -28,6 +28,12 @@ initialize an empty chart safely.
 `draw(data)` and `drawNextPoint(point)` remain as deprecated migration aliases;
 they delegate directly to `setData` and `updateData`.
 
+`setData` now copies and sorts full datasets before merging `stepSize` buckets.
+Bucket merges preserve zero and tolerate partial values: open uses the first
+available value, high/low use their extrema, close uses the last available
+value, and volume sums available values. `updateData` accepts equal or newer
+timestamps and throws for older corrections; use `setData` for those.
+
 ### X coordinates are index-based
 
 Bars are now projected by ordinal index instead of continuous elapsed time.

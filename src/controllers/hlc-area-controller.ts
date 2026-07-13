@@ -31,6 +31,14 @@ export class HLCAreaController extends OHLCController {
 
     const visibleDataPoints = this.chart.getLastVisibleDataPoints();
     if (visibleDataPoints.length === 0) return;
+    if (
+      !visibleDataPoints.some(
+        (point) =>
+          point.high != null && point.low != null && point.close != null
+      )
+    ) {
+      return;
+    }
 
     const timeScale = this.chart.getTimeScale();
     const priceScale = this.chart.getPriceScale();
@@ -56,7 +64,12 @@ export class HLCAreaController extends OHLCController {
     for (let i = 0; i < visibleDataPoints.length; i++) {
       const point = visibleDataPoints[i];
 
-      if (point.high == undefined || point.low == undefined) continue;
+      if (
+        point.high == undefined ||
+        point.low == undefined ||
+        point.close == undefined
+      )
+        continue;
 
       const high = {
         x: timeScale.project(point.time, scaleOptions),
@@ -85,7 +98,12 @@ export class HLCAreaController extends OHLCController {
 
     for (let i = visibleDataPoints.length - 1; i >= 0; i--) {
       const point = visibleDataPoints[i];
-      if (point.close == undefined) continue;
+      if (
+        point.high == undefined ||
+        point.low == undefined ||
+        point.close == undefined
+      )
+        continue;
 
       const close = {
         x: timeScale.project(point.time, scaleOptions),

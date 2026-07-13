@@ -36,7 +36,7 @@ export class DataScaleModel {
 
   constructor(
     private readonly source: DataScaleSource,
-    dataset: ChartData[],
+    dataset: readonly ChartData[],
     timeRange: TimeRange,
     timeOptions: DataScaleTimeOptions = {}
   ) {
@@ -55,7 +55,7 @@ export class DataScaleModel {
   }
 
   recalculate(
-    dataset: ChartData[],
+    dataset: readonly ChartData[],
     timeRange: TimeRange,
     timeOptions: DataScaleTimeOptions = {}
   ): void {
@@ -68,19 +68,27 @@ export class DataScaleModel {
 
     for (const data of dataset) {
       if (this.source === "simple") {
-        this.yMin = Math.min(this.yMin, data.close || Infinity);
-        this.yMax = Math.max(this.yMax, data.close || -Infinity);
+        if (data.close != null) {
+          this.yMin = Math.min(this.yMin, data.close);
+          this.yMax = Math.max(this.yMax, data.close);
+        }
       } else {
-        this.yMin = Math.min(this.yMin, data.low || Infinity);
-        this.yMax = Math.max(this.yMax, data.high || -Infinity);
+        if (data.low != null) this.yMin = Math.min(this.yMin, data.low);
+        if (data.high != null) this.yMax = Math.max(this.yMax, data.high);
       }
-      this.volMax = Math.max(this.volMax, data.volume || -Infinity);
+      if (data.volume != null) {
+        this.volMax = Math.max(this.volMax, data.volume);
+      }
     }
 
     for (const modifier of this.modifiers.values()) {
       if (!modifier.enabled) continue;
-      this.yMin = Math.min(this.yMin, modifier.yMin || Infinity);
-      this.yMax = Math.max(this.yMax, modifier.yMax || -Infinity);
+      if (modifier.yMin != null) {
+        this.yMin = Math.min(this.yMin, modifier.yMin);
+      }
+      if (modifier.yMax != null) {
+        this.yMax = Math.max(this.yMax, modifier.yMax);
+      }
     }
 
     if (!Number.isFinite(this.yMin) || !Number.isFinite(this.yMax)) {
@@ -192,6 +200,12 @@ export class DataScaleModel {
   }
 
   private applyOffsets() {
+    if (this.yMin === this.yMax) {
+      const padding = Math.max(Math.abs(this.yMin) * 0.01, 1);
+      this.yMin -= padding;
+      this.yMax += padding;
+    }
+
     const yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
     const yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
 
@@ -207,7 +221,7 @@ export class DataScaleModel {
     this.volumeScale.setRange({ min: 0, max: this.volMax });
   }
 
-  private getDefaultIndexRange(dataset: ChartData[]): TimeScaleRange {
+  private getDefaultIndexRange(dataset: readonly ChartData[]): TimeScaleRange {
     return {
       from: 0,
       to: Math.max(dataset.length, 1),
@@ -238,11 +252,11 @@ export class DataScaleModel {
       this.yMax = yMax;
     }
 
-    if (data.volume !== null && data.volume !== undefined) {
+    if (data.volume != null) {
       changed = changed || data.volume > this.volMax;
+      this.volMax = Math.max(this.volMax, data.volume);
     }
 
-    this.volMax = Math.max(this.volMax, data.volume!);
     this.syncScales();
 
     return changed;
@@ -268,7 +282,7 @@ export class DataScaleModel {
     if (high != null && data.high !== undefined) {
       changed = changed || high > yMax;
     }
-    if (data.volume !== null && data.volume !== undefined) {
+    if (data.volume != null) {
       changed = changed || data.volume > this.volMax;
     }
 
@@ -285,7 +299,9 @@ export class DataScaleModel {
     this.yMin = yMin;
     this.yMax = yMax;
 
-    this.volMax = Math.max(this.volMax, data.volume || -Infinity);
+    if (data.volume != null) {
+      this.volMax = Math.max(this.volMax, data.volume);
+    }
     this.syncScales();
 
     return changed;

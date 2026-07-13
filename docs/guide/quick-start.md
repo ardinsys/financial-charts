@@ -1,6 +1,6 @@
 # Quick start
 
-Follow these steps to render your first chart with sensible defaults. Every example assumes data is ordered by timestamp (milliseconds) and that you can pass a real DOM element to the chart.
+Follow these steps to render your first chart with sensible defaults. Timestamps are finite numbers in milliseconds, and every example assumes you can pass a real DOM element to the chart.
 
 ## 1. Install
 
@@ -78,18 +78,18 @@ Use the exported `ChartData` shape. Fields are optional because not every contro
 
 ```ts
 type ChartData = {
-  time: number;
-  open?: number | null;
-  high?: number | null;
-  low?: number | null;
-  close?: number | null;
-  volume?: number | null;
+  readonly time: number;
+  readonly open?: number | null;
+  readonly high?: number | null;
+  readonly low?: number | null;
+  readonly close?: number | null;
+  readonly volume?: number | null;
 };
 ```
 
 - Use `null` for missing values. Optional fields exist so controllers can ignore what they don't use.
 
-Call `setData` with sorted candles. The chart snaps timestamps to `stepSize` and merges duplicates.
+Call `setData` with candles in any order. The chart copies and sorts them, snaps timestamps to `stepSize`, and merges duplicates without losing zero or partial values.
 
 ```ts
 chart.setData([
@@ -115,6 +115,8 @@ chart.setData([
 ## 6. Stream updates and dispose
 
 Use `updateData` for streaming data: it initializes an empty chart, appends a new candle, or merges into the current `stepSize` bucket. That keeps the live feed smooth without rebuilding the whole dataset.
+
+Streaming timestamps must be monotonic. Use `setData` for an older correction.
 
 ```ts
 chart.updateData({

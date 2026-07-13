@@ -15,7 +15,7 @@ export abstract class ChartController {
   ) {}
 
   abstract createDataScale(
-    data: ChartData[],
+    data: readonly ChartData[],
     timeRange: TimeRange
   ): DataScaleModel;
 
@@ -31,7 +31,10 @@ export abstract class ChartController {
 export abstract class SimpleController extends ChartController {
   private simpleCrosshairValues = [false, false, false, true, true];
 
-  createDataScale(data: ChartData[], timeRange: TimeRange): DataScaleModel {
+  createDataScale(
+    data: readonly ChartData[],
+    timeRange: TimeRange
+  ): DataScaleModel {
     return new DataScaleModel("simple", data, timeRange, {
       barAlignment: this.getBarAlignment()
     });
@@ -55,7 +58,10 @@ export abstract class SimpleController extends ChartController {
 export abstract class OHLCController extends ChartController {
   private ohlcCrosshairValues = [true, true, true, true, true];
 
-  createDataScale(data: ChartData[], timeRange: TimeRange): DataScaleModel {
+  createDataScale(
+    data: readonly ChartData[],
+    timeRange: TimeRange
+  ): DataScaleModel {
     return new DataScaleModel("ohlc", data, timeRange, {
       barAlignment: this.getBarAlignment()
     });

@@ -51,6 +51,8 @@ export class PriceScale implements Scale {
     const height = options.canvas.height / ratio;
     const maxColumnHeight = height * maxHeightRatio;
 
+    if (this.range.max <= 0) return 0;
+
     return (value / this.range.max) * maxColumnHeight;
   }
 

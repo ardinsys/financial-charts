@@ -2131,12 +2131,21 @@ export class FinancialChart extends EventEmitter {
     };
   }
 
-  /** Replaces the complete chart dataset. Passing an empty array clears it. */
+  /**
+   * Replaces the complete chart dataset without mutating the input.
+   * Points are sorted, snapped to `stepSize`, and merged by bucket. An empty
+   * array clears all data-dependent state.
+   *
+   * @throws {TypeError} when a present data value is not finite
+   */
   public setData(data: readonly ChartData[]): void {
     this.applyPaneLayout();
     this.originalDataStore = new DataStore(data);
     this.dataStore = new DataStore(
-      this.mapDataToStepSize(data, this.options.stepSize)
+      this.mapDataToStepSize(
+        this.originalDataStore.toArray(),
+        this.options.stepSize
+      )
     );
 
     if (this.dataStore.length === 0) {
@@ -2163,7 +2172,12 @@ export class FinancialChart extends EventEmitter {
     this.requestRedraw(this.allRedrawParts);
   }
 
-  /** Appends or merges one streaming point into the current dataset. */
+  /**
+   * Appends or merges one streaming point.
+   *
+   * @throws {TypeError} when a present data value is not finite
+   * @throws {RangeError} when the timestamp is older than the latest point
+   */
   public updateData(data: ChartData): void {
     if (this.dataStore.length === 0) {
       this.setData([data]);
@@ -2172,9 +2186,18 @@ export class FinancialChart extends EventEmitter {
 
     const preserveRightEdge = this.isPinnedToRightEdge();
     const span = this.getVisibleIndexSpan();
+    const latestTime = this.originalDataStore.get(
+      this.originalDataStore.length - 1
+    )!.time;
 
-    this.originalDataStore.append(data);
-    this.transformNewData(data);
+    if (data.time < latestTime) {
+      throw new RangeError(
+        "updateData() requires a timestamp at or after the latest point. Use setData() to apply older corrections."
+      );
+    }
+
+    const originalIndex = this.originalDataStore.append(data);
+    this.transformNewData(this.originalDataStore.get(originalIndex)!);
 
     if (this.autoTimeRange) {
       this.updateAutoTimeRange(true);
@@ -2598,7 +2621,7 @@ export class FinancialChart extends EventEmitter {
       if (price == undefined) continue;
       let ohlcText = this.options.formatter.formatTooltipPrice(price, decimals);
       if (ohlcv.length - 1 === i) {
-        ohlcText = this.options.formatter.formatVolume(price, p.close || 1);
+        ohlcText = this.options.formatter.formatVolume(price, p.close ?? 1);
       }
 
       const labelWidth = ctx.measureText(labels[i]).width;
@@ -2705,13 +2728,9 @@ export class FinancialChart extends EventEmitter {
   }
 
   protected transformNewData(data: ChartData): boolean {
-    const d =
-      data.time % this.options.stepSize === 0
-        ? data
-        : { ...data, time: data.time - (data.time % this.options.stepSize) };
-
-    const isNewData = this.dataStore.merge(d, this.options.stepSize);
-    const dataIndex = this.dataStore.indexOfTime(d.time);
+    const bucketTime = DataStore.bucketTime(data.time, this.options.stepSize);
+    const isNewData = this.dataStore.merge(data, this.options.stepSize);
+    const dataIndex = this.dataStore.indexOfTime(bucketTime);
     const storedData = this.dataStore.get(dataIndex)!;
 
     this.dataScale.addDataPoint(storedData);

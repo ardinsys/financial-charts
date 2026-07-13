@@ -81,12 +81,12 @@ const chart = new FinancialChart(root, "auto", {
 ```ts
 // Exported as `ChartData` from "@ardinsys/financial-charts"
 type ChartData = {
-  time: number; // UNIX timestamp in milliseconds
-  open?: number | null;
-  high?: number | null;
-  low?: number | null;
-  close?: number | null;
-  volume?: number | null;
+  readonly time: number; // UNIX timestamp in milliseconds
+  readonly open?: number | null;
+  readonly high?: number | null;
+  readonly low?: number | null;
+  readonly close?: number | null;
+  readonly volume?: number | null;
 };
 
 type TimeRange = { start: number; end: number };
@@ -112,7 +112,9 @@ type LocaleValues = {
 };
 ```
 
-- Data **must** be sorted ascending by `time`.
+- All present `ChartData` values must be finite numbers; zero is valid.
+- `setData` copies and sorts input by `time`; caller-owned arrays and points are not mutated.
+- Points sharing a snapped bucket merge using first open, greatest high, smallest low, last close, and summed volume. Missing fields do not erase numeric values.
 - X coordinates are index-based: every data point occupies one ordinal slot, so weekends, holidays, and missing bars do not create blank horizontal gaps.
 - When `timeRange` is `"auto"`, the window starts at the first data point and extends to either the last point plus one `stepSize` or a viewport-sized span (about 30-50 steps), whichever is larger.
 
@@ -122,8 +124,8 @@ type LocaleValues = {
 
 | Method                 | Description                                                                                                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setData(data)`        | Replaces the full dataset and redraws the chart. Passing `[]` clears all data-dependent state immediately.                                             |
-| `updateData(point)`    | Streams one point: appends or merges it into its `stepSize` bucket while preserving zoom/pan where possible.                                           |
+| `setData(data)`        | Copies, sorts, buckets, and replaces the full dataset. Passing `[]` clears all data-dependent state immediately.                                       |
+| `updateData(point)`    | Streams a monotonic point: appends or merges it into the newest `stepSize` bucket while preserving zoom/pan where possible.                            |
 | `clearData()`          | Convenience equivalent of `setData([])`.                                                                                                                |
 | `getData()`            | Returns a frozen readonly snapshot of the dataset after it has been mapped to the active `stepSize`.                                                    |
 
@@ -131,7 +133,8 @@ type LocaleValues = {
 
 - Timestamps are snapped down to the nearest `stepSize`.
 - If the new point lands after the last candle's slot, a new candle is appended.
-- If the new point lands in the same slot as the last candle, high/low extend and close is replaced.
+- If the new point lands in the same slot as the last candle, the full-dataset field merge rules apply.
+- Equal timestamps are accepted. Older timestamps throw a `RangeError`; use `setData` for corrections.
 - With auto range enabled, the window expands and keeps the right edge in view unless you have panned away.
 
 `draw(data)` and `drawNextPoint(point)` are deprecated migration aliases for

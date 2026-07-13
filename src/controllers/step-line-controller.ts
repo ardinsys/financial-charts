@@ -11,7 +11,10 @@ export class SteplineController extends OHLCController {
     return this.crosshairValues;
   }
 
-  createDataScale(data: ChartData[], timeRange: TimeRange): DataScaleModel {
+  createDataScale(
+    data: readonly ChartData[],
+    timeRange: TimeRange
+  ): DataScaleModel {
     return new DataScaleModel("simple", data, timeRange, {
       barAlignment: this.getBarAlignment()
     });

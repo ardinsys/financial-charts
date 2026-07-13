@@ -73,6 +73,9 @@
   methods return idempotent disposers, and chart disposal is idempotent.
 - `draw` and `drawNextPoint` are deprecated aliases that delegate to `setData`
   and `updateData`.
+- Full datasets are copied and sorted before bucket merging. Streaming accepts
+  equal or newer timestamps and rejects older corrections with guidance to use
+  `setData`.
 - Built-in controllers are registered on each chart instance by default, keeping
   hello-world chart setup small while avoiding global mutable registries.
 - Indicator authoring now centers on `getDrawingContext()` for overlays and
@@ -101,6 +104,8 @@
 
 - The documented `@ardinsys/financial-charts/style.css` export now resolves to
   the stylesheet emitted by the package build.
+- Bucket merging preserves zero and safely combines close-only, nullable OHLC,
+  and missing-volume points without producing `NaN` scales.
 - Indicator detach paths remove label listeners and clear lifecycle resources.
 - Moving average rendering uses configured theme color and clears stale caches
   when data is replaced.

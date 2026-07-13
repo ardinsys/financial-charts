@@ -122,4 +122,52 @@ describe("DataStore", () => {
       { time: 120, open: 13, high: 15, low: 12, close: 14, volume: 80 }
     ]);
   });
+
+  it("sorts full datasets and merges partial or zero-valued buckets", () => {
+    const input = [
+      { time: 119, high: null, close: 0, volume: null },
+      { time: 65, open: 0, high: 2, low: 0, close: 1, volume: 0 },
+      { time: 90, open: null, high: 3, low: null, close: null }
+    ];
+
+    expect(DataStore.merge(input, 60)).toEqual([
+      { time: 60, open: 0, high: 3, low: 0, close: 0, volume: 0 }
+    ]);
+    expect(input.map((point) => point.time)).toEqual([119, 65, 90]);
+  });
+
+  it("uses the first available open and last available close for duplicates", () => {
+    expect(
+      DataStore.merge(
+        [
+          { time: 60, close: 1 },
+          { time: 60, open: 0, close: null },
+          { time: 60, open: 2, close: 0 }
+        ],
+        60
+      )
+    ).toEqual([{ time: 60, open: 0, close: 0 }]);
+  });
+
+  it("copies and freezes stored points", () => {
+    const point = { time: 65, close: 0 };
+    const result = DataStore.merge([point], 60);
+
+    point.close = 10;
+
+    expect(result).toEqual([{ time: 60, close: 0 }]);
+    expect(Object.isFrozen(result[0])).toBe(true);
+  });
+
+  it("rejects non-finite values and invalid bucket sizes", () => {
+    expect(() => DataStore.merge([{ time: Number.NaN }], 60)).toThrow(
+      "ChartData.time must be a finite number."
+    );
+    expect(() =>
+      DataStore.merge([{ time: 60, close: Number.POSITIVE_INFINITY }], 60)
+    ).toThrow("ChartData.close must be a finite number when present.");
+    expect(() => DataStore.merge([{ time: 60 }], 0)).toThrow(
+      "stepSize must be a finite number greater than zero."
+    );
+  });
 });

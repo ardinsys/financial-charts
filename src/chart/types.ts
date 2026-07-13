@@ -1,10 +1,15 @@
+/**
+ * One immutable financial-series observation. All present numbers must be
+ * finite.
+ */
 export interface ChartData {
-  time: number;
-  open?: number | null;
-  high?: number | null;
-  low?: number | null;
-  close?: number | null;
-  volume?: number | null;
+  /** UNIX timestamp in milliseconds. */
+  readonly time: number;
+  readonly open?: number | null;
+  readonly high?: number | null;
+  readonly low?: number | null;
+  readonly close?: number | null;
+  readonly volume?: number | null;
 }
 
 export interface TimeRange {

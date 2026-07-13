@@ -6,16 +6,17 @@ Charts stay predictable when the incoming feed matches the expected shape and ca
 
 ```ts
 type ChartData = {
-  time: number; // UNIX timestamp in milliseconds
-  open?: number | null;
-  high?: number | null;
-  low?: number | null;
-  close?: number | null;
-  volume?: number | null;
+  readonly time: number; // UNIX timestamp in milliseconds
+  readonly open?: number | null;
+  readonly high?: number | null;
+  readonly low?: number | null;
+  readonly close?: number | null;
+  readonly volume?: number | null;
 };
 ```
 
-- Sort candles in ascending order by `time`.
+- Every present value must be a finite number. Zero is a valid price or volume.
+- `setData` accepts any input order and sorts a copied dataset by `time`.
 - Timestamps are snapped to the configured `stepSize` so minor drift does not break alignment.
 - Bars render in ordinal index slots, so missing market sessions do not create horizontal time gaps.
 - Missing values (`null`/`undefined`) are allowed – the library draws gaps rather than crashing.
@@ -29,12 +30,29 @@ Use `setData(data)` to replace the full dataset. Provide either a concrete range
 
 When the range is `"auto"`, subsequent `setData` calls recompute the visible span automatically. Pass `[]` or call `clearData()` to clear data, scales, crosshair state, indicator values, and rendered chart layers.
 
+`setData` copies its input and never reorders or changes caller-owned arrays or
+points. After sorting, points in the same snapped bucket are merged in timestamp
+order. Exact duplicate timestamps retain their input order.
+
+Bucket fields follow these rules:
+
+- `open`: first non-missing value.
+- `high`: greatest non-missing value.
+- `low`: smallest non-missing value.
+- `close`: last non-missing value.
+- `volume`: sum of non-missing values.
+
+`null` and `undefined` do not erase an existing numeric value. If a field has no
+numeric value in the bucket, it remains missing. This makes close-only data,
+partial OHLC updates, missing volume, and zero values safe to combine.
+
 ## Streaming with `updateData`
 
 `updateData(point)` initializes an empty chart or appends/merges one candle:
 
 - If the timestamp falls after the last candle's slot, a new candle is appended.
 - If the incoming timestamp falls into the same slot as the last candle (based on `stepSize`), the data is merged.
+- The timestamp must be equal to or greater than the latest supplied timestamp.
 - The current zoom and pan are preserved where possible so live feeds do not jump unexpectedly.
 - If the viewport is anchored at the right edge, the newest candle scrolls into view automatically.
 
@@ -64,12 +82,14 @@ calculations, or persist state without reprocessing your raw feed.
 
 ## Handling late or out-of-order data
 
-`updateData` assumes new data belongs to the newest time slot. If you receive corrections for older candles, call `setData` with the full (sorted) array so the remapping step can rebuild the series correctly.
+`updateData` only accepts monotonic timestamps. Equal timestamps are valid
+duplicates; an older timestamp throws a `RangeError` without changing chart
+data. Apply late corrections with `setData`, which sorts and rebuilds the full
+series.
 
-- New points that land in the same `stepSize` bucket as the last candle are merged: high/low extend, close is replaced.
+- New points that land in the same `stepSize` bucket as the last candle use the same field merge rules as `setData`.
 - Timestamps are snapped **down** to the nearest `stepSize` boundary. If that is not desired, align them before calling `updateData`.
-- Keep feeds sorted ascending by `time` to avoid “holes” or duplicated labels.
-- When a duplicate timestamp merges into the latest slot, send full OHLCV values so the merge math does not produce `NaN`.
+- Non-finite timestamps or values throw a `TypeError` rather than entering chart state.
 
 ## Troubleshooting gaps and jumps
 

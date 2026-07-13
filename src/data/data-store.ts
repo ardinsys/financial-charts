@@ -1,10 +1,16 @@
 import type { ChartData } from "../chart/types";
 
+type MutableChartData = {
+  -readonly [Field in keyof ChartData]: ChartData[Field];
+};
+
 export class DataStore {
   private data: ChartData[];
 
   constructor(data: readonly ChartData[] = []) {
-    this.data = [...data];
+    this.data = data
+      .map((point) => DataStore.copyPoint(point))
+      .sort((left, right) => left.time - right.time);
   }
 
   get length() {
@@ -44,8 +50,9 @@ export class DataStore {
   }
 
   append(point: ChartData): number {
-    const index = this.upperBound(point.time);
-    this.data.splice(index, 0, point);
+    const storedPoint = DataStore.copyPoint(point);
+    const index = this.upperBound(storedPoint.time);
+    this.data.splice(index, 0, storedPoint);
     return index;
   }
 
@@ -151,10 +158,24 @@ export class DataStore {
 
   static merge(data: readonly ChartData[], stepSize: number): ChartData[] {
     const store = new DataStore();
-    for (const point of data) {
+    const sortedData = [...data].sort((left, right) => left.time - right.time);
+    for (const point of sortedData) {
       store.merge(point, stepSize);
     }
     return store.toArray();
+  }
+
+  static bucketTime(time: number, stepSize: number): number {
+    if (!Number.isFinite(time)) {
+      throw new TypeError("ChartData.time must be a finite number.");
+    }
+    if (!Number.isFinite(stepSize) || stepSize <= 0) {
+      throw new RangeError(
+        "stepSize must be a finite number greater than zero."
+      );
+    }
+
+    return Math.floor(time / stepSize) * stepSize;
   }
 
   private lowerBound(time: number): number {
@@ -190,18 +211,109 @@ export class DataStore {
   }
 
   private static bucketPoint(point: ChartData, stepSize: number): ChartData {
-    if (point.time % stepSize === 0) return point;
-    return { ...point, time: point.time - (point.time % stepSize) };
+    const storedPoint = DataStore.copyPoint(point);
+    const time = DataStore.bucketTime(storedPoint.time, stepSize);
+    if (time === storedPoint.time) return storedPoint;
+    return Object.freeze({ ...storedPoint, time });
   }
 
   private static mergePoints(current: ChartData, next: ChartData): ChartData {
-    return {
-      ...current,
-      open: current.open!,
-      high: Math.max(current.high!, next.high!),
-      low: Math.min(current.low!, next.low!),
-      close: next.close!,
-      volume: current.volume! + next.volume!
-    };
+    const result: MutableChartData = { time: current.time };
+
+    DataStore.assignMergedValue(
+      result,
+      "open",
+      current.open ?? next.open,
+      current.open,
+      next.open
+    );
+    DataStore.assignMergedValue(
+      result,
+      "high",
+      DataStore.maximum(current.high, next.high),
+      current.high,
+      next.high
+    );
+    DataStore.assignMergedValue(
+      result,
+      "low",
+      DataStore.minimum(current.low, next.low),
+      current.low,
+      next.low
+    );
+    DataStore.assignMergedValue(
+      result,
+      "close",
+      next.close ?? current.close,
+      current.close,
+      next.close
+    );
+    DataStore.assignMergedValue(
+      result,
+      "volume",
+      DataStore.sum(current.volume, next.volume),
+      current.volume,
+      next.volume
+    );
+
+    return Object.freeze(result);
+  }
+
+  private static copyPoint(point: ChartData): ChartData {
+    if (!Number.isFinite(point.time)) {
+      throw new TypeError("ChartData.time must be a finite number.");
+    }
+
+    for (const field of ["open", "high", "low", "close", "volume"] as const) {
+      const value = point[field];
+      if (value != null && !Number.isFinite(value)) {
+        throw new TypeError(
+          `ChartData.${field} must be a finite number when present.`
+        );
+      }
+    }
+
+    return Object.isFrozen(point) ? point : Object.freeze({ ...point });
+  }
+
+  private static assignMergedValue(
+    result: MutableChartData,
+    field: "open" | "high" | "low" | "close" | "volume",
+    value: number | null | undefined,
+    current: number | null | undefined,
+    next: number | null | undefined
+  ): void {
+    if (value != null) {
+      result[field] = value;
+    } else if (current === null || next === null) {
+      result[field] = null;
+    }
+  }
+
+  private static maximum(
+    current: number | null | undefined,
+    next: number | null | undefined
+  ): number | undefined {
+    if (current == null) return next ?? undefined;
+    if (next == null) return current;
+    return Math.max(current, next);
+  }
+
+  private static minimum(
+    current: number | null | undefined,
+    next: number | null | undefined
+  ): number | undefined {
+    if (current == null) return next ?? undefined;
+    if (next == null) return current;
+    return Math.min(current, next);
+  }
+
+  private static sum(
+    current: number | null | undefined,
+    next: number | null | undefined
+  ): number | undefined {
+    if (current == null) return next ?? undefined;
+    if (next == null) return current;
+    return current + next;
   }
 }
