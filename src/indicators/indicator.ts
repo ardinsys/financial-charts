@@ -8,8 +8,7 @@ import type {
   IndicatorLabelSegment
 } from "../ui/chart-dom-adapter";
 import type { Formatter } from "../chart/formatter";
-import type { DeepConcrete } from "../chart/financial-chart";
-import type { ChartTheme } from "../chart/themes";
+import type { ResolvedChartTheme } from "../chart/themes";
 import type {
   DataScaleModel,
   ScaleRangeModifier
@@ -54,7 +53,7 @@ export interface IndicatorDrawingContext {
   visibleScale: DataScaleModel;
   scaleOptions: ScaleProjectOptions & { barAlignment: BarAlignment };
   formatter: Formatter;
-  theme: DeepConcrete<ChartTheme>;
+  theme: ResolvedChartTheme;
   projectTime(time: number, barAlignment?: BarAlignment): number;
   projectPrice(value: number): number;
   projectPoint(

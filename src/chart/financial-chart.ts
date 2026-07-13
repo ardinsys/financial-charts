@@ -1,11 +1,4 @@
 import { ChartController } from "../controllers/controller";
-import { AreaController } from "../controllers/area-controller";
-import { BarController } from "../controllers/bar-controller";
-import { CandlestickController } from "../controllers/candle-controller";
-import { HLCAreaController } from "../controllers/hlc-area-controller";
-import { HollowCandleController } from "../controllers/hollow-candle-controller";
-import { LineController } from "../controllers/line-controller";
-import { SteplineController } from "../controllers/step-line-controller";
 import { DataStore } from "../data/data-store";
 import type {
   PaneledIndicator,
@@ -23,7 +16,12 @@ import {
 } from "../scales/ticks/price-ticks";
 import { TimeTickGenerator } from "../scales/ticks/time-ticks";
 import { DefaultFormatter, Formatter } from "./formatter";
-import { ChartTheme, defaultLightTheme, mergeThemes } from "./themes";
+import {
+  ChartTheme,
+  defaultLightTheme,
+  mergeThemes,
+  type ResolvedChartTheme
+} from "./themes";
 import { ChartData, TimeRange } from "./types";
 import { EventEmitter, type ChartEventMap } from "./event-emitter";
 import { pixelRatio } from "../utils/screen";
@@ -54,14 +52,13 @@ import type {
   ChartPlugin,
   ChartPointerEvent
 } from "../plugin/chart-plugin";
+import { getDefaultControllerConstructors } from "./internal-default-controllers";
 
-export type DeepConcrete<T> = T extends Function
+type DeepReadonly<T> = T extends Function
   ? T
-  : T extends Formatter
-    ? T
-    : T extends object
-      ? { [P in keyof T]-?: DeepConcrete<T[P]> }
-      : T;
+  : T extends object
+    ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
+    : T;
 
 export type ControllerID =
   | "area"
@@ -71,7 +68,7 @@ export type ControllerID =
   | "hollow-candle"
   | "stepline"
   | "hlc-area";
-export type ControllerType = ControllerID | Omit<string, ControllerID>;
+export type ControllerType = ControllerID | (string & {});
 
 export interface LocaleValues {
   common: {
@@ -104,12 +101,25 @@ export interface ChartLocalizationOptions {
   localeValues?: LocaleValuesMap;
 }
 
+export interface ControllerConstructor {
+  new (
+    chart: FinancialChart,
+    options: ResolvedChartOptions
+  ): ChartController;
+  readonly ID: string;
+}
+
 export interface ChartOptions {
   type: ControllerType;
   stepSize: number;
   maxZoom: number;
   volume: boolean;
   controllers?: readonly ControllerConstructor[];
+  /**
+   * Controls registration of class-provided defaults. Use the core entry to
+   * exclude unused controllers from application bundles.
+   */
+  includeDefaultControllers?: boolean;
   locale?: string;
   timeZone?: string;
   formatter?: Formatter;
@@ -118,26 +128,44 @@ export interface ChartOptions {
   localeValues?: LocaleValuesMap;
 }
 
+/** Fully resolved options supplied to controller instances. */
+export interface ResolvedChartOptions {
+  readonly type: ControllerType;
+  readonly stepSize: number;
+  readonly maxZoom: number;
+  readonly volume: boolean;
+  readonly controllers: readonly ControllerConstructor[];
+  readonly includeDefaultControllers: boolean;
+  readonly locale: string;
+  readonly timeZone?: string;
+  readonly formatter: Formatter;
+  readonly theme: ResolvedChartTheme;
+  readonly domAdapter: ChartDOMAdapter;
+  readonly localeValues: LocaleValuesMap;
+}
+
+/** Immutable data-only snapshot returned by `FinancialChart.getOptions()`. */
+export interface ChartOptionsSnapshot {
+  readonly type: ControllerType;
+  readonly stepSize: number;
+  readonly maxZoom: number;
+  readonly volume: boolean;
+  readonly controllers: readonly ControllerConstructor[];
+  readonly includeDefaultControllers: boolean;
+  readonly locale: string;
+  readonly timeZone?: string;
+  readonly theme: DeepReadonly<ResolvedChartTheme>;
+  readonly localeValues: DeepReadonly<LocaleValuesMap>;
+}
+
+type MutableResolvedChartOptions = {
+  -readonly [P in keyof ResolvedChartOptions]: ResolvedChartOptions[P];
+};
+
 type Resizer = {
   resize: (force: boolean) => void;
   ratioResize: () => void;
 };
-
-export type ControllerConstructor = (new (
-  ...args: any[]
-) => ChartController) & {
-  ID?: string;
-};
-
-const defaultControllerConstructors: readonly ControllerConstructor[] = [
-  AreaController,
-  LineController,
-  CandlestickController,
-  BarController,
-  HollowCandleController,
-  SteplineController,
-  HLCAreaController
-];
 
 export type ChartCanvasLayer =
   | "main"
@@ -204,7 +232,9 @@ export class FinancialChart extends EventEmitter {
   protected isPanning: boolean = false;
   protected dataStore = new DataStore();
   private originalDataStore = new DataStore();
-  protected options: DeepConcrete<ChartOptions>;
+  protected options!: MutableResolvedChartOptions;
+  private optionsSnapshot!: ChartOptionsSnapshot;
+  private readonly defaultControllerConstructors: readonly ControllerConstructor[];
   protected visibleIndexRange: TimeScaleRange = { from: 0, to: 1 };
   private indexBounds: TimeScaleRange = { from: 0, to: 1 };
   protected timeRange!: TimeRange;
@@ -282,23 +312,36 @@ export class FinancialChart extends EventEmitter {
 
   private lastXGridCoords: number[] = [];
 
-  public registerController<T extends ControllerConstructor>(
-    controllerClass: T
-  ) {
-    const id = this.getRegistrationId(controllerClass, "Controller");
+  public registerController(controllerClass: ControllerConstructor) {
+    const id = this.getRegistrationId(controllerClass);
     this.controllers.set(id as ControllerType, controllerClass);
+    this.syncRegisteredControllers();
   }
 
   public registerDefaults() {
-    for (const controller of defaultControllerConstructors) {
+    for (const controller of this.defaultControllerConstructors) {
+      const id = this.getRegistrationId(controller);
+      this.controllers.set(id as ControllerType, controller);
+    }
+    this.syncRegisteredControllers();
+  }
+
+  private registerConstructorOptions(
+    options: ChartOptions,
+    includeDefaultControllers: boolean
+  ) {
+    if (includeDefaultControllers) {
+      this.registerDefaults();
+    }
+    for (const controller of options.controllers ?? []) {
       this.registerController(controller);
     }
   }
 
-  private registerConstructorOptions(options: ChartOptions) {
-    for (const controller of options.controllers ?? []) {
-      this.registerController(controller);
-    }
+  private syncRegisteredControllers() {
+    if (!this.options) return;
+    this.options.controllers = [...this.controllers.values()];
+    this.refreshOptionsSnapshot();
   }
 
   private static resolveRuntimeLocale() {
@@ -309,15 +352,65 @@ export class FinancialChart extends EventEmitter {
     return "en-US";
   }
 
-  private getRegistrationId(
-    registrationClass: { ID?: string },
-    label: "Controller"
-  ) {
+  private getRegistrationId(registrationClass: ControllerConstructor) {
     if (registrationClass.ID === "default" || !registrationClass.ID) {
-      throw new Error(`${label} must have a static ID field!`);
+      throw new Error("Controller must have a static ID field!");
     }
 
     return registrationClass.ID;
+  }
+
+  private resolveOptions(
+    options: ChartOptions,
+    includeDefaultControllers: boolean
+  ): MutableResolvedChartOptions {
+    const locale =
+      options.locale ||
+      options.formatter?.getLocale() ||
+      FinancialChart.resolveRuntimeLocale();
+    const timeZone = options.timeZone ?? options.formatter?.getTimeZone?.();
+    const formatter =
+      options.formatter ||
+      new DefaultFormatter({
+        locale,
+        timeZone
+      });
+
+    formatter.setLocale(locale);
+    formatter.setTimeZone?.(timeZone);
+
+    return {
+      type: options.type,
+      stepSize: options.stepSize,
+      maxZoom: options.maxZoom,
+      volume: options.volume,
+      controllers: [...this.controllers.values()],
+      includeDefaultControllers,
+      locale,
+      timeZone,
+      formatter,
+      theme: mergeThemes(defaultLightTheme, options.theme),
+      domAdapter: options.domAdapter ?? new DefaultDOMAdapter(),
+      localeValues: {
+        ...this.getDefaultLocaleValues(),
+        ...options.localeValues
+      }
+    };
+  }
+
+  private refreshOptionsSnapshot() {
+    this.optionsSnapshot = Object.freeze({
+      type: this.options.type,
+      stepSize: this.options.stepSize,
+      maxZoom: this.options.maxZoom,
+      volume: this.options.volume,
+      controllers: Object.freeze([...this.options.controllers]),
+      includeDefaultControllers: this.options.includeDefaultControllers,
+      locale: this.options.locale,
+      timeZone: this.options.timeZone,
+      theme: cloneAndFreeze(this.options.theme),
+      localeValues: cloneAndFreeze(this.options.localeValues)
+    });
   }
 
   private getControllerClass(type: ControllerType) {
@@ -366,8 +459,8 @@ export class FinancialChart extends EventEmitter {
     return this.controller.getTimeAnchorAlignment();
   }
 
-  getOptions() {
-    return this.options;
+  getOptions(): ChartOptionsSnapshot {
+    return this.optionsSnapshot;
   }
 
   getData() {
@@ -1194,8 +1287,9 @@ export class FinancialChart extends EventEmitter {
   }
 
   public changeType(type: ControllerType) {
+    const ControllerClass = this.getControllerClass(type);
     this.options.type = type;
-    const ControllerClass = this.getControllerClass(this.options.type);
+    this.refreshOptionsSnapshot();
 
     this.controller = new ControllerClass(this, this.options);
     this.dataScale = this.controller.createDataScale(
@@ -1229,34 +1323,15 @@ export class FinancialChart extends EventEmitter {
     options: ChartOptions
   ) {
     super();
-    this.options = options as DeepConcrete<ChartOptions>;
-    if (!options.controllers) {
-      this.registerDefaults();
-    }
-    this.registerConstructorOptions(options);
-
-    this.options.volume = this.options.volume || false;
-    this.options.locale =
-      this.options.locale ||
-      this.options.formatter?.getLocale() ||
-      FinancialChart.resolveRuntimeLocale();
-    this.options.timeZone =
-      this.options.timeZone ?? this.options.formatter?.getTimeZone?.();
-    this.options.formatter =
-      this.options.formatter ||
-      new DefaultFormatter({
-        locale: this.options.locale,
-        timeZone: this.options.timeZone
-      });
-    this.options.formatter.setLocale(this.options.locale);
-    this.options.formatter.setTimeZone?.(this.options.timeZone);
-    this.options.theme = mergeThemes(defaultLightTheme, this.options.theme);
-    this.options.localeValues = {
-      ...this.getDefaultLocaleValues(),
-      ...this.options.localeValues
-    };
-
-    this.domAdapter = options.domAdapter ?? new DefaultDOMAdapter();
+    this.defaultControllerConstructors =
+      getDefaultControllerConstructors(options);
+    const includeDefaultControllers =
+      options.includeDefaultControllers ??
+      this.defaultControllerConstructors.length > 0;
+    this.registerConstructorOptions(options, includeDefaultControllers);
+    this.options = this.resolveOptions(options, includeDefaultControllers);
+    this.refreshOptionsSnapshot();
+    this.domAdapter = this.options.domAdapter;
 
     this.outsideContainer = container;
     this.container = createPositionedContainer({
@@ -1434,6 +1509,7 @@ export class FinancialChart extends EventEmitter {
       `financial-charts-${this.options.theme.key}`
     );
     this.options.theme = mergeThemes(this.options.theme, theme);
+    this.refreshOptionsSnapshot();
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     if (this.dataStore.length > 0) {
       this.requestRedraw(this.allRedrawParts);
@@ -1448,6 +1524,7 @@ export class FinancialChart extends EventEmitter {
 
   public setVolumeDraw(draw: boolean) {
     this.options.volume = draw;
+    this.refreshOptionsSnapshot();
     this.requestRedraw(this.allRedrawParts);
   }
 
@@ -1458,6 +1535,7 @@ export class FinancialChart extends EventEmitter {
   ) {
     this.options.maxZoom = maxZoom;
     this.options.stepSize = stepSize;
+    this.refreshOptionsSnapshot();
 
     this.visibleIndexRange = { from: 0, to: 1 };
     this.indexBounds = { from: 0, to: 1 };
@@ -1536,8 +1614,7 @@ export class FinancialChart extends EventEmitter {
     this.options.formatter.setLocale(this.options.locale);
 
     if (hasTimeZone) {
-      this.options.timeZone =
-        localization.timeZone as DeepConcrete<ChartOptions>["timeZone"];
+      this.options.timeZone = localization.timeZone;
     } else if (localization.formatter) {
       this.options.timeZone =
         localization.formatter.getTimeZone?.() ?? this.options.timeZone;
@@ -1553,6 +1630,7 @@ export class FinancialChart extends EventEmitter {
       };
     }
 
+    this.refreshOptionsSnapshot();
     this.applyLocalizationUpdate();
   }
 
@@ -2756,4 +2834,23 @@ export class FinancialChart extends EventEmitter {
     this.redrawParts.clear();
     this.redraw(layers);
   }
+}
+
+function cloneAndFreeze<T>(value: T): DeepReadonly<T> {
+  const clone =
+    typeof structuredClone === "function"
+      ? structuredClone(value)
+      : (JSON.parse(JSON.stringify(value)) as T);
+  return freezeDeep(clone);
+}
+
+function freezeDeep<T>(value: T): DeepReadonly<T> {
+  if (value == null || typeof value !== "object") {
+    return value as DeepReadonly<T>;
+  }
+
+  for (const nested of Object.values(value)) {
+    freezeDeep(nested);
+  }
+  return Object.freeze(value) as DeepReadonly<T>;
 }

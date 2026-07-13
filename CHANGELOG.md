@@ -59,6 +59,13 @@
 
 ### Changed
 
+- Constructor-supplied custom controllers are additive to built-ins by default;
+  set `includeDefaultControllers: false` for an exact set.
+- Added a controller-neutral `core` entry and per-controller entry points so
+  bundlers can exclude unused built-in controllers while the root chart retains
+  its convenient built-in set.
+- `getOptions()` returns an immutable resolved configuration snapshot instead of
+  the chart's mutable internal options object.
 - Built-in controllers are registered on each chart instance by default, keeping
   hello-world chart setup small while avoiding global mutable registries.
 - Indicator authoring now centers on `getDrawingContext()` for overlays and

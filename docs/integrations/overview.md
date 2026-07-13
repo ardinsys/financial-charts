@@ -9,5 +9,6 @@
 - Prefer a single sorted `data` array. Call `drawNextPoint` for the newest candle and fall back to `draw` when correcting existing data.
 - Dispose the chart during teardown (`useEffect` cleanup, `onBeforeUnmount`, `ngOnDestroy`).
 - Keep the container height stable – the chart reacts to `ResizeObserver` events automatically.
-- Omit `controllers` for built-in chart types; pass controller classes only when you want a custom/exact set.
+- Custom `controllers` are added to the built-ins. Set `includeDefaultControllers: false` only when you need an exact controller set.
+- For controller-level tree shaking, import `FinancialChart` from `@ardinsys/financial-charts/core` and controllers from their `@ardinsys/financial-charts/controllers/*` entry points.
 - Instantiate the chart on the client: the default formatter uses `navigator` and the chart depends on real DOM APIs (`ResizeObserver`, `PointerEvent`), so guard SSR setups with `typeof window !== "undefined"`.

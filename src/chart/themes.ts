@@ -1,4 +1,8 @@
-import { DeepConcrete } from "./financial-chart";
+type DeepRequired<T> = T extends Function
+  ? T
+  : T extends object
+    ? { [P in keyof T]-?: DeepRequired<T[P]> }
+    : T;
 
 export function mergeThemes<T extends object = ChartTheme>(
   defaultTheme: any,
@@ -130,7 +134,9 @@ export interface ChartTheme {
   };
 }
 
-export const defaultLightTheme: DeepConcrete<ChartTheme> = {
+export type ResolvedChartTheme = DeepRequired<ChartTheme>;
+
+export const defaultLightTheme: ResolvedChartTheme = {
   key: "light",
   backgroundColor: "#FFFFFF",
   randomColors: [
@@ -231,7 +237,7 @@ export const defaultLightTheme: DeepConcrete<ChartTheme> = {
   }
 };
 
-export const defaultDarkTheme: DeepConcrete<ChartTheme> = {
+export const defaultDarkTheme: ResolvedChartTheme = {
   key: "dark",
   backgroundColor: "#161A25",
   randomColors: [

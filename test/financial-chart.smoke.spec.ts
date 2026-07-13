@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { FinancialChart } from "../src/chart/financial-chart";
+import {
+  type ResolvedChartOptions
+} from "../src/chart/financial-chart";
+import { FinancialChart } from "../src/chart/default-financial-chart";
+import { FinancialChart as CoreFinancialChart } from "../src/chart/core-financial-chart";
 import { LineController } from "../src/controllers/line-controller";
 
 class AlternateLineController extends LineController {
   static override ID = "alternate-line";
+  static receivedOptions: ResolvedChartOptions | undefined;
+
+  constructor(chart: FinancialChart, options: ResolvedChartOptions) {
+    super(chart, options);
+    AlternateLineController.receivedOptions = options;
+  }
 }
 
 describe("FinancialChart test harness", () => {
@@ -63,6 +73,7 @@ describe("FinancialChart test harness", () => {
       {
         type: "line",
         controllers: [LineController],
+        includeDefaultControllers: false,
         stepSize: 60_000,
         maxZoom: 10,
         volume: false
@@ -77,6 +88,7 @@ describe("FinancialChart test harness", () => {
       {
         type: "alternate-line",
         controllers: [AlternateLineController],
+        includeDefaultControllers: false,
         stepSize: 60_000,
         maxZoom: 10,
         volume: false
@@ -95,5 +107,94 @@ describe("FinancialChart test harness", () => {
 
     lineChart.dispose();
     alternateChart.dispose();
+  });
+
+  it("adds custom controllers to the built-in set by default", () => {
+    const container = document.createElement("div");
+    container.style.width = "800px";
+    container.style.height = "400px";
+    document.body.appendChild(container);
+
+    const chart = new FinancialChart(container, "auto", {
+      type: "alternate-line",
+      controllers: [AlternateLineController],
+      stepSize: 60_000,
+      maxZoom: 10,
+      volume: false
+    });
+
+    expect(() => chart.changeType("line")).not.toThrow();
+    expect(chart.getOptions().includeDefaultControllers).toBe(true);
+    expect(chart.getOptions().controllers.map(({ ID }) => ID)).toEqual(
+      expect.arrayContaining(["line", "alternate-line"])
+    );
+    expect(AlternateLineController.receivedOptions).toMatchObject({
+      includeDefaultControllers: true,
+      locale: expect.any(String),
+      theme: expect.objectContaining({ backgroundColor: expect.any(String) }),
+      localeValues: expect.any(Object),
+      formatter: expect.any(Object),
+      domAdapter: expect.any(Object)
+    });
+
+    chart.dispose();
+  });
+
+  it("keeps the core chart free of implicit controllers", () => {
+    const container = document.createElement("div");
+    container.style.width = "800px";
+    container.style.height = "400px";
+    document.body.appendChild(container);
+
+    const chart = new CoreFinancialChart(container, "auto", {
+      type: "line",
+      controllers: [LineController],
+      stepSize: 60_000,
+      maxZoom: 10,
+      volume: false
+    });
+
+    expect(chart.getOptions().includeDefaultControllers).toBe(false);
+    expect(chart.getOptions().controllers.map(({ ID }) => ID)).toEqual([
+      "line"
+    ]);
+    expect(() => chart.changeType("candle")).toThrow(
+      "Controller: candle is not registered!"
+    );
+
+    chart.dispose();
+  });
+
+  it("returns an immutable options snapshot that follows chart updates", () => {
+    const container = document.createElement("div");
+    container.style.width = "800px";
+    container.style.height = "400px";
+    document.body.appendChild(container);
+
+    const chart = new FinancialChart(container, "auto", {
+      type: "line",
+      stepSize: 60_000,
+      maxZoom: 10,
+      volume: false
+    });
+    const initial = chart.getOptions();
+
+    expect(Object.isFrozen(initial)).toBe(true);
+    expect(Object.isFrozen(initial.theme)).toBe(true);
+    expect(Object.isFrozen(initial.localeValues)).toBe(true);
+    expect(Object.isFrozen(initial.controllers)).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(initial, "timeZone")).toBe(
+      true
+    );
+    expect(() => {
+      (initial.theme as { backgroundColor: string }).backgroundColor = "red";
+    }).toThrow(TypeError);
+    expect(chart.getTheme().backgroundColor).not.toBe("red");
+
+    chart.setVolumeDraw(true);
+    expect(chart.getOptions()).not.toBe(initial);
+    expect(chart.getOptions().volume).toBe(true);
+
+    chart.dispose();
   });
 });

@@ -1,7 +1,6 @@
 import type {
   FinancialChart,
-  ChartOptions,
-  DeepConcrete
+  ResolvedChartOptions
 } from "../chart/financial-chart";
 import type { ChartData, TimeRange } from "../chart/types";
 import { DataScaleModel } from "../scales/data-scale-model";
@@ -12,7 +11,7 @@ export abstract class ChartController {
 
   constructor(
     protected chart: FinancialChart,
-    protected options: DeepConcrete<ChartOptions>
+    protected options: ResolvedChartOptions
   ) {}
 
   abstract createDataScale(

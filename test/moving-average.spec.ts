@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { DefaultFormatter } from "../src/chart/formatter";
-import { FinancialChart } from "../src/chart/financial-chart";
+import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";

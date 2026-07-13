@@ -1,6 +1,5 @@
-import type { DeepConcrete } from "../chart/financial-chart";
 import type { Formatter } from "../chart/formatter";
-import type { ChartTheme } from "../chart/themes";
+import type { ResolvedChartTheme } from "../chart/themes";
 import type { DataScaleModel } from "../scales/data-scale-model";
 import { PriceScale } from "../scales/price-scale";
 import {
@@ -25,7 +24,7 @@ export interface PaneYAxisRenderOptions {
   axisContext: CanvasRenderingContext2D;
   gridContext: CanvasRenderingContext2D;
   scale: DataScaleModel;
-  theme: DeepConcrete<ChartTheme>;
+  theme: ResolvedChartTheme;
   formatter: Formatter;
   pixelRatio: number;
   labelSpacing: number;

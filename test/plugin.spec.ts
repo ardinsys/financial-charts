@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FinancialChart } from "../src/chart/financial-chart";
+import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import type { Drawing } from "../src/drawings";

@@ -1,14 +1,6 @@
-export * from "./chart/financial-chart";
-export * from "./chart/event-emitter";
-export * from "./chart/formatter";
-export * from "./chart/themes";
-export * from "./chart/types";
-
-export * from "./utils/color";
-export * from "./utils/dom";
-export * from "./utils/screen";
-
-export * from "./controllers/controller";
+export * from "./core";
+export { FinancialChart } from "./chart/default-financial-chart";
+export * from "./controllers/default-controllers";
 export * from "./controllers/area-controller";
 export * from "./controllers/candle-controller";
 export * from "./controllers/line-controller";
@@ -17,28 +9,4 @@ export * from "./controllers/hollow-candle-controller";
 export * from "./controllers/step-line-controller";
 export * from "./controllers/hlc-area-controller";
 
-export * from "./scales/scale";
-export * from "./scales/time-scale";
-export * from "./scales/price-scale";
-export * from "./scales/data-scale-model";
-export * from "./scales/ticks/price-ticks";
-export * from "./scales/ticks/time-ticks";
-
-export * from "./render/render-pipeline";
-
-export * from "./panes/pane";
-
-export * from "./plugin/chart-plugin";
-export * from "./plugins";
-
-export * from "./ui/chart-dom-adapter";
-export * from "./ui/default-dom-adapter";
-export * from "./ui/icons";
-
-export * from "./drawings";
-
-export * from "./indicators/indicator";
-export * from "./indicators/paneled-indicator";
-export * from "./indicators/paneled/test-indicator";
-export * from "./indicators/simple/moving-average";
 import "./styles.css";

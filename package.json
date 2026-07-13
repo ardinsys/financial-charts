@@ -18,10 +18,45 @@
     "MIGRATION.md",
     "CHANGELOG.md"
   ],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js"
+    },
+    "./controllers/area": {
+      "types": "./dist/controllers/area.d.ts",
+      "import": "./dist/controllers/area.js"
+    },
+    "./controllers/bar": {
+      "types": "./dist/controllers/bar.d.ts",
+      "import": "./dist/controllers/bar.js"
+    },
+    "./controllers/candle": {
+      "types": "./dist/controllers/candle.d.ts",
+      "import": "./dist/controllers/candle.js"
+    },
+    "./controllers/hlc-area": {
+      "types": "./dist/controllers/hlc-area.d.ts",
+      "import": "./dist/controllers/hlc-area.js"
+    },
+    "./controllers/hollow-candle": {
+      "types": "./dist/controllers/hollow-candle.d.ts",
+      "import": "./dist/controllers/hollow-candle.js"
+    },
+    "./controllers/line": {
+      "types": "./dist/controllers/line.d.ts",
+      "import": "./dist/controllers/line.js"
+    },
+    "./controllers/stepline": {
+      "types": "./dist/controllers/stepline.d.ts",
+      "import": "./dist/controllers/stepline.js"
     },
     "./style.css": "./dist/style.css"
   },
@@ -34,7 +69,7 @@
     "playground": "vite",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "verify:package": "node scripts/verify-package-exports.mjs",
+    "verify:package": "node scripts/verify-package-exports.mjs && node scripts/verify-tree-shaking.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"

@@ -27,6 +27,7 @@ type ChartOptions = {
   maxZoom: number;
   volume: boolean;
   controllers?: readonly ControllerConstructor[];
+  includeDefaultControllers?: boolean;
   theme?: ChartTheme;
   domAdapter?: ChartDOMAdapter;
   locale?: string;
@@ -36,19 +37,20 @@ type ChartOptions = {
 };
 ```
 
-| Option         | Description                                                                                                                             |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`         | Identifier for an instance-registered controller such as `"candle"`, `"bar"`, or custom IDs.                                            |
-| `stepSize`     | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                                                      |
-| `maxZoom`      | Highest zoom factor before clamping user input.                                                                                         |
-| `volume`       | Enables a histogram below the price chart.                                                                                              |
-| `controllers`  | Optional exact controller set for this chart. Omit to register the built-in controllers by default.                                     |
-| `theme`        | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.                                                    |
-| `domAdapter`   | `ChartDOMAdapter` implementation for DOM chrome: overlay, indicator labels/actions, and pane dividers. Defaults to `DefaultDOMAdapter`. |
-| `locale`       | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`.                                    |
-| `timeZone`     | IANA timezone forwarded to formatters that support `setTimeZone()`.                                                                     |
-| `formatter`    | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                                                     |
-| `localeValues` | Localized indicator labels keyed by locale. Merged with built-in English strings.                                                       |
+| Option                      | Description                                                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`                      | Identifier for an instance-registered controller such as `"candle"`, `"bar"`, or custom IDs.                                            |
+| `stepSize`                  | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                                                      |
+| `maxZoom`                   | Highest zoom factor before clamping user input.                                                                                         |
+| `volume`                    | Enables a histogram below the price chart.                                                                                              |
+| `controllers`               | Additional controller classes registered after the built-ins.                                                                          |
+| `includeDefaultControllers` | Controls class-provided defaults. The root chart defaults to `true`; the controller-neutral core defaults to `false`.                   |
+| `theme`                     | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.                                                    |
+| `domAdapter`                | `ChartDOMAdapter` implementation for DOM chrome: overlay, indicator labels/actions, and pane dividers. Defaults to `DefaultDOMAdapter`. |
+| `locale`                    | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`.                                    |
+| `timeZone`                  | IANA timezone forwarded to formatters that support `setTimeZone()`.                                                                     |
+| `formatter`                 | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                                                     |
+| `localeValues`              | Localized indicator labels keyed by locale. Merged with built-in English strings.                                                       |
 
 Built-in controllers are registered on each chart by default:
 
@@ -159,10 +161,41 @@ price on the target chart. It returns the resolved crosshair state, or
 | `registerController(ControllerClass)` | Adds a controller class to this chart instance.  |
 | `registerDefaults()`                  | Adds every built-in controller to this instance. |
 
-Omitting `options.controllers` calls `registerDefaults()` before the initial
-controller is resolved. Provide `controllers` when you want an exact set, then
-call `registerController(...)` or `registerDefaults()` later if extensions load
-after construction. Registrations are not shared between charts.
+Built-ins are registered before `options.controllers`, so custom controllers are
+additive and may intentionally replace a built-in with the same ID. For an exact
+set, pass `includeDefaultControllers: false`; the supplied list must then include
+the initial `type`. Call `registerController(...)` when extensions load after
+construction. Registrations are not shared between charts.
+
+Controller constructors receive `ResolvedChartOptions`: a readonly contract
+with defaults populated for controllers, theme, formatting, localization, and
+DOM integration.
+
+### Tree-shakable controller setup
+
+The root entry is the convenience API: `FinancialChart` includes every built-in
+controller and custom `controllers` are additive. For a smaller controller set,
+import the controller-neutral chart and individual controller entry points:
+
+```ts
+import { FinancialChart } from "@ardinsys/financial-charts/core";
+import { LineController } from "@ardinsys/financial-charts/controllers/line";
+
+const chart = new FinancialChart(container, "auto", {
+  type: "line",
+  controllers: [LineController],
+  stepSize: 60_000,
+  maxZoom: 10,
+  volume: false,
+});
+```
+
+The core entry does not reference concrete controllers, so bundlers can exclude
+every controller that is not imported. Its `controllers` list is exact by
+default. Set `includeDefaultControllers` only when using a chart class that
+provides defaults. Setting `includeDefaultControllers: false` on the root chart
+changes runtime registration, but it cannot remove controllers imported by the
+root entry.
 
 ### Query helpers
 
@@ -174,13 +207,18 @@ after construction. Registrations are not shared between charts.
 | `setVisibleTimeWindow(range)`                                       | Sets the precise fractional visible timestamp window and redraws view layers.               |
 | `setVisibleIndexRange(range)`                                       | Sets the visible window directly in logical index units.                                    |
 | `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
-| `getOptions()`                                                      | Gives access to the current `ChartOptions` object (after merges).                           |
+| `getOptions()`                                                      | Returns an immutable data-only snapshot of the resolved chart configuration.               |
 | `getTheme()`                                                        | Returns the active `ChartTheme`.                                                            |
 | `getPanes()` / `getMainPane()`                                      | Lists pane models or returns the main price pane.                                           |
 | `getPaneHeights()`                                                  | Returns current logical pixel heights keyed by pane id.                                     |
 | `getPlugins()`                                                      | Lists attached plugins.                                                                     |
 | `getIndicators()` / `getPaneledIndicators()` / `getAllIndicators()` | Lists overlay indicators, paneled indicators, or both combined.                             |
 | `getCrosshairState()`                                               | Returns the current crosshair state, or `undefined` when hidden.                            |
+
+`getOptions()` returns controller, timeframe, theme, and localization data. Its
+nested theme, locale, and controller collections are immutable and cannot mutate
+the chart. Use `getFormatter()` for the active formatter; DOM adapters are
+available to extensions through `ChartContext`.
 
 ### Indicator management
 

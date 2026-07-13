@@ -168,12 +168,18 @@ The global mutable controller registry was removed.
 
 What to update:
 
-- Omit `controllers` to use the built-in chart types on that instance.
-- Pass controller classes in chart options when you want an exact custom set.
-  The `controllers` array must include the class for the initial `type`.
+- Omit `controllers` to use only the built-in chart types on that instance.
+- Pass controller classes in chart options to add them to the built-ins.
+- Set `includeDefaultControllers: false` when you want an exact custom set. In
+  that mode, the `controllers` array must include the class for the initial
+  `type`.
 - For late-loaded controller extensions, call `chart.registerController(...)` on
   the target chart instance. Call `chart.registerDefaults()` to add the built-ins
   to an instance that was constructed with a custom set.
+- To exclude unused built-in controllers from application bundles, import
+  `FinancialChart` from `@ardinsys/financial-charts/core` and each required
+  controller from its `@ardinsys/financial-charts/controllers/*` entry point.
+  The root entry remains the convenient all-controller setup.
 
 ```ts
 const chart = new FinancialChart(root, "auto", {
@@ -280,7 +286,8 @@ The old continuous-time zoom/pan scalars no longer model the index-based scale
 ## Suggested upgrade path
 
 1. Omit `controllers` for built-in chart types, or pass a chart-scoped
-   `controllers` array for custom/exact controller sets.
+   `controllers` array to add custom types. Set
+   `includeDefaultControllers: false` only for an exact controller set.
 2. Confirm charts with missing calendar periods render as desired; blank weekend
    gaps are intentionally gone.
 3. Replace custom overlay code with `ChartPlugin` where possible.
