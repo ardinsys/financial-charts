@@ -47,12 +47,22 @@ The default adapter renders and wires:
 ### Lifecycle hooks
 
 - `attach(ctx)` is inherited from `Indicator`; the base class stores the chart context and creates the adapter-rendered label.
+- `onOptionsChanged(event)`, `onData(data)`, and `onVisibleRangeChanged(range)` receive current state immediately after attachment and subsequent chart changes. Initial options delivery has an empty `changedKeys` array.
+- `onPointer(event)` receives pointer events in visual stacking order; return `true` to stop delivery to lower extensions and consume the gesture.
+- `onDrawingFinished(event)` receives completed drawing create and move operations.
 - `draw()` runs on each indicator render pass. Call `getDrawingContext()` to access the indicator canvas, data, visible data, visible range, scales, formatter/theme, and `projectTime` / `projectPrice` / `projectPoint` helpers without wiring canvas or scale plumbing yourself.
 - `getLabelContent(dataTime?)` is invoked after renders and when locales or themes change. Return label detail text and optional value segments here; the base class updates the adapter-rendered label.
 - `getModifier(visibleTimeRange)` lets you modify the price range. Return a `ScaleRangeModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).
 - `updateOptions(partial)` merges new options, requests a redraw, and re-renders the label.
 - `clone()` creates another indicator instance with the same themes, options, and visibility. Override it if your custom indicator has constructor dependencies beyond the standard `(themes, options)` shape.
 - `detach()` is called when an indicator is removed or the chart is disposed; the base class uses it to remove label listeners.
+
+Non-pointer lifecycle delivery runs through overlay indicators, paneled
+indicators, and ordinary plugins in attachment order. Pointer delivery reverses
+visual stacking, starting with the last attached ordinary plugin. Extensions
+removed during a callback are skipped for the rest of that notification pass.
+Indicators are drawn only by the indicator render pass, not a second time as
+ordinary plugins.
 
 ### Label model and DOM adapter
 

@@ -270,8 +270,10 @@ chart.removePlugin(plugin: ChartPlugin): boolean;
 ```
 
 Plugins receive a `ChartContext` during `attach(ctx)`, can render via
-`beforeDraw`/`draw`/`afterDraw`, receive `onData`, `onVisibleRangeChanged`, and
-`onPointer` notifications, and should release external resources in `detach()`.
+`beforeDraw`/`draw`/`afterDraw`, receive `onData`, `onVisibleRangeChanged`,
+`onOptionsChanged`, `onPointer`, and `onDrawingFinished` notifications, and
+should release external resources in `detach()`. Current options, data, and
+visible range are delivered immediately after attachment.
 Use the context's `getCanvasContext(layer)`, `getLogicalCanvas(layer)`,
 `getPanes()`, `emit(...)`, and `requestRedraw(...)` helpers for extension-level
 rendering and events.

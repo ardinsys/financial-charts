@@ -702,7 +702,7 @@ export class FinancialChart extends EventEmitter {
     if (!changed) return false;
 
     this.recalculateVisibleScale();
-    this.notifyPluginsVisibleRangeChanged();
+    this.notifyExtensionsVisibleRangeChanged();
     this.requestRedraw(this.viewRedrawParts);
     return true;
   }
@@ -845,6 +845,7 @@ export class FinancialChart extends EventEmitter {
     this.plugins.push(plugin);
     try {
       plugin.attach(this.createChartContext());
+      this.deliverInitialExtensionState(plugin);
       this.requestRedraw(this.allRedrawParts);
     } catch (error) {
       const index = this.plugins.indexOf(plugin);
@@ -874,8 +875,12 @@ export class FinancialChart extends EventEmitter {
     super.emit(event, data);
 
     if (event === "drawing-finished") {
-      this.notifyPluginsDrawingFinished(
+      this.notifyExtensionsDrawingFinished(
         data as ChartEventMap["drawing-finished"]
+      );
+    } else if (event === "options-change") {
+      this.notifyExtensionsOptionsChanged(
+        data as ChartEventMap["options-change"]
       );
     }
   }
@@ -903,35 +908,90 @@ export class FinancialChart extends EventEmitter {
     };
   }
 
-  private notifyPluginsData(data: readonly ChartData[]) {
-    for (const plugin of this.plugins) {
-      plugin.onData?.(data);
+  private getLifecycleExtensions(): ChartPlugin[] {
+    return [...this.indicators, ...this.paneledIndicators, ...this.plugins];
+  }
+
+  private getPointerExtensions(): ChartPlugin[] {
+    return [
+      ...[...this.plugins].reverse(),
+      ...[...this.paneledIndicators].reverse(),
+      ...[...this.indicators].reverse()
+    ];
+  }
+
+  private isExtensionAttached(extension: ChartPlugin) {
+    return (
+      this.plugins.includes(extension) ||
+      this.indicators.includes(extension as Indicator<any, any>) ||
+      this.paneledIndicators.includes(
+        extension as PaneledIndicator<any, any>
+      )
+    );
+  }
+
+  private forEachLifecycleExtension(
+    notify: (extension: ChartPlugin) => void
+  ) {
+    const extensions = this.getLifecycleExtensions();
+    for (const extension of extensions) {
+      if (this.isExtensionAttached(extension)) notify(extension);
     }
   }
 
-  private notifyPluginsVisibleRangeChanged() {
+  private createInitialOptionsChangeEvent(): ChartOptionsChangeEvent {
+    const current = this.createOptionsState();
+    return Object.freeze({
+      previous: current,
+      current,
+      changedKeys: Object.freeze([])
+    });
+  }
+
+  private deliverInitialExtensionState(extension: ChartPlugin) {
+    if (!this.isExtensionAttached(extension)) return;
+    extension.onOptionsChanged?.(this.createInitialOptionsChangeEvent());
+    if (!this.isExtensionAttached(extension)) return;
+    extension.onData?.(freezeSnapshot(this.dataStore.toArray()));
+    if (!this.isExtensionAttached(extension)) return;
+    extension.onVisibleRangeChanged?.(this.getVisibleTimeRange());
+  }
+
+  private notifyExtensionsData(data: readonly ChartData[]) {
+    const snapshot = Object.freeze(data);
+    this.forEachLifecycleExtension((extension) => {
+      extension.onData?.(snapshot);
+    });
+  }
+
+  private notifyExtensionsVisibleRangeChanged() {
     const range = this.getVisibleTimeRange();
-
-    for (const plugin of this.plugins) {
-      plugin.onVisibleRangeChanged?.(range);
-    }
+    this.forEachLifecycleExtension((extension) => {
+      extension.onVisibleRangeChanged?.(range);
+    });
   }
 
-  private notifyPluginsPointer(event: ChartPointerEvent) {
-    let consumed = false;
-    for (const plugin of this.plugins) {
-      consumed = plugin.onPointer?.(event) === true || consumed;
-    }
-
-    return consumed;
+  private notifyExtensionsOptionsChanged(event: ChartOptionsChangeEvent) {
+    this.forEachLifecycleExtension((extension) => {
+      extension.onOptionsChanged?.(event);
+    });
   }
 
-  private notifyPluginsDrawingFinished(
+  private notifyExtensionsPointer(event: ChartPointerEvent) {
+    for (const extension of this.getPointerExtensions()) {
+      if (!this.isExtensionAttached(extension)) continue;
+      if (extension.onPointer?.(event) === true) return true;
+    }
+
+    return false;
+  }
+
+  private notifyExtensionsDrawingFinished(
     event: ChartEventMap["drawing-finished"]
   ) {
-    for (const plugin of this.plugins) {
-      plugin.onDrawingFinished?.(event);
-    }
+    this.forEachLifecycleExtension((extension) => {
+      extension.onDrawingFinished?.(event);
+    });
   }
 
   private createPluginPointerEvent(
@@ -1539,7 +1599,7 @@ export class FinancialChart extends EventEmitter {
           });
           if (rangeChanged) {
             this.recalculateVisibleScale();
-            this.notifyPluginsVisibleRangeChanged();
+            this.notifyExtensionsVisibleRangeChanged();
           }
 
           this.requestRedraw(this.allRedrawParts, true);
@@ -1798,15 +1858,15 @@ export class FinancialChart extends EventEmitter {
       this.applyConfiguredTimeRange();
       this.rebuildScales(true);
       if (this.dataStore.length > 0) {
-        this.notifyPluginsVisibleRangeChanged();
+        this.notifyExtensionsVisibleRangeChanged();
         if (stepSizeChanged) {
-          this.notifyPluginsData(this.dataStore.toArray());
+          this.notifyExtensionsData(this.dataStore.toArray());
         }
       }
     } else if (typeChanged) {
       this.rebuildScales(false);
       if (this.dataStore.length > 0) {
-        this.notifyPluginsVisibleRangeChanged();
+        this.notifyExtensionsVisibleRangeChanged();
       }
     }
 
@@ -1874,7 +1934,7 @@ export class FinancialChart extends EventEmitter {
       event
     );
     this.pointerGestureConsumed = pointerEvent
-      ? this.notifyPluginsPointer(pointerEvent)
+      ? this.notifyExtensionsPointer(pointerEvent)
       : false;
     this.lastPointerPosition = this.pointerGestureConsumed
       ? undefined
@@ -1891,7 +1951,7 @@ export class FinancialChart extends EventEmitter {
 
     const pointerEvent = this.createPluginPointerEvent("up", x, y, e);
     const consumed = pointerEvent
-      ? this.notifyPluginsPointer(pointerEvent)
+      ? this.notifyExtensionsPointer(pointerEvent)
       : false;
 
     if (!this.isPanning && !this.pointerGestureConsumed && !consumed) {
@@ -2336,7 +2396,7 @@ export class FinancialChart extends EventEmitter {
 
     if (this.dataStore.length === 0) {
       this.resetEmptyDataState();
-      this.notifyPluginsData([]);
+      this.notifyExtensionsData([]);
       this.requestRedraw(this.allRedrawParts, true);
       return;
     }
@@ -2353,8 +2413,8 @@ export class FinancialChart extends EventEmitter {
     const rangeChanged = this.resetVisibleIndexRange();
     this.recalculateVisibleScale();
     this.clearCrosshair();
-    if (rangeChanged) this.notifyPluginsVisibleRangeChanged();
-    this.notifyPluginsData(this.dataStore.toArray());
+    if (rangeChanged) this.notifyExtensionsVisibleRangeChanged();
+    this.notifyExtensionsData(this.dataStore.toArray());
 
     this.requestRedraw(this.allRedrawParts);
   }
@@ -2393,9 +2453,9 @@ export class FinancialChart extends EventEmitter {
     const rangeChanged = this.refreshIndexBounds({ preserveRightEdge, span });
     if (rangeChanged) {
       this.recalculateVisibleScale();
-      this.notifyPluginsVisibleRangeChanged();
+      this.notifyExtensionsVisibleRangeChanged();
     }
-    this.notifyPluginsData(this.dataStore.toArray());
+    this.notifyExtensionsData(this.dataStore.toArray());
     this.requestRedraw(this.allRedrawParts);
   }
 
@@ -2486,6 +2546,16 @@ export class FinancialChart extends EventEmitter {
       indicator.refreshLabel();
     }
 
+    try {
+      this.deliverInitialExtensionState(indicator);
+    } catch (error) {
+      this.removeIndicator(indicator, { emit: false });
+      throw error;
+    }
+
+    if (!this.isExtensionAttached(indicator)) {
+      return () => {};
+    }
     if (emit) {
       this.emit("indicator-add", { indicator });
     }
@@ -2611,7 +2681,7 @@ export class FinancialChart extends EventEmitter {
     );
     this.pointerPane = this.getPaneAtY(this.pointerY) ?? this.mainPane;
     this.isProgrammaticCrosshair = false;
-    this.notifyPluginsPointer({
+    this.notifyExtensionsPointer({
       type: "move",
       x: e.x,
       y: this.pointerY,

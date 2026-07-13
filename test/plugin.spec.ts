@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
+import type { ChartEventMap } from "../src/chart/event-emitter";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import type { Drawing } from "../src/drawings";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
-import type { ChartPlugin } from "../src/plugin/chart-plugin";
+import type {
+  ChartPlugin,
+  ChartPointerEvent
+} from "../src/plugin/chart-plugin";
 
 const charts: FinancialChart[] = [];
 
@@ -16,6 +20,29 @@ class DetachProbeIndicator extends MovingAverageIndicator {
     this.detachCalls++;
     super.detach();
   }
+}
+
+class LifecycleProbeIndicator extends MovingAverageIndicator {
+  onData = vi.fn();
+  onVisibleRangeChanged = vi.fn();
+  onOptionsChanged = vi.fn();
+  onPointer = vi.fn();
+  onDrawingFinished = vi.fn();
+}
+
+class RemovingIndicator extends MovingAverageIndicator {
+  target?: MovingAverageIndicator;
+
+  onData(data: readonly ChartData[]) {
+    if (data.length > 0 && this.target) {
+      this.chart.removeIndicator(this.target);
+    }
+  }
+}
+
+class PointerPaneIndicator extends TestIndicator {
+  onData = vi.fn();
+  onPointer = vi.fn();
 }
 
 afterEach(() => {
@@ -143,6 +170,196 @@ describe("plugin lifecycle", () => {
 
     expect(chart.getPlugins()).toEqual([]);
     expect(plugin.detach).toHaveBeenCalledOnce();
+  });
+
+  it("delivers current and subsequent lifecycle state to extensions", () => {
+    const { chart, data } = createChart();
+    const indicator = new LifecycleProbeIndicator();
+    const draw = vi.spyOn(indicator, "draw");
+    const pluginHooks = {
+      onData: vi.fn(),
+      onVisibleRangeChanged: vi.fn(),
+      onOptionsChanged: vi.fn(),
+      onDrawingFinished: vi.fn()
+    };
+    const plugin: ChartPlugin = {
+      key: "lifecycle-probe",
+      attach: vi.fn(),
+      ...pluginHooks
+    };
+
+    chart.setData(data);
+    chart.addIndicator(indicator);
+    chart.addPlugin(plugin);
+
+    const initialOptions = indicator.onOptionsChanged.mock.calls[0][0];
+    const initialData = indicator.onData.mock.calls[0][0];
+    expect(initialOptions.changedKeys).toEqual([]);
+    expect(initialOptions.previous).toBe(initialOptions.current);
+    expect(initialOptions.current).toMatchObject({
+      type: "line",
+      timeRange: expect.any(Object),
+      stepSize: 60_000
+    });
+    expect(initialData).toEqual(chart.getData());
+    expect(Object.isFrozen(initialData)).toBe(true);
+    expect(indicator.onVisibleRangeChanged).toHaveBeenCalledWith(
+      chart.getVisibleTimeRange()
+    );
+    expect(pluginHooks.onOptionsChanged).toHaveBeenCalledWith(
+      expect.objectContaining({ changedKeys: [] })
+    );
+    expect(pluginHooks.onData).toHaveBeenCalledWith(chart.getData());
+    expect(pluginHooks.onVisibleRangeChanged).toHaveBeenCalledWith(
+      chart.getVisibleTimeRange()
+    );
+
+    indicator.onData.mockClear();
+    indicator.onOptionsChanged.mockClear();
+    indicator.onDrawingFinished.mockClear();
+    pluginHooks.onData.mockClear();
+    pluginHooks.onOptionsChanged.mockClear();
+    pluginHooks.onDrawingFinished.mockClear();
+    draw.mockClear();
+
+    chart.updateData({
+      time: data.at(-1)!.time + 60_000,
+      close: 16
+    });
+    expect(indicator.onData).toHaveBeenCalledWith(chart.getData());
+    expect(pluginHooks.onData).toHaveBeenCalledWith(chart.getData());
+
+    chart.updateOptions({ maxZoom: 20 });
+    expect(indicator.onOptionsChanged).toHaveBeenCalledWith(
+      expect.objectContaining({
+        changedKeys: ["maxZoom"],
+        current: expect.objectContaining({ maxZoom: 20 })
+      })
+    );
+    expect(pluginHooks.onOptionsChanged).toHaveBeenCalledWith(
+      expect.objectContaining({ changedKeys: ["maxZoom"] })
+    );
+
+    const drawingEvent = {
+      operation: "create"
+    } as ChartEventMap["drawing-finished"];
+    chart.emit("drawing-finished", drawingEvent);
+    expect(indicator.onDrawingFinished).toHaveBeenCalledWith(drawingEvent);
+    expect(pluginHooks.onDrawingFinished).toHaveBeenCalledWith(drawingEvent);
+
+    chart.requestRedraw("indicators", true);
+    expect(draw).toHaveBeenCalledOnce();
+  });
+
+  it("dispatches pointers from topmost extensions until consumed", () => {
+    const { chart, data } = createChart();
+    const order: string[] = [];
+    const lifecycleOrder: string[] = [];
+    let consumeTopPlugin = false;
+    const overlayOne = new LifecycleProbeIndicator();
+    const overlayTwo = new LifecycleProbeIndicator();
+    const paneled = new PointerPaneIndicator();
+    overlayOne.onPointer.mockImplementation(() => {
+      order.push("overlay-1");
+    });
+    overlayTwo.onPointer.mockImplementation(() => {
+      order.push("overlay-2");
+    });
+    paneled.onPointer.mockImplementation(() => {
+      order.push("paneled");
+    });
+    overlayOne.onData.mockImplementation(() => {
+      lifecycleOrder.push("overlay-1");
+    });
+    overlayTwo.onData.mockImplementation(() => {
+      lifecycleOrder.push("overlay-2");
+    });
+    paneled.onData.mockImplementation(() => {
+      lifecycleOrder.push("paneled");
+    });
+    const pluginOne: ChartPlugin = {
+      key: "pointer-1",
+      attach: vi.fn(),
+      onData: () => {
+        lifecycleOrder.push("plugin-1");
+      },
+      onPointer: () => {
+        order.push("plugin-1");
+      }
+    };
+    const pluginTwo: ChartPlugin = {
+      key: "pointer-2",
+      attach: vi.fn(),
+      onData: () => {
+        lifecycleOrder.push("plugin-2");
+      },
+      onPointer: () => {
+        order.push("plugin-2");
+        return consumeTopPlugin;
+      }
+    };
+
+    chart.setData(data);
+    chart.addIndicator(overlayOne);
+    chart.addIndicator(overlayTwo);
+    chart.addIndicator(paneled);
+    chart.addPlugin(pluginOne);
+    chart.addPlugin(pluginTwo);
+
+    lifecycleOrder.length = 0;
+    chart.updateData({
+      time: data.at(-1)!.time + 60_000,
+      close: 16
+    });
+    expect(lifecycleOrder).toEqual([
+      "overlay-1",
+      "overlay-2",
+      "paneled",
+      "plugin-1",
+      "plugin-2"
+    ]);
+
+    const event: ChartPointerEvent = {
+      type: "down",
+      x: 100,
+      y: 100,
+      time: data[0].time,
+      pane: chart.getMainPane(),
+      dataPoint: data[0]
+    };
+    const dispatch = chart as unknown as {
+      notifyExtensionsPointer(event: ChartPointerEvent): boolean;
+    };
+
+    expect(dispatch.notifyExtensionsPointer(event)).toBe(false);
+    expect(order).toEqual([
+      "plugin-2",
+      "plugin-1",
+      "paneled",
+      "overlay-2",
+      "overlay-1"
+    ]);
+
+    order.length = 0;
+    consumeTopPlugin = true;
+    expect(dispatch.notifyExtensionsPointer(event)).toBe(true);
+    expect(order).toEqual(["plugin-2"]);
+  });
+
+  it("skips indicators removed earlier in a lifecycle notification", () => {
+    const { chart, data } = createChart();
+    const remover = new RemovingIndicator();
+    const removed = new LifecycleProbeIndicator();
+    remover.target = removed;
+
+    chart.addIndicator(remover);
+    chart.addIndicator(removed);
+    removed.onData.mockClear();
+
+    chart.setData(data);
+
+    expect(removed.onData).not.toHaveBeenCalled();
+    expect(chart.getIndicators()).toEqual([remover]);
   });
 
   it("returns immutable snapshots for public collections", () => {

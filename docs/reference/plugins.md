@@ -3,7 +3,9 @@
 Plugins are extension objects attached with `chart.addPlugin(plugin)`. They can render into chart layers, listen to data and pointer changes, emit chart events, and clean up in `detach()`.
 
 Each attached plugin must have a unique `key`, and the same plugin instance
-cannot be attached twice. `addPlugin()` returns an idempotent disposer.
+cannot be attached twice. `addPlugin()` returns an idempotent disposer. After
+`attach()`, lifecycle hooks immediately receive the current options, data, and
+visible range, so plugins added after `setData()` do not need to poll the chart.
 
 ```ts
 import type { ChartContext, ChartPlugin } from "@ardinsys/financial-charts";
@@ -41,11 +43,22 @@ chart.addPlugin(new WatermarkPlugin());
 | `beforeDraw()`                 | Optional draw hook before the render pipeline starts.                                                                              |
 | `draw()`                       | Optional draw hook on the plugin draw pass.                                                                                        |
 | `afterDraw()`                  | Optional draw hook after the render pipeline finishes.                                                                             |
-| `onData(data)`                 | Optional notification after `setData()` or `updateData()` changes chart data.                                                       |
-| `onVisibleRangeChanged(range)` | Optional notification once after an effective programmatic, pan, or zoom view change. The payload is the whole-bar time range.     |
+| `onData(data)`                 | Current frozen data after attach and whenever `setData()`, `updateData()`, clearing, or `stepSize` remapping changes mapped data.  |
+| `onVisibleRangeChanged(range)` | Current whole-bar range after attach and once after each effective programmatic, pan, zoom, resize, or core-options view change.  |
+| `onOptionsChanged(event)`      | Optional notification containing previous/current resolved options and changed keys. Empty `changedKeys` means initial delivery.  |
 | `onPointer(event)`             | Optional notification for pointer down/move/up events mapped to data and pane space. Return `true` to consume the pointer gesture. |
 | `onDrawingFinished(event)`     | Optional notification when a drawing create or drag operation completes.                                                           |
 | `detach()`                     | Optional cleanup hook called by `removePlugin()` or chart disposal.                                                                |
+
+Indicators use the same lifecycle hooks. Data, range, options, and drawing
+notifications run through overlay indicators, paneled indicators, then ordinary
+plugins in attachment order. A removed extension is skipped for the remainder
+of the current notification. Pointer delivery follows visual stacking instead:
+ordinary plugins, paneled indicators, then overlays, with each group visited in
+reverse attachment order. Returning `true` stops delivery to lower extensions.
+
+Indicators retain their dedicated indicator render pass; they are not also
+drawn by the ordinary plugin pass.
 
 ## ChartContext
 

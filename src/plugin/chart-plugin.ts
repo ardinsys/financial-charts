@@ -2,6 +2,7 @@ import type {
   ChartCanvasLayer,
   ChartCrosshairOptions,
   ChartCrosshairState,
+  ChartOptionsChangeEvent,
   ChartRedrawPart,
   FinancialChart
 } from "../chart/financial-chart";
@@ -60,6 +61,8 @@ export interface ChartPlugin extends Drawable {
   onData?(data: readonly ChartData[]): void;
   /** Called once after an effective view change with the whole-bar range. */
   onVisibleRangeChanged?(range: TimeRange): void;
+  /** An empty `changedKeys` array identifies initial state delivery. */
+  onOptionsChanged?(event: ChartOptionsChangeEvent): void;
   onPointer?(event: ChartPointerEvent): boolean | void;
   onDrawingFinished?(event: ChartEventMap["drawing-finished"]): void;
   detach?(): void;

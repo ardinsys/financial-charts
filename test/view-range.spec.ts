@@ -43,6 +43,7 @@ function attachRangeProbe(chart: FinancialChart) {
     onVisibleRangeChanged
   };
   chart.addPlugin(plugin);
+  onVisibleRangeChanged.mockClear();
   return onVisibleRangeChanged;
 }
 
