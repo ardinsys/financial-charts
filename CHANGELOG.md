@@ -12,8 +12,8 @@
   `getVisibleTimeRange()` / `getVisibleLogicalRange()` over removed zoom/pan
   scalar helpers.
 - Replaced old render invalidation with named render layers:
-  `"grid"`, `"axes"`, `"series"`, `"indicators"`, `"drawings"`, and
-  `"crosshair"`. The `"controller"` alias still invalidates grid/axes/series.
+  `"grid"`, `"axes"`, `"series"`, `"indicators"`, `"drawings"`,
+  `"annotations"`, and `"crosshair"`. Removed the `"controller"` alias.
 - Removed global controller/indicator registries. Built-in controllers are
   instance-registered by default; custom controllers are passed in chart options
   or registered with `chart.registerController(...)`.
@@ -29,19 +29,22 @@
   models. Use the default `fci-*` CSS hooks or provide a custom DOM adapter.
 - Renamed extent APIs to scale APIs (`createScale`, `getVisibleScale`,
   `DataScaleModel`) and removed old zoom/pan projection options.
+- Removed the old `draw`, `drawNextPoint`, and `updateCoreOptions` chart methods.
+  Use `setData`, `updateData`, and `updateOptions` respectively.
 
 ### Added
 
 - `setData`, `updateData`, and `clearData` provide explicit replacement,
   streaming, and clearing behavior, including safe stream-first initialization.
 - `DataStore` for sorted bar storage, binary lookup, merge, and visible slicing.
-- Scale exports: `Scale`, `TimeScale`, `PriceScale`, `DataScaleModel`, price
+- Engine exports: `Scale`, `TimeScale`, `PriceScale`, `DataScaleModel`, price
   tick helpers, and `TimeTickGenerator`.
 - `RenderPipeline` with ordered render stages and hook registration.
 - `Pane` model for pane geometry, price scales, pane-aware Y-axis rendering, and
   draggable pane dividers.
-- Plugin exports: `ChartPlugin`, `ChartContext`, `ChartPointerEvent`,
-  `ChartEventMap`, `EventEmitter`, and `Drawable`.
+- Extension exports: `ChartPlugin`, `ChartContext`, `ChartPointerEvent`,
+  `Drawable`, indicators, drawings, annotations, and DOM-adapter contracts.
+- Root event exports: `ChartEventMap` and generic `EventEmitter`.
 - Drawing tools: `DrawingManager`, `Drawing`, `TrendLine`, `HorizontalLine`,
   `RectangleDrawing`, and `TextDrawing`.
 - Drawing persistence through `DrawingManager.toJSON()` /
@@ -50,14 +53,19 @@
   `DrawingManager`.
 - Drawing events: `drawing-create`, `drawing-change`, `drawing-finished`,
   `drawing-select`, and `drawing-delete`.
-- `ChartDOMAdapter` / `DefaultDOMAdapter` for replacing or restyling DOM chrome
-  such as indicator labels/actions and pane dividers.
+- `ChartDOMAdapter` through the extensions entry and root-exported
+  `DefaultDOMAdapter` for replacing or restyling DOM chrome such as indicator
+  labels/actions and pane dividers.
 - `updateLocalization({ locale, timeZone, formatter, localeValues })` for
   cohesive runtime locale, timezone, formatter, and UI-string updates.
 - Seconds and sub-minute time tick coverage in `DefaultFormatter` and
   `TimeTickGenerator`.
 - `MIGRATION.md` plus expanded guide/reference documentation for v1 extension
   APIs.
+- Versioned chart state through `toJSON()` / `restoreState()`, including precise
+  visible windows, pane layout, indicator resolvers, and plugin contributors.
+- Curated `core`, `extensions`, and `engine` package entry points plus concrete
+  controller subpaths.
 
 ### Changed
 
@@ -71,8 +79,6 @@
 - Public data, pane, indicator, and plugin collection getters return frozen
   readonly snapshots. Duplicate extension registrations are rejected, add
   methods return idempotent disposers, and chart disposal is idempotent.
-- `draw` and `drawNextPoint` are deprecated aliases that delegate to `setData`
-  and `updateData`.
 - Full datasets are copied and sorted before bucket merging. Streaming accepts
   equal or newer timestamps and rejects older corrections with guidance to use
   `setData`.
@@ -100,8 +106,8 @@
 - Price tick generation is shared between chart and paneled indicator axes.
 - `DefaultFormatter` is SSR-safe and avoids per-frame formatter allocation in
   common tooltip paths.
-- The package builds as a single ES module with bundled declaration output via
-  `tsdown`.
+- The package builds as ES modules with bundled declaration output for every
+  declared entry point via `tsdown`.
 
 ### Fixed
 

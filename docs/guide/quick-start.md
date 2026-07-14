@@ -140,4 +140,6 @@ omitted, and it never registers controllers implicitly.
 - [Styling and localization](/guide/styling-and-localization) covers themes,
   custom formatters, and locale bundles.
 - [Drawing tools](/guide/drawing-tools) adds interactive and persisted drawings.
+- [State and persistence](/guide/state-and-persistence) restores chart,
+  indicator, pane, and contributor state.
 - [FinancialChart API](/reference/chart) lists the complete chart contract.

@@ -26,6 +26,10 @@ export default defineConfig({
             link: "/guide/view-and-interactions"
           },
           { text: "Drawing tools", link: "/guide/drawing-tools" },
+          {
+            text: "State and persistence",
+            link: "/guide/state-and-persistence"
+          },
           { text: "i18n", link: "/guide/i18n" },
           {
             text: "Styling and localization",
@@ -49,6 +53,7 @@ export default defineConfig({
         text: "API Reference",
         items: [
           { text: "FinancialChart", link: "/reference/chart" },
+          { text: "Public exports", link: "/reference/exports" },
           { text: "Indicators", link: "/reference/indicators" },
           { text: "Drawings", link: "/reference/drawings" },
           { text: "Plugins", link: "/reference/plugins" },

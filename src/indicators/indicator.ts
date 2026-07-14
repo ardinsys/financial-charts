@@ -3,7 +3,7 @@ import type {
   FinancialChart
 } from "../chart/financial-chart";
 import type { ChartData, TimeRange } from "../chart/types";
-import { mergeThemes } from "../chart/themes";
+import { mergeObjects } from "../utils/merge";
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
 import type {
   IndicatorLabelHandle,
@@ -154,8 +154,8 @@ export abstract class Indicator<
     const configuredInstanceId = optionOverrides.instanceId;
     delete optionOverrides.instanceId;
 
-    this.themes = mergeThemes(this.getDefaultThemes(), themes);
-    this.options = mergeThemes(
+    this.themes = mergeObjects(this.getDefaultThemes(), themes);
+    this.options = mergeObjects(
       this.getDefaultOptions(),
       optionOverrides as Partial<TOptions>
     );
@@ -318,7 +318,7 @@ export abstract class Indicator<
 
   /** Applies option values produced by `serializeStateOptions()`. */
   protected restoreStateOptions(options: IndicatorStateOptions): void {
-    this.options = mergeThemes(this.options, options as Partial<TOptions>);
+    this.options = mergeObjects(this.options, options as Partial<TOptions>);
   }
 
   /**
@@ -332,7 +332,7 @@ export abstract class Indicator<
     options: Partial<TOptions>,
     updateOptions: IndicatorUpdateOptions = {}
   ): void {
-    this.options = mergeThemes(this.options, options);
+    this.options = mergeObjects(this.options, options);
     if (!this.attached) return;
     this.chart.requestRedraw(indicatorStateRedrawParts);
     this.refreshLabel();

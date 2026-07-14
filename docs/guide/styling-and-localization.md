@@ -45,6 +45,19 @@ const baseTheme = mergeThemes(defaultLightTheme, {
 });
 ```
 
+`mergeThemes()` accepts a resolved theme followed by a `ChartTheme` patch and
+returns a new `ResolvedChartTheme`. Nested plain objects are merged, arrays are
+replaced, and `null`/`undefined` values fall back to the resolved default.
+
+The theme's `randomColors` field is an explicit deterministic palette. Custom
+indicators can select from it without coupling a utility to the chart:
+
+```ts
+import { paletteColor } from "@ardinsys/financial-charts/engine";
+
+const color = paletteColor(chart.getTheme().randomColors, seriesIndex);
+```
+
 Apply themes on creation or at runtime:
 
 ```ts

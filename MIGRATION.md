@@ -199,9 +199,8 @@ events are routed by pane hit testing.
 What to update:
 
 - Use the `pane` passed in `InitParams` when you need pane geometry or scales.
-- Prefer `drawPane(context)` for panel content. Existing indicators that
-  override `draw()` still work, but new indicators should let the base class
-  handle the pane boilerplate.
+- Move pane content into `drawPane(context)` so the base class owns background,
+  grid, axes, visibility, and scale synchronization.
 
 ### Formatter options are explicit and SSR-safe
 
@@ -242,7 +241,7 @@ deserializers are not global.
 ### Controller registration is instance-scoped
 
 The global mutable controller registry was removed.
-`FinancialChart.registerController` no longer exists.
+Controller registration now belongs to each `FinancialChart` instance.
 
 What to update:
 
@@ -275,6 +274,28 @@ const chart = new FinancialChart(root, {
 chart.registerController(CustomController);
 ```
 
+### Custom controllers use named engine contracts
+
+Custom controller crosshair fields are no longer positional boolean arrays.
+Return named `ChartData` fields, which removes array-length and OHLCV-position
+coupling:
+
+```ts
+getCrosshairValues(): readonly ChartDataValueKey[] {
+  return ["close", "volume"];
+}
+```
+
+Import `ChartController`, `ChartDataValueKey`, `DataScaleModel`, and related
+scale contracts from `@ardinsys/financial-charts/engine`. Tick generation now
+accepts a sorted public `times: readonly number[]` input instead of the internal
+data store. `TimeScale`, `PriceScale`, and pane range getters return stable
+immutable snapshots rather than caller-owned mutable objects.
+
+The chart-coupled `randomColor(chart, index)` helper was removed. Use
+`paletteColor(colors, index)` from the engine entry and pass the desired palette
+explicitly.
+
 `FinancialChart.registerIndicator` and `FinancialChart.createIndicator` were
 removed rather than replaced. Instantiate indicators directly and add them to the
 chart:
@@ -286,9 +307,9 @@ chart.addIndicator(indicator);
 
 ### Events are generic and extensible
 
-The event emitter remains compatible with existing `chart.on(...)` calls, while
-the built-in event map now includes indicator and drawing events. Plugin authors
-can use the generic event emitter types for custom event maps.
+The event emitter accepts typed `chart.on(...)` subscriptions, and the built-in
+event map includes indicator and drawing events. Plugin authors can use the
+generic event emitter types for custom event maps.
 
 ### Pluggable DOM adapter (indicator labels and pane dividers)
 
@@ -365,9 +386,7 @@ paneled indicator class and icon assets.
 For the `commons-js` financial indicator package, move base indicator,
 paneled-indicator, drawing-context, and label-contract imports to
 `@ardinsys/financial-charts/extensions`. Move `DataScaleModel`, scale contracts,
-and palette selection to `@ardinsys/financial-charts/engine`. The old
-chart-coupled `randomColor(chart, index)` helper is replaced by
-`paletteColor(colors, index)`. Concrete chart APIs,
+and `paletteColor` to `@ardinsys/financial-charts/engine`. Concrete chart APIs,
 `ChartData`, themes, formatter types, and indicator state restoration remain on
 the root entry. This is an import-path migration only; updating the downstream
 indicator implementations remains a separate repository change.

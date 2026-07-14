@@ -12,8 +12,8 @@ import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
 import "@ardinsys/financial-charts/style.css";
 
-const props = defineProps<{ data: ChartData[] }>();
-const appLocale = ref("en"); // replace with your i18n store value
+const props = defineProps<{ data: readonly ChartData[] }>();
+const appLocale = ref("en");
 const localeValues = {
   en: {
     indicators: { actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" } },
@@ -23,7 +23,6 @@ const localeValues = {
 
 const container = ref<HTMLElement | null>(null);
 const chart = ref<FinancialChart | null>(null);
-const lastTimestamp = ref<number | null>(null);
 
 onMounted(() => {
   if (!container.value) return;
@@ -37,7 +36,6 @@ onMounted(() => {
   });
 
   instance.setData(props.data);
-  lastTimestamp.value = props.data.at(-1)?.time ?? null;
   chart.value = instance;
 
   chart.value.updateLocalization({
@@ -49,19 +47,8 @@ onMounted(() => {
 watch(
   () => props.data,
   (data) => {
-    if (!chart.value) return;
-    const next = data.at(-1);
-    const prev = lastTimestamp.value;
-
-    if (next && prev && next.time > prev) {
-      chart.value.updateData(next);
-    } else {
-      chart.value.setData(data);
-    }
-
-    lastTimestamp.value = next?.time ?? null;
-  },
-  { deep: true }
+    chart.value?.setData(data);
+  }
 );
 
 watch(appLocale, (locale) => {
@@ -71,7 +58,10 @@ watch(appLocale, (locale) => {
   });
 });
 
-onBeforeUnmount(() => chart.value?.dispose());
+onBeforeUnmount(() => {
+  chart.value?.dispose();
+  chart.value = null;
+});
 </script>
 
 <style scoped>
@@ -83,5 +73,9 @@ onBeforeUnmount(() => chart.value?.dispose());
 
 - Avoid creating the chart before the container is measurable (e.g. inside collapsed tabs).
 - Keep the `FinancialChart` instance outside of reactive renders to prevent re-creation.
-- Prefer one `data` array. Memoize or compute it in the parent so identical feeds don't trigger redundant `setData` calls.
+- Replace the `data` array when its snapshot changes; avoid a deep watcher over
+  thousands of bars. For a single-candle live feed, call `updateData(point)` at
+  the feed boundary.
 - Drive theme or controller changes via methods on `chart.value` in event handlers.
+- In Nuxt or another SSR setup, keep construction inside a client-only mounted
+  hook.

@@ -1,47 +1,10 @@
+import { mergeObjects } from "../utils/merge";
+
 type DeepRequired<T> = T extends Function
   ? T
   : T extends object
     ? { [P in keyof T]-?: DeepRequired<T[P]> }
     : T;
-
-export function mergeThemes<T extends object = ChartTheme>(
-  defaultTheme: any,
-  providedTheme: any
-): T {
-  if (providedTheme == undefined) return { ...defaultTheme };
-  // @ts-ignore
-  const theme: T = {};
-  const allKeys = new Set([
-    ...Object.keys(defaultTheme),
-    ...Object.keys(providedTheme)
-  ]);
-  for (const key of allKeys) {
-    const defaultVal = defaultTheme[key];
-    const providedVal = providedTheme[key];
-
-    if (
-      typeof defaultVal === "object" &&
-      typeof providedVal === "object" &&
-      !Array.isArray(defaultVal) &&
-      Object.getPrototypeOf(defaultVal)?.constructor === Object &&
-      Object.getPrototypeOf(providedVal)?.constructor === Object
-    ) {
-      // @ts-ignore
-      theme[key] = mergeThemes(defaultVal, providedVal);
-    } else {
-      if (typeof providedVal === "boolean" || typeof providedVal === "number") {
-        // @ts-ignore
-        theme[key] = providedVal;
-      } else {
-        // Fallback to default if provided is falsy (null/undefined/empty string), except 0/false
-        // @ts-ignore
-        theme[key] = providedVal ?? defaultVal;
-      }
-    }
-  }
-
-  return theme;
-}
 
 export type Gradient = Array<[number, string]>;
 
@@ -147,6 +110,14 @@ export interface ChartTheme {
 }
 
 export type ResolvedChartTheme = DeepRequired<ChartTheme>;
+
+/** Deeply applies a chart-theme patch without mutating either input. */
+export function mergeThemes(
+  defaultTheme: ResolvedChartTheme,
+  providedTheme?: ChartTheme | null
+): ResolvedChartTheme {
+  return mergeObjects(defaultTheme, providedTheme);
+}
 
 export const defaultLightTheme: ResolvedChartTheme = {
   key: "light",

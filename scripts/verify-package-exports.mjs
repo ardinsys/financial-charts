@@ -22,12 +22,14 @@ for (const internalPath of [
   assertPackagePathNotExported(`${packageJson.name}/${internalPath}`);
 }
 
-for (const declarationPath of [
+const publicDeclarationPaths = [
   "dist/index.d.ts",
   "dist/core.d.ts",
   "dist/extensions.d.ts",
   "dist/engine.d.ts"
-]) {
+];
+
+for (const declarationPath of publicDeclarationPaths) {
   const declaration = await readFile(
     new URL(`../${declarationPath}`, import.meta.url),
     "utf8"
@@ -48,6 +50,60 @@ for (const declarationPath of [
       );
     }
   }
+
+  for (const removedName of [
+    "DataExtent",
+    "Extent",
+    "createIndicator",
+    "createExtent",
+    "drawNextPoint",
+    "getEffectiveCrosshairValues",
+    "getKey",
+    "getPanOffset",
+    "getPixelPerMs",
+    "getVisibleExtent",
+    "getZoomLevel",
+    "labelRenderer",
+    "labelTemplate",
+    "randomColor",
+    "recalculateVisibleExtent",
+    "registerIndicator",
+    "setChart",
+    "updateCoreOptions",
+    "updateLabel"
+  ]) {
+    if (new RegExp(`\\b${removedName}\\b`).test(declaration)) {
+      throw new Error(`${removedName} must not appear in ${declarationPath}`);
+    }
+  }
+
+  if (declaration.includes('"controller"')) {
+    throw new Error(
+      `The removed controller redraw alias appears in ${declarationPath}`
+    );
+  }
+}
+
+const rootDeclaration = await readFile(
+  new URL("../dist/index.d.ts", import.meta.url),
+  "utf8"
+);
+const exportInventory = await readFile(
+  new URL("../docs/reference/exports.md", import.meta.url),
+  "utf8"
+);
+const rootExports = [...rootDeclaration.matchAll(/export \{([^}]*)\}/gs)]
+  .flatMap((match) => match[1].split(","))
+  .map((name) => name.trim())
+  .filter(Boolean);
+const undocumentedExports = rootExports.filter(
+  (name) => !new RegExp(`\\b${escapeRegExp(name)}\\b`).test(exportInventory)
+);
+
+if (undocumentedExports.length > 0) {
+  throw new Error(
+    `Root exports missing from docs/reference/exports.md: ${undocumentedExports.join(", ")}`
+  );
 }
 
 function collectExportTargets(exports) {
@@ -74,4 +130,8 @@ function assertPackagePathNotExported(specifier) {
   } catch (error) {
     if (error?.code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
   }
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

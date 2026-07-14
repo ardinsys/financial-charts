@@ -8,6 +8,7 @@ import {
   type ChartData,
   type ChartOptions,
   type ChartState,
+  type ChartStateContributor,
   type DrawingMutationOptions,
   type DrawingSelectionOptions
 } from "@ardinsys/financial-charts";
@@ -34,6 +35,12 @@ const state = {} as ChartState;
 const drawingMutation = {} as DrawingMutationOptions;
 const drawingSelection = {} as DrawingSelectionOptions;
 const chart = null as unknown as FinancialChart;
+const contributor: ChartStateContributor<{ symbol: string }> = {
+  key: "symbol",
+  toJSON: () => ({ symbol: "AAPL" }),
+  fromJSON: (_state) => undefined
+};
+const serializedState = chart.toJSON({ contributors: [contributor] });
 
 // @ts-expect-error v1 uses setData() for full data replacement.
 chart.draw(data);
@@ -56,6 +63,8 @@ void [
   state,
   drawingMutation,
   drawingSelection,
+  contributor,
+  serializedState,
   chart
 ];
 void [

@@ -298,6 +298,10 @@ store a pending range while the chart is empty.
 Use `toJSON()` and `restoreState()` to persist the chart configuration and
 view as one versioned, JSON-safe value:
 
+See [State and persistence](/guide/state-and-persistence) for the full schema,
+resolver/contributor contracts, restoration order, and restore-before-data
+behavior.
+
 ```ts
 const state = chart.toJSON({ contributors: [drawingManager] });
 localStorage.setItem("price-chart", JSON.stringify(state));

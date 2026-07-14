@@ -251,7 +251,7 @@ export interface ChartStateContributor<TState = unknown> {
 }
 
 export interface ChartStateSerializationOptions {
-  contributors?: readonly ChartStateContributor<any>[];
+  contributors?: readonly ChartStateContributor[];
 }
 
 export interface ChartStateRestoreOptions extends ChartStateSerializationOptions {
@@ -694,7 +694,7 @@ export class FinancialChart extends EventEmitter {
       restoredIndicators
     );
     const contributors = indexStateContributors(options.contributors ?? []);
-    const restoredContributors: ChartStateContributor<any>[] = [];
+    const restoredContributors: ChartStateContributor[] = [];
     for (const key of Object.keys(validatedState.contributions ?? {})) {
       const contributor = contributors.get(key);
       if (!contributor) {
@@ -2191,7 +2191,7 @@ export class FinancialChart extends EventEmitter {
         ? formatter.getTimeZone?.() ?? this.options.timeZone
         : this.options.timeZone;
     const theme = has("theme")
-      ? mergeThemes<ResolvedChartTheme>(this.options.theme, update.theme)
+      ? mergeThemes(this.options.theme, update.theme)
       : this.options.theme;
     const localeValues = has("localeValues")
       ? {
@@ -3756,9 +3756,9 @@ function freezeSnapshot<T>(values: T[]): readonly T[] {
 }
 
 function indexStateContributors(
-  contributors: readonly ChartStateContributor<any>[]
-): Map<string, ChartStateContributor<any>> {
-  const indexed = new Map<string, ChartStateContributor<any>>();
+  contributors: readonly ChartStateContributor[]
+): Map<string, ChartStateContributor> {
+  const indexed = new Map<string, ChartStateContributor>();
   for (const contributor of contributors) {
     if (typeof contributor.key !== "string" || contributor.key.length === 0) {
       throw new Error("Chart state contributors must have a non-empty key.");
