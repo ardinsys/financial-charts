@@ -273,11 +273,11 @@ function applyTimeframe() {
     if (!nextSlot) continue;
 
     item.slot = nextSlot;
-    item.chart.updateCoreOptions(
-      getChartTimeRange(nextSlot.data, nextSlot.stepSize),
-      nextSlot.stepSize,
-      90
-    );
+    item.chart.updateOptions({
+      timeRange: getChartTimeRange(nextSlot.data, nextSlot.stepSize),
+      stepSize: nextSlot.stepSize,
+      maxZoom: 90
+    });
     item.chart.setData(nextSlot.data);
   }
 }

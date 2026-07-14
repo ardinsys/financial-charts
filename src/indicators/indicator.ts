@@ -26,6 +26,14 @@ import {
   type JSONStateValue
 } from "../utils/json-state";
 
+const indicatorStateRedrawParts = [
+  "grid",
+  "axes",
+  "series",
+  "indicators",
+  "crosshair"
+] as const;
+
 export type { IndicatorLabelSegment };
 
 export interface DefaultIndicatorOptions {
@@ -326,7 +334,7 @@ export abstract class Indicator<
   ): void {
     this.options = mergeThemes(this.options, options);
     if (!this.attached) return;
-    this.chart.requestRedraw(["indicators", "crosshair", "controller"]);
+    this.chart.requestRedraw(indicatorStateRedrawParts);
     this.refreshLabel();
     if (updateOptions.emit ?? true) {
       this.chart.emit("indicator-change", { indicator: this });
@@ -342,7 +350,7 @@ export abstract class Indicator<
     this.visible = visible;
     if (!this.attached) return;
 
-    this.chart.requestRedraw(["controller", "crosshair", "indicators"]);
+    this.chart.requestRedraw(indicatorStateRedrawParts);
     this.refreshLabel();
     if (updateOptions.emit ?? true) {
       this.chart.emit("indicator-visibility-changed", {
@@ -382,7 +390,7 @@ export abstract class Indicator<
     if (!this.attached) return;
 
     this.theme = this.resolveTheme(this.chart.getOptions().theme.key);
-    this.chart.requestRedraw(["indicators", "crosshair", "controller"]);
+    this.chart.requestRedraw(indicatorStateRedrawParts);
     this.refreshLabel();
 
     if (updateOptions.emit ?? true) {

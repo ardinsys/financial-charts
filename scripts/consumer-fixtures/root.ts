@@ -29,6 +29,16 @@ const options: ChartOptions = {
   stepSize: 60_000
 };
 const state = {} as ChartState;
+const chart = null as unknown as FinancialChart;
+
+// @ts-expect-error v1 uses setData() for full data replacement.
+chart.draw(data);
+// @ts-expect-error v1 uses updateData() for streaming updates.
+chart.drawNextPoint(data[0]);
+// @ts-expect-error v1 uses updateOptions() for runtime option changes.
+chart.updateCoreOptions("auto", 60_000, 10);
+// @ts-expect-error Redraw requests name concrete render layers.
+chart.requestRedraw("controller");
 
 void [
   ChartSyncPlugin,
@@ -39,7 +49,8 @@ void [
   TrendLine,
   data,
   options,
-  state
+  state,
+  chart
 ];
 void [
   null as unknown as Indicator,

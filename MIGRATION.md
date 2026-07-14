@@ -25,8 +25,8 @@ Use `setData(data)` for full replacement, `setData([])` or `clearData()` for
 clearing, and `updateData(point)` for one streaming update. Streaming can now
 initialize an empty chart safely.
 
-`draw(data)` and `drawNextPoint(point)` remain as deprecated migration aliases;
-they delegate directly to `setData` and `updateData`.
+The old `draw(data)` and `drawNextPoint(point)` methods were removed rather
+than retained as compatibility aliases.
 
 `setData` now copies and sorts full datasets before merging `stepSize` buckets.
 Bucket merges preserve zero and tolerate partial values: open uses the first
@@ -64,8 +64,8 @@ What to update:
 - Public logical, whole-bar time, and precise time-window setters now all
   clamp, rescale, notify extensions once, and redraw without a follow-up call.
   They are no-ops before data is loaded.
-- Use `updateCoreOptions(range, stepSize, maxZoom)` when changing symbol,
-  timeframe, or base range.
+- Use `updateOptions({ timeRange, stepSize, maxZoom })` when changing symbol,
+  timeframe, or base range. `updateCoreOptions` was removed.
 - Avoid persisting old zoom/pan scalar values from v0.9; persist the data range,
   `getVisibleTimeRange()`, or `getVisibleLogicalRange()` depending on your UI.
 
@@ -84,7 +84,6 @@ chart.requestRedraw([
 ]);
 ```
 
-The compatibility alias `"controller"` invalidates `grid`, `axes`, and `series`.
 The full layer set is `"grid"`, `"axes"`, `"series"`, `"indicators"`,
 `"drawings"`, `"annotations"`, and `"crosshair"`.
 

@@ -111,18 +111,4 @@ describe("chart data lifecycle", () => {
       expect(context.clearRect).toHaveBeenCalled();
     }
   });
-
-  it("keeps deprecated data methods as delegating migration aliases", () => {
-    const chart = createChart();
-    const start = Date.UTC(2024, 0, 1, 9);
-    const setData = vi.spyOn(chart, "setData");
-    const updateData = vi.spyOn(chart, "updateData");
-
-    chart.draw([{ time: start, close: 10 }]);
-    chart.drawNextPoint({ time: start + 60_000, close: 11 });
-
-    expect(setData).toHaveBeenCalledOnce();
-    expect(updateData).toHaveBeenCalledOnce();
-    expect(chart.getData()).toHaveLength(2);
-  });
 });

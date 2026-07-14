@@ -58,14 +58,16 @@ partial OHLC updates, missing volume, and zero values safe to combine.
 
 ## Switching timeframes
 
-To change granularity or visible window, call `chart.updateCoreOptions(range, stepSize, maxZoom)`. Entire state is recalculated because the mapped data depends on `stepSize`, so expect zoom and pan to reset when the step changes.
+To change granularity or the configured data range, call `chart.updateOptions()`.
+The chart remaps its data when `stepSize` changes, so expect zoom and pan to
+reset.
 
 ```ts
-chart.updateCoreOptions(
-  { start: Date.UTC(2024, 0, 2), end: Date.UTC(2024, 0, 6) },
-  30 * 60 * 1000,
-  120
-);
+chart.updateOptions({
+  timeRange: { start: Date.UTC(2024, 0, 2), end: Date.UTC(2024, 0, 6) },
+  stepSize: 30 * 60 * 1000,
+  maxZoom: 120
+});
 ```
 
 You can always read the current values with `chart.getOptions()` and `chart.getVisibleTimeRange()` before applying updates.
@@ -109,6 +111,6 @@ series.
 ## Troubleshooting gaps and jumps
 
 - **Expected calendar gaps disappeared:** v1 uses index-based X mapping by design. Missing weekends, holidays, and sparse bars collapse into neighboring ordinal slots.
-- **Gaps after switching step size:** the chart remaps data on `updateCoreOptions`, so zoom/pan reset is expected when `stepSize` changes.
-- **Live chart stops scrolling:** when auto range is on, the view only follows the right edge if you haven't panned away. Reset with `updateCoreOptions("auto", ...)` to re-anchor to the latest data.
+- **Gaps after switching step size:** the chart remaps data on `updateOptions`, so zoom/pan reset is expected when `stepSize` changes.
+- **Live chart stops scrolling:** when auto range is on, the view only follows the right edge if you haven't panned away. Call `setVisibleTimeRange(chart.getTimeRange())` to restore the full configured range.
 - **Mixed timezones:** pass UTC timestamps (number) rather than `Date` instances to keep snapping consistent across locales.

@@ -4,10 +4,16 @@ Control how the chart looks and behaves at runtime: zoom, pan, swap controllers,
 
 ## Adjusting the core view
 
-`updateCoreOptions(range, stepSize, maxZoom)` recalculates internal state, remaps data to the new `stepSize`, and triggers a redraw. Passing `"auto"` as the range keeps the window anchored to your data.
+`updateOptions()` applies runtime configuration changes atomically. Changing
+`stepSize` remaps the original data and resets the visible range. Passing
+`"auto"` as `timeRange` derives the configured range from the data.
 
 ```ts
-chart.updateCoreOptions("auto", 15 * 60 * 1000, 150);
+chart.updateOptions({
+  timeRange: "auto",
+  stepSize: 15 * 60 * 1000,
+  maxZoom: 150
+});
 ```
 
 When you need deterministic navigation, read the current window and feed a modified range back into the chart:
@@ -16,11 +22,10 @@ When you need deterministic navigation, read the current window and feed a modif
 const current = chart.getVisibleTimeRange();
 const moveBy = (current.end - current.start) * 0.25;
 
-chart.updateCoreOptions(
-  { start: current.start + moveBy, end: current.end + moveBy },
-  chart.getOptions().stepSize,
-  chart.getOptions().maxZoom
-);
+chart.setVisibleTimeRange({
+  start: current.start + moveBy,
+  end: current.end + moveBy
+});
 ```
 
 ## Interactions
@@ -45,7 +50,8 @@ Render invalidation uses named layers:
 chart.requestRedraw(["series", "indicators", "drawings"]);
 ```
 
-Use `"controller"` when you want to redraw the grid, axes, and main series together.
+Request `"grid"`, `"axes"`, and `"series"` together when all controller-owned
+layers need to be redrawn.
 
 Plugins that draw a comparison series above the active controller can register a
 `series` render-stage hook and request `"series"` redraws when their secondary

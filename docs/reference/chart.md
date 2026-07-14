@@ -145,9 +145,6 @@ type LocaleValues = {
 - Equal timestamps are accepted. Older timestamps throw a `RangeError`; use `setData` for corrections.
 - With auto range enabled, the window expands and keeps the right edge in view unless you have panned away.
 
-`draw(data)` and `drawNextPoint(point)` are deprecated migration aliases for
-`setData(data)` and `updateData(point)`.
-
 ### View and styling
 
 | Method                          | Description                                                                                       |
@@ -172,8 +169,7 @@ chart.updateOptions({
 
 The patch is applied atomically. Unchanged effective values do not reset the
 view or schedule a redraw. Changing `stepSize` remaps the original dataset;
-changing `timeRange` or `stepSize` resets zoom and pan. The deprecated
-`updateCoreOptions(range, stepSize, maxZoom)` method delegates to this API.
+changing `timeRange` or `stepSize` resets zoom and pan.
 
 `setCrosshair({ time, y?, price?, paneId? })` is intended for synchronized
 charts and other external pointer controllers. It resolves `time` against the
@@ -358,7 +354,7 @@ everything else.
 | Method                             | Description                                                                                                                                                                                      |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `dispose()`                        | Tears down event listeners, the resize observer, and removes canvases plus paneled indicator containers. Call this before removing the DOM node.                                                 |
-| `requestRedraw(parts, immediate?)` | Schedules a render pass for one or more layers. Use `"grid"`, `"axes"`, `"series"`, `"indicators"`, `"drawings"`, `"annotations"`, `"crosshair"`, or the compatibility alias `"controller"` for grid/axes/series. |
+| `requestRedraw(parts, immediate?)` | Schedules a render pass for one or more of `"grid"`, `"axes"`, `"series"`, `"indicators"`, `"drawings"`, `"annotations"`, and `"crosshair"`. |
 
 Because `FinancialChart` extends an event emitter, the usual `on(event, handler)` and `off(event, handler)` helpers are also available.
 

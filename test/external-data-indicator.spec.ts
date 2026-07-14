@@ -141,7 +141,9 @@ describe("external-data indicators", () => {
     expect(chart.getVisibleScale().getYMax()).toBeGreaterThan(100);
     expect(requestRedraw).toHaveBeenCalledOnce();
     expect(requestRedraw).toHaveBeenCalledWith([
-      "controller",
+      "grid",
+      "axes",
+      "series",
       "indicators",
       "annotations",
       "crosshair"

@@ -92,7 +92,8 @@ Render stages run in this order:
 
 `beforeDraw -> grid -> axes -> series -> indicators -> drawings -> annotations -> crosshair -> afterDraw`
 
-Redraw parts are layer-oriented: `grid`, `axes`, `series`, `indicators`, `drawings`, `annotations`, `crosshair`, and the compatibility alias `controller` for `grid` + `axes` + `series`.
+Redraw parts are layer-oriented: `grid`, `axes`, `series`, `indicators`,
+`drawings`, `annotations`, and `crosshair`.
 
 Register a hook on `series` when a plugin should draw immediately above the
 active controller but below indicators, drawings, annotations, and crosshair.

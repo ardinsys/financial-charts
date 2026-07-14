@@ -38,7 +38,9 @@ for (const declarationPath of [
     "ICON_HIDE",
     "ICON_SETTINGS",
     "ICON_REMOVE",
-    "defaultControllers"
+    "defaultControllers",
+    "drawNextPoint",
+    "updateCoreOptions"
   ]) {
     if (declaration.includes(forbiddenExport)) {
       throw new Error(

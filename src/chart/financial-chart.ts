@@ -275,7 +275,7 @@ export type ChartCanvasLayer =
 
 type ChartOwnedCanvasLayer = ChartCanvasLayer | "annotations";
 
-export type ChartRedrawPart = RenderLayer | "controller";
+export type ChartRedrawPart = RenderLayer;
 export type PaneHeightsInput =
   | Partial<Record<number, number>>
   | readonly number[];
@@ -2308,15 +2308,6 @@ export class FinancialChart extends EventEmitter {
     this.updateOptions({ volume: draw });
   }
 
-  /** @deprecated Use `updateOptions()` instead. */
-  public updateCoreOptions(
-    timeRange: TimeRange | "auto",
-    stepSize: number,
-    maxZoom: number
-  ) {
-    this.updateOptions({ timeRange, stepSize, maxZoom });
-  }
-
   public updateLocalization(localization: ChartLocalizationOptions) {
     this.updateOptions(localization);
   }
@@ -2891,16 +2882,6 @@ export class FinancialChart extends EventEmitter {
     this.setData([]);
   }
 
-  /** @deprecated Use `setData(data)`. */
-  public draw(data: readonly ChartData[]): void {
-    this.setData(data);
-  }
-
-  /** @deprecated Use `updateData(point)`. */
-  public drawNextPoint(data: ChartData): void {
-    this.updateData(data);
-  }
-
   private resetEmptyDataState(): void {
     if (this.autoTimeRange) {
       this.timeRange = { start: 0, end: 0 };
@@ -2933,10 +2914,12 @@ export class FinancialChart extends EventEmitter {
   ): void {
     if (!this.isExtensionAttached(indicator)) return;
 
-    const redrawParts = new Set<ChartRedrawPart>();
+    const redrawParts = new Set<RenderLayer>();
     if (options.scale && this.dataStore.length > 0) {
       this.recalculateVisibleScale();
-      redrawParts.add("controller");
+      for (const layer of this.controllerRedrawParts) {
+        redrawParts.add(layer);
+      }
       redrawParts.add("indicators");
       redrawParts.add("annotations");
       redrawParts.add("crosshair");
@@ -3709,13 +3692,7 @@ export class FinancialChart extends EventEmitter {
     const parts = Array.isArray(part) ? part : [part];
 
     for (const p of parts) {
-      if (p === "controller") {
-        for (const layer of this.controllerRedrawParts) {
-          this.redrawParts.add(layer);
-        }
-      } else {
-        this.redrawParts.add(p);
-      }
+      this.redrawParts.add(p);
     }
   }
 

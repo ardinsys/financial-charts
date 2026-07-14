@@ -189,15 +189,13 @@ describe("chart options API", () => {
     chart.setVolumeDraw(false);
     chart.updateLocalization({ locale: "hu-HU" });
     chart.updateLocale("de-DE");
-    chart.updateCoreOptions("auto", 120_000, 20);
 
     expect(updateOptions.mock.calls).toEqual([
       [{ type: "candle" }],
       [{ theme: { key: "custom" } }],
       [{ volume: false }],
       [{ locale: "hu-HU" }],
-      [{ locale: "de-DE", localeValues: undefined }],
-      [{ timeRange: "auto", stepSize: 120_000, maxZoom: 20 }]
+      [{ locale: "de-DE", localeValues: undefined }]
     ]);
   });
 });
