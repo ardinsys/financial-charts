@@ -7,18 +7,22 @@ import {
 } from "./scale";
 
 export interface PriceScaleRange {
-  min: number;
-  max: number;
+  readonly min: number;
+  readonly max: number;
 }
 
 export class PriceScale implements Scale {
-  constructor(private range: PriceScaleRange) {}
+  private range: PriceScaleRange;
 
-  setRange(range: PriceScaleRange) {
-    this.range = range;
+  constructor(range: PriceScaleRange) {
+    this.range = freezeRange(range);
   }
 
-  getRange() {
+  setRange(range: PriceScaleRange): void {
+    this.range = freezeRange(range);
+  }
+
+  getRange(): PriceScaleRange {
     return this.range;
   }
 
@@ -59,4 +63,8 @@ export class PriceScale implements Scale {
   getTicks(_options: ScaleTickOptions): ScaleTick[] {
     return [];
   }
+}
+
+function freezeRange(range: PriceScaleRange): PriceScaleRange {
+  return Object.freeze({ ...range });
 }

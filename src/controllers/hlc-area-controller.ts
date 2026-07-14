@@ -1,4 +1,4 @@
-import { ChartData } from "../chart/types";
+import type { ChartData, ChartDataValueKey } from "../chart/types";
 import type { BarAlignment } from "../scales/time-scale";
 import { OHLCController } from "./controller";
 
@@ -10,10 +10,14 @@ type Point = {
 export class HLCAreaController extends OHLCController {
   static ID = "hlc-area";
 
-  private crosshairValues = [false, true, true, true];
+  private static readonly hlcAreaCrosshairValues = [
+    "high",
+    "low",
+    "close"
+  ] as const;
 
-  getEffectiveCrosshairValues(): boolean[] {
-    return this.crosshairValues;
+  getCrosshairValues(): readonly ChartDataValueKey[] {
+    return HLCAreaController.hlcAreaCrosshairValues;
   }
 
   getBarAlignment(): BarAlignment {

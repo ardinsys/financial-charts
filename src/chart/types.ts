@@ -12,6 +12,8 @@ export interface ChartData {
   readonly volume?: number | null;
 }
 
+export type ChartDataValueKey = Exclude<keyof ChartData, "time">;
+
 export interface TimeRange {
   start: number;
   end: number;

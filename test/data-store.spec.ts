@@ -63,6 +63,8 @@ describe("DataStore", () => {
     ]);
 
     expect(store.times()).toEqual([100, 500, 900, 1_300]);
+    expect(store.times()).toBe(store.times());
+    expect(Object.isFrozen(store.times())).toBe(true);
     expect(store.indexRangeForTimeRange(500, 900)).toEqual({ from: 1, to: 3 });
     expect(store.visibleIndexSlice(0.5, 2.1)).toEqual([
       { time: 100, close: 10 },
@@ -73,10 +75,13 @@ describe("DataStore", () => {
 
   it("inserts appended points in chronological order", () => {
     const store = new DataStore([{ time: 120, close: 12 }]);
+    const initialTimes = store.times();
 
     expect(store.append({ time: 60, close: 11 })).toBe(0);
     expect(store.append({ time: 180, close: 13 })).toBe(2);
     expect(store.toArray().map((point) => point.time)).toEqual([60, 120, 180]);
+    expect(store.times()).not.toBe(initialTimes);
+    expect(store.times()).toEqual([60, 120, 180]);
   });
 
   it("collapses streaming points into step-size buckets", () => {

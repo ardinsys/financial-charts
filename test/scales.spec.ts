@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData, TimeRange } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
+import { DataScaleModel } from "../src/scales/data-scale-model";
 import { PriceScale } from "../src/scales/price-scale";
 import { TimeScale } from "../src/scales/time-scale";
 
@@ -41,6 +42,36 @@ function createChart(
 }
 
 describe("index-based time scales", () => {
+  it("owns immutable range snapshots without copying them on reads", () => {
+    const timeRange = { from: 0, to: 3 };
+    const priceRange = { min: 10, max: 20 };
+    const timeScale = new TimeScale(timeRange);
+    const priceScale = new PriceScale(priceRange);
+
+    timeRange.to = 10;
+    priceRange.max = 50;
+
+    expect(timeScale.getRange()).toEqual({ from: 0, to: 3 });
+    expect(priceScale.getRange()).toEqual({ min: 10, max: 20 });
+    expect(timeScale.getRange()).toBe(timeScale.getRange());
+    expect(priceScale.getRange()).toBe(priceScale.getRange());
+    expect(Object.isFrozen(timeScale.getRange())).toBe(true);
+    expect(Object.isFrozen(priceScale.getRange())).toBe(true);
+  });
+
+  it("snapshots index ranges retained by data scale models", () => {
+    const data = [{ time: 100, close: 10 }];
+    const indexRange = { from: 0, to: 1 };
+    const scale = new DataScaleModel("simple", data, { start: 100, end: 100 }, {
+      indexRange
+    });
+
+    indexRange.to = 5;
+    scale.recalculate(data, { start: 100, end: 100 });
+
+    expect(scale.getTimeScale().getRange()).toEqual({ from: 0, to: 1 });
+  });
+
   it("maps irregular timestamps to contiguous chart slots", () => {
     const day = 24 * 60 * 60_000;
     const friday = Date.UTC(2024, 0, 5);

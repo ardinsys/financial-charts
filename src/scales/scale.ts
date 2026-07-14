@@ -1,25 +1,25 @@
 import { pixelRatio } from "../utils/screen";
 
 export interface ScaleCanvas {
-  width: number;
-  height: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 export interface ScaleProjectOptions {
-  canvas: ScaleCanvas;
-  devicePixelRatio?: number;
-  barAlignment?: "center" | "edge";
+  readonly canvas: ScaleCanvas;
+  readonly devicePixelRatio?: number;
+  readonly barAlignment?: "center" | "edge";
 }
 
 export interface ScaleTick {
-  value: number;
-  position: number;
-  label?: string;
+  readonly value: number;
+  readonly position: number;
+  readonly label?: string;
 }
 
 export interface ScaleTickOptions {
-  canvas: ScaleCanvas;
-  devicePixelRatio?: number;
+  readonly canvas: ScaleCanvas;
+  readonly devicePixelRatio?: number;
 }
 
 export interface Scale {

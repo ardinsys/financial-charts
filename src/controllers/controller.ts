@@ -2,7 +2,7 @@ import type {
   FinancialChart,
   ResolvedChartOptions
 } from "../chart/financial-chart";
-import type { ChartData, TimeRange } from "../chart/types";
+import type { ChartData, ChartDataValueKey, TimeRange } from "../chart/types";
 import { DataScaleModel } from "../scales/data-scale-model";
 import type { BarAlignment } from "../scales/time-scale";
 
@@ -19,7 +19,7 @@ export abstract class ChartController {
     timeRange: TimeRange
   ): DataScaleModel;
 
-  abstract getEffectiveCrosshairValues(): boolean[];
+  abstract getCrosshairValues(): readonly ChartDataValueKey[];
   abstract getBarAlignment(): BarAlignment;
   getTimeAnchorAlignment(): BarAlignment {
     return "center";
@@ -29,7 +29,7 @@ export abstract class ChartController {
 }
 
 export abstract class SimpleController extends ChartController {
-  private simpleCrosshairValues = [false, false, false, true, true];
+  private static readonly crosshairValues = ["close", "volume"] as const;
 
   createDataScale(
     data: readonly ChartData[],
@@ -50,13 +50,19 @@ export abstract class SimpleController extends ChartController {
     );
   }
 
-  getEffectiveCrosshairValues() {
-    return this.simpleCrosshairValues;
+  getCrosshairValues(): readonly ChartDataValueKey[] {
+    return SimpleController.crosshairValues;
   }
 }
 
 export abstract class OHLCController extends ChartController {
-  private ohlcCrosshairValues = [true, true, true, true, true];
+  private static readonly crosshairValues = [
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume"
+  ] as const;
 
   createDataScale(
     data: readonly ChartData[],
@@ -75,7 +81,7 @@ export abstract class OHLCController extends ChartController {
     return rawPoint.time - (rawPoint.time % this.options.stepSize);
   }
 
-  getEffectiveCrosshairValues() {
-    return this.ohlcCrosshairValues;
+  getCrosshairValues(): readonly ChartDataValueKey[] {
+    return OHLCController.crosshairValues;
   }
 }

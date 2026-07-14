@@ -1,14 +1,17 @@
-import { ChartData, TimeRange } from "../chart/types";
+import type { ChartData, ChartDataValueKey, TimeRange } from "../chart/types";
 import { DataScaleModel } from "../scales/data-scale-model";
 import { OHLCController } from "./controller";
 
 export class SteplineController extends OHLCController {
   static ID = "stepline";
 
-  private crosshairValues = [false, false, false, true, true];
+  private static readonly steplineCrosshairValues = [
+    "close",
+    "volume"
+  ] as const;
 
-  getEffectiveCrosshairValues(): boolean[] {
-    return this.crosshairValues;
+  getCrosshairValues(): readonly ChartDataValueKey[] {
+    return SteplineController.steplineCrosshairValues;
   }
 
   createDataScale(

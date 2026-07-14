@@ -22,7 +22,20 @@ interface Scale {
 }
 ```
 
-The chart scales canvas contexts for HiDPI rendering. Projection helpers in indicator and plugin contexts return logical pixel coordinates.
+`HTMLCanvasElement.width` and `.height` are physical backing-store pixels.
+Scale projections return logical CSS-pixel coordinates: they divide the canvas
+dimensions by `devicePixelRatio` (or the current display ratio when omitted).
+Chart and extension contexts are already scaled, so draw projected coordinates
+directly. Pass an explicit ratio when projecting against a canvas-like object
+outside the chart.
+
+```ts
+const point = priceScale.project(125.5, {
+  canvas: { width: 1600, height: 800 },
+  devicePixelRatio: 2
+});
+// `point` is within a logical height of 400.
+```
 
 ## TimeScale
 
@@ -38,7 +51,12 @@ The chart scales canvas contexts for HiDPI rendering. Projection helpers in indi
 | `setTimes(times)`                | Updates the timestamp lookup array.                                        |
 | `setBarAlignment(alignment)`     | Sets default `"center"` or `"edge"` bar alignment.                         |
 
-`TimeScaleRange` is `{ from, to, rightOffset? }` in index units.
+`TimeScaleRange` is `{ from, to, rightOffset? }` in index units. Range setters
+snapshot their input. Range getters return the same frozen snapshot until the
+next setter call, so reading a range during rendering does not allocate.
+
+`times` must be sorted in ascending timestamp order. The scale treats the
+readonly array as a stable lookup table; call `setTimes()` after replacing it.
 
 ## PriceScale
 
@@ -50,6 +68,9 @@ The chart scales canvas contexts for HiDPI rendering. Projection helpers in indi
 | `unproject(pixel, options)`                      | Maps a Y coordinate back to a price/value.    |
 | `projectVolume(value, options, maxHeightRatio?)` | Maps volume to a column height.               |
 | `setRange({ min, max })` / `getRange()`          | Updates or reads the numeric range.           |
+
+Price range setters and getters use the same immutable, allocation-free read
+contract as `TimeScale`.
 
 ## DataScaleModel
 
@@ -81,3 +102,19 @@ The built-in tick generators are exported for custom axes and tests:
 
 - `calculateYAxisLabels()` and `calculateStepSize()` for price labels.
 - `TimeTickGenerator` / `generateTimeTicks()` for index-aware time labels, including seconds and sub-minute ranges.
+
+Time ticks consume public timestamp data rather than a chart-internal store:
+
+```ts
+import { generateTimeTicks } from "@ardinsys/financial-charts/engine";
+
+const ticks = generateTimeTicks({
+  times: data.map((point) => point.time),
+  visibleRange: { from: 20, to: 80 },
+  formatter,
+  targetTickCount: 8
+});
+```
+
+The timestamps must be sorted in ascending order. `visibleRange` uses indexes
+into that array and may contain fractional bounds.

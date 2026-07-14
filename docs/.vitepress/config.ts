@@ -52,6 +52,7 @@ export default defineConfig({
           { text: "Indicators", link: "/reference/indicators" },
           { text: "Drawings", link: "/reference/drawings" },
           { text: "Plugins", link: "/reference/plugins" },
+          { text: "Engine", link: "/reference/engine" },
           { text: "Scales", link: "/reference/scales" },
           { text: "DOM adapter", link: "/reference/dom-adapter" }
         ]

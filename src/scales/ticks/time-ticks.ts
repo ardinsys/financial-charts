@@ -1,5 +1,4 @@
 import type { Formatter } from "../../chart/formatter";
-import { DataStore } from "../../data/data-store";
 import type { TimeScaleRange } from "../time-scale";
 
 export type TimeTickKind =
@@ -12,18 +11,18 @@ export type TimeTickKind =
   | "subMinute";
 
 export interface TimeTick {
-  index: number;
-  time: number;
-  label: string;
-  kind: TimeTickKind;
-  priority: number;
+  readonly index: number;
+  readonly time: number;
+  readonly label: string;
+  readonly kind: TimeTickKind;
+  readonly priority: number;
 }
 
 export interface TimeTickOptions {
-  dataStore: DataStore;
-  visibleRange: TimeScaleRange;
-  formatter: Formatter;
-  targetTickCount?: number;
+  readonly times: readonly number[];
+  readonly visibleRange: TimeScaleRange;
+  readonly formatter: Formatter;
+  readonly targetTickCount?: number;
 }
 
 type TickGranularity = TimeTickKind;
@@ -75,7 +74,7 @@ const weekdayByShortName: Record<string, number> = {
 export class TimeTickGenerator {
   generate(options: TimeTickOptions): TimeTick[] {
     const targetTickCount = options.targetTickCount ?? 8;
-    const times = options.dataStore.times();
+    const times = options.times;
     if (times.length === 0) return [];
 
     const startIndex = Math.max(0, Math.floor(options.visibleRange.from));

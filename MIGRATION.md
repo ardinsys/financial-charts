@@ -365,7 +365,9 @@ paneled indicator class and icon assets.
 For the `commons-js` financial indicator package, move base indicator,
 paneled-indicator, drawing-context, and label-contract imports to
 `@ardinsys/financial-charts/extensions`. Move `DataScaleModel`, scale contracts,
-and `randomColor` to `@ardinsys/financial-charts/engine`. Concrete chart APIs,
+and palette selection to `@ardinsys/financial-charts/engine`. The old
+chart-coupled `randomColor(chart, index)` helper is replaced by
+`paletteColor(colors, index)`. Concrete chart APIs,
 `ChartData`, themes, formatter types, and indicator state restoration remain on
 the root entry. This is an import-path migration only; updating the downstream
 indicator implementations remains a separate repository change.

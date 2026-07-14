@@ -7,6 +7,8 @@ export type {
   ControllerConstructor,
   ResolvedChartOptions
 } from "./chart/financial-chart";
+export type { Formatter } from "./chart/formatter";
+export type { ResolvedChartTheme } from "./chart/themes";
 export * from "./controllers/controller";
 
 export * from "./scales/scale";

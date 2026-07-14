@@ -34,7 +34,7 @@ import {
   mergeThemes,
   type ResolvedChartTheme
 } from "./themes";
-import { ChartData, TimeRange } from "./types";
+import { ChartData, type ChartDataValueKey, TimeRange } from "./types";
 import { EventEmitter, type ChartEventMap } from "./event-emitter";
 import { pixelRatio } from "../utils/screen";
 import {
@@ -68,6 +68,13 @@ import { getDefaultControllerConstructors } from "./internal-default-controllers
 import { cloneJSONStateValue, isPlainRecord } from "../utils/json-state";
 
 const logicalRangeEpsilon = 1e-9;
+const crosshairLabelIndex: Record<ChartDataValueKey, number> = {
+  open: 0,
+  high: 1,
+  low: 2,
+  close: 3,
+  volume: 4
+};
 
 type DeepReadonly<T> = T extends Function
   ? T
@@ -3369,35 +3376,33 @@ export class FinancialChart extends EventEmitter {
 
     const p = this.crosshairDataPoint!;
 
-    const ohlcv = [p.open, p.high, p.low, p.close, p.volume];
     const labels =
       this.options.theme.crosshair.infoLine.labels[this.options.locale] ||
       this.options.theme.crosshair.infoLine.labels["*"];
-    const visibleLabels = this.controller.getEffectiveCrosshairValues();
 
     let ohlcTextX = 10;
     const spacing = 10;
 
-    for (let i = 0; i < ohlcv.length; i++) {
-      if (!visibleLabels[i]) continue;
-      if (ohlcv.length - 1 === i && !this.options.volume) {
-        continue; // Skip volume if not enabled
+    for (const key of this.controller.getCrosshairValues()) {
+      if (key === "volume" && !this.options.volume) {
+        continue;
       }
-      const price = ohlcv[i];
+      const price = p[key];
       if (price == undefined) continue;
       let ohlcText = this.options.formatter.formatTooltipPrice(price, decimals);
-      if (ohlcv.length - 1 === i) {
+      if (key === "volume") {
         ohlcText = this.options.formatter.formatVolume(price, p.close ?? 1);
       }
 
-      const labelWidth = ctx.measureText(labels[i]).width;
+      const label = labels[crosshairLabelIndex[key]];
+      const labelWidth = ctx.measureText(label).width;
       const valueWidth = ctx.measureText(ohlcText).width;
       if (ohlcTextX + labelWidth + valueWidth > this.getDrawingSize().width)
         break;
 
       ctx.fillStyle = this.options.theme.crosshair.infoLine.color;
       ctx.fillText(
-        labels[i],
+        label,
         ohlcTextX,
         this.options.theme.crosshair.tooltip.fontSize + 10
       );
@@ -3531,7 +3536,7 @@ export class FinancialChart extends EventEmitter {
     const padding = 20;
     const targetTickCount = Math.max(2, Math.floor(logicalCanvasWidth / 90));
     const labels = this.timeTickGenerator.generate({
-      dataStore: this.dataStore,
+      times: this.dataStore.times(),
       visibleRange: this.visibleIndexRange,
       formatter: this.options.formatter,
       targetTickCount

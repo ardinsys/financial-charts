@@ -3,18 +3,18 @@ import { PriceScale } from "./price-scale";
 import { BarAlignment, TimeScale, TimeScaleRange } from "./time-scale";
 
 export interface ScaleRangeModifier {
-  yMin?: number;
-  yMax?: number;
-  actor: any;
-  enabled: boolean;
+  readonly yMin?: number;
+  readonly yMax?: number;
+  readonly actor: unknown;
+  readonly enabled: boolean;
 }
 
 export type DataScaleSource = "simple" | "ohlc";
 
 export interface DataScaleTimeOptions {
-  barAlignment?: BarAlignment;
-  indexRange?: TimeScaleRange;
-  timeValues?: readonly number[];
+  readonly barAlignment?: BarAlignment;
+  readonly indexRange?: TimeScaleRange;
+  readonly timeValues?: readonly number[];
 }
 
 export class DataScaleModel {
@@ -25,7 +25,7 @@ export class DataScaleModel {
   private volMax!: number;
   private readonly topOffset = 0.15;
   private readonly bottomOffset = 0.2;
-  private modifiers = new Map<any, ScaleRangeModifier>();
+  private modifiers = new Map<unknown, ScaleRangeModifier>();
   private barAlignment: BarAlignment;
   private indexRange: TimeScaleRange;
   private timeValues: readonly number[];
@@ -41,8 +41,9 @@ export class DataScaleModel {
     timeOptions: DataScaleTimeOptions = {}
   ) {
     this.barAlignment = timeOptions.barAlignment ?? "center";
-    this.indexRange =
-      timeOptions.indexRange ?? this.getDefaultIndexRange(dataset);
+    this.indexRange = timeOptions.indexRange
+      ? { ...timeOptions.indexRange }
+      : this.getDefaultIndexRange(dataset);
     this.timeValues =
       timeOptions.timeValues ?? dataset.map((data) => data.time);
     this.timeScale = new TimeScale(this.indexRange, {
@@ -105,7 +106,9 @@ export class DataScaleModel {
 
   configureTimeScale(timeOptions: DataScaleTimeOptions) {
     this.barAlignment = timeOptions.barAlignment ?? this.barAlignment;
-    this.indexRange = timeOptions.indexRange ?? this.indexRange;
+    if (timeOptions.indexRange) {
+      this.indexRange = { ...timeOptions.indexRange };
+    }
     this.timeValues = timeOptions.timeValues ?? this.timeValues;
 
     this.timeScale.setBarAlignment(this.barAlignment);
@@ -117,7 +120,7 @@ export class DataScaleModel {
     this.modifiers.set(modifier.actor, modifier);
   }
 
-  removeModifier(actor: any) {
+  removeModifier(actor: unknown) {
     this.modifiers.delete(actor);
   }
 

@@ -6,6 +6,7 @@ type MutableChartData = {
 
 export class DataStore {
   private data: ChartData[];
+  private timeValues?: readonly number[];
 
   constructor(data: readonly ChartData[] = []) {
     this.data = data
@@ -25,8 +26,11 @@ export class DataStore {
     return [...this.data];
   }
 
-  times(): number[] {
-    return this.data.map((point) => point.time);
+  times(): readonly number[] {
+    if (!this.timeValues) {
+      this.timeValues = Object.freeze(this.data.map((point) => point.time));
+    }
+    return this.timeValues;
   }
 
   indexOfTime(time: number): number {
@@ -53,6 +57,7 @@ export class DataStore {
     const storedPoint = DataStore.copyPoint(point);
     const index = this.upperBound(storedPoint.time);
     this.data.splice(index, 0, storedPoint);
+    this.timeValues = undefined;
     return index;
   }
 

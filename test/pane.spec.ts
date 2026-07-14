@@ -52,6 +52,18 @@ afterEach(() => {
 });
 
 describe("Pane", () => {
+  it("owns immutable region snapshots without copying them on reads", () => {
+    const pane = new Pane(3);
+    const region = { x: 1, y: 2, width: 300, height: 200 };
+
+    pane.setRegion(region);
+    region.height = 400;
+
+    expect(pane.getRegion()).toEqual({ x: 1, y: 2, width: 300, height: 200 });
+    expect(pane.getRegion()).toBe(pane.getRegion());
+    expect(Object.isFrozen(pane.getRegion())).toBe(true);
+  });
+
   it("owns layout regions, price scale, and z-ordered drawables", () => {
     const pane = new Pane(3);
     const first = { zIndex: 10, draw: vi.fn() };
@@ -74,6 +86,8 @@ describe("Pane", () => {
     });
     expect(pane.getPriceScale().getRange()).toEqual({ min: 10, max: 20 });
     expect(pane.getDrawables()).toEqual([second, first]);
+    expect(pane.getDrawables()).toBe(pane.getDrawables());
+    expect(Object.isFrozen(pane.getDrawables())).toBe(true);
     expect(second.draw.mock.invocationCallOrder[0]).toBeLessThan(
       first.draw.mock.invocationCallOrder[0]
     );

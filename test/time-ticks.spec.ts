@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { DefaultFormatter } from "../src/chart/formatter";
-import { DataStore } from "../src/data/data-store";
 import { TimeTickGenerator } from "../src/scales/ticks/time-ticks";
 
 const hour = 60 * 60_000;
@@ -10,13 +9,9 @@ function createFormatter() {
   return new DefaultFormatter({ locale: "en-US", timeZone: "UTC" });
 }
 
-function createStore(times: number[]) {
-  return new DataStore(times.map((time) => ({ time, close: time })));
-}
-
 function generateTicks(times: number[], targetTickCount = 8) {
   return new TimeTickGenerator().generate({
-    dataStore: createStore(times),
+    times,
     visibleRange: { from: 0, to: times.length },
     formatter: createFormatter(),
     targetTickCount,
@@ -159,7 +154,7 @@ describe("TimeTickGenerator", () => {
     const times = Array.from({ length: 10 }, (_, index) => start + index * day);
 
     const ticks = new TimeTickGenerator().generate({
-      dataStore: createStore(times),
+      times,
       visibleRange: { from: 2.2, to: 6.4 },
       formatter: createFormatter(),
       targetTickCount: 10,

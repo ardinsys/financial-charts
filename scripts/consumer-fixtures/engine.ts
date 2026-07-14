@@ -1,5 +1,4 @@
 import {
-  ChartController,
   DataScaleModel,
   Pane,
   PaneledIndicator,
@@ -7,35 +6,11 @@ import {
   TimeTickGenerator,
   calculateYAxisLabels,
   createCanvasLayer,
-  type BarAlignment,
-  type ChartData,
   type DefaultIndicatorOptions,
+  type Formatter,
   type PaneledIndicatorDrawingContext,
-  type ResolvedChartOptions,
-  type TimeRange
+  paletteColor
 } from "@ardinsys/financial-charts/engine";
-
-class ExtensionController extends ChartController {
-  static readonly ID = "extension-controller";
-
-  createDataScale(data: readonly ChartData[], timeRange: TimeRange) {
-    return new DataScaleModel("simple", data, timeRange);
-  }
-
-  getEffectiveCrosshairValues(): boolean[] {
-    return [false, false, false, true, false];
-  }
-
-  getBarAlignment(): BarAlignment {
-    return "center";
-  }
-
-  getTimeFromRawDataPoint(point: ChartData): number {
-    return point.time;
-  }
-
-  draw(): void {}
-}
 
 class ExtensionPane extends PaneledIndicator<{}, DefaultIndicatorOptions> {
   getDefaultOptions(): DefaultIndicatorOptions {
@@ -61,15 +36,21 @@ class ExtensionPane extends PaneledIndicator<{}, DefaultIndicatorOptions> {
   protected drawPane(_context: PaneledIndicatorDrawingContext): void {}
 }
 
-const resolvedOptions = {} as ResolvedChartOptions;
+const formatter = {} as Formatter;
+const ticks = new TimeTickGenerator().generate({
+  times: [],
+  visibleRange: { from: 0, to: 0 },
+  formatter
+});
+const color = paletteColor(["#0af", "#f80"], 3);
 
 void [
-  ExtensionController,
   ExtensionPane,
   Pane,
   RenderPipeline,
   TimeTickGenerator,
   calculateYAxisLabels,
   createCanvasLayer,
-  resolvedOptions
+  ticks,
+  color
 ];

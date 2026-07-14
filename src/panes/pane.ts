@@ -9,34 +9,45 @@ import {
 import type { BarAlignment, TimeScale } from "../scales/time-scale";
 
 export interface PaneRegion {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
 }
 
 export interface PaneDrawable {
-  zIndex?: number;
+  readonly zIndex?: number;
   draw(): void;
 }
 
 export interface PaneYAxisRenderOptions {
-  axisContext: CanvasRenderingContext2D;
-  gridContext: CanvasRenderingContext2D;
-  scale: DataScaleModel;
-  theme: ResolvedChartTheme;
-  formatter: Formatter;
-  pixelRatio: number;
-  labelSpacing: number;
+  readonly axisContext: CanvasRenderingContext2D;
+  readonly gridContext: CanvasRenderingContext2D;
+  readonly scale: DataScaleModel;
+  readonly theme: ResolvedChartTheme;
+  readonly formatter: Formatter;
+  readonly pixelRatio: number;
+  readonly labelSpacing: number;
 }
 
 export class Pane {
-  private region: PaneRegion = { x: 0, y: 0, width: 0, height: 0 };
-  private yAxisRegion: PaneRegion = { x: 0, y: 0, width: 0, height: 0 };
+  private region: PaneRegion = freezeRegion({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0
+  });
+  private yAxisRegion: PaneRegion = freezeRegion({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0
+  });
   private readonly priceScale = new PriceScale({ min: 0, max: 1 });
   private timeScale?: TimeScale;
   private timeAnchorAlignment: BarAlignment = "center";
   private readonly drawables = new Set<PaneDrawable>();
+  private orderedDrawables?: readonly PaneDrawable[];
 
   constructor(private readonly id: number) {}
 
@@ -44,19 +55,19 @@ export class Pane {
     return this.id;
   }
 
-  setRegion(region: PaneRegion) {
-    this.region = region;
+  setRegion(region: PaneRegion): void {
+    this.region = freezeRegion(region);
   }
 
-  getRegion() {
+  getRegion(): PaneRegion {
     return this.region;
   }
 
-  setYAxisRegion(region: PaneRegion) {
-    this.yAxisRegion = region;
+  setYAxisRegion(region: PaneRegion): void {
+    this.yAxisRegion = freezeRegion(region);
   }
 
-  getYAxisRegion() {
+  getYAxisRegion(): PaneRegion {
     return this.yAxisRegion;
   }
 
@@ -94,10 +105,13 @@ export class Pane {
 
   addDrawable(drawable: PaneDrawable) {
     this.drawables.add(drawable);
+    this.orderedDrawables = undefined;
   }
 
   removeDrawable(drawable: PaneDrawable) {
-    this.drawables.delete(drawable);
+    if (this.drawables.delete(drawable)) {
+      this.orderedDrawables = undefined;
+    }
   }
 
   draw() {
@@ -106,10 +120,15 @@ export class Pane {
     }
   }
 
-  getDrawables() {
-    return [...this.drawables].sort((a, b) => {
-      return (a.zIndex ?? 0) - (b.zIndex ?? 0);
-    });
+  getDrawables(): readonly PaneDrawable[] {
+    if (!this.orderedDrawables) {
+      this.orderedDrawables = Object.freeze(
+        [...this.drawables].sort((a, b) => {
+          return (a.zIndex ?? 0) - (b.zIndex ?? 0);
+        })
+      );
+    }
+    return this.orderedDrawables;
   }
 
   calculateYAxisLabels(
@@ -176,4 +195,8 @@ export class Pane {
       gridContext.stroke();
     }
   }
+}
+
+function freezeRegion(region: PaneRegion): PaneRegion {
+  return Object.freeze({ ...region });
 }

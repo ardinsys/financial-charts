@@ -7,35 +7,37 @@ import {
 } from "./scale";
 
 export interface TimeScaleRange {
-  from: number;
-  to: number;
-  rightOffset?: number;
+  readonly from: number;
+  readonly to: number;
+  readonly rightOffset?: number;
 }
 
 export type BarAlignment = "center" | "edge";
 
 export interface TimeScaleOptions {
-  barAlignment?: BarAlignment;
-  times?: readonly number[];
+  readonly barAlignment?: BarAlignment;
+  readonly times?: readonly number[];
 }
 
 export class TimeScale implements Scale {
+  private range: TimeScaleRange;
   private times: readonly number[];
   private barAlignment: BarAlignment;
 
   constructor(
-    private range: TimeScaleRange,
+    range: TimeScaleRange,
     options: TimeScaleOptions = {}
   ) {
+    this.range = freezeRange(range);
     this.times = options.times ?? [];
     this.barAlignment = options.barAlignment ?? "center";
   }
 
-  setRange(range: TimeScaleRange) {
-    this.range = range;
+  setRange(range: TimeScaleRange): void {
+    this.range = freezeRange(range);
   }
 
-  getRange() {
+  getRange(): TimeScaleRange {
     return this.range;
   }
 
@@ -135,4 +137,8 @@ export class TimeScale implements Scale {
 
     return low;
   }
+}
+
+function freezeRange(range: TimeScaleRange): TimeScaleRange {
+  return Object.freeze({ ...range });
 }
