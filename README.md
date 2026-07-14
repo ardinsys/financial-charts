@@ -28,6 +28,28 @@ indicator labels, include the distributed stylesheet.
 import "@ardinsys/financial-charts/style.css";
 ```
 
+## Quick start
+
+```ts
+import { FinancialChart } from "@ardinsys/financial-charts";
+
+const chart = new FinancialChart(document.getElementById("chart")!, {
+  stepSize: 60_000
+});
+
+chart.setData([
+  { time: Date.UTC(2024, 0, 1, 9), close: 100 },
+  { time: Date.UTC(2024, 0, 1, 9, 1), close: 101 }
+]);
+
+// Call when the host is unmounted.
+chart.dispose();
+```
+
+The root entry registers every built-in controller. For controller-level tree
+shaking, import `FinancialChart` from `@ardinsys/financial-charts/core` and each
+controller from its `@ardinsys/financial-charts/controllers/*` subpath.
+
 ## Documentation
 
 You can visit https://docs.ardinsys.eu/financial-charts for documentation.

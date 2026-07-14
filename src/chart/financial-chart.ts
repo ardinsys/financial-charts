@@ -173,7 +173,7 @@ export interface ResolvedChartOptions {
   readonly localeValues: LocaleValuesMap;
 }
 
-/** Immutable data-only snapshot returned by `FinancialChart.getOptions()`. */
+/** Immutable public snapshot returned by `FinancialChart.getOptions()`. */
 export interface ChartOptionsSnapshot {
   readonly type: ControllerType;
   readonly timeRange: DeepReadonly<TimeRange> | "auto";
@@ -752,6 +752,7 @@ export class FinancialChart extends EventEmitter {
     });
   }
 
+  /** Returns a frozen array snapshot of the mapped, immutable data points. */
   getData(): readonly ChartData[] {
     return freezeSnapshot(this.dataStore.toArray());
   }

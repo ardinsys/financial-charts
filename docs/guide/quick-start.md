@@ -1,145 +1,143 @@
 # Quick start
 
-Follow these steps to render your first chart with sensible defaults. Timestamps are finite numbers in milliseconds, and every example assumes you can pass a real DOM element to the chart.
+The root package provides a chart with every built-in controller registered.
+Only `stepSize` is required; the root chart otherwise defaults to candlesticks,
+automatic time range, volume enabled, `maxZoom: 100`, the light theme, and the
+browser locale.
 
-## 1. Install
+## Install
 
 ```bash
 npm install @ardinsys/financial-charts
 ```
 
-Import the distributed stylesheet when you need indicator labels or paneled indicators.
+Import the package stylesheet once in your application. It styles the chart
+container, indicator labels, controls, and pane dividers.
 
 ```ts
 import "@ardinsys/financial-charts/style.css";
 ```
 
-## 2. Create the chart
+## Create and feed a chart
 
-The built-in controllers are available by default on each chart instance. The basic flow is constructor, then `setData(data)`.
+The container must have a measurable width and height. Construct the chart,
+then replace its complete dataset with `setData()`.
 
 ```ts
-import { FinancialChart } from "@ardinsys/financial-charts";
+import {
+  FinancialChart,
+  type ChartData
+} from "@ardinsys/financial-charts";
 
-const chart = new FinancialChart(root, {
-  timeRange: "auto",
-  type: "candle",
-  stepSize: 15 * 60 * 1000,
-  maxZoom: 100,
-  volume: true
+const container = document.getElementById("chart-root")!;
+const data: ChartData[] = [
+  {
+    time: Date.UTC(2024, 0, 1, 9),
+    open: 11,
+    high: 15,
+    low: 10,
+    close: 12,
+    volume: 1_200_000
+  },
+  {
+    time: Date.UTC(2024, 0, 1, 9, 15),
+    open: 12,
+    high: 16,
+    low: 11,
+    close: 15,
+    volume: 1_500_000
+  }
+];
+
+const chart = new FinancialChart(container, {
+  stepSize: 15 * 60 * 1000
 });
 
 chart.setData(data);
 ```
 
-## 3. Pick or extend a theme
+`ChartData.time` is a finite millisecond timestamp. Price and volume fields are
+optional and accept `null`; zero is always treated as a real value. `setData()`
+copies, validates, sorts, buckets, and merges the input without mutating it.
 
-Merge the shipped light/dark themes with your overrides. Missing fields fall back to the defaults.
+## Stream updates
 
-```ts
-import {
-  defaultDarkTheme,
-  defaultLightTheme,
-  mergeThemes,
-  type ChartTheme
-} from "@ardinsys/financial-charts";
-
-const customTheme: ChartTheme = {
-  grid: { color: "#333333" },
-  crosshair: { color: "#FF6B6B" }
-};
-
-const theme = mergeThemes(defaultDarkTheme, customTheme);
-```
-
-## 4. Apply the theme
-
-Pass a container element, a base time range (or `"auto"`), and chart options.
-
-```ts
-const chart = new FinancialChart(
-  document.getElementById("chart-root")!,
-  {
-    timeRange: "auto",
-    type: "candle",
-    theme,
-    locale: "en",
-    maxZoom: 100,
-    stepSize: 15 * 60 * 1000,
-    volume: true
-  }
-);
-```
-
-Localization is configurable via `updateLocalization`. See [Guide > Styling and localization](/guide/styling-and-localization) for a full example that rebuilds the chart's locale bundle when the active locale changes.
-
-## 5. Push data
-
-Use the exported `ChartData` shape. Fields are optional because not every controller needs every value, but send the complete tuple whenever you have it.
-
-```ts
-type ChartData = {
-  readonly time: number;
-  readonly open?: number | null;
-  readonly high?: number | null;
-  readonly low?: number | null;
-  readonly close?: number | null;
-  readonly volume?: number | null;
-};
-```
-
-- Use `null` for missing values. Optional fields exist so controllers can ignore what they don't use.
-
-Call `setData` with candles in any order. The chart copies and sorts them, snaps timestamps to `stepSize`, and merges duplicates without losing zero or partial values.
-
-```ts
-chart.setData([
-  {
-    time: Date.UTC(2024, 0, 1, 9, 0),
-    open: 11,
-    high: 15,
-    low: 10,
-    close: 10,
-    volume: 1200000
-  },
-  {
-    time: Date.UTC(2024, 0, 1, 9, 15),
-    open: 10,
-    high: 15,
-    low: 8,
-    close: 15,
-    volume: 1500000
-  }
-]);
-```
-
-## 6. Stream updates and dispose
-
-Use `updateData` for streaming data: it initializes an empty chart, appends a new candle, or merges into the current `stepSize` bucket. That keeps the live feed smooth without rebuilding the whole dataset.
-
-Streaming timestamps must be monotonic. Use `setData` for an older correction.
+Use `updateData()` only for the newest observation. It can initialize an empty
+chart, merge another observation into the latest `stepSize` bucket, or append a
+new bucket while preserving the current view. Equal timestamps are accepted;
+older timestamps throw and must be applied with `setData()`.
 
 ```ts
 chart.updateData({
   time: Date.UTC(2024, 0, 1, 9, 30),
-  open: 11,
-  high: 14,
-  low: 10,
-  close: 13,
-  volume: 1600000
+  open: 15,
+  high: 17,
+  low: 14,
+  close: 16,
+  volume: 900_000
 });
 ```
 
-Dispose the chart when tearing down the DOM node so observers and listeners are cleaned up.
+Use `clearData()` or `setData([])` when the active symbol has no observations.
+
+## Update runtime options
+
+`updateOptions()` applies one validated patch and emits one `options-change`
+event when effective values change.
+
+```ts
+import { defaultDarkTheme } from "@ardinsys/financial-charts";
+
+chart.updateOptions({
+  type: "line",
+  theme: defaultDarkTheme,
+  volume: false
+});
+```
+
+`type`, `timeRange`, `stepSize`, `maxZoom`, `volume`, theme, and localization
+are runtime options. The initial controller set and DOM adapter are constructor
+options; additional controller classes can be added later with
+`registerController()`.
+
+## Dispose on unmount
+
+Call `dispose()` before the application discards the container. Disposal is
+idempotent and removes chart DOM, listeners, observers, plugins, and indicators.
 
 ```ts
 chart.dispose();
 ```
 
+## Tree-shake built-in controllers
+
+The root entry imports every built-in controller for convenience. Setting
+`includeDefaultControllers: false` changes which controllers are registered at
+runtime, but cannot remove those imports from the bundle.
+
+For controller-level tree shaking, import the controller-neutral chart and
+only the controllers the application uses:
+
+```ts
+import { FinancialChart } from "@ardinsys/financial-charts/core";
+import { LineController } from "@ardinsys/financial-charts/controllers/line";
+
+const chart = new FinancialChart(container, {
+  controllers: [LineController],
+  stepSize: 60_000
+});
+```
+
+The core chart infers `type` from the first supplied controller when it is
+omitted, and it never registers controllers implicitly.
+
 ## Next steps
 
-- [Guide > Data and updates](/guide/data-and-updates) explains how `setData`/`updateData` interact with step size and auto ranges.
-- [Guide > View and interactions](/guide/view-and-interactions) covers zooming, panning, and core runtime options.
-- [Guide > Drawing tools](/guide/drawing-tools) shows how to add trendlines, rectangles, text, and persistence.
-- [Guide > Styling and localization](/guide/styling-and-localization) walks through themes, custom formatters, and locales.
-- The [API Reference](/reference/chart) lists every method signature and event payload.
+- [Data and updates](/guide/data-and-updates) covers bucketing, partial values,
+  clearing, streaming, and late corrections.
+- [View and interactions](/guide/view-and-interactions) explains runtime options
+  and the three visible-range representations.
+- [Styling and localization](/guide/styling-and-localization) covers themes,
+  custom formatters, and locale bundles.
+- [Drawing tools](/guide/drawing-tools) adds interactive and persisted drawings.
+- [FinancialChart API](/reference/chart) lists the complete chart contract.

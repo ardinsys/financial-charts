@@ -62,6 +62,28 @@ type ChartOptions = {
 | `formatter`                 | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                                                     |
 | `localeValues`              | Localized indicator labels keyed by locale. Merged with built-in English strings.                                                       |
 
+`stepSize` and `maxZoom` must be finite and greater than zero. Explicit
+`timeRange` boundaries must be finite with `end >= start`. Invalid constructor
+options throw before chart DOM is created.
+
+`controllers`, `includeDefaultControllers`, and `domAdapter` are
+constructor-only. Runtime changes use `ChartOptionsUpdate`:
+
+```ts
+type ChartOptionsUpdate = {
+  type?: ControllerType;
+  timeRange?: TimeRange | "auto";
+  stepSize?: number;
+  maxZoom?: number;
+  volume?: boolean;
+  theme?: ChartTheme;
+  locale?: string;
+  timeZone?: string;
+  formatter?: Formatter;
+  localeValues?: Record<string, LocaleValues>;
+};
+```
+
 Built-in controllers are registered on each chart by default:
 
 ```ts
@@ -122,7 +144,10 @@ type LocaleValues = {
 
 - All present `ChartData` values must be finite numbers; zero is valid.
 - `setData` copies and sorts input by `time`; caller-owned arrays and points are not mutated.
-- Points sharing a snapped bucket merge using first open, greatest high, smallest low, last close, and summed volume. Missing fields do not erase numeric values.
+- Points sharing a snapped bucket merge using first available open, greatest
+  high, smallest low, last available close, and summed volume. Missing fields
+  do not erase numeric values; explicit `null` remains when no numeric value was
+  supplied for that field.
 - X coordinates are index-based: every data point occupies one ordinal slot, so weekends, holidays, and missing bars do not create blank horizontal gaps.
 - When `timeRange` is `"auto"`, the window starts at the first data point and extends to either the last point plus one `stepSize` or a viewport-sized span (about 30-50 steps), whichever is larger.
 
@@ -137,12 +162,18 @@ type LocaleValues = {
 | `clearData()`          | Convenience equivalent of `setData([])`.                                                                                                                |
 | `getData()`            | Returns a frozen readonly snapshot of the dataset after it has been mapped to the active `stepSize`.                                                    |
 
+Each `getData()` call returns a new frozen array. Stored points are frozen copies
+unless the caller supplied an already frozen point, so later mutation of the
+input array or mutable input objects cannot alter chart state.
+
 `updateData` behavior:
 
 - Timestamps are snapped down to the nearest `stepSize`.
 - If the new point lands after the last candle's slot, a new candle is appended.
 - If the new point lands in the same slot as the last candle, the full-dataset field merge rules apply.
-- Equal timestamps are accepted. Older timestamps throw a `RangeError`; use `setData` for corrections.
+- Equal timestamps are accepted. A timestamp older than the latest raw input
+  throws `RangeError`, even when both values would map to the same bucket; use
+  `setData()` for corrections.
 - With auto range enabled, the window expands and keeps the right edge in view unless you have panned away.
 
 ### View and styling
@@ -155,7 +186,7 @@ type LocaleValues = {
 | `setVolumeDraw(enabled)`        | Shorthand for `updateOptions({ volume: enabled })`.                                               |
 | `setPaneHeights(heights)`       | Applies logical pixel pane heights keyed by pane id or pane order. Values are min-height clamped. |
 | `updateLocalization(options)`   | Shorthand for updating locale, timezone, formatter, and/or localized UI strings.                  |
-| `updateLocale(locale, values?)` | Compatibility shorthand for updating `locale` and `localeValues`.                                |
+| `updateLocale(locale, values?)` | Convenience shorthand for updating `locale` and `localeValues`.                                  |
 | `setCrosshair(options)`         | Sets the native crosshair to the nearest visible data point for a timestamp.                      |
 | `clearCrosshair()`              | Clears the native crosshair and resets pointer-aware indicator labels.                            |
 
@@ -167,9 +198,13 @@ chart.updateOptions({
 });
 ```
 
-The patch is applied atomically. Unchanged effective values do not reset the
-view or schedule a redraw. Changing `stepSize` remaps the original dataset;
-changing `timeRange` or `stepSize` resets zoom and pan.
+The complete patch is validated before chart state changes. One effective patch
+emits one `options-change` event and schedules at most one redraw. Unchanged
+effective values do not emit, reset the view, or redraw. Changing `stepSize`
+remaps the original dataset; changing `timeRange` or `stepSize` resets zoom and
+pan. A type change preserves the visible window. Theme patches are deeply
+merged. Changing only `maxZoom` affects subsequent zoom input and does not
+redraw immediately.
 
 `setCrosshair({ time, y?, price?, paneId? })` is intended for synchronized
 charts and other external pointer controllers. It resolves `time` against the
@@ -183,7 +218,7 @@ price on the target chart. It returns the resolved crosshair state, or
 | Method                                | Description                                      |
 | ------------------------------------- | ------------------------------------------------ |
 | `registerController(ControllerClass)` | Adds a controller class to this chart instance.  |
-| `registerDefaults()`                  | Adds every built-in controller to this instance. |
+| `registerDefaults()`                  | Re-registers the defaults provided by this chart class. It is a no-op on the controller-neutral core chart. |
 
 Built-ins are registered before `options.controllers`, so custom controllers are
 additive and may intentionally replace a built-in with the same ID. For an exact
@@ -212,11 +247,11 @@ const chart = new FinancialChart(container, {
 ```
 
 The core entry does not reference concrete controllers, so bundlers can exclude
-every controller that is not imported. Its `controllers` list is exact by
-default. Set `includeDefaultControllers` only when using a chart class that
-provides defaults. Setting `includeDefaultControllers: false` on the root chart
-changes runtime registration, but it cannot remove controllers imported by the
-root entry.
+every controller that is not imported. Its required `controllers` list is exact,
+and omitting `type` selects the first class in that list. Setting
+`includeDefaultControllers: false` on the root chart changes runtime
+registration, but it cannot remove controllers already imported by the root
+entry.
 
 ### Query helpers
 
@@ -229,7 +264,7 @@ root entry.
 | `getVisibleTimeWindow()`                                            | Returns interpolated timestamps that preserve the fractional logical window.                 |
 | `setVisibleTimeWindow(range)`                                       | Restores an interpolated fractional window, primarily for pan/zoom synchronization.          |
 | `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
-| `getOptions()`                                                      | Returns an immutable data-only snapshot of the resolved chart configuration.               |
+| `getOptions()`                                                      | Returns an immutable public snapshot of the resolved chart configuration.                  |
 | `getTheme()`                                                        | Returns the active `ChartTheme`.                                                            |
 | `getPanes()` / `getMainPane()`                                      | Returns a readonly pane snapshot or the main price pane.                                    |
 | `getPaneHeights()`                                                  | Returns current logical pixel heights keyed by pane id.                                     |
@@ -240,9 +275,11 @@ root entry.
 | `getCrosshairState()`                                               | Returns the current crosshair state, or `undefined` when hidden.                            |
 
 `getOptions()` returns controller, timeframe, theme, and localization data. Its
-nested theme, locale, and controller collections are immutable and cannot mutate
-the chart. Use `getFormatter()` for the active formatter; DOM adapters are
-available to extensions through `ChartContext`.
+nested time range, theme, locale, and controller collections are immutable and
+cannot mutate the chart. The same snapshot object is returned until an
+effective option or controller-registration change replaces it. Use
+`getFormatter()` for the active formatter; DOM adapters are available to
+extensions through `ChartContext`.
 
 View setters enforce a minimum one-bar span and clamp to the chart's current
 index bounds. They synchronously update the visible price scale, notify
@@ -250,6 +287,11 @@ index bounds. They synchronously update the visible price scale, notify
 layers, including drawings and crosshair. Reapplying the current range does
 nothing. All view setters are no-ops until data exists, and non-finite
 boundaries throw `RangeError` once data is present.
+
+With no data, the time getters return the current configured range (or
+`{ start: 0, end: 0 }` for an unresolved auto range) and the logical getter
+returns the empty index window. View setters intentionally do not validate or
+store a pending range while the chart is empty.
 
 ### Chart state
 
@@ -353,7 +395,7 @@ everything else.
 
 | Method                             | Description                                                                                                                                                                                      |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `dispose()`                        | Tears down event listeners, the resize observer, and removes canvases plus paneled indicator containers. Call this before removing the DOM node.                                                 |
+| `dispose()`                        | Idempotently aborts extension scopes, detaches indicators/plugins, clears listeners and observers, and removes chart-owned DOM. Call it before removing the host.                                |
 | `requestRedraw(parts, immediate?)` | Schedules a render pass for one or more of `"grid"`, `"axes"`, `"series"`, `"indicators"`, `"drawings"`, `"annotations"`, and `"crosshair"`. |
 
 Because `FinancialChart` extends an event emitter, the usual `on(event, handler)` and `off(event, handler)` helpers are also available.

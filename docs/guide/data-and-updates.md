@@ -19,20 +19,28 @@ type ChartData = {
 - `setData` accepts any input order and sorts a copied dataset by `time`.
 - Timestamps are snapped to the configured `stepSize` so minor drift does not break alignment.
 - Bars render in ordinal index slots, so missing market sessions do not create horizontal time gaps.
-- Missing values (`null`/`undefined`) are allowed – the library draws gaps rather than crashing.
+- Missing values (`null`/`undefined`) are allowed. Controllers treat incomplete
+  points as gaps when their required fields are unavailable.
 
 ## Initial load with `setData`
 
 Use `setData(data)` to replace the full dataset. Provide either a concrete range or `"auto"` when constructing the chart:
 
 - **Explicit range:** the view starts at `{ start, end }`, then maps the matching bars into an index-based visible window.
-- **Auto:** the window starts at the first candle and extends to either the last candle plus one `stepSize` or a viewport-sized span (roughly 30-50 steps), whichever is larger.
+- **Auto:** the configured range starts at the first candle and ends after the
+  last candle or after enough empty slots to fill the viewport, whichever is
+  later.
 
-When the range is `"auto"`, subsequent `setData` calls recompute the visible span automatically. Pass `[]` or call `clearData()` to clear data, scales, crosshair state, indicator values, and rendered chart layers.
+When the range is `"auto"`, subsequent `setData()` calls recompute the
+configured and visible ranges. Pass `[]` or call `clearData()` to synchronously
+clear mapped data, scales, crosshair state, indicator values, and rendered chart
+layers. An auto range resets to `{ start: 0, end: 0 }`; an explicit configured
+range remains available for the next dataset.
 
 `setData` copies its input and never reorders or changes caller-owned arrays or
 points. After sorting, points in the same snapped bucket are merged in timestamp
-order. Exact duplicate timestamps retain their input order.
+order. Sorting is stable, so exact duplicate timestamps retain their input
+order.
 
 Bucket fields follow these rules:
 
@@ -43,16 +51,23 @@ Bucket fields follow these rules:
 - `volume`: sum of non-missing values.
 
 `null` and `undefined` do not erase an existing numeric value. If a field has no
-numeric value in the bucket, it remains missing. This makes close-only data,
-partial OHLC updates, missing volume, and zero values safe to combine.
+numeric value, an explicitly supplied `null` is retained; a field that was only
+omitted stays omitted. This makes close-only data, partial OHLC updates, missing
+volume, and zero values safe to combine.
+
+Validation happens before the replacement becomes active. A non-finite
+timestamp or present OHLCV value throws `TypeError`; an invalid `stepSize`
+throws `RangeError` during construction or `updateOptions()`.
 
 ## Streaming with `updateData`
 
 `updateData(point)` initializes an empty chart or appends/merges one candle:
 
 - If the timestamp falls after the last candle's slot, a new candle is appended.
-- If the incoming timestamp falls into the same slot as the last candle (based on `stepSize`), the data is merged.
-- The timestamp must be equal to or greater than the latest supplied timestamp.
+- If the incoming timestamp falls into the same slot as the last candle (based
+  on `stepSize`), the data is merged.
+- The raw timestamp must be equal to or greater than the latest raw timestamp
+  supplied to the chart. A point cannot move backward within the latest bucket.
 - The current zoom and pan are preserved where possible so live feeds do not jump unexpectedly.
 - If the viewport is anchored at the right edge, the newest candle scrolls into view automatically.
 
@@ -70,7 +85,9 @@ chart.updateOptions({
 });
 ```
 
-You can always read the current values with `chart.getOptions()` and `chart.getVisibleTimeRange()` before applying updates.
+Use `chart.getOptions()` to read the resolved configuration and
+`chart.getVisibleTimeRange()` to read the current whole-bar view before applying
+updates.
 
 `getVisibleTimeRange()` returns timestamps for the currently visible bar window.
 Internally, panning and zooming use a fractional index range so sparse calendars
@@ -93,20 +110,23 @@ notify or redraw. All three setters are no-ops while the chart has no data.
 
 ## Reading mapped data
 
-`chart.getData()` returns a frozen readonly snapshot of the dataset **after** it
-has been mapped to the active `stepSize`. Use it to hydrate UI lists, run
-calculations, or persist state without reprocessing your raw feed.
+`chart.getData()` returns a new frozen array snapshot of the dataset **after** it
+has been mapped to the active `stepSize`. Stored points are also frozen and are
+not references to mutable caller-owned objects. Use the snapshot to hydrate UI
+lists, run calculations, or persist mapped data without reprocessing the raw
+feed.
 
 ## Handling late or out-of-order data
 
-`updateData` only accepts monotonic timestamps. Equal timestamps are valid
-duplicates; an older timestamp throws a `RangeError` without changing chart
-data. Apply late corrections with `setData`, which sorts and rebuilds the full
+`updateData()` only accepts monotonic raw timestamps. Equal timestamps are
+valid duplicates; an older timestamp throws `RangeError` without changing chart
+data. Apply late corrections with `setData()`, which sorts and rebuilds the full
 series.
 
 - New points that land in the same `stepSize` bucket as the last candle use the same field merge rules as `setData`.
 - Timestamps are snapped **down** to the nearest `stepSize` boundary. If that is not desired, align them before calling `updateData`.
-- Non-finite timestamps or values throw a `TypeError` rather than entering chart state.
+- Non-finite timestamps or present values throw `TypeError` rather than entering
+  chart state. Zero is finite and remains valid.
 
 ## Troubleshooting gaps and jumps
 

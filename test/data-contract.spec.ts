@@ -108,6 +108,19 @@ describe("chart data contracts", () => {
     ]);
   });
 
+  it("rejects backward raw timestamps inside the latest mapped bucket", () => {
+    const chart = createChart("line");
+    const start = Date.UTC(2024, 0, 1, 9);
+    chart.setData([{ time: start + 59_000, close: 1 }]);
+
+    expect(() =>
+      chart.updateData({ time: start + 30_000, close: 2 })
+    ).toThrow(
+      "updateData() requires a timestamp at or after the latest point. Use setData() to apply older corrections."
+    );
+    expect(chart.getData()).toEqual([{ time: start, close: 1 }]);
+  });
+
   it("accepts equal streaming timestamps as latest-bucket duplicates", () => {
     const chart = createChart("line");
     const start = Date.UTC(2024, 0, 1, 9);
@@ -116,6 +129,23 @@ describe("chart data contracts", () => {
     chart.updateData({ time: start, close: 2 });
 
     expect(chart.getData()).toEqual([{ time: start, close: 2 }]);
+  });
+
+  it("returns owned frozen snapshots of mapped data", () => {
+    const chart = createChart("line");
+    const point = { time: 65_000, close: 1 };
+    const input = [point];
+
+    chart.setData(input);
+    const first = chart.getData();
+    point.close = 2;
+    input.push({ time: 120_000, close: 3 });
+
+    expect(first).toEqual([{ time: 60_000, close: 1 }]);
+    expect(Object.isFrozen(first)).toBe(true);
+    expect(Object.isFrozen(first[0])).toBe(true);
+    expect(chart.getData()).not.toBe(first);
+    expect(chart.getData()).toEqual(first);
   });
 
   it("rejects non-finite public input without changing existing data", () => {
