@@ -399,10 +399,66 @@ describe("plugin lifecycle", () => {
       chart.getLastVisibleDataPoints()
     );
     expect(chart.getLastXGridCoords()).toBe(chart.getLastXGridCoords());
+    expect(chart.getIndicators()).toBe(chart.getIndicators());
+    expect(chart.getPaneledIndicators()).toBe(chart.getPaneledIndicators());
+    expect(chart.getAllIndicators()).toBe(chart.getAllIndicators());
+    expect(chart.getPanes()).toBe(chart.getPanes());
+    expect(chart.getPlugins()).toBe(chart.getPlugins());
     expect(chart.getData()).toHaveLength(data.length);
     expect(chart.getIndicators()).toEqual([overlay]);
     expect(chart.getPaneledIndicators()).toEqual([paneled]);
     expect(chart.getPlugins()).toEqual([plugin]);
+  });
+
+  it("replaces only collection snapshots affected by mutations", () => {
+    const { chart } = createChart();
+    const overlay = new MovingAverageIndicator();
+    const paneled = new TestIndicator();
+    const plugin: ChartPlugin = {
+      key: "snapshot-invalidation-probe",
+      attach: vi.fn()
+    };
+    const initialIndicators = chart.getIndicators();
+    const initialPaneledIndicators = chart.getPaneledIndicators();
+    const initialAllIndicators = chart.getAllIndicators();
+    const initialPanes = chart.getPanes();
+    const initialPlugins = chart.getPlugins();
+
+    chart.addIndicator(overlay);
+    expect(chart.getIndicators()).not.toBe(initialIndicators);
+    expect(chart.getPaneledIndicators()).toBe(initialPaneledIndicators);
+    expect(chart.getAllIndicators()).not.toBe(initialAllIndicators);
+    expect(chart.getPanes()).toBe(initialPanes);
+    expect(chart.getPlugins()).toBe(initialPlugins);
+
+    const overlaySnapshot = chart.getIndicators();
+    const allWithOverlay = chart.getAllIndicators();
+    chart.addIndicator(paneled);
+    expect(chart.getIndicators()).toBe(overlaySnapshot);
+    expect(chart.getPaneledIndicators()).not.toBe(initialPaneledIndicators);
+    expect(chart.getAllIndicators()).not.toBe(allWithOverlay);
+    expect(chart.getPanes()).not.toBe(initialPanes);
+    expect(chart.getPlugins()).toBe(initialPlugins);
+
+    const panesWithIndicator = chart.getPanes();
+    chart.addPlugin(plugin);
+    expect(chart.getIndicators()).toBe(overlaySnapshot);
+    expect(chart.getPanes()).toBe(panesWithIndicator);
+    expect(chart.getPlugins()).not.toBe(initialPlugins);
+
+    const pluginsWithPlugin = chart.getPlugins();
+    chart.removePlugin(plugin);
+    expect(chart.getPlugins()).not.toBe(pluginsWithPlugin);
+    expect(chart.getIndicators()).toBe(overlaySnapshot);
+
+    const paneledSnapshot = chart.getPaneledIndicators();
+    chart.removeIndicator(paneled);
+    expect(chart.getPaneledIndicators()).not.toBe(paneledSnapshot);
+    expect(chart.getPanes()).not.toBe(panesWithIndicator);
+    expect(chart.getIndicators()).toBe(overlaySnapshot);
+
+    chart.removeIndicator(overlay);
+    expect(chart.getIndicators()).not.toBe(overlaySnapshot);
   });
 
   it("rejects duplicate plugin registrations and indicator instances", () => {

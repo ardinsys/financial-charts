@@ -360,7 +360,7 @@ export class FinancialChart extends EventEmitter {
   private overlay!: ChartDOMOverlay;
   private readonly renderPipeline = new RenderPipeline();
   private readonly mainPane = new Pane(0);
-  private readonly panes: Pane[] = [this.mainPane];
+  private panes: readonly Pane[] = Object.freeze([this.mainPane]);
   private nextPaneId = 1;
   private readonly paneByIndicator = new Map<
     PaneledIndicator<any, any>,
@@ -378,9 +378,15 @@ export class FinancialChart extends EventEmitter {
   private restoringPaneIds?: ReadonlyMap<string, number>;
   private pendingRestoredVisibleRange?: TimeRange;
 
-  private readonly indicators: Indicator<any, any>[] = [];
-  private readonly paneledIndicators: PaneledIndicator<any, any>[] = [];
-  private readonly plugins: ChartPlugin[] = [];
+  private indicators: readonly Indicator<any, any>[] = Object.freeze([]);
+  private paneledIndicators: readonly PaneledIndicator<any, any>[] =
+    Object.freeze([]);
+  private plugins: readonly ChartPlugin[] = Object.freeze([]);
+  private allIndicatorsSnapshot: readonly Indicator<any, any>[] =
+    Object.freeze([]);
+  private lifecycleExtensionsSnapshot: readonly ChartPlugin[] =
+    Object.freeze([]);
+  private pointerExtensionsSnapshot: readonly ChartPlugin[] = Object.freeze([]);
   private readonly priceAxisAnnotations = new Map<
     ChartPlugin,
     readonly PriceAxisAnnotation[]
@@ -709,7 +715,7 @@ export class FinancialChart extends EventEmitter {
     this.restoringState = true;
     this.restoringPaneIds = paneIdsByIndicator;
     try {
-      for (const indicator of [...this.getAllIndicators()]) {
+      for (const indicator of this.getAllIndicators()) {
         this.removeIndicator(indicator, { emit: false });
       }
 
@@ -1024,15 +1030,15 @@ export class FinancialChart extends EventEmitter {
   }
 
   getIndicators(): readonly Indicator<any, any>[] {
-    return freezeSnapshot([...this.indicators]);
+    return this.indicators;
   }
 
   getPaneledIndicators(): readonly PaneledIndicator<any, any>[] {
-    return freezeSnapshot([...this.paneledIndicators]);
+    return this.paneledIndicators;
   }
 
   getAllIndicators(): readonly Indicator<any, any>[] {
-    return freezeSnapshot([...this.indicators, ...this.paneledIndicators]);
+    return this.allIndicatorsSnapshot;
   }
 
   /** Returns an attached indicator by its unique instance identity. */
@@ -1050,14 +1056,14 @@ export class FinancialChart extends EventEmitter {
   /** Returns all attached indicators sharing a factory/type identity. */
   getIndicatorsByType(typeId: string): readonly Indicator<any, any>[] {
     return freezeSnapshot(
-      [...this.indicators, ...this.paneledIndicators].filter(
+      this.allIndicatorsSnapshot.filter(
         (indicator) => indicator.getIndicatorType() === typeId
       )
     );
   }
 
   getPanes(): readonly Pane[] {
-    return freezeSnapshot([...this.panes]);
+    return this.panes;
   }
 
   getMainPane() {
@@ -1090,7 +1096,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   getPlugins(): readonly ChartPlugin[] {
-    return freezeSnapshot([...this.plugins]);
+    return this.plugins;
   }
 
   addPlugin(plugin: ChartPlugin): () => void {
@@ -1106,7 +1112,8 @@ export class FinancialChart extends EventEmitter {
       );
     }
 
-    this.plugins.push(plugin);
+    this.plugins = freezeSnapshot([...this.plugins, plugin]);
+    this.refreshExtensionOrderSnapshots();
     try {
       plugin.attach(this.createChartContext(plugin));
       this.deliverInitialExtensionState(plugin);
@@ -1114,7 +1121,12 @@ export class FinancialChart extends EventEmitter {
     } catch (error) {
       this.disposeExtensionScope(plugin);
       const index = this.plugins.indexOf(plugin);
-      if (index !== -1) this.plugins.splice(index, 1);
+      if (index !== -1) {
+        this.plugins = freezeSnapshot(
+          this.plugins.filter((item) => item !== plugin)
+        );
+        this.refreshExtensionOrderSnapshots();
+      }
       throw error;
     }
 
@@ -1127,7 +1139,10 @@ export class FinancialChart extends EventEmitter {
     const index = this.plugins.indexOf(plugin);
     if (index === -1) return false;
 
-    this.plugins.splice(index, 1);
+    this.plugins = freezeSnapshot(
+      this.plugins.filter((item) => item !== plugin)
+    );
+    this.refreshExtensionOrderSnapshots();
     this.disposeExtensionScope(plugin);
     try {
       plugin.detach?.();
@@ -1223,16 +1238,39 @@ export class FinancialChart extends EventEmitter {
     this.requestRedraw("annotations");
   }
 
-  private getLifecycleExtensions(): ChartPlugin[] {
-    return [...this.indicators, ...this.paneledIndicators, ...this.plugins];
+  private refreshIndicatorSnapshots() {
+    this.allIndicatorsSnapshot = freezeSnapshot([
+      ...this.indicators,
+      ...this.paneledIndicators
+    ]);
+    this.refreshExtensionOrderSnapshots();
   }
 
-  private getPointerExtensions(): ChartPlugin[] {
-    return [
-      ...[...this.plugins].reverse(),
-      ...[...this.paneledIndicators].reverse(),
-      ...[...this.indicators].reverse()
-    ];
+  private refreshExtensionOrderSnapshots() {
+    this.lifecycleExtensionsSnapshot = freezeSnapshot([
+      ...this.indicators,
+      ...this.paneledIndicators,
+      ...this.plugins
+    ]);
+    const pointerExtensions: ChartPlugin[] = [];
+    for (let index = this.plugins.length - 1; index >= 0; index--) {
+      pointerExtensions.push(this.plugins[index]);
+    }
+    for (let index = this.paneledIndicators.length - 1; index >= 0; index--) {
+      pointerExtensions.push(this.paneledIndicators[index]);
+    }
+    for (let index = this.indicators.length - 1; index >= 0; index--) {
+      pointerExtensions.push(this.indicators[index]);
+    }
+    this.pointerExtensionsSnapshot = freezeSnapshot(pointerExtensions);
+  }
+
+  private getLifecycleExtensions(): readonly ChartPlugin[] {
+    return this.lifecycleExtensionsSnapshot;
+  }
+
+  private getPointerExtensions(): readonly ChartPlugin[] {
+    return this.pointerExtensionsSnapshot;
   }
 
   private isExtensionAttached(extension: ChartPlugin) {
@@ -1304,7 +1342,7 @@ export class FinancialChart extends EventEmitter {
   private notifyPluginsAfterStateRestore(event?: ChartOptionsChangeEvent) {
     const data = this.dataStore.snapshot();
     const visibleRange = this.getVisibleTimeRange();
-    for (const plugin of [...this.plugins]) {
+    for (const plugin of this.getPlugins()) {
       if (!this.isExtensionAttached(plugin)) continue;
       if (event) plugin.onOptionsChanged?.(event);
       if (!this.isExtensionAttached(plugin)) continue;
@@ -1464,7 +1502,7 @@ export class FinancialChart extends EventEmitter {
     this.nextPaneId = Math.max(this.nextPaneId, paneId + 1);
     const pane = new Pane(paneId);
     pane.setTimeScale(this.visibleScale.getTimeScale());
-    this.panes.push(pane);
+    this.panes = freezeSnapshot([...this.panes, pane]);
     this.paneByIndicator.set(indicator, pane);
     this.indicatorByPane.set(pane, indicator);
     return pane;
@@ -1476,7 +1514,7 @@ export class FinancialChart extends EventEmitter {
 
     this.paneByIndicator.delete(indicator);
     this.indicatorByPane.delete(pane);
-    this.panes.splice(this.panes.indexOf(pane), 1);
+    this.panes = freezeSnapshot(this.panes.filter((item) => item !== pane));
     if (this.pointerPane === pane) {
       this.pointerPane = this.mainPane;
     }
@@ -3003,7 +3041,11 @@ export class FinancialChart extends EventEmitter {
       // every indicator by default gets 25% of the height
       // if it is possible. Otherwise they equally get less.
 
-      this.paneledIndicators.push(indicator);
+      this.paneledIndicators = freezeSnapshot([
+        ...this.paneledIndicators,
+        indicator
+      ]);
+      this.refreshIndicatorSnapshots();
       const pane = this.createPaneForIndicator(indicator);
       this.applyPaneLayout({
         resizeCanvases: false,
@@ -3018,7 +3060,8 @@ export class FinancialChart extends EventEmitter {
       this.requestRedraw(this.allRedrawParts);
       indicator.refreshLabel();
     } else {
-      this.indicators.push(indicator);
+      this.indicators = freezeSnapshot([...this.indicators, indicator]);
+      this.refreshIndicatorSnapshots();
       this.requestRedraw(this.allRedrawParts);
       this.indicatorLabelContainer.appendChild(indicator.getLabelContainer());
       indicator.refreshLabel();
@@ -3057,7 +3100,10 @@ export class FinancialChart extends EventEmitter {
       const index = this.paneledIndicators.indexOf(indicator);
       if (index === -1) return false;
 
-      this.paneledIndicators.splice(index, 1);
+      this.paneledIndicators = freezeSnapshot(
+        this.paneledIndicators.filter((item) => item !== indicator)
+      );
+      this.refreshIndicatorSnapshots();
       this.disposeExtensionScope(indicator);
       try {
         indicator.detach();
@@ -3074,7 +3120,10 @@ export class FinancialChart extends EventEmitter {
       const index = this.indicators.indexOf(indicator);
       if (index === -1) return false;
 
-      this.indicators.splice(index, 1);
+      this.indicators = freezeSnapshot(
+        this.indicators.filter((item) => item !== indicator)
+      );
+      this.refreshIndicatorSnapshots();
       this.disposeExtensionScope(indicator);
       try {
         indicator.detach();
@@ -3448,9 +3497,10 @@ export class FinancialChart extends EventEmitter {
       this.disposeExtensionScope(plugin);
       plugin.detach?.();
     }
-    this.indicators.length = 0;
-    this.paneledIndicators.length = 0;
-    this.plugins.length = 0;
+    this.indicators = Object.freeze([]);
+    this.paneledIndicators = Object.freeze([]);
+    this.plugins = Object.freeze([]);
+    this.refreshIndicatorSnapshots();
     this.priceAxisAnnotations.clear();
     this.paneByIndicator.clear();
     this.indicatorByPane.clear();
