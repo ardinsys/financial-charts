@@ -13,11 +13,13 @@ const styleSpecifier = `${packageJson.name}/style.css`;
 const styleUrl = import.meta.resolve(styleSpecifier);
 await access(fileURLToPath(styleUrl));
 
-try {
-  import.meta.resolve(`${packageJson.name}/dist/style.css`);
-  throw new Error("The internal dist stylesheet path must not be exported");
-} catch (error) {
-  if (error?.code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
+for (const internalPath of [
+  "dist/index.js",
+  "dist/style.css",
+  "src/core.ts",
+  "src/ui/icons.ts"
+]) {
+  assertPackagePathNotExported(`${packageJson.name}/${internalPath}`);
 }
 
 function collectExportTargets(exports) {
@@ -34,5 +36,14 @@ function collectExportTargets(exports) {
 
     if (value == null || typeof value !== "object") return;
     for (const nested of Object.values(value)) visit(nested);
+  }
+}
+
+function assertPackagePathNotExported(specifier) {
+  try {
+    import.meta.resolve(specifier);
+    throw new Error(`Internal package path must not be exported: ${specifier}`);
+  } catch (error) {
+    if (error?.code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
   }
 }

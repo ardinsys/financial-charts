@@ -30,6 +30,14 @@
       "types": "./dist/core.d.ts",
       "import": "./dist/core.js"
     },
+    "./extensions": {
+      "types": "./dist/extensions.d.ts",
+      "import": "./dist/extensions.js"
+    },
+    "./advanced": {
+      "types": "./dist/advanced.d.ts",
+      "import": "./dist/advanced.js"
+    },
     "./controllers/area": {
       "types": "./dist/controllers/area.d.ts",
       "import": "./dist/controllers/area.js"
@@ -69,7 +77,7 @@
     "playground": "vite",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "verify:package": "node scripts/verify-package-exports.mjs && node scripts/verify-tree-shaking.mjs",
+    "verify:package": "node scripts/verify-package-exports.mjs && tsc -p scripts/consumer-fixtures/tsconfig.json && node scripts/verify-tree-shaking.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
