@@ -4,8 +4,10 @@ Plugins are extension objects attached with `chart.addPlugin(plugin)`. They can 
 
 Each attached plugin must have a unique `key`, and the same plugin instance
 cannot be attached twice. `addPlugin()` returns an idempotent disposer. After
-`attach()`, lifecycle hooks immediately receive the current options, data, and
-visible range, so plugins added after `setData()` do not need to poll the chart.
+`attach()`, lifecycle hooks immediately receive current state in this order:
+`onOptionsChanged()` with an empty `changedKeys`, `onData()`, then
+`onVisibleRangeChanged()`. Plugins added after `setData()` do not need to poll
+the chart.
 
 ```ts
 import type {
@@ -51,7 +53,7 @@ chart.addPlugin(new WatermarkPlugin());
 | `onOptionsChanged(event)`      | Optional notification containing previous/current resolved options and changed keys. Empty `changedKeys` means initial delivery.  |
 | `onPointer(event)`             | Optional notification for pointer down/move/up events mapped to data and pane space. Return `true` to consume the pointer gesture. |
 | `onDrawingFinished(event)`     | Optional notification when a drawing create or drag operation completes.                                                           |
-| `detach()`                     | Optional cleanup hook called by `removePlugin()` or chart disposal.                                                                |
+| `detach()`                     | Optional cleanup hook called after the attachment signal is aborted and context subscriptions/annotations are removed.            |
 
 Indicators use the same lifecycle hooks. Data, range, options, and drawing
 notifications run through overlay indicators, paneled indicators, then ordinary
@@ -69,7 +71,7 @@ drawn by the ordinary plugin pass.
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `chart`                           | The `FinancialChart` instance. Prefer context helpers for extension work when available.                       |
 | `domAdapter`                      | Active `ChartDOMAdapter`, useful when plugins need app-owned DOM chrome.                                       |
-| `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()` and on chart disposal.                              |
+| `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()`, on failed attachment, and on chart disposal.      |
 | `emit(event, data)`               | Emits a chart event.                                                                                           |
 | `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`.         |
 | `getLogicalCanvas(layer)`         | Returns logical pixel size for the layer.                                                                      |
@@ -78,13 +80,34 @@ drawn by the ordinary plugin pass.
 | `getPlugins()`                    | Returns a readonly snapshot of currently attached plugins.                                                     |
 | `getVisibleTimeWindow()`          | Returns the precise fractional visible timestamp window for pan/zoom replication.                              |
 | `getVisibleTimeRange()`           | Returns the current visible timestamp range.                                                                   |
-| `on(event, listener)`             | Subscribes to chart events and returns an unsubscribe function.                                                |
-| `onRenderStage(stage, callback)`  | Registers a render-pipeline hook.                                                                              |
+| `on(event, listener)`             | Subscribes for the lifetime of this attachment and returns an early disposer.                                 |
+| `onRenderStage(stage, callback)`  | Registers an attachment-scoped render-pipeline hook and returns an early disposer.                            |
 | `requestRedraw(part, immediate?)` | Schedules one or more redraw parts.                                                                            |
 | `setPriceAxisAnnotations(items)`  | Replaces this extension's price lines and Y-axis labels and schedules their layer.                            |
 | `clearPriceAxisAnnotations()`     | Removes this extension's price-axis annotations.                                                               |
 | `setCrosshair(options)`           | Sets the native crosshair from plugin code and returns the resolved state.                                     |
 | `clearCrosshair()`                | Clears the native crosshair and pointer-aware indicator labels.                                                |
+
+### Attachment-scoped cleanup
+
+Use `signal` with APIs that accept `AbortSignal`, including `fetch()` and app
+services. Event and render subscriptions created through `ctx.on()` and
+`ctx.onRenderStage()` are removed automatically when the attachment ends. Keep
+their returned disposer only when the extension needs to stop earlier.
+
+```ts
+attach(ctx: ChartContext) {
+  ctx.on("crosshair-clear", () => this.clearHover());
+  ctx.onRenderStage("indicators", () => this.drawMarkers());
+  void this.load({ signal: ctx.signal });
+}
+```
+
+The signal is aborted and owned annotations and scoped subscriptions are
+removed before `detach()` runs. `detach()` therefore only needs to release
+resources that are not signal-aware or registered through these helpers.
+Calling `ctx.chart.on()` or `ctx.chart.onRenderStage()` directly is not scoped;
+prefer the context helpers inside extensions.
 
 ## Render stages and redraw parts
 
@@ -139,6 +162,12 @@ Use `line: "axis"` for an axis-only boundary. The optional `range` and
 Calling `clearPriceAxisAnnotations()` or submitting an empty array removes the
 collection. Detaching the extension removes it automatically. The owned canvas
 renders above drawings and below the crosshair.
+
+Annotation IDs must be non-empty and unique within one submitted collection.
+Values and optional range targets must be finite, pane IDs must be non-negative
+integers, line widths must be positive, and dash values must be finite and
+non-negative. The chart snapshots the model, so later mutation of the caller's
+array does not change rendered annotations.
 
 ## Built-in plugins
 

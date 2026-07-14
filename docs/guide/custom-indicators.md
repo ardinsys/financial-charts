@@ -115,7 +115,7 @@ import {
   type PaneledIndicatorDrawingContext
 } from "@ardinsys/financial-charts/extensions";
 import { DataScaleModel } from "@ardinsys/financial-charts/engine";
-import type { ChartData } from "@ardinsys/financial-charts";
+import type { ChartData, TimeRange } from "@ardinsys/financial-charts";
 
 interface RangePaneTheme {
   color: string;
@@ -150,7 +150,11 @@ class RangePaneIndicator extends PaneledIndicator<
 
   public onData(data: readonly ChartData[]): void {
     this.rangeData = this.toRangeData(data);
-    this.scale = this.createRangeScale();
+    this.recalculateScale(this.chart.getVisibleTimeRange());
+  }
+
+  public onVisibleRangeChanged(range: TimeRange): void {
+    this.recalculateScale(range);
   }
 
   protected getLabelContent(): IndicatorLabelContent {
@@ -163,14 +167,24 @@ class RangePaneIndicator extends PaneledIndicator<
     context.ctx.lineWidth = 2;
     context.ctx.beginPath();
 
-    this.rangeData.forEach((point, index) => {
-      const { x, y } = context.projectPoint(point.time, point.close ?? 0);
-      if (index === 0) {
+    let drawing = false;
+    for (const point of this.rangeData) {
+      if (
+        point.time < context.visibleTimeRange.start ||
+        point.time >= context.visibleTimeRange.end ||
+        point.close == null
+      ) {
+        drawing = false;
+        continue;
+      }
+      const { x, y } = context.projectPoint(point.time, point.close);
+      if (!drawing) {
         context.ctx.moveTo(x, y);
+        drawing = true;
       } else {
         context.ctx.lineTo(x, y);
       }
-    });
+    }
 
     context.ctx.stroke();
     context.ctx.restore();
@@ -188,6 +202,12 @@ class RangePaneIndicator extends PaneledIndicator<
       this.rangeData.length > 0 ? this.rangeData : [{ time: 0, close: 0 }];
 
     return new DataScaleModel("simple", data, this.chart.getVisibleTimeRange());
+  }
+
+  private recalculateScale(range: TimeRange): void {
+    const data =
+      this.rangeData.length > 0 ? this.rangeData : [{ time: 0, close: 0 }];
+    this.scale.recalculate(data, range);
   }
 
   private toRangeData(data: readonly ChartData[]): ChartData[] {
@@ -261,47 +281,102 @@ names, label metadata, themes, DOM state, and loaded external data. Override
 shape contains functions or needs a different JSON representation. Runtime
 services should stay in constructor fields and must not be serialized.
 
-## External data and async work
+## Complete external-data indicator
 
-Use the attachment-scoped signal for requests and subscriptions. A request
-version prevents an older response from replacing a newer one, while
-`invalidate({ scale: true })` recalculates modifiers before scheduling the
-indicator redraw:
+The following Orders indicator is driven by an application service. It uses the
+attachment signal for subscription cleanup, projection helpers for markers,
+`invalidate()` for external state, a visible-range modifier for auto-scaling,
+pointer delivery for hover, and owned price-axis annotations. It does not add a
+DOM listener or access an internal chart canvas.
 
 ```ts
-import type { ChartOptionsChangeEvent } from "@ardinsys/financial-charts";
+import type { TimeRange } from "@ardinsys/financial-charts";
+import {
+  Indicator,
+  type ChartContext,
+  type ChartPointerEvent,
+  type DefaultIndicatorOptions,
+  type IndicatorLabelContent,
+  type IndicatorOptionsInput
+} from "@ardinsys/financial-charts/extensions";
 import type { ScaleRangeModifier } from "@ardinsys/financial-charts/engine";
+
+interface Order {
+  readonly id: string;
+  readonly price: number;
+  readonly side: "buy" | "sell";
+  readonly time: number;
+}
+
+interface OrderSource {
+  subscribe(
+    listener: (orders: readonly Order[]) => void,
+    options: { signal: AbortSignal }
+  ): void;
+}
+
+interface OrdersTheme {
+  buyColor: string;
+  sellColor: string;
+}
+
+type OrdersOptions = DefaultIndicatorOptions;
 
 class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
   static readonly ID = "orders";
 
-  private orders: Order[] = [];
-  private requestVersion = 0;
+  private hoveredId?: string;
+  private orders: readonly Order[] = [];
 
-  async load(symbol: string) {
-    const version = ++this.requestVersion;
-    const { signal } = this.chartContext;
-    const orders = await fetchOrders(symbol, {
-      signal
+  constructor(
+    private readonly source: OrderSource,
+    themes?: Record<string, Partial<OrdersTheme>> | null,
+    options?: IndicatorOptionsInput<OrdersOptions> | null
+  ) {
+    super(themes, options);
+  }
+
+  override attach(ctx: ChartContext): void {
+    super.attach(ctx);
+    this.source.subscribe((orders) => this.setOrders(orders), {
+      signal: ctx.signal
     });
-
-    if (version !== this.requestVersion || signal.aborted) {
-      return;
-    }
-
-    this.orders = orders;
-    this.invalidate({ scale: true });
   }
 
-  onOptionsChanged({ changedKeys }: ChartOptionsChangeEvent) {
-    if (changedKeys.includes("timeRange") || changedKeys.includes("stepSize")) {
-      void this.load(this.options.symbol);
+  getDefaultOptions(): OrdersOptions {
+    return {
+      labelKey: "orders",
+      names: { default: "Orders" }
+    };
+  }
+
+  getDefaultThemes(): Record<string, OrdersTheme> {
+    return {
+      light: { buyColor: "#00897b", sellColor: "#d81b60" },
+      dark: { buyColor: "#4db6ac", sellColor: "#f06292" }
+    };
+  }
+
+  draw(): void {
+    const context = this.getDrawingContext();
+    if (!context.visible) return;
+
+    for (const order of this.getVisibleOrders(context.visibleTimeRange)) {
+      const point = context.projectPoint(order.time, order.price);
+      const hovered = order.id === this.hoveredId;
+      context.ctx.save();
+      context.ctx.fillStyle = this.getColor(order);
+      context.ctx.beginPath();
+      context.ctx.arc(point.x, point.y, hovered ? 6 : 4, 0, Math.PI * 2);
+      context.ctx.fill();
+      context.ctx.restore();
     }
   }
 
-  getModifier(): ScaleRangeModifier | null {
-    if (this.orders.length === 0) return null;
-    const prices = this.orders.map(({ price }) => price);
+  getModifier(range: TimeRange): ScaleRangeModifier | null {
+    const visible = this.getVisibleOrders(range);
+    if (visible.length === 0) return null;
+    const prices = visible.map(({ price }) => price);
     return {
       actor: this,
       enabled: true,
@@ -309,46 +384,106 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
       yMax: Math.max(...prices)
     };
   }
-}
-```
 
-`invalidate()` is a no-op before attachment and after detachment. Its label,
-drawing, and crosshair targets default to `true`; `scale` defaults to `false` so
-ordinary external updates do not pay for price-scale recalculation. Chart-owned
-label cleanup runs after a subclass `detach()` hook even when the override does
-not call `super.detach()`.
+  onVisibleRangeChanged(): void {
+    this.syncAnnotations();
+  }
 
-## Price markers and axis annotations
+  onOptionsChanged(): void {
+    this.syncAnnotations();
+  }
 
-Draw time-positioned order markers on the indicator canvas, but publish price
-lines and Y-axis labels through the attachment context. The chart owns the
-annotation canvas, clips each line to its pane, resolves label collisions, and
-removes the collection automatically on detach:
+  onPointer(event: ChartPointerEvent): void {
+    const hoveredId = this.findHoveredId(event.x, event.y);
+    if (hoveredId === this.hoveredId) return;
+    this.hoveredId = hoveredId;
+    this.syncAnnotations();
+    this.invalidate({ crosshair: false });
+  }
 
-```ts
-private updateOrderAnnotations() {
-  const visible = this.chartContext.getVisibleTimeRange();
-  const paneId = this.chartContext.getPanes()[0].getId();
+  override clone(): OrdersIndicator {
+    const clone = new OrdersIndicator(this.source, this.themes, this.options);
+    clone.setVisible(this.visible, { emit: false });
+    return clone;
+  }
 
-  this.chartContext.setPriceAxisAnnotations(
-    this.orders
-      .filter((order) => order.time < visible.start || order.time >= visible.end)
-      .map((order) => ({
+  protected getLabelContent(): IndicatorLabelContent {
+    const hovered = this.orders.find(({ id }) => id === this.hoveredId);
+    return {
+      detail: `${this.orders.length}`,
+      segments: hovered
+        ? [
+            {
+              text: this.chart.getFormatter().formatPrice(hovered.price),
+              color: this.getColor(hovered)
+            }
+          ]
+        : []
+    };
+  }
+
+  private setOrders(orders: readonly Order[]): void {
+    this.orders = Object.freeze(
+      orders.map((order) => Object.freeze({ ...order }))
+    );
+    if (
+      this.hoveredId !== undefined &&
+      !this.orders.some(({ id }) => id === this.hoveredId)
+    ) {
+      this.hoveredId = undefined;
+    }
+    this.invalidate({ scale: true });
+    if (this.chartContext) this.syncAnnotations();
+  }
+
+  private getVisibleOrders(range: TimeRange): readonly Order[] {
+    return this.orders.filter(
+      ({ time }) => time >= range.start && time < range.end
+    );
+  }
+
+  private findHoveredId(x: number, y: number): string | undefined {
+    const context = this.getDrawingContext();
+    return this.getVisibleOrders(context.visibleTimeRange).find((order) => {
+      const point = context.projectPoint(order.time, order.price);
+      return Math.hypot(point.x - x, point.y - y) <= 8;
+    })?.id;
+  }
+
+  private syncAnnotations(): void {
+    const range = this.chartContext.getVisibleTimeRange();
+    const paneId = this.chartContext.getPanes()[0]?.getId();
+    this.chartContext.setPriceAxisAnnotations(
+      this.getVisibleOrders(range).map((order) => ({
         id: order.id,
         paneId,
         value: order.price,
         text: this.chart.getFormatter().formatPrice(order.price),
-        color: order.side === "buy" ? "#00c853" : "#d81b60",
-        textColor: "#fff",
-        lineDash: [4, 3],
-        emphasized: order.id === this.hoveredOrderId
+        color: this.getColor(order),
+        emphasized: order.id === this.hoveredId,
+        lineDash: [4, 3]
       }))
-  );
+    );
+  }
+
+  private getColor(order: Order): string {
+    return order.side === "buy" ? this.theme.buyColor : this.theme.sellColor;
+  }
 }
 ```
 
-Call the helper when external orders, the visible range, hover state, locale,
-or theme changes. Submitting a new array replaces only this extension's
-collection, so multiple indicators and drawing plugins can contribute without
-clearing one another's pixels. Use `clearPriceAxisAnnotations()` when hiding the
-collection without detaching.
+`invalidate()` is intentionally safe before attachment and after detachment.
+Label, indicator, and crosshair invalidation default to `true`; price-scale
+recalculation is opt-in with `{ scale: true }`. Republish annotations when
+external data, visible range, hover, locale, or theme changes because each call
+replaces this attachment's previous collection.
+
+The source must stop delivery when `signal` aborts. For promise-based loads,
+pass the same signal to the request and also keep a monotonically increasing
+request version when multiple loads can overlap, so a stale response cannot
+replace newer state.
+
+Because the service is a constructor dependency, `clone()` reinjects it while
+allowing the base constructor to generate a new instance ID. The application
+resolver performs the same injection when restoring persisted chart or
+indicator state. Loaded orders remain runtime data and are not serialized.

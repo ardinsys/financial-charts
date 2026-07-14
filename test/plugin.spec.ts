@@ -491,6 +491,57 @@ describe("plugin lifecycle", () => {
     unsubscribe();
   });
 
+  it("scopes context subscriptions to the plugin attachment", () => {
+    const { chart } = createChart();
+    const eventListener = vi.fn();
+    const renderHook = vi.fn();
+    let stopListening: (() => void) | undefined;
+    const plugin: ChartPlugin = {
+      key: "scoped-subscriptions",
+      attach: (ctx) => {
+        stopListening = ctx.on("drawing-select", eventListener);
+        ctx.onRenderStage("drawings", renderHook);
+      }
+    };
+
+    chart.addPlugin(plugin);
+    chart.emit("drawing-select", {});
+    chart.requestRedraw("drawings", true);
+
+    expect(eventListener).toHaveBeenCalledOnce();
+    expect(renderHook).toHaveBeenCalledOnce();
+
+    stopListening?.();
+    chart.emit("drawing-select", {});
+    expect(eventListener).toHaveBeenCalledOnce();
+
+    chart.removePlugin(plugin);
+    chart.requestRedraw("drawings", true);
+    expect(renderHook).toHaveBeenCalledOnce();
+  });
+
+  it("cleans scoped subscriptions when plugin attachment fails", () => {
+    const { chart } = createChart();
+    const eventListener = vi.fn();
+    const renderHook = vi.fn();
+    const plugin: ChartPlugin = {
+      key: "failed-subscriptions",
+      attach: (ctx) => {
+        ctx.on("drawing-select", eventListener);
+        ctx.onRenderStage("drawings", renderHook);
+        throw new Error("attach failed");
+      }
+    };
+
+    expect(() => chart.addPlugin(plugin)).toThrow("attach failed");
+    expect(chart.listenerCount("drawing-select")).toBe(0);
+
+    chart.emit("drawing-select", {});
+    chart.requestRedraw("drawings", true);
+    expect(eventListener).not.toHaveBeenCalled();
+    expect(renderHook).not.toHaveBeenCalled();
+  });
+
   it("lets plugins drive the native crosshair state", () => {
     const { chart, data } = createChart();
     let attachedContext: Parameters<ChartPlugin["attach"]>[0] | undefined;

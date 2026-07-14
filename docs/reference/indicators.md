@@ -121,16 +121,30 @@ The default adapter renders and wires:
 ### Lifecycle hooks
 
 - `attach(ctx)` is inherited from `Indicator`; the base class stores the chart context and creates the adapter-rendered label.
-- `onOptionsChanged(event)`, `onData(data)`, and `onVisibleRangeChanged(range)` receive current state immediately after attachment and subsequent chart changes. Initial options delivery has an empty `changedKeys` array.
+- Initial state is delivered after attachment in a fixed order:
+  `onOptionsChanged(event)`, `onData(data)`, then
+  `onVisibleRangeChanged(range)`. The initial options event has identical
+  `previous`/`current` snapshots and an empty `changedKeys` array.
+- `onData(data)` receives frozen mapped chart data. Cache derived indicator data
+  here when recomputation should happen once per chart data update rather than
+  once per render.
 - `onPointer(event)` receives pointer events in visual stacking order; return `true` to stop delivery to lower extensions and consume the gesture.
 - `onDrawingFinished(event)` receives completed drawing create and move operations.
 - `draw()` runs on each indicator render pass. Call `getDrawingContext()` to access the indicator canvas, data, visible data, visible range, scales, formatter/theme, and `projectTime` / `projectPrice` / `projectPoint` helpers without wiring canvas or scale plumbing yourself.
-- `getLabelContent(dataTime?)` is invoked after renders and when locales or themes change. Return label detail text and optional value segments here; the base class updates the adapter-rendered label.
+- `getLabelContent(dataTime?)` is invoked when the label is created or refreshed,
+  including option, visibility, theme, locale, crosshair, and explicit
+  invalidation updates. Return label detail text and optional value segments;
+  do not mutate label DOM.
 - `getModifier(visibleTimeRange)` lets you modify the price range. Return a `ScaleRangeModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).
 - `invalidate(options?)` is the protected update path for indicator-owned external state. It is safe before attachment and after detachment. Labels, indicator drawing, and crosshair drawing are invalidated by default; pass `{ scale: true }` when `getModifier()` may have changed.
-- `updateOptions(partial)` merges new options, requests a redraw, and re-renders the label.
+- `updateOptions(partial, { emit? })` merges new options, redraws affected chart
+  layers, refreshes the label, and emits `indicator-change` by default. Use this
+  method rather than mutating the value returned by `getOptions()`.
 - `clone()` creates another indicator with the same themes, options, and visibility but a new instance ID. `copyFrom()` copies configurable state without changing the target's identity. Override `clone()` if your custom indicator has constructor dependencies beyond the standard `(themes, options)` shape.
-- `detach()` is called when an indicator is removed or the chart is disposed. `chartContext.signal` is aborted first. Chart-owned label cleanup always runs afterward, so subclass cleanup cannot accidentally bypass it by omitting `super.detach()`.
+- `chartContext.signal` is aborted before `detach()`. Subscriptions created with
+  `chartContext.on()` and `chartContext.onRenderStage()` are also removed
+  automatically. Chart-owned annotations and label cleanup always run, so an
+  override does not call `super.detach()` merely to preserve base cleanup.
 
 The base re-resolves `this.theme` and rebuilds the label before delivering a
 theme change to `onOptionsChanged`. Changes to `timeRange` and `stepSize` are
@@ -143,6 +157,11 @@ visual stacking, starting with the last attached ordinary plugin. Extensions
 removed during a callback are skipped for the rest of that notification pass.
 Indicators are drawn only by the indicator render pass, not a second time as
 ordinary plugins.
+
+External services belong in constructor fields, not serializable options. Use
+the application resolver to reinject them during state restoration, and
+override `clone()` when the constructor does not have the standard
+`(themes, options)` shape.
 
 ### Label model and DOM adapter
 
@@ -192,7 +211,9 @@ abstract class MyPaneledIndicator extends PaneledIndicator<MyTheme, MyOptions> {
 - `init(params)` and `resize(params)` are handled by the chart.
 - `draw()` is implemented by the base class. It clears the panel, paints the background, draws shared grid lines, syncs the pane price scale, draws the Y axis, and then calls `drawPane(context)` when the indicator is visible.
 - `drawPane(context)` receives the pane canvas context, axis context, pane, scale, price scale, dimensions, data, visible data, visible range, formatter/theme, and projection helpers.
-- Existing paneled indicators that override `draw()` still work; new indicators should prefer `drawPane(context)` to avoid canvas/axis boilerplate.
+- Implement `drawPane(context)` rather than overriding `draw()`, so pane
+  background, grid, Y-axis, visibility, and scale synchronization remain owned
+  by the base class.
 
 ## Indicator events
 

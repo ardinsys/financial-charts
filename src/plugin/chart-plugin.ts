@@ -45,10 +45,12 @@ export interface ChartContext {
   getPlugins(): readonly ChartPlugin[];
   getVisibleTimeWindow(): TimeRange;
   getVisibleTimeRange(): TimeRange;
+  /** Subscribes for this attachment and returns an early disposer. */
   on<K extends keyof ChartEventMap>(
     event: K,
     listener: (data: ChartEventMap[K]) => void
   ): () => void;
+  /** Registers an attachment-scoped render hook and returns an early disposer. */
   onRenderStage(stage: RenderStage, callback: RenderCallback): () => void;
   requestRedraw(
     part: ChartRedrawPart | ReadonlyArray<ChartRedrawPart>,

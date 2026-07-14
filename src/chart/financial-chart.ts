@@ -1146,11 +1146,14 @@ export class FinancialChart extends EventEmitter {
 
   private createChartContext(extension: ChartPlugin): ChartContext {
     const abortController = new AbortController();
+    const { signal } = abortController;
+    const scoped = (dispose: () => void) =>
+      this.createExtensionScopedDisposer(signal, dispose);
     this.extensionAbortControllers.set(extension, abortController);
     return {
       chart: this,
       domAdapter: this.domAdapter,
-      signal: abortController.signal,
+      signal,
       emit: (event, data) => this.emit(event, data),
       getCanvasContext: (layer) => this.getContext(layer),
       getLogicalCanvas: (layer) => this.getLogicalCanvas(layer),
@@ -1162,8 +1165,9 @@ export class FinancialChart extends EventEmitter {
       getPlugins: () => this.getPlugins(),
       getVisibleTimeWindow: () => this.getVisibleTimeWindow(),
       getVisibleTimeRange: () => this.getVisibleTimeRange(),
-      on: (event, listener) => this.on(event, listener),
-      onRenderStage: (stage, callback) => this.onRenderStage(stage, callback),
+      on: (event, listener) => scoped(this.on(event, listener)),
+      onRenderStage: (stage, callback) =>
+        scoped(this.onRenderStage(stage, callback)),
       requestRedraw: (part, immediate) => this.requestRedraw(part, immediate),
       setPriceAxisAnnotations: (annotations) =>
         this.setPriceAxisAnnotations(extension, annotations),
@@ -1172,6 +1176,22 @@ export class FinancialChart extends EventEmitter {
       setCrosshair: (options) => this.setCrosshair(options),
       clearCrosshair: () => this.clearCrosshair()
     };
+  }
+
+  private createExtensionScopedDisposer(
+    signal: AbortSignal,
+    dispose: () => void
+  ): () => void {
+    let active = true;
+    const scopedDispose = () => {
+      if (!active) return;
+      active = false;
+      signal.removeEventListener("abort", scopedDispose);
+      dispose();
+    };
+    signal.addEventListener("abort", scopedDispose, { once: true });
+    if (signal.aborted) scopedDispose();
+    return scopedDispose;
   }
 
   private disposeExtensionScope(extension: ChartPlugin) {
