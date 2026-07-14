@@ -73,13 +73,40 @@ describe("DataStore", () => {
     ]);
   });
 
+  it("reuses immutable snapshots until stored data changes", () => {
+    const store = new DataStore([{ time: 60, close: 10 }]);
+    const initial = store.snapshot();
+
+    expect(store.snapshot()).toBe(initial);
+    expect(Object.isFrozen(initial)).toBe(true);
+
+    store.append({ time: 120, close: 11 });
+    const afterAppend = store.snapshot();
+    expect(afterAppend).not.toBe(initial);
+    expect(store.snapshot()).toBe(afterAppend);
+    expect(Object.isFrozen(afterAppend)).toBe(true);
+
+    store.merge({ time: 125, close: 12 }, 60);
+    const afterReplacement = store.snapshot();
+    expect(afterReplacement).not.toBe(afterAppend);
+    expect(afterReplacement).toEqual([
+      { time: 60, close: 10 },
+      { time: 120, close: 12 }
+    ]);
+
+    store.merge({ time: 180, close: 13 }, 60);
+    const afterInsertion = store.snapshot();
+    expect(afterInsertion).not.toBe(afterReplacement);
+    expect(store.snapshot()).toBe(afterInsertion);
+  });
+
   it("inserts appended points in chronological order", () => {
     const store = new DataStore([{ time: 120, close: 12 }]);
     const initialTimes = store.times();
 
     expect(store.append({ time: 60, close: 11 })).toBe(0);
     expect(store.append({ time: 180, close: 13 })).toBe(2);
-    expect(store.toArray().map((point) => point.time)).toEqual([60, 120, 180]);
+    expect(store.snapshot().map((point) => point.time)).toEqual([60, 120, 180]);
     expect(store.times()).not.toBe(initialTimes);
     expect(store.times()).toEqual([60, 120, 180]);
   });
@@ -106,7 +133,7 @@ describe("DataStore", () => {
       )
     ).toBe(true);
 
-    expect(store.toArray()).toEqual([
+    expect(store.snapshot()).toEqual([
       { time: 60, open: 10, high: 14, low: 8, close: 13, volume: 150 },
       { time: 120, open: 13, high: 15, low: 12, close: 14, volume: 80 }
     ]);

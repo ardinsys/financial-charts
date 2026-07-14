@@ -6,6 +6,7 @@ type MutableChartData = {
 
 export class DataStore {
   private data: ChartData[];
+  private dataSnapshot?: readonly ChartData[];
   private timeValues?: readonly number[];
 
   constructor(data: readonly ChartData[] = []) {
@@ -22,8 +23,11 @@ export class DataStore {
     return this.data[index];
   }
 
-  toArray(): ChartData[] {
-    return [...this.data];
+  snapshot(): readonly ChartData[] {
+    if (!this.dataSnapshot) {
+      this.dataSnapshot = Object.freeze([...this.data]);
+    }
+    return this.dataSnapshot;
   }
 
   times(): readonly number[] {
@@ -57,6 +61,7 @@ export class DataStore {
     const storedPoint = DataStore.copyPoint(point);
     const index = this.upperBound(storedPoint.time);
     this.data.splice(index, 0, storedPoint);
+    this.dataSnapshot = undefined;
     this.timeValues = undefined;
     return index;
   }
@@ -70,6 +75,7 @@ export class DataStore {
         this.data[existingIndex],
         bucketedPoint
       );
+      this.dataSnapshot = undefined;
       return false;
     }
 
@@ -161,13 +167,16 @@ export class DataStore {
     );
   }
 
-  static merge(data: readonly ChartData[], stepSize: number): ChartData[] {
+  static merge(
+    data: readonly ChartData[],
+    stepSize: number
+  ): readonly ChartData[] {
     const store = new DataStore();
     const sortedData = [...data].sort((left, right) => left.time - right.time);
     for (const point of sortedData) {
       store.merge(point, stepSize);
     }
-    return store.toArray();
+    return store.snapshot();
   }
 
   static bucketTime(time: number, stepSize: number): number {

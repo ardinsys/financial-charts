@@ -202,6 +202,7 @@ describe("plugin lifecycle", () => {
       stepSize: 60_000
     });
     expect(initialData).toEqual(chart.getData());
+    expect(initialData).toBe(chart.getData());
     expect(Object.isFrozen(initialData)).toBe(true);
     expect(indicator.onVisibleRangeChanged).toHaveBeenCalledWith(
       chart.getVisibleTimeRange()
@@ -228,6 +229,8 @@ describe("plugin lifecycle", () => {
     });
     expect(indicator.onData).toHaveBeenCalledWith(chart.getData());
     expect(pluginHooks.onData).toHaveBeenCalledWith(chart.getData());
+    expect(indicator.onData.mock.calls[0][0]).toBe(chart.getData());
+    expect(pluginHooks.onData.mock.calls[0][0]).toBe(chart.getData());
 
     chart.updateOptions({ maxZoom: 20 });
     expect(indicator.onOptionsChanged).toHaveBeenCalledWith(

@@ -131,7 +131,7 @@ describe("chart data contracts", () => {
     expect(chart.getData()).toEqual([{ time: start, close: 2 }]);
   });
 
-  it("returns owned frozen snapshots of mapped data", () => {
+  it("returns a stable owned snapshot of mapped data", () => {
     const chart = createChart("line");
     const point = { time: 65_000, close: 1 };
     const input = [point];
@@ -144,8 +144,7 @@ describe("chart data contracts", () => {
     expect(first).toEqual([{ time: 60_000, close: 1 }]);
     expect(Object.isFrozen(first)).toBe(true);
     expect(Object.isFrozen(first[0])).toBe(true);
-    expect(chart.getData()).not.toBe(first);
-    expect(chart.getData()).toEqual(first);
+    expect(chart.getData()).toBe(first);
   });
 
   it("rejects non-finite public input without changing existing data", () => {

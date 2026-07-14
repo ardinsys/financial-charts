@@ -759,9 +759,9 @@ export class FinancialChart extends EventEmitter {
     });
   }
 
-  /** Returns a frozen array snapshot of the mapped, immutable data points. */
+  /** Returns the stable frozen snapshot for the current mapped dataset. */
   getData(): readonly ChartData[] {
-    return freezeSnapshot(this.dataStore.toArray());
+    return this.dataStore.snapshot();
   }
 
   private getTimeScaleOptions(): DataScaleTimeOptions {
@@ -1267,15 +1267,14 @@ export class FinancialChart extends EventEmitter {
     if (!this.isExtensionAttached(extension)) return;
     extension.onOptionsChanged?.(this.createInitialOptionsChangeEvent());
     if (!this.isExtensionAttached(extension)) return;
-    extension.onData?.(freezeSnapshot(this.dataStore.toArray()));
+    extension.onData?.(this.dataStore.snapshot());
     if (!this.isExtensionAttached(extension)) return;
     extension.onVisibleRangeChanged?.(this.getVisibleTimeRange());
   }
 
   private notifyExtensionsData(data: readonly ChartData[]) {
-    const snapshot = Object.freeze(data);
     this.forEachLifecycleExtension((extension) => {
-      extension.onData?.(snapshot);
+      extension.onData?.(data);
     });
   }
 
@@ -1303,7 +1302,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private notifyPluginsAfterStateRestore(event?: ChartOptionsChangeEvent) {
-    const data = freezeSnapshot(this.dataStore.toArray());
+    const data = this.dataStore.snapshot();
     const visibleRange = this.getVisibleTimeRange();
     for (const plugin of [...this.plugins]) {
       if (!this.isExtensionAttached(plugin)) continue;
@@ -2074,7 +2073,7 @@ export class FinancialChart extends EventEmitter {
     };
     if (recalc) {
       this.dataScale.recalculate(
-        this.dataStore.toArray(),
+        this.dataStore.snapshot(),
         this.timeRange,
         this.getTimeScaleOptions()
       );
@@ -2126,7 +2125,7 @@ export class FinancialChart extends EventEmitter {
 
   private rebuildScales(resetVisibleRange: boolean) {
     this.dataScale = this.controller.createDataScale(
-      this.dataStore.toArray(),
+      this.dataStore.snapshot(),
       this.timeRange
     );
     this.visibleScale = this.controller.createDataScale([], {
@@ -2261,7 +2260,7 @@ export class FinancialChart extends EventEmitter {
       if (stepSizeChanged) {
         this.dataStore = new DataStore(
           this.mapDataToStepSize(
-            this.originalDataStore.toArray(),
+            this.originalDataStore.snapshot(),
             this.options.stepSize
           )
         );
@@ -2271,7 +2270,7 @@ export class FinancialChart extends EventEmitter {
       if (notifyExtensions && this.dataStore.length > 0) {
         this.notifyExtensionsVisibleRangeChanged();
         if (stepSizeChanged) {
-          this.notifyExtensionsData(this.dataStore.toArray());
+          this.notifyExtensionsData(this.dataStore.snapshot());
         }
       }
     } else if (typeChanged) {
@@ -2832,14 +2831,14 @@ export class FinancialChart extends EventEmitter {
     this.originalDataStore = new DataStore(data);
     this.dataStore = new DataStore(
       this.mapDataToStepSize(
-        this.originalDataStore.toArray(),
+        this.originalDataStore.snapshot(),
         this.options.stepSize
       )
     );
 
     if (this.dataStore.length === 0) {
       this.resetEmptyDataState();
-      this.notifyExtensionsData([]);
+      this.notifyExtensionsData(this.dataStore.snapshot());
       this.requestRedraw(this.allRedrawParts, true);
       return;
     }
@@ -2849,7 +2848,7 @@ export class FinancialChart extends EventEmitter {
     }
 
     this.dataScale = this.controller.createDataScale(
-      this.dataStore.toArray(),
+      this.dataStore.snapshot(),
       this.timeRange
     );
 
@@ -2864,7 +2863,7 @@ export class FinancialChart extends EventEmitter {
     this.recalculateVisibleScale();
     this.clearCrosshair();
     if (rangeChanged) this.notifyExtensionsVisibleRangeChanged();
-    this.notifyExtensionsData(this.dataStore.toArray());
+    this.notifyExtensionsData(this.dataStore.snapshot());
 
     this.requestRedraw(this.allRedrawParts);
   }
@@ -2905,7 +2904,7 @@ export class FinancialChart extends EventEmitter {
       this.recalculateVisibleScale();
       this.notifyExtensionsVisibleRangeChanged();
     }
-    this.notifyExtensionsData(this.dataStore.toArray());
+    this.notifyExtensionsData(this.dataStore.snapshot());
     this.requestRedraw(this.allRedrawParts);
   }
 
@@ -3501,7 +3500,7 @@ export class FinancialChart extends EventEmitter {
   protected mapDataToStepSize(
     data: readonly ChartData[],
     stepSize: number
-  ): ChartData[] {
+  ): readonly ChartData[] {
     return DataStore.merge(data, stepSize);
   }
 
