@@ -52,6 +52,21 @@ if (restored) {
 `fromJSON()` replaces the manager's current drawing set, restores the selected
 drawing by id when present, and requests one drawings-layer redraw.
 
+To persist drawings together with controller, view, pane, and indicator state,
+pass the attached manager directly to the chart state API:
+
+```ts
+const state = chart.toJSON({ contributors: [manager] });
+
+chart.restoreState(state, {
+  indicatorResolver,
+  contributors: [manager]
+});
+```
+
+Pane IDs are restored before drawing JSON is applied, so drawings targeting an
+indicator pane remain on that pane.
+
 Custom drawings can participate by registering a deserializer:
 
 ```ts

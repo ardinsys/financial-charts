@@ -148,15 +148,29 @@ instance to each chart that should participate:
 import {
   ChartSyncPlugin,
   DrawingManager,
-  FinancialChart
+  FinancialChart,
+  MovingAverageIndicator
 } from "@ardinsys/financial-charts";
+import { OrdersIndicator } from "./orders-indicator";
 
 const drawingManager = new DrawingManager();
+const indicatorResolver = ({ typeId }) => {
+  switch (typeId) {
+    case MovingAverageIndicator.ID:
+      return new MovingAverageIndicator();
+    case OrdersIndicator.ID:
+      return new OrdersIndicator(orderService);
+    default:
+      return undefined;
+  }
+};
+
 chart.addPlugin(drawingManager);
 chart.addPlugin(
   new ChartSyncPlugin({
     group: "watchlist",
-    drawingManager
+    drawingManager,
+    indicatorResolver
   })
 );
 ```
@@ -170,42 +184,23 @@ new ChartSyncPlugin({
   crosshair: true,
   drawings: true,
   indicators: true,
+  indicatorResolver,
   messages: true
 });
 ```
 
 Crosshair and visible range sync are time-based, so charts can have different
-data spans or tick sizes. Indicators are cloned through `indicator.clone()`, so
-custom indicators can participate without plugin-side registration. The base
-indicator clone handles the standard `(themes, options)` constructor shape;
-override `clone()` when an indicator owns additional constructor state.
+data spans or tick sizes. Indicator synchronization uses the same JSON-safe
+`IndicatorState` and application-owned resolver as chart restoration. Supply
+`indicatorResolver` whenever `indicators` is enabled and indicators may be
+present; set `indicators: false` when a sync group should not synchronize them.
+The resolver constructs custom indicators with their runtime dependencies,
+while stored sync-group state contains only serializable configuration.
 Freshly mounted charts also perform their initial sync after their first
-`draw()` if the sync plugin was attached before data was available. The group
+`setData()` if the sync plugin was attached before data was available. The group
 keeps the latest state as detached snapshots, so virtualized rows can all
 unmount briefly and the next mounted chart can still rehydrate without holding
 old chart or DOM instances alive.
-
-```ts
-import {
-  Indicator,
-  type IndicatorOptionsInput
-} from "@ardinsys/financial-charts";
-
-class MyIndicator extends Indicator<MyTheme, MyOptions> {
-  static readonly ID = "my-indicator";
-
-  constructor(
-    private readonly feed: PriceFeed,
-    options?: IndicatorOptionsInput<MyOptions>
-  ) {
-    super(null, options);
-  }
-
-  clone() {
-    return new MyIndicator(this.feed, this.getOptions());
-  }
-}
-```
 
 Third-party plugins can also use the sync group as a small message bus. Add the
 sync plugin before plugins that read it from `attach()`, then use

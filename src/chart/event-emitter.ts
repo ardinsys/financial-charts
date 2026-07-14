@@ -2,7 +2,10 @@ import { Indicator } from "../indicators/indicator";
 import type { Drawing, DrawingAnchor, DrawingJSON } from "../drawings/drawing";
 import type { Pane } from "../panes/pane";
 import { ChartData } from "./types";
-import type { ChartOptionsChangeEvent } from "./financial-chart";
+import type {
+  ChartOptionsChangeEvent,
+  ChartStateRestoredEvent
+} from "./financial-chart";
 
 interface IndicatorEvent {
   indicator: Indicator<any, any>;
@@ -52,6 +55,7 @@ export interface ChartEventMap {
   "crosshair-change": ChartCrosshairChangeEvent;
   "crosshair-clear": {};
   "options-change": ChartOptionsChangeEvent;
+  "state-restored": ChartStateRestoredEvent;
   "drawing-create": DrawingEvent;
   "drawing-change": DrawingEvent;
   "drawing-delete": DrawingEvent;

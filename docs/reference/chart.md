@@ -245,6 +245,54 @@ layers, including drawings and crosshair. Reapplying the current range does
 nothing. All view setters are no-ops until data exists, and non-finite
 boundaries throw `RangeError` once data is present.
 
+### Chart state
+
+Use `toJSON()` and `restoreState()` to persist the chart configuration and
+view as one versioned, JSON-safe value:
+
+```ts
+const state = chart.toJSON({ contributors: [drawingManager] });
+localStorage.setItem("price-chart", JSON.stringify(state));
+
+const stored = localStorage.getItem("price-chart");
+if (stored) {
+  chart.restoreState(JSON.parse(stored), {
+    indicatorResolver: ({ typeId }) => {
+      switch (typeId) {
+        case MovingAverageIndicator.ID:
+          return new MovingAverageIndicator();
+        case OrdersIndicator.ID:
+          return new OrdersIndicator(orderService);
+        default:
+          return undefined;
+      }
+    },
+    contributors: [drawingManager]
+  });
+}
+```
+
+`ChartState` contains the controller type, configured time range, `stepSize`,
+`maxZoom`, volume visibility, the precise fractional visible window, pane IDs
+and heights, and every indicator's `IndicatorState`. Multiple instances of one
+indicator type retain their distinct instance IDs. Data is deliberately not
+included: load symbol or order data through its normal application service.
+Theme, localization, formatters, DOM adapters, crosshair state, and arbitrary
+plugin runtime state are also outside this persistence contract.
+
+Pass a `DrawingManager` directly as a contributor to include its existing
+drawing JSON. Other plugins can participate by implementing a unique `key`,
+`toJSON()`, and `fromJSON(state)`. A contribution present in stored state must
+have a matching contributor during restoration.
+
+The target chart must already have the stored controller type registered.
+Indicator state requires an application-owned `indicatorResolver`, which is
+where custom constructors receive runtime dependencies. Attach stateful plugins
+before calling `restoreState()`. Restoration suppresses intermediate option,
+indicator, and drawing events, coalesces rendering, and emits one
+`state-restored` event with the final state. If data has not arrived yet, the
+precise visible window is retained and applied by the next `setData()` call.
+
 ### Indicator management
 
 ```ts
@@ -315,6 +363,7 @@ Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 | `crosshair-change`             | `{ time, y, pane, dataPoint }`                            | Native or programmatic crosshair moves.       |
 | `crosshair-clear`              | `{}`                                                      | Native or programmatic crosshair clears.      |
 | `options-change`               | `{ previous, current, changedKeys }`                      | Effective runtime options change.             |
+| `state-restored`               | `{ state }`                                               | Complete chart state has been restored.       |
 | `indicator-add`                | `{ indicator }`                                           | Indicator is added to the chart.              |
 | `indicator-change`             | `{ indicator }`                                           | Indicator options are updated.                |
 | `indicator-visibility-changed` | `{ indicator, visible }`                                  | Indicator show/hide buttons are toggled.      |

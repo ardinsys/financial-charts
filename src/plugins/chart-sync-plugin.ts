@@ -2,13 +2,17 @@ import type { ChartData, TimeRange } from "../chart/types";
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
 import { DrawingManager, type DrawingManagerJSON } from "../drawings";
 import type { DrawingJSON } from "../drawings";
-import { Indicator } from "../indicators/indicator";
+import {
+  restoreIndicator,
+  type Indicator,
+  type IndicatorResolver,
+  type IndicatorState
+} from "../indicators/indicator";
 import type { ChartCrosshairChangeEvent } from "../chart/event-emitter";
 import type { FinancialChart } from "../chart/financial-chart";
+import { cloneJSONStateValue } from "../utils/json-state";
 
-export interface ChartSyncIndicatorSnapshot {
-  indicator: Indicator<any, any>;
-}
+export type ChartSyncIndicatorSnapshot = IndicatorState;
 
 export interface ChartSyncCrosshairSnapshot {
   paneId: number;
@@ -40,6 +44,8 @@ export interface ChartSyncPluginOptions {
   drawingManager?: DrawingManager;
   drawings?: boolean;
   group?: string;
+  /** Reconstructs serialized indicators with application runtime dependencies. */
+  indicatorResolver?: IndicatorResolver;
   indicators?: boolean;
   initialSync?: boolean;
   messages?: boolean;
@@ -396,7 +402,10 @@ export class ChartSyncPlugin implements ChartPlugin {
   private storeDrawingState() {
     const state = this.getDrawingManager()?.toJSON();
     if (state) {
-      this.getGroup().state.drawings = cloneSyncValue(state);
+      this.getGroup().state.drawings = cloneSyncJSONValue(
+        state,
+        "Chart sync drawing state"
+      );
     }
   }
 
@@ -461,7 +470,10 @@ export class ChartSyncPlugin implements ChartPlugin {
     if (this.isEnabled("drawings")) {
       const drawingState = this.getDrawingManager()?.toJSON();
       if (drawingState) {
-        state.drawings = cloneSyncValue(drawingState);
+        state.drawings = cloneSyncJSONValue(
+          drawingState,
+          "Chart sync drawing state"
+        );
       }
     }
     if (this.isEnabled("indicators")) {
@@ -547,16 +559,12 @@ export class ChartSyncPlugin implements ChartPlugin {
   private createIndicatorSnapshot(
     indicator: Indicator<any, any>
   ): ChartSyncIndicatorSnapshot {
-    const clonedIndicator = indicator.clone();
-    clonedIndicator.restoreInstanceId(indicator.getInstanceId());
-    return {
-      indicator: clonedIndicator
-    };
+    return indicator.toJSON();
   }
 
   private applyIndicatorState(snapshots: ChartSyncIndicatorSnapshot[]) {
     const instanceIds = new Set(
-      snapshots.map((snapshot) => snapshot.indicator.getInstanceId())
+      snapshots.map((snapshot) => snapshot.instanceId)
     );
     for (const indicator of this.ctx?.chart.getAllIndicators() ?? []) {
       if (!instanceIds.has(indicator.getInstanceId())) {
@@ -571,25 +579,30 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   private applyIndicator(snapshot: ChartSyncIndicatorSnapshot) {
     if (!this.ctx) return;
+    const resolver = this.options.indicatorResolver;
+    if (!resolver) {
+      throw new Error(
+        "ChartSyncPlugin requires indicatorResolver to synchronize indicators."
+      );
+    }
 
-    const instanceId = snapshot.indicator.getInstanceId();
+    const restored = restoreIndicator(snapshot, resolver);
+    const instanceId = restored.getInstanceId();
     let indicator = this.findIndicator(instanceId);
     if (
       indicator &&
-      indicator.getIndicatorType() !== snapshot.indicator.getIndicatorType()
+      indicator.getIndicatorType() !== restored.getIndicatorType()
     ) {
       this.ctx.chart.removeIndicator(indicator, { emit: false });
       indicator = undefined;
     }
 
     if (!indicator) {
-      indicator = snapshot.indicator.clone();
-      indicator.restoreInstanceId(instanceId);
-      this.ctx.chart.addIndicator(indicator, { emit: false });
+      this.ctx.chart.addIndicator(restored, { emit: false });
       return;
     }
 
-    indicator.copyFrom(snapshot.indicator, { emit: false });
+    indicator.copyFrom(restored, { emit: false });
   }
 
   private applyIndicatorRemove(instanceId: string) {
@@ -637,7 +650,10 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
     clone.visibleRange = { ...state.visibleRange };
   }
   if (state.drawings) {
-    clone.drawings = cloneSyncValue(state.drawings);
+    clone.drawings = cloneSyncJSONValue(
+      state.drawings,
+      "Chart sync drawing state"
+    );
   }
   if (state.indicators) {
     clone.indicators = cloneIndicatorSnapshots(state.indicators);
@@ -652,23 +668,11 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
 function cloneIndicatorSnapshots(
   snapshots: ChartSyncIndicatorSnapshot[]
 ): ChartSyncIndicatorSnapshot[] {
-  return snapshots.map((snapshot) => {
-    const indicator = snapshot.indicator.clone();
-    indicator.restoreInstanceId(snapshot.indicator.getInstanceId());
-    return { indicator };
-  });
+  return cloneSyncJSONValue(snapshots, "Chart sync indicator state");
 }
 
-function cloneSyncValue<T>(value: T): T {
-  if (typeof structuredClone === "function") {
-    try {
-      return structuredClone(value);
-    } catch {
-      // Fall through to the JSON clone for simple serializable sync state.
-    }
-  }
-
-  return JSON.parse(JSON.stringify(value)) as T;
+function cloneSyncJSONValue<T>(value: T, path: string): T {
+  return cloneJSONStateValue(value, path) as unknown as T;
 }
 
 Object.defineProperty(ChartSyncPlugin, "getGroupSizeForTest", {

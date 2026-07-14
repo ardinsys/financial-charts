@@ -19,6 +19,12 @@ import type {
 import type { PriceScale } from "../scales/price-scale";
 import type { ScaleProjectOptions } from "../scales/scale";
 import type { BarAlignment, TimeScale } from "../scales/time-scale";
+import {
+  cloneJSONStateObject,
+  isPlainRecord,
+  type JSONStateObject,
+  type JSONStateValue
+} from "../utils/json-state";
 
 export type { IndicatorLabelSegment };
 
@@ -36,17 +42,9 @@ export interface IndicatorIdentityOptions {
 export type IndicatorOptionsInput<TOptions extends DefaultIndicatorOptions> =
   Partial<TOptions> & IndicatorIdentityOptions;
 
-export type IndicatorStateValue =
-  | null
-  | boolean
-  | number
-  | string
-  | readonly IndicatorStateValue[]
-  | { readonly [key: string]: IndicatorStateValue };
+export type IndicatorStateValue = JSONStateValue;
 
-export type IndicatorStateOptions = Readonly<
-  Record<string, IndicatorStateValue>
->;
+export type IndicatorStateOptions = JSONStateObject;
 
 export const INDICATOR_STATE_VERSION = 1 as const;
 
@@ -422,7 +420,10 @@ export abstract class Indicator<
       version: INDICATOR_STATE_VERSION,
       typeId: this.typeId,
       instanceId: this.instanceId,
-      options: cloneIndicatorStateOptions(this.serializeStateOptions()),
+      options: cloneJSONStateObject(
+        this.serializeStateOptions(),
+        "Indicator state options"
+      ),
       visible: this.visible
     };
   }
@@ -539,81 +540,9 @@ function validateIndicatorState(state: unknown): IndicatorState {
     version: INDICATOR_STATE_VERSION,
     typeId: state.typeId,
     instanceId: state.instanceId,
-    options: cloneIndicatorStateOptions(state.options),
+    options: cloneJSONStateObject(state.options, "Indicator state options"),
     visible: state.visible
   };
-}
-
-function cloneIndicatorStateOptions(
-  options: Record<string, unknown>
-): IndicatorStateOptions {
-  return cloneIndicatorStateValue(options, "options", new WeakSet()) as {
-    readonly [key: string]: IndicatorStateValue;
-  };
-}
-
-function cloneIndicatorStateValue(
-  value: unknown,
-  path: string,
-  ancestors: WeakSet<object>
-): IndicatorStateValue {
-  if (value === null || typeof value === "string" || typeof value === "boolean") {
-    return value;
-  }
-  if (typeof value === "number") {
-    if (!Number.isFinite(value)) {
-      throw new Error(`Indicator state ${path} must contain finite numbers.`);
-    }
-    return value;
-  }
-  if (typeof value !== "object") {
-    throw new Error(`Indicator state ${path} is not JSON-safe.`);
-  }
-  if (ancestors.has(value)) {
-    throw new Error(`Indicator state ${path} must not contain circular values.`);
-  }
-
-  ancestors.add(value);
-  try {
-    if (Array.isArray(value)) {
-      return Array.from(value, (item, index) =>
-        cloneIndicatorStateValue(item, `${path}[${index}]`, ancestors)
-      );
-    }
-    if (!isPlainRecord(value)) {
-      throw new Error(`Indicator state ${path} must contain plain objects.`);
-    }
-
-    const clone: Record<string, IndicatorStateValue> = {};
-    for (const key of Reflect.ownKeys(value)) {
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      if (!descriptor?.enumerable) continue;
-      if (typeof key === "symbol" || !("value" in descriptor)) {
-        throw new Error(`Indicator state ${path} is not JSON-safe.`);
-      }
-      Object.defineProperty(clone, key, {
-        configurable: true,
-        enumerable: true,
-        value: cloneIndicatorStateValue(
-          descriptor.value,
-          `${path}.${key}`,
-          ancestors
-        ),
-        writable: true
-      });
-    }
-    return clone;
-  } finally {
-    ancestors.delete(value);
-  }
-}
-
-function isPlainRecord(value: unknown): value is Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-  const prototype = Object.getPrototypeOf(value);
-  return prototype === Object.prototype || prototype === null;
 }
 
 function cloneIndicatorValue<T>(value: T): T {

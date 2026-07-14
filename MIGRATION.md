@@ -166,6 +166,31 @@ DOM state, computed data, and other instance fields. Indicators with non-JSON
 options should override `serializeStateOptions()` and
 `restoreStateOptions()`.
 
+Replace application-owned chart restoration loops, manual option-field
+deletion, and deferred `setTimeout()` attachment with the complete state API:
+
+```ts
+const stored = chart.toJSON({ contributors: [drawingManager] });
+
+chart.restoreState(stored, {
+  indicatorResolver,
+  contributors: [drawingManager]
+});
+```
+
+The state includes core chart options, the precise visible window, pane
+identity and heights, and serialized indicators. `DrawingManager` can be
+included as a state contributor. Chart data and runtime services remain
+application-owned. Restoration validates dependencies first, suppresses
+intermediate public mutations, redraws once, and emits `state-restored` when
+complete. It can run before data is loaded; the restored window is applied by
+the next `setData()` call.
+
+`ChartSyncPlugin` now uses `IndicatorState` rather than cloned indicator
+instances. Pass the same `indicatorResolver` when indicator synchronization is
+enabled, or set `indicators: false` for groups that only synchronize view,
+crosshair, drawings, or custom messages.
+
 ### Paneled indicators are pane-backed
 
 Paneled indicators are laid out through `Pane` models that share the chart's

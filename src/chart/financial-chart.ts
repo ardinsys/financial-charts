@@ -11,7 +11,11 @@ import type {
 } from "../indicators/paneled-indicator";
 import {
   Indicator,
-  type IndicatorInvalidationOptions
+  restoreIndicator,
+  type IndicatorInvalidationOptions,
+  type IndicatorResolver,
+  type IndicatorState,
+  type IndicatorStateValue
 } from "../indicators/indicator";
 import {
   DataScaleModel,
@@ -61,6 +65,7 @@ import type {
   ChartPointerEvent
 } from "../plugin/chart-plugin";
 import { getDefaultControllerConstructors } from "./internal-default-controllers";
+import { cloneJSONStateValue, isPlainRecord } from "../utils/json-state";
 
 const logicalRangeEpsilon = 1e-9;
 
@@ -202,6 +207,55 @@ export interface ChartOptionsChangeEvent {
   readonly changedKeys: readonly ChartOptionKey[];
 }
 
+export const CHART_STATE_VERSION = 1 as const;
+
+/** Runtime chart options that affect data mapping and the primary series. */
+export interface ChartCoreState {
+  type: ControllerType;
+  timeRange: TimeRange | "auto";
+  stepSize: number;
+  maxZoom: number;
+  volume: boolean;
+}
+
+export interface ChartPaneState {
+  /** Stable pane identity used by drawings and other pane-owned state. */
+  id: number;
+  height: number;
+  /** The paneled indicator that owns this pane; absent for the main pane. */
+  indicatorInstanceId?: string;
+}
+
+/** Versioned, JSON-safe chart configuration and view state. */
+export interface ChartState {
+  version: typeof CHART_STATE_VERSION;
+  core: ChartCoreState;
+  visibleRange: TimeRange;
+  panes: readonly ChartPaneState[];
+  indicators: readonly IndicatorState[];
+  contributions?: Readonly<Record<string, IndicatorStateValue>>;
+}
+
+export interface ChartStateContributor<TState = unknown> {
+  /** Unique persistence key stored under `ChartState.contributions`. */
+  readonly key: string;
+  toJSON(): TState;
+  fromJSON(state: TState): unknown;
+}
+
+export interface ChartStateSerializationOptions {
+  contributors?: readonly ChartStateContributor<any>[];
+}
+
+export interface ChartStateRestoreOptions extends ChartStateSerializationOptions {
+  indicatorResolver?: IndicatorResolver;
+}
+
+export interface ChartStateRestoredEvent {
+  /** Final normalized state after all contributors have been restored. */
+  state: ChartState;
+}
+
 type MutableResolvedChartOptions = {
   -readonly [P in keyof ResolvedChartOptions]: ResolvedChartOptions[P];
 };
@@ -256,6 +310,12 @@ type PaneResizeDrag = {
   disposers: Dispose[];
 };
 
+interface OptionsUpdateBehavior {
+  emit?: boolean;
+  notifyExtensions?: boolean;
+  redraw?: boolean;
+}
+
 export class FinancialChart extends EventEmitter {
   private readonly types: readonly ChartOwnedCanvasLayer[] = [
     "main",
@@ -307,6 +367,9 @@ export class FinancialChart extends EventEmitter {
   private paneHeightsCustomized = false;
   private readonly paneDividerHandles: PaneDividerHandle[] = [];
   private paneResizeDrag?: PaneResizeDrag;
+  private restoringState = false;
+  private restoringPaneIds?: ReadonlyMap<string, number>;
+  private pendingRestoredVisibleRange?: TimeRange;
 
   private readonly indicators: Indicator<any, any>[] = [];
   private readonly paneledIndicators: PaneledIndicator<any, any>[] = [];
@@ -544,6 +607,151 @@ export class FinancialChart extends EventEmitter {
     return this.optionsSnapshot;
   }
 
+  /** Returns versioned, JSON-safe state without chart data or presentation. */
+  public toJSON(options: ChartStateSerializationOptions = {}): ChartState {
+    const contributorMap = indexStateContributors(options.contributors ?? []);
+    const contributions: Record<string, IndicatorStateValue> = {};
+    for (const [key, contributor] of contributorMap) {
+      contributions[key] = cloneJSONStateValue(
+        contributor.toJSON(),
+        `Chart state contribution "${key}"`
+      );
+    }
+
+    const configuredTimeRange = this.options.timeRange;
+    const state: ChartState = {
+      version: CHART_STATE_VERSION,
+      core: {
+        type: this.options.type,
+        timeRange:
+          configuredTimeRange === "auto" ? "auto" : { ...configuredTimeRange },
+        stepSize: this.options.stepSize,
+        maxZoom: this.options.maxZoom,
+        volume: this.options.volume
+      },
+      visibleRange: {
+        ...(this.pendingRestoredVisibleRange ?? this.getVisibleTimeWindow())
+      },
+      panes: this.panes.map((pane) => {
+        const indicator = this.indicatorByPane.get(pane);
+        return {
+          id: pane.getId(),
+          height: this.paneHeights.get(pane) ?? pane.getRegion().height,
+          ...(indicator
+            ? { indicatorInstanceId: indicator.getInstanceId() }
+            : {})
+        };
+      }),
+      indicators: this.getAllIndicators().map((indicator) => indicator.toJSON())
+    };
+
+    if (Object.keys(contributions).length > 0) {
+      state.contributions = contributions;
+    }
+    return state;
+  }
+
+  /** Restores validated state and emits one `state-restored` event. */
+  public restoreState(
+    state: unknown,
+    options: ChartStateRestoreOptions = {}
+  ): void {
+    if (this.disposed) {
+      throw new Error("Cannot restore state into a disposed chart.");
+    }
+
+    const validatedState = validateChartState(state);
+    this.getControllerClass(validatedState.core.type);
+
+    if (validatedState.indicators.length > 0 && !options.indicatorResolver) {
+      throw new Error(
+        "Chart state contains indicators but no indicatorResolver was provided."
+      );
+    }
+    const restoredIndicators = validatedState.indicators.map((indicatorState) =>
+      restoreIndicator(indicatorState, options.indicatorResolver!)
+    );
+    const instanceIds = new Set<string>();
+    for (const indicator of restoredIndicators) {
+      const instanceId = indicator.getInstanceId();
+      if (instanceIds.has(instanceId)) {
+        throw new Error(
+          `Chart state contains duplicate indicator instanceId "${instanceId}".`
+        );
+      }
+      instanceIds.add(instanceId);
+    }
+
+    const paneIdsByIndicator = this.validateRestoredPanes(
+      validatedState.panes,
+      restoredIndicators
+    );
+    const contributors = indexStateContributors(options.contributors ?? []);
+    const restoredContributors: ChartStateContributor<any>[] = [];
+    for (const key of Object.keys(validatedState.contributions ?? {})) {
+      const contributor = contributors.get(key);
+      if (!contributor) {
+        throw new Error(
+          `Chart state contribution "${key}" has no matching contributor.`
+        );
+      }
+      restoredContributors.push(contributor);
+    }
+
+    let optionsEvent: ChartOptionsChangeEvent | undefined;
+    this.restoringState = true;
+    this.restoringPaneIds = paneIdsByIndicator;
+    try {
+      for (const indicator of [...this.getAllIndicators()]) {
+        this.removeIndicator(indicator, { emit: false });
+      }
+
+      optionsEvent = this.applyOptionsUpdate(validatedState.core, {
+        emit: false,
+        notifyExtensions: false,
+        redraw: false
+      });
+
+      if (this.dataStore.length > 0) {
+        this.updateVisibleIndexRange(
+          this.resolveVisibleTimeWindow(validatedState.visibleRange)
+        );
+        this.pendingRestoredVisibleRange = undefined;
+      } else {
+        this.pendingRestoredVisibleRange = {
+          ...validatedState.visibleRange
+        };
+      }
+
+      for (const indicator of restoredIndicators) {
+        this.addIndicator(indicator, { emit: false });
+      }
+
+      this.setPaneHeights(
+        Object.fromEntries(
+          validatedState.panes.map(({ id, height }) => [id, height])
+        )
+      );
+
+      for (const contributor of restoredContributors) {
+        contributor.fromJSON(validatedState.contributions![contributor.key]);
+      }
+
+      if (this.dataStore.length > 0) {
+        this.recalculateVisibleScale();
+      }
+      this.notifyPluginsAfterStateRestore(optionsEvent);
+    } finally {
+      this.restoringPaneIds = undefined;
+      this.restoringState = false;
+      this.requestRedraw(this.allRedrawParts);
+    }
+
+    this.emit("state-restored", {
+      state: this.toJSON({ contributors: restoredContributors })
+    });
+  }
+
   getData(): readonly ChartData[] {
     return freezeSnapshot(this.dataStore.toArray());
   }
@@ -701,6 +909,12 @@ export class FinancialChart extends EventEmitter {
     if (this.dataStore.length === 0) return;
     this.assertFiniteVisibleTimeRange(range);
 
+    this.setVisibleIndexRange(this.resolveVisibleTimeWindow(range));
+  }
+
+  private resolveVisibleTimeWindow(range: TimeRange): TimeScaleRange {
+    this.assertFiniteVisibleTimeRange(range);
+
     const alignmentOffset = this.getBarAlignmentOffset();
     const from =
       this.dataStore.logicalIndexForTime(range.start, this.options.stepSize) +
@@ -709,7 +923,7 @@ export class FinancialChart extends EventEmitter {
       this.dataStore.logicalIndexForTime(range.end, this.options.stepSize) +
       alignmentOffset;
 
-    this.setVisibleIndexRange({ from, to: Math.max(from + 1, to) });
+    return { from, to: Math.max(from + 1, to) };
   }
 
   private assertFiniteVisibleTimeRange(range: TimeRange): void {
@@ -1060,6 +1274,74 @@ export class FinancialChart extends EventEmitter {
     });
   }
 
+  private notifyPluginsAfterStateRestore(event?: ChartOptionsChangeEvent) {
+    const data = freezeSnapshot(this.dataStore.toArray());
+    const visibleRange = this.getVisibleTimeRange();
+    for (const plugin of [...this.plugins]) {
+      if (!this.isExtensionAttached(plugin)) continue;
+      if (event) plugin.onOptionsChanged?.(event);
+      if (!this.isExtensionAttached(plugin)) continue;
+      plugin.onData?.(data);
+      if (!this.isExtensionAttached(plugin)) continue;
+      plugin.onVisibleRangeChanged?.(visibleRange);
+    }
+  }
+
+  private validateRestoredPanes(
+    panes: readonly ChartPaneState[],
+    indicators: readonly Indicator<any, any>[]
+  ): ReadonlyMap<string, number> {
+    const paneIdsByIndicator = new Map<string, number>();
+    const indicatorsById = new Map(
+      indicators.map((indicator) => [indicator.getInstanceId(), indicator])
+    );
+    let hasMainPane = false;
+
+    for (const pane of panes) {
+      if (pane.indicatorInstanceId === undefined) {
+        if (pane.id !== this.mainPane.getId() || hasMainPane) {
+          throw new Error("Chart state must contain exactly one main pane.");
+        }
+        hasMainPane = true;
+        continue;
+      }
+
+      const indicator = indicatorsById.get(pane.indicatorInstanceId);
+      if (!indicator) {
+        throw new Error(
+          `Chart pane ${pane.id} references unknown indicator "${pane.indicatorInstanceId}".`
+        );
+      }
+      if (!this.isPaneledIndicator(indicator)) {
+        throw new Error(
+          `Chart pane ${pane.id} references overlay indicator "${pane.indicatorInstanceId}".`
+        );
+      }
+      if (paneIdsByIndicator.has(pane.indicatorInstanceId)) {
+        throw new Error(
+          `Chart state contains multiple panes for indicator "${pane.indicatorInstanceId}".`
+        );
+      }
+      paneIdsByIndicator.set(pane.indicatorInstanceId, pane.id);
+    }
+
+    if (!hasMainPane) {
+      throw new Error("Chart state must contain exactly one main pane.");
+    }
+    for (const indicator of indicators) {
+      const instanceId = indicator.getInstanceId();
+      if (
+        this.isPaneledIndicator(indicator) &&
+        !paneIdsByIndicator.has(instanceId)
+      ) {
+        throw new Error(
+          `Chart state has no pane for indicator "${instanceId}".`
+        );
+      }
+    }
+    return paneIdsByIndicator;
+  }
+
   private notifyExtensionsPointer(event: ChartPointerEvent) {
     for (const extension of this.getPointerExtensions()) {
       if (!this.isExtensionAttached(extension)) continue;
@@ -1148,7 +1430,12 @@ export class FinancialChart extends EventEmitter {
   }
 
   private createPaneForIndicator(indicator: PaneledIndicator<any, any>) {
-    const pane = new Pane(this.nextPaneId++);
+    const restoredPaneId = this.restoringPaneIds?.get(
+      indicator.getInstanceId()
+    );
+    const paneId = restoredPaneId ?? this.nextPaneId;
+    this.nextPaneId = Math.max(this.nextPaneId, paneId + 1);
+    const pane = new Pane(paneId);
     pane.setTimeScale(this.visibleScale.getTimeScale());
     this.panes.push(pane);
     this.paneByIndicator.set(indicator, pane);
@@ -1847,6 +2134,16 @@ export class FinancialChart extends EventEmitter {
 
   /** Applies an options patch in one reset, remap, and redraw cycle. */
   public updateOptions(update: ChartOptionsUpdate): void {
+    this.applyOptionsUpdate(update);
+  }
+
+  private applyOptionsUpdate(
+    update: ChartOptionsUpdate,
+    behavior: OptionsUpdateBehavior = {}
+  ): ChartOptionsChangeEvent | undefined {
+    const emit = behavior.emit ?? true;
+    const notifyExtensions = behavior.notifyExtensions ?? emit;
+    const redraw = behavior.redraw ?? true;
     const has = (key: ChartOptionKey) =>
       Object.prototype.hasOwnProperty.call(update, key);
 
@@ -1943,7 +2240,7 @@ export class FinancialChart extends EventEmitter {
       }
       this.applyConfiguredTimeRange();
       this.rebuildScales(true);
-      if (this.dataStore.length > 0) {
+      if (notifyExtensions && this.dataStore.length > 0) {
         this.notifyExtensionsVisibleRangeChanged();
         if (stepSizeChanged) {
           this.notifyExtensionsData(this.dataStore.toArray());
@@ -1951,7 +2248,7 @@ export class FinancialChart extends EventEmitter {
       }
     } else if (typeChanged) {
       this.rebuildScales(false);
-      if (this.dataStore.length > 0) {
+      if (notifyExtensions && this.dataStore.length > 0) {
         this.notifyExtensionsVisibleRangeChanged();
       }
     }
@@ -1987,12 +2284,20 @@ export class FinancialChart extends EventEmitter {
     }
 
     this.refreshOptionsSnapshot();
-    if (redrawParts.size > 0) this.requestRedraw([...redrawParts]);
-    this.emit("options-change", {
+    if (redraw && redrawParts.size > 0) {
+      this.requestRedraw([...redrawParts]);
+    }
+    const event = {
       previous,
       current: this.createOptionsState(),
       changedKeys: Object.freeze(changedKeys)
-    });
+    } satisfies ChartOptionsChangeEvent;
+    if (emit) {
+      this.emit("options-change", event);
+    } else if (notifyExtensions) {
+      this.notifyExtensionsOptionsChanged(event);
+    }
+    return event;
   }
 
   public updateTheme(theme: ChartTheme) {
@@ -2526,7 +2831,14 @@ export class FinancialChart extends EventEmitter {
       this.timeRange
     );
 
-    const rangeChanged = this.resetVisibleIndexRange();
+    let rangeChanged = this.resetVisibleIndexRange();
+    if (this.pendingRestoredVisibleRange) {
+      rangeChanged =
+        this.updateVisibleIndexRange(
+          this.resolveVisibleTimeWindow(this.pendingRestoredVisibleRange)
+        ) || rangeChanged;
+      this.pendingRestoredVisibleRange = undefined;
+    }
     this.recalculateVisibleScale();
     this.clearCrosshair();
     if (rangeChanged) this.notifyExtensionsVisibleRangeChanged();
@@ -3362,6 +3674,7 @@ export class FinancialChart extends EventEmitter {
     immediate = false
   ) {
     this.addRedrawParts(part);
+    if (this.restoringState) return;
 
     if (immediate) {
       this.flushRedraw();
@@ -3434,6 +3747,193 @@ function freezeDeep<T>(value: T): DeepReadonly<T> {
 
 function freezeSnapshot<T>(values: T[]): readonly T[] {
   return Object.freeze(values);
+}
+
+function indexStateContributors(
+  contributors: readonly ChartStateContributor<any>[]
+): Map<string, ChartStateContributor<any>> {
+  const indexed = new Map<string, ChartStateContributor<any>>();
+  for (const contributor of contributors) {
+    if (typeof contributor.key !== "string" || contributor.key.length === 0) {
+      throw new Error("Chart state contributors must have a non-empty key.");
+    }
+    if (indexed.has(contributor.key)) {
+      throw new Error(
+        `Duplicate chart state contributor key "${contributor.key}".`
+      );
+    }
+    indexed.set(contributor.key, contributor);
+  }
+  return indexed;
+}
+
+function validateChartState(state: unknown): ChartState {
+  if (!isPlainRecord(state)) {
+    throw new Error("Invalid chart state: expected an object.");
+  }
+  if (!("version" in state) || typeof state.version !== "number") {
+    throw new Error("Invalid chart state: version must be a number.");
+  }
+  if (state.version !== CHART_STATE_VERSION) {
+    throw new Error(
+      `Unsupported chart state version "${state.version}"; expected ${CHART_STATE_VERSION}.`
+    );
+  }
+  if (!isPlainRecord(state.core)) {
+    throw new Error("Invalid chart state: core must be an object.");
+  }
+  if (typeof state.core.type !== "string" || state.core.type.length === 0) {
+    throw new Error("Invalid chart state: core.type must not be empty.");
+  }
+  const timeRange = validateChartStateTimeRange(
+    state.core.timeRange,
+    "core.timeRange",
+    true
+  );
+  if (
+    typeof state.core.stepSize !== "number" ||
+    !Number.isFinite(state.core.stepSize) ||
+    state.core.stepSize <= 0
+  ) {
+    throw new Error("Invalid chart state: core.stepSize must be positive.");
+  }
+  if (
+    typeof state.core.maxZoom !== "number" ||
+    !Number.isFinite(state.core.maxZoom) ||
+    state.core.maxZoom <= 0
+  ) {
+    throw new Error("Invalid chart state: core.maxZoom must be positive.");
+  }
+  if (typeof state.core.volume !== "boolean") {
+    throw new Error("Invalid chart state: core.volume must be a boolean.");
+  }
+
+  const visibleRange = validateChartStateTimeRange(
+    state.visibleRange,
+    "visibleRange",
+    false
+  ) as TimeRange;
+  if (visibleRange.end <= visibleRange.start) {
+    throw new Error(
+      "Invalid chart state: visibleRange.end must be greater than start."
+    );
+  }
+  if (!Array.isArray(state.panes) || state.panes.length === 0) {
+    throw new Error("Invalid chart state: panes must be a non-empty array.");
+  }
+  const paneIds = new Set<number>();
+  const panes = state.panes.map((pane, index): ChartPaneState => {
+    if (!isPlainRecord(pane)) {
+      throw new Error(
+        `Invalid chart state: panes[${index}] must be an object.`
+      );
+    }
+    if (!Number.isInteger(pane.id) || (pane.id as number) < 0) {
+      throw new Error(
+        `Invalid chart state: panes[${index}].id must be a non-negative integer.`
+      );
+    }
+    if (paneIds.has(pane.id as number)) {
+      throw new Error(`Chart state contains duplicate pane id "${pane.id}".`);
+    }
+    paneIds.add(pane.id as number);
+    if (
+      typeof pane.height !== "number" ||
+      !Number.isFinite(pane.height) ||
+      pane.height < 0
+    ) {
+      throw new Error(
+        `Invalid chart state: panes[${index}].height must be non-negative.`
+      );
+    }
+    if (
+      pane.indicatorInstanceId !== undefined &&
+      (typeof pane.indicatorInstanceId !== "string" ||
+        pane.indicatorInstanceId.length === 0)
+    ) {
+      throw new Error(
+        `Invalid chart state: panes[${index}].indicatorInstanceId must not be empty.`
+      );
+    }
+    return {
+      id: pane.id as number,
+      height: pane.height,
+      ...(pane.indicatorInstanceId === undefined
+        ? {}
+        : { indicatorInstanceId: pane.indicatorInstanceId })
+    };
+  });
+
+  if (!Array.isArray(state.indicators)) {
+    throw new Error("Invalid chart state: indicators must be an array.");
+  }
+  const indicators = state.indicators.map(
+    (indicator, index) =>
+      cloneJSONStateValue(
+        indicator,
+        `Chart state indicators[${index}]`
+      ) as unknown as IndicatorState
+  );
+
+  let contributions: Record<string, IndicatorStateValue> | undefined;
+  if (state.contributions !== undefined) {
+    if (!isPlainRecord(state.contributions)) {
+      throw new Error("Invalid chart state: contributions must be an object.");
+    }
+    contributions = {};
+    for (const [key, value] of Object.entries(state.contributions)) {
+      contributions[key] = cloneJSONStateValue(
+        value,
+        `Chart state contribution "${key}"`
+      );
+    }
+  }
+
+  return {
+    version: CHART_STATE_VERSION,
+    core: {
+      type: state.core.type,
+      timeRange,
+      stepSize: state.core.stepSize,
+      maxZoom: state.core.maxZoom,
+      volume: state.core.volume
+    },
+    visibleRange,
+    panes,
+    indicators,
+    ...(contributions ? { contributions } : {})
+  };
+}
+
+function validateChartStateTimeRange(
+  value: unknown,
+  path: string,
+  allowAuto: true
+): TimeRange | "auto";
+function validateChartStateTimeRange(
+  value: unknown,
+  path: string,
+  allowAuto: false
+): TimeRange;
+function validateChartStateTimeRange(
+  value: unknown,
+  path: string,
+  allowAuto: boolean
+): TimeRange | "auto" {
+  if (allowAuto && value === "auto") return value;
+  if (
+    !isPlainRecord(value) ||
+    typeof value.start !== "number" ||
+    !Number.isFinite(value.start) ||
+    typeof value.end !== "number" ||
+    !Number.isFinite(value.end) ||
+    value.end < value.start
+  ) {
+    throw new Error(
+      `Invalid chart state: ${path} must contain finite start and end values.`
+    );
+  }
+  return { start: value.start, end: value.end };
 }
 
 function assertTimeRange(timeRange: TimeRange | "auto") {

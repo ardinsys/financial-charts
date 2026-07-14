@@ -3,6 +3,7 @@ import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import { DrawingManager, TrendLine } from "../src/drawings";
+import type { IndicatorResolver } from "../src/indicators/indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
 import {
@@ -22,6 +23,11 @@ const getSyncGroupSize = (
 class CustomMovingAverageIndicator extends MovingAverageIndicator {
   static ID = "custom-moving-average";
 }
+
+const indicatorResolver: IndicatorResolver = ({ typeId }) =>
+  typeId === CustomMovingAverageIndicator.ID
+    ? new CustomMovingAverageIndicator()
+    : undefined;
 
 interface ProbeSyncPayload {
   value: string;
@@ -108,7 +114,11 @@ function createSyncedChart(group: string) {
     }
   );
   const drawingManager = new DrawingManager();
-  const syncPlugin = new ChartSyncPlugin({ group, drawingManager });
+  const syncPlugin = new ChartSyncPlugin({
+    group,
+    drawingManager,
+    indicatorResolver
+  });
   chart.setData(data);
   chart.addPlugin(drawingManager);
   chart.addPlugin(syncPlugin);
@@ -140,7 +150,11 @@ function createSyncedChartWithDeferredData(group: string) {
     }
   );
   const drawingManager = new DrawingManager();
-  const syncPlugin = new ChartSyncPlugin({ group, drawingManager });
+  const syncPlugin = new ChartSyncPlugin({
+    group,
+    drawingManager,
+    indicatorResolver
+  });
   chart.addPlugin(drawingManager);
   chart.addPlugin(syncPlugin);
   charts.push(chart);
@@ -175,6 +189,7 @@ function createDeferredChartWithSync(
   );
   const drawingManager = new DrawingManager();
   const syncPlugin = new ChartSyncPlugin({
+    indicatorResolver,
     ...syncOptions,
     group,
     drawingManager
