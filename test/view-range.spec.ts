@@ -120,18 +120,49 @@ describe("visible range contracts", () => {
     chart.setVisibleIndexRange({ from: 1, to: 5 });
     const onVisibleRangeChanged = attachRangeProbe(chart);
     const requestRedraw = vi.spyOn(chart, "requestRedraw");
-    const pointerChart = chart as unknown as {
-      panVisibleIndexRange(dx: number): void;
-      zoomVisibleIndexRangeAtPixel(pixel: number, factor: number): void;
-    };
+    const canvas = chart.getContext("crosshair").canvas;
 
-    pointerChart.panVisibleIndexRange(100);
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 300,
+        clientY: 100,
+        pointerType: "mouse",
+        button: 0,
+        bubbles: true
+      })
+    );
+    canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        clientX: 400,
+        clientY: 100,
+        bubbles: true
+      })
+    );
+    canvas.dispatchEvent(
+      new PointerEvent("pointerup", {
+        clientX: 400,
+        clientY: 100,
+        pointerType: "mouse",
+        button: 0,
+        bubbles: true
+      })
+    );
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
-    expect(requestRedraw).toHaveBeenCalledOnce();
+    expect(requestRedraw).toHaveBeenCalled();
 
-    pointerChart.zoomVisibleIndexRangeAtPixel(400, 2);
-    expect(onVisibleRangeChanged).toHaveBeenCalledTimes(2);
-    expect(requestRedraw).toHaveBeenCalledTimes(2);
+    onVisibleRangeChanged.mockClear();
+    requestRedraw.mockClear();
+    canvas.dispatchEvent(
+      new WheelEvent("wheel", {
+        clientX: 400,
+        clientY: 100,
+        deltaY: -1,
+        bubbles: true,
+        cancelable: true
+      })
+    );
+    expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
+    expect(requestRedraw).toHaveBeenCalled();
   });
 
   it("clamps ranges and rejects non-finite boundaries", () => {

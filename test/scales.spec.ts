@@ -101,31 +101,25 @@ describe("index-based time scales", () => {
       close: index
     }));
     const chart = createChart(data, "auto");
-    const indexedChart = chart as unknown as {
-      visibleIndexRange: { from: number; to: number };
-      indexBounds: { from: number; to: number };
-      zoomVisibleIndexRangeAtPixel(pixel: number, zoomFactor: number): void;
-    };
+    const fullRange = chart.getVisibleLogicalRange();
+    const targetSpan = (fullRange.to - fullRange.from) / 2;
+    chart.setVisibleIndexRange({
+      from: fullRange.to - targetSpan,
+      to: fullRange.to
+    });
+    const beforeUpdate = chart.getVisibleLogicalRange();
+    const span = beforeUpdate.to - beforeUpdate.from;
 
-    indexedChart.zoomVisibleIndexRangeAtPixel(chart.getDrawingSize().width, 2);
-    const span =
-      indexedChart.visibleIndexRange.to - indexedChart.visibleIndexRange.from;
-
-    expect(indexedChart.visibleIndexRange.to).toBeCloseTo(
-      indexedChart.indexBounds.to
-    );
+    expect(beforeUpdate.to).toBeCloseTo(fullRange.to);
 
     chart.updateData({
       time: start + 60 * 60_000,
       close: 60
     });
 
-    expect(
-      indexedChart.visibleIndexRange.to - indexedChart.visibleIndexRange.from
-    ).toBeCloseTo(span);
-    expect(indexedChart.visibleIndexRange.to).toBeCloseTo(
-      indexedChart.indexBounds.to
-    );
+    const afterUpdate = chart.getVisibleLogicalRange();
+    expect(afterUpdate.to - afterUpdate.from).toBeCloseTo(span);
+    expect(afterUpdate.to).toBeCloseTo(beforeUpdate.to + 1);
   });
 
   it("matches chart scale projection for ordinal time and price", () => {

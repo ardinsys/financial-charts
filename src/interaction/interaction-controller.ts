@@ -1,0 +1,287 @@
+import type { ChartCrosshairState } from "../chart/financial-chart";
+import type { ChartPointerEvent } from "../plugin/chart-plugin";
+import { bindEvent } from "../utils/dom";
+import type { Pane } from "../panes/pane";
+import type { ChartData } from "../chart/types";
+
+type CrosshairSource = "mouse" | "touch" | "programmatic";
+
+interface CrosshairModel {
+  state: ChartCrosshairState;
+  source: CrosshairSource;
+}
+
+interface InteractionHost {
+  hasData(): boolean;
+  createPointerEvent(
+    type: ChartPointerEvent["type"],
+    x: number,
+    y: number,
+    source?: PointerEvent | MouseEvent
+  ): ChartPointerEvent | undefined;
+  dispatchPointer(event: ChartPointerEvent): boolean;
+  resolveDataPoint(
+    x: number,
+    y: number,
+    scale: "data" | "visible"
+  ): ChartData | undefined;
+  resolveCrosshair(x: number, y: number): ChartCrosshairState | undefined;
+  panByPixels(dx: number): void;
+  zoomAtPixel(zoomFactor: number, pixel: number): void;
+  clearCrosshair(): void;
+  crosshairChanged(state: ChartCrosshairState): void;
+  click(event: PointerEvent, point: ChartData): void;
+  touchClick(event: TouchEvent, point: ChartData): void;
+}
+
+export class InteractionController {
+  private crosshair?: CrosshairModel;
+  private isPanning = false;
+  private pointerGestureConsumed = false;
+  private lastTouchDistance?: number;
+  private lastPointerPosition?: { x: number };
+  private isTouchCrosshair = false;
+  private touchCrosshairTimeout?: ReturnType<typeof setTimeout>;
+  private readonly disposers: Array<() => void> = [];
+  private disposed = false;
+
+  constructor(
+    private readonly host: InteractionHost,
+    private readonly container: HTMLElement,
+    private readonly canvas: HTMLCanvasElement
+  ) {
+    this.disposers.push(
+      bindEvent(canvas, "pointerdown", this.onPointerDown),
+      bindEvent(canvas, "pointerup", this.onPointerUp),
+      bindEvent(canvas, "mousemove", this.onMouseMove),
+      bindEvent(canvas, "wheel", this.onWheel, { passive: false }),
+      bindEvent(canvas, "touchstart", this.onTouchStart, { passive: false }),
+      bindEvent(canvas, "touchend", this.onTouchEnd, { passive: false }),
+      bindEvent(canvas, "touchmove", this.onTouchMove, { passive: false }),
+      bindEvent(canvas, "contextmenu", (event) => event.preventDefault()),
+      bindEvent(canvas, "pointerleave", this.onPointerLeave)
+    );
+  }
+
+  getCrosshairState(): ChartCrosshairState | undefined {
+    return this.crosshair?.state;
+  }
+
+  getCrosshairTime(): number | undefined {
+    return this.crosshair?.state.time;
+  }
+
+  setProgrammaticCrosshair(state: ChartCrosshairState): void {
+    this.crosshair = { state, source: "programmatic" };
+  }
+
+  clearCrosshair(): boolean {
+    const hadCrosshair = this.crosshair !== undefined;
+    this.crosshair = undefined;
+    return hadCrosshair;
+  }
+
+  shouldDrawCrosshair(): boolean {
+    return (
+      this.crosshair !== undefined &&
+      (this.crosshair.source !== "touch" || this.isTouchCrosshair)
+    );
+  }
+
+  replacePane(removed: Pane | undefined, replacement: Pane): void {
+    if (!removed || this.crosshair?.state.pane !== removed) return;
+    this.crosshair = {
+      ...this.crosshair,
+      state: { ...this.crosshair.state, pane: replacement }
+    };
+  }
+
+  reset(): void {
+    this.crosshair = undefined;
+    this.resetGestureState();
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.resetGestureState();
+    for (const dispose of this.disposers.splice(0)) dispose();
+  }
+
+  private onPointerDown = (event: PointerEvent) => {
+    if (event.pointerType === "touch" || event.button !== 0) return;
+    const { x, y } = this.getCanvasPoint(event.clientX, event.clientY);
+    const pointerEvent = this.host.createPointerEvent("down", x, y, event);
+    this.pointerGestureConsumed = pointerEvent
+      ? this.host.dispatchPointer(pointerEvent)
+      : false;
+    this.lastPointerPosition = this.pointerGestureConsumed
+      ? undefined
+      : { x: event.clientX };
+  };
+
+  private onPointerUp = (event: PointerEvent) => {
+    if (event.pointerType === "touch" || event.button !== 0) return;
+    const { x, y } = this.getCanvasPoint(event.clientX, event.clientY);
+    const pointerEvent = this.host.createPointerEvent("up", x, y, event);
+    const consumed = pointerEvent
+      ? this.host.dispatchPointer(pointerEvent)
+      : false;
+
+    if (!this.isPanning && !this.pointerGestureConsumed && !consumed) {
+      const point = this.host.resolveDataPoint(x, y, "data");
+      if (point) this.host.click(event, point);
+    }
+    this.lastPointerPosition = undefined;
+    this.pointerGestureConsumed = false;
+    this.isPanning = false;
+  };
+
+  private onMouseMove = (event: MouseEvent) => {
+    if (!this.hasData()) return;
+    if (this.lastPointerPosition) {
+      this.isPanning = true;
+      this.host.panByPixels(event.clientX - this.lastPointerPosition.x);
+      this.lastPointerPosition = { x: event.clientX };
+    } else {
+      this.isPanning = false;
+    }
+    const { x, y } = this.getCanvasPoint(event.clientX, event.clientY);
+    this.moveCrosshair(x, y, "mouse");
+  };
+
+  private onWheel = (event: WheelEvent) => {
+    if (!this.hasData()) return;
+    event.preventDefault();
+    const zoomFactor = event.deltaY < 0 ? 1.1 : 0.9;
+    const offsetX = event.clientX - this.container.getBoundingClientRect().left;
+    this.host.zoomAtPixel(zoomFactor, offsetX);
+  };
+
+  private onTouchStart = (event: TouchEvent) => {
+    if (!this.hasData()) return;
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      this.lastPointerPosition = { x: touch.clientX };
+      const point = { x: touch.clientX, y: touch.clientY };
+      this.touchCrosshairTimeout = setTimeout(() => {
+        this.touchCrosshairTimeout = undefined;
+        this.isTouchCrosshair = !this.isTouchCrosshair;
+        if (this.isTouchCrosshair) {
+          const canvasPoint = this.getCanvasPoint(point.x, point.y);
+          this.moveCrosshair(canvasPoint.x, canvasPoint.y, "touch");
+        } else {
+          this.lastPointerPosition = undefined;
+          this.lastTouchDistance = undefined;
+          this.host.clearCrosshair();
+        }
+      }, 500);
+    } else if (event.touches.length === 2) {
+      this.lastTouchDistance = touchDistance(event.touches);
+    }
+  };
+
+  private onTouchEnd = (event: TouchEvent) => {
+    if (!this.isTouchCrosshair) {
+      this.lastPointerPosition = undefined;
+      this.lastTouchDistance = undefined;
+    }
+    if (this.touchCrosshairTimeout === undefined) return;
+
+    if (this.isTouchCrosshair && event.changedTouches.length === 1) {
+      const touch = event.changedTouches[0];
+      const { x, y } = this.getCanvasPoint(touch.clientX, touch.clientY);
+      const point = this.host.resolveDataPoint(x, y, "visible");
+      if (point) this.host.touchClick(event, point);
+    }
+    this.cancelTouchCrosshairTimeout();
+  };
+
+  private onTouchMove = (event: TouchEvent) => {
+    if (!this.hasData()) return;
+    this.cancelTouchCrosshairTimeout();
+
+    if (event.touches.length === 1 && this.lastPointerPosition) {
+      const touch = event.touches[0];
+      if (this.isTouchCrosshair) {
+        requestAnimationFrame(() => {
+          if (this.disposed) return;
+          const { x, y } = this.getCanvasPoint(touch.clientX, touch.clientY);
+          this.moveCrosshair(x, y, "touch");
+        });
+        return;
+      }
+      this.host.panByPixels(touch.clientX - this.lastPointerPosition.x);
+      this.lastPointerPosition = { x: touch.clientX };
+    } else if (event.touches.length === 2 && this.lastTouchDistance) {
+      if (this.isTouchCrosshair) return;
+      event.preventDefault();
+      const distance = touchDistance(event.touches);
+      const rect = this.canvas.getBoundingClientRect();
+      const offsetX =
+        (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left;
+      this.host.zoomAtPixel(distance / this.lastTouchDistance, offsetX);
+      this.lastTouchDistance = distance;
+    } else if (event.touches.length > 0) {
+      const touch = event.touches[0];
+      const { x, y } = this.getCanvasPoint(touch.clientX, touch.clientY);
+      this.moveCrosshair(x, y, "touch");
+    }
+  };
+
+  private onPointerLeave = (event: PointerEvent) => {
+    if (event.pointerType === "touch") return;
+    this.lastPointerPosition = undefined;
+    this.lastTouchDistance = undefined;
+    this.isPanning = false;
+    requestAnimationFrame(() => {
+      if (!this.disposed) this.host.clearCrosshair();
+    });
+  };
+
+  private moveCrosshair(x: number, y: number, source: "mouse" | "touch"): void {
+    const state = this.host.resolveCrosshair(x, y);
+    if (!state) return;
+    this.crosshair = { state, source };
+    const pointerEvent: ChartPointerEvent = {
+      type: "move",
+      x,
+      y: state.y,
+      time: state.time,
+      pane: state.pane,
+      dataPoint: state.dataPoint
+    };
+    this.host.dispatchPointer(pointerEvent);
+    this.host.crosshairChanged(state);
+  }
+
+  private hasData(): boolean {
+    return this.host.hasData();
+  }
+
+  private getCanvasPoint(clientX: number, clientY: number) {
+    const rect = this.canvas.getBoundingClientRect();
+    return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  private cancelTouchCrosshairTimeout(): void {
+    if (this.touchCrosshairTimeout === undefined) return;
+    clearTimeout(this.touchCrosshairTimeout);
+    this.touchCrosshairTimeout = undefined;
+  }
+
+  private resetGestureState(): void {
+    this.cancelTouchCrosshairTimeout();
+    this.isPanning = false;
+    this.pointerGestureConsumed = false;
+    this.lastTouchDistance = undefined;
+    this.lastPointerPosition = undefined;
+    this.isTouchCrosshair = false;
+  }
+}
+
+function touchDistance(touches: TouchList): number {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}

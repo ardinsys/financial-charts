@@ -63,6 +63,7 @@ price scale and Y-axis region.
 | Extension contract | `ChartPlugin`, `ChartContext` | Attachment-scoped services and optional lifecycle/render callbacks |
 | Indicator behavior | `Indicator`, `PaneledIndicator` | Indicator state, labels, drawing, and optional pane-specific scale/container behavior |
 | Pane layout | `PaneLayout`, `Pane` | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales |
+| Browser interaction | `InteractionController` | Listener lifetime, gesture state, pointer normalization, and crosshair source/state |
 | Render ordering | `RenderPipeline` plus `FinancialChart` scheduler | Ordered render stages and animation-frame layer coalescing |
 | DOM chrome | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
 | Public events | `EventEmitter` and `ChartEventMap` | Application-facing chart, indicator, drawing, options, and state events |
@@ -205,14 +206,27 @@ coordinates canvas resizing and redraw after layout changes.
 
 ## Interaction
 
-Pointer, mouse, touch, and wheel handlers translate browser input into chart
-operations. Panning and zooming mutate the fractional logical range. Once the
-range is clamped, the chart recalculates the visible scale, synchronizes pane time
-scales and the main price scale, notifies extensions, and invalidates view layers.
+`InteractionController` owns browser listeners, mouse and touch gesture state,
+touch timers, and the current crosshair model. It translates input into semantic
+operations supplied by `FinancialChart`; it does not reach into chart model
+fields.
+
+```text
+browser event
+  -> InteractionController normalizes coordinates and gesture state
+  -> FinancialChart resolves data/panes or applies a view command
+  -> normal change commit notifies extensions and invalidates render layers
+```
+
+Panning and zooming mutate the fractional logical range through the same chart
+commands used by other callers. Once the range is clamped, the chart recalculates
+the visible scale, synchronizes pane time scales and the main price scale,
+notifies extensions, and invalidates view layers.
 
 Interactive crosshair state is derived from the closest stored data point and the
-pane under the pointer. Programmatic crosshair methods use the same projection
-state but do not represent an active pointer gesture.
+pane under the pointer. Its source is explicit: mouse, touch, or programmatic.
+Programmatic crosshair methods write the same model and use the same projection
+and rendering state, while remaining independent of active gesture state.
 
 ## Rendering
 
@@ -264,13 +278,15 @@ state by reference.
 
 Disposal is idempotent. The current ownership order is:
 
-1. Mark the chart disposed and stop active pane resizing.
-2. Remove browser event listeners.
+1. Mark the chart disposed.
+2. Dispose interaction listeners, timers, and gesture state while keeping the
+   final crosshair snapshot readable, then remove the chart's remaining browser
+   listeners.
 3. Ask `ExtensionHost` to abort attachment scopes and detach indicators, then
    plugins. Registry snapshots remain readable during detachment so a plugin can
    persist the final chart state.
 4. Clear extension collections and annotations, then dispose pane associations,
-   dividers, and resize listeners.
+   dividers, active pane resizing, and resize listeners.
 5. Remove public event listeners and disconnect resize observation.
 6. Destroy canvases, overlay DOM, and the chart container.
 

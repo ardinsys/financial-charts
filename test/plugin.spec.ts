@@ -8,8 +8,7 @@ import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import type {
   ChartContext,
-  ChartPlugin,
-  ChartPointerEvent
+  ChartPlugin
 } from "../src/plugin/chart-plugin";
 
 const charts: FinancialChart[] = [];
@@ -155,12 +154,13 @@ describe("plugin lifecycle", () => {
     chart.setData(data);
     chart.requestRedraw("drawings", true);
 
-    const pointerChart = chart as unknown as {
-      isTouchCapable: boolean;
-      pointerMove(event: { x: number; y: number }): void;
-    };
-    pointerChart.isTouchCapable = false;
-    pointerChart.pointerMove({ x: 360, y: 120 });
+    chart.getContext("crosshair").canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        clientX: 360,
+        clientY: 120,
+        bubbles: true
+      })
+    );
 
     expect(plugin.attach).toHaveBeenCalledOnce();
     expect(plugin.onData).toHaveBeenCalledWith(data);
@@ -370,19 +370,19 @@ describe("plugin lifecycle", () => {
       "plugin-2"
     ]);
 
-    const event: ChartPointerEvent = {
-      type: "down",
-      x: 100,
-      y: 100,
-      time: data[0].time,
-      pane: chart.getMainPane(),
-      dataPoint: data[0]
-    };
-    const dispatch = chart as unknown as {
-      notifyExtensionsPointer(event: ChartPointerEvent): boolean;
-    };
+    const canvas = chart.getContext("crosshair").canvas;
+    const pointerDown = () =>
+      canvas.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          clientX: 100,
+          clientY: 100,
+          pointerType: "mouse",
+          button: 0,
+          bubbles: true
+        })
+      );
 
-    expect(dispatch.notifyExtensionsPointer(event)).toBe(false);
+    pointerDown();
     expect(order).toEqual([
       "plugin-2",
       "plugin-1",
@@ -393,7 +393,7 @@ describe("plugin lifecycle", () => {
 
     order.length = 0;
     consumeTopPlugin = true;
-    expect(dispatch.notifyExtensionsPointer(event)).toBe(true);
+    pointerDown();
     expect(order).toEqual(["plugin-2"]);
   });
 
@@ -690,13 +690,6 @@ describe("plugin lifecycle", () => {
         attachedContext = ctx;
       }
     };
-    const internals = chart as unknown as {
-      crosshairDataPoint: ChartData | null;
-      isProgrammaticCrosshair: boolean;
-      pointerTime: number;
-      pointerY: number;
-    };
-
     chart.setData(data);
     chart.addPlugin(plugin);
 
@@ -711,17 +704,12 @@ describe("plugin lifecycle", () => {
         pane: chart.getMainPane()
       })
     );
-    expect(internals.crosshairDataPoint).toEqual(data[1]);
-    expect(internals.pointerTime).toBe(data[1].time);
-    expect(internals.pointerY).toBeGreaterThan(0);
-    expect(internals.isProgrammaticCrosshair).toBe(true);
+    expect(chart.getCrosshairState()).toEqual(state);
+    expect(chart.getCrosshairState()?.y).toBeGreaterThan(0);
 
     attachedContext?.clearCrosshair();
 
-    expect(internals.crosshairDataPoint).toBeNull();
-    expect(internals.pointerTime).toBe(-1);
-    expect(internals.pointerY).toBe(-1);
-    expect(internals.isProgrammaticCrosshair).toBe(false);
+    expect(chart.getCrosshairState()).toBeUndefined();
   });
 
   it("detaches indicator label listeners when indicators are removed", () => {
@@ -763,6 +751,15 @@ describe("plugin lifecycle", () => {
     chart.addIndicator(indicator);
     chart.addPlugin(plugin);
     chart.on("click", vi.fn());
+    const canvas = chart.getContext("crosshair").canvas;
+    canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        clientX: 360,
+        clientY: 120,
+        bubbles: true
+      })
+    );
+    const finalCrosshair = chart.getCrosshairState();
 
     expect(chart.listenerCount("click")).toBe(1);
 
@@ -770,9 +767,18 @@ describe("plugin lifecycle", () => {
     chart.dispose();
     charts.pop();
 
+    canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        clientX: 360,
+        clientY: 120,
+        bubbles: true
+      })
+    );
+
     expect(indicator.detachCalls).toBe(1);
     expect(plugin.detach).toHaveBeenCalledOnce();
     expect(chart.listenerCount("click")).toBe(0);
+    expect(chart.getCrosshairState()).toEqual(finalCrosshair);
     expect(() => chart.addIndicator(new DetachProbeIndicator())).toThrow(
       "Cannot add an indicator to a disposed chart."
     );

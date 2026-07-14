@@ -52,6 +52,7 @@ import {
 } from "../panes/pane-layout";
 import type { ChartPlugin, ChartPointerEvent } from "../plugin/chart-plugin";
 import { ExtensionHost } from "../plugin/extension-host";
+import { InteractionController } from "../interaction/interaction-controller";
 import { getDefaultControllerConstructors } from "./internal-default-controllers";
 import { cloneJSONStateValue, isPlainRecord } from "../utils/json-state";
 
@@ -313,7 +314,6 @@ export class FinancialChart extends EventEmitter {
   protected indicatorLabelContainer: HTMLElement;
   protected canvases: Map<string, HTMLCanvasElement> = new Map();
   protected contexts: Map<string, CanvasRenderingContext2D> = new Map();
-  protected isPanning: boolean = false;
   protected dataStore = new DataStore();
   private originalDataStore = new DataStore();
   protected options!: MutableResolvedChartOptions;
@@ -330,6 +330,7 @@ export class FinancialChart extends EventEmitter {
   private overlay!: ChartDOMOverlay;
   private readonly renderPipeline = new RenderPipeline();
   private readonly paneLayout: PaneLayout;
+  private readonly interactionController: InteractionController;
   private restoringState = false;
   private pendingRestoredVisibleRange?: TimeRange;
 
@@ -338,22 +339,8 @@ export class FinancialChart extends EventEmitter {
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
-  protected pointerTime = -1;
-  protected crosshairDataPoint: ChartData | null = null;
-  protected pointerY = -1;
-  protected pointerPane: Pane;
-  private isProgrammaticCrosshair = false;
-  private pointerGestureConsumed = false;
-
-  private lastTouchDistance?: number;
-  private lastPointerPosition?: { x: number };
   private resizeObserver: ResizeObserver;
   private readonly eventDisposers: Array<() => void> = [];
-
-  private isTouchCrosshair = false;
-  private isTouchCrosshairTimeout?: any;
-
-  private isTouchCapable = "ontouchstart" in window;
 
   private readonly timeTickGenerator = new TimeTickGenerator();
   private readonly controllerRedrawParts: readonly RenderLayer[] = [
@@ -931,7 +918,7 @@ export class FinancialChart extends EventEmitter {
     };
   }
 
-  private panVisibleIndexRange(dx: number) {
+  private panInteractionByPixels(dx: number): void {
     const pixelsPerBar = this.getPixelsPerBar();
     if (pixelsPerBar <= 0) return;
 
@@ -942,7 +929,7 @@ export class FinancialChart extends EventEmitter {
     });
   }
 
-  private zoomVisibleIndexRangeAtPixel(pixel: number, zoomFactor: number) {
+  private zoomInteractionAtPixel(zoomFactor: number, pixel: number): void {
     const width = Math.max(this.getDrawingSize().width, 1);
     const boundsSpan = this.getIndexBoundsSpan();
     const oldSpan = this.getVisibleIndexSpan();
@@ -1111,39 +1098,58 @@ export class FinancialChart extends EventEmitter {
     return paneIdsByIndicator;
   }
 
-  private notifyExtensionsPointer(event: ChartPointerEvent) {
+  private dispatchInteractionPointer(event: ChartPointerEvent): boolean {
     return this.extensionHost.notifyPointer(event);
   }
 
-  private createPluginPointerEvent(
+  private createInteractionPointerEvent(
     type: ChartPointerEvent["type"],
     x: number,
     y: number,
     source?: PointerEvent | MouseEvent
   ): ChartPointerEvent | undefined {
-    if (this.dataStore.length === 0) return undefined;
-
-    const pointerY = Math.min(
-      y,
-      this.container.offsetHeight - this.xLabelHeight
-    );
-    const rawPoint = this.visibleScale.pixelToPoint(
-      x,
-      pointerY,
-      this.getContext("main").canvas
-    );
-    const closestDataPoint = this.findClosestDataPoint(rawPoint);
-    if (!closestDataPoint) return undefined;
+    const state = this.resolveInteractionCrosshair(x, y);
+    if (!state) return undefined;
 
     return {
       type,
       x,
-      y: pointerY,
-      time: closestDataPoint.time,
-      pane: this.paneLayout.getPaneAtY(pointerY) ?? this.getMainPane(),
-      dataPoint: closestDataPoint,
+      y: state.y,
+      time: state.time,
+      pane: state.pane,
+      dataPoint: state.dataPoint,
       button: source?.button,
       buttons: source?.buttons
+    };
+  }
+
+  private resolveInteractionDataPoint(
+    x: number,
+    y: number,
+    scale: "data" | "visible"
+  ): ChartData | undefined {
+    if (this.dataStore.length === 0) return undefined;
+    const rawPoint = (
+      scale === "data" ? this.dataScale : this.visibleScale
+    ).pixelToPoint(x, y, this.getContext("main").canvas);
+    return this.findClosestDataPoint(rawPoint);
+  }
+
+  private resolveInteractionCrosshair(
+    x: number,
+    y: number
+  ): ChartCrosshairState | undefined {
+    const pointerY = Math.min(
+      y,
+      this.container.offsetHeight - this.xLabelHeight
+    );
+    const dataPoint = this.resolveInteractionDataPoint(x, pointerY, "visible");
+    if (!dataPoint) return undefined;
+    return {
+      time: dataPoint.time,
+      y: pointerY,
+      pane: this.paneLayout.getPaneAtY(pointerY) ?? this.getMainPane(),
+      dataPoint
     };
   }
 
@@ -1205,14 +1211,6 @@ export class FinancialChart extends EventEmitter {
     if (resizeCanvases) this.resizeCanvases();
     if (resizeIndicators) this.paneLayout.resizeIndicators();
     if (redraw) this.requestRedraw(this.allRedrawParts, immediate);
-  }
-
-  private clearCrosshairState() {
-    this.pointerTime = -1;
-    this.crosshairDataPoint = null;
-    this.pointerY = -1;
-    this.pointerPane = this.getMainPane();
-    this.isProgrammaticCrosshair = false;
   }
 
   private refreshIndicatorLabels(dataTime?: number) {
@@ -1350,7 +1348,6 @@ export class FinancialChart extends EventEmitter {
       onInteractiveResize: () =>
         this.applyPaneLayout({ redraw: true, immediate: true })
     });
-    this.pointerPane = this.paneLayout.getMainPane();
 
     this.overlay = this.domAdapter.createOverlay(this.container, {
       themeKey: this.options.theme.key,
@@ -1380,24 +1377,28 @@ export class FinancialChart extends EventEmitter {
     // Init and scale canveses
     this.types.forEach((type) => this.getOwnedCanvas(type));
     const topCanvas = this.getCanvas("crosshair");
-    this.eventDisposers.push(
-      bindEvent(topCanvas, "pointerdown", this.onMouseDown),
-      bindEvent(topCanvas, "pointerup", this.onMouseUp),
-      bindEvent(topCanvas, "mousemove", this.onMouseMove),
-      bindEvent(topCanvas, "wheel", this.onWheel, { passive: false }),
-      bindEvent(topCanvas, "touchstart", this.onTouchStart, { passive: false }),
-      bindEvent(topCanvas, "touchend", this.onTouchEnd, { passive: false }),
-      bindEvent(topCanvas, "touchmove", this.onTouchMove, { passive: false }),
-      bindEvent(topCanvas, "contextmenu", (e) => {
-        e.preventDefault();
-      }),
-      bindEvent(topCanvas, "pointerleave", (e) => {
-        if (e.pointerType === "touch") return;
-        this.lastPointerPosition = undefined;
-        this.lastTouchDistance = undefined;
-        this.isPanning = false;
-        requestAnimationFrame(() => this.clearCrosshair());
-      })
+    this.interactionController = new InteractionController(
+      {
+        hasData: () => this.dataStore.length > 0,
+        createPointerEvent: (type, x, y, source) =>
+          this.createInteractionPointerEvent(type, x, y, source),
+        dispatchPointer: (event) => this.dispatchInteractionPointer(event),
+        resolveDataPoint: (x, y, scale) =>
+          this.resolveInteractionDataPoint(x, y, scale),
+        resolveCrosshair: (x, y) => this.resolveInteractionCrosshair(x, y),
+        panByPixels: (dx) => this.panInteractionByPixels(dx),
+        zoomAtPixel: (factor, pixel) =>
+          this.zoomInteractionAtPixel(factor, pixel),
+        clearCrosshair: () => this.clearCrosshair(),
+        crosshairChanged: (state) => {
+          this.requestRedraw("crosshair");
+          this.emit("crosshair-change", state);
+        },
+        click: (event, point) => this.emit("click", { event, point }),
+        touchClick: (event, point) => this.emit("touch-click", { event, point })
+      },
+      this.container,
+      topCanvas
     );
 
     const createResizers = (): Resizer => {
@@ -1520,12 +1521,7 @@ export class FinancialChart extends EventEmitter {
   private resetViewInteractionState() {
     this.visibleIndexRange = { from: 0, to: 1 };
     this.indexBounds = { from: 0, to: 1 };
-    this.isPanning = false;
-    this.clearCrosshairState();
-    this.lastTouchDistance = undefined;
-    this.lastPointerPosition = undefined;
-    this.isTouchCrosshair = false;
-    this.isTouchCrosshairTimeout = undefined;
+    this.interactionController.reset();
   }
 
   private applyConfiguredTimeRange() {
@@ -1754,94 +1750,6 @@ export class FinancialChart extends EventEmitter {
     this.updateLocalization({ locale, localeValues: values });
   }
 
-  private onMouseDown = (event: PointerEvent) => {
-    if (event.pointerType === "touch") return;
-    if (event.button !== 0) return;
-    const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
-    const pointerEvent = this.createPluginPointerEvent(
-      "down",
-      event.clientX - rect.left,
-      event.clientY - rect.top,
-      event
-    );
-    this.pointerGestureConsumed = pointerEvent
-      ? this.notifyExtensionsPointer(pointerEvent)
-      : false;
-    this.lastPointerPosition = this.pointerGestureConsumed
-      ? undefined
-      : { x: event.clientX };
-  };
-
-  private onMouseUp = (e: PointerEvent) => {
-    if (e.pointerType === "touch") return;
-    if (e.button !== 0) return;
-    const topCanvas = this.getContext("crosshair").canvas;
-    const rect = topCanvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const pointerEvent = this.createPluginPointerEvent("up", x, y, e);
-    const consumed = pointerEvent
-      ? this.notifyExtensionsPointer(pointerEvent)
-      : false;
-
-    if (!this.isPanning && !this.pointerGestureConsumed && !consumed) {
-      const rawPoint = this.dataScale.pixelToPoint(
-        x,
-        y,
-        this.getContext("main").canvas
-      );
-      const closestDataPoint = this.findClosestDataPoint(rawPoint);
-      if (closestDataPoint) {
-        this.emit("click", { event: e, point: closestDataPoint });
-      }
-    }
-    this.lastPointerPosition = undefined;
-    this.pointerGestureConsumed = false;
-    this.isPanning = false;
-  };
-
-  /**
-   * Get the number of pixels per millisecond-sized bar slot.
-   *
-   * @returns pixels per millisecond-sized bar slot
-   */
-  private onMouseMove = (event: MouseEvent) => {
-    if (this.dataStore.length == 0) return;
-    if (this.lastPointerPosition) {
-      this.isPanning = true;
-      const dx = event.clientX - this.lastPointerPosition.x;
-      this.panVisibleIndexRange(dx);
-      this.lastPointerPosition = { x: event.clientX };
-    } else {
-      this.isPanning = false;
-    }
-    // requestAnimationFrame(() => {
-    const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
-    this.pointerMove({
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    });
-    // });
-  };
-
-  private adjustZoomLevel(zoomFactor: number, anchorPixel?: number) {
-    this.zoomVisibleIndexRangeAtPixel(
-      anchorPixel ?? this.getDrawingSize().width / 2,
-      zoomFactor
-    );
-  }
-
-  private onWheel = (event: WheelEvent) => {
-    if (this.dataStore.length == 0) return;
-    event.preventDefault();
-    const zoomFactor = event.deltaY < 0 ? 1.1 : 0.9; // adjust these values as needed
-
-    const offsetX = event.clientX - this.container.getBoundingClientRect().left;
-
-    this.adjustZoomLevel(zoomFactor, offsetX);
-  };
-
   private prepareControllerDraw() {
     const ctx = this.getContext("main");
     const sizes = this.getLogicalCanvas("main");
@@ -1908,109 +1816,6 @@ export class FinancialChart extends EventEmitter {
     }
     this.controller.draw();
   }
-
-  protected onZoom() {
-    this.redraw(["crosshair"]);
-  }
-
-  private onTouchStart = (event: TouchEvent) => {
-    if (this.dataStore.length == 0) return;
-
-    if (event.touches.length === 1) {
-      this.lastPointerPosition = {
-        x: event.touches[0].clientX
-      };
-      this.isTouchCrosshairTimeout = setTimeout(() => {
-        this.isTouchCrosshair = !this.isTouchCrosshair;
-        this.isTouchCrosshairTimeout = undefined;
-        if (this.isTouchCrosshair) {
-          const rect =
-            this.getContext("crosshair").canvas.getBoundingClientRect();
-          this.pointerMove({
-            x: event.touches[0].clientX - rect.left,
-            y: event.touches[0].clientY - rect.top
-          });
-        } else {
-          this.lastPointerPosition = undefined;
-          this.lastTouchDistance = undefined;
-          this.clearCrosshair();
-        }
-      }, 500);
-    } else if (event.touches.length === 2) {
-      const dx = event.touches[0].clientX - event.touches[1].clientX;
-      const dy = event.touches[0].clientY - event.touches[1].clientY;
-      this.lastTouchDistance = Math.sqrt(dx * dx + dy * dy);
-    }
-  };
-
-  private onTouchEnd = (e: TouchEvent) => {
-    if (!this.isTouchCrosshair) {
-      this.lastPointerPosition = undefined;
-      this.lastTouchDistance = undefined;
-    }
-    if (this.isTouchCrosshairTimeout != undefined) {
-      if (this.isTouchCrosshair && e.changedTouches.length === 1) {
-        const rect =
-          this.getContext("crosshair").canvas.getBoundingClientRect();
-        const point = this.findClosestDataPoint(
-          this.visibleScale.pixelToPoint(
-            e.changedTouches[0].clientX - rect.left,
-            e.changedTouches[0].clientY - rect.top,
-            this.getContext("main").canvas
-          )
-        );
-        if (!point) return;
-        this.emit("touch-click", { event: e, point });
-      }
-      clearTimeout(this.isTouchCrosshairTimeout);
-      this.isTouchCrosshairTimeout = undefined;
-    }
-  };
-
-  private onTouchMove = (event: TouchEvent) => {
-    if (this.dataStore.length == 0) return;
-    if (this.isTouchCrosshairTimeout) {
-      clearTimeout(this.isTouchCrosshairTimeout);
-      this.isTouchCrosshairTimeout = undefined;
-    }
-    if (event.touches.length === 1 && this.lastPointerPosition) {
-      if (this.isTouchCrosshair) {
-        requestAnimationFrame(() => {
-          const rect =
-            this.getContext("crosshair").canvas.getBoundingClientRect();
-
-          this.pointerMove({
-            x: event.touches[0].clientX - rect.left,
-            y: event.touches[0].clientY - rect.top
-          });
-        });
-        return;
-      }
-      const dx = event.touches[0].clientX - this.lastPointerPosition.x;
-      this.panVisibleIndexRange(dx);
-      this.lastPointerPosition = {
-        x: event.touches[0].clientX
-      };
-    } else if (event.touches.length === 2 && this.lastTouchDistance) {
-      if (this.isTouchCrosshair) return;
-      event.preventDefault();
-      const dx = event.touches[0].clientX - event.touches[1].clientX;
-      const dy = event.touches[0].clientY - event.touches[1].clientY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      const zoomFactor = distance / this.lastTouchDistance; // calculate zoom factor based on change in distance
-      const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
-      const offsetX =
-        (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left;
-      this.adjustZoomLevel(zoomFactor, offsetX);
-      this.lastTouchDistance = distance;
-    } else {
-      const rect = this.getContext("crosshair").canvas.getBoundingClientRect();
-      this.pointerMove({
-        x: event.touches[0].clientX - rect.left,
-        y: event.touches[0].clientY - rect.top
-      });
-    }
-  };
 
   private adjustCanvas(
     type: ChartOwnedCanvasLayer,
@@ -2370,9 +2175,7 @@ export class FinancialChart extends EventEmitter {
       redrawParts.add("crosshair");
     }
     if (options.label ?? true) {
-      indicator.refreshLabel(
-        this.pointerTime === -1 ? undefined : this.pointerTime
-      );
+      indicator.refreshLabel(this.interactionController.getCrosshairTime());
     }
     if (options.drawing ?? true) redrawParts.add("indicators");
     if (options.crosshair ?? true) redrawParts.add("crosshair");
@@ -2422,9 +2225,10 @@ export class FinancialChart extends EventEmitter {
               this.container.removeChild(indicator.getContainer());
             }
             const removedPane = this.paneLayout.removeIndicatorPane(indicator);
-            if (this.pointerPane === removedPane) {
-              this.pointerPane = this.getMainPane();
-            }
+            this.interactionController.replacePane(
+              removedPane,
+              this.getMainPane()
+            );
             this.applyPaneLayout();
           } else {
             this.visibleScale.removeModifier(indicator);
@@ -2481,20 +2285,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   public getCrosshairState(): ChartCrosshairState | undefined {
-    if (
-      this.pointerTime === -1 ||
-      this.pointerY === -1 ||
-      !this.crosshairDataPoint
-    ) {
-      return undefined;
-    }
-
-    return {
-      time: this.pointerTime,
-      y: this.pointerY,
-      pane: this.pointerPane,
-      dataPoint: this.crosshairDataPoint
-    };
+    return this.interactionController.getCrosshairState();
   }
 
   public setCrosshair(
@@ -2506,11 +2297,7 @@ export class FinancialChart extends EventEmitter {
       return undefined;
     }
 
-    this.crosshairDataPoint = state.dataPoint;
-    this.pointerTime = state.time;
-    this.pointerY = state.y;
-    this.pointerPane = state.pane;
-    this.isProgrammaticCrosshair = true;
+    this.interactionController.setProgrammaticCrosshair(state);
     this.requestRedraw("crosshair");
     this.emit("crosshair-change", state);
 
@@ -2526,44 +2313,9 @@ export class FinancialChart extends EventEmitter {
   }
 
   private clearCrosshairModel() {
-    const hadCrosshair = this.getCrosshairState() !== undefined;
-    this.clearCrosshairState();
+    const hadCrosshair = this.interactionController.clearCrosshair();
     this.refreshIndicatorLabels();
     return hadCrosshair;
-  }
-
-  protected pointerMove(e: { x: number; y: number }) {
-    if (this.isTouchCapable && !this.isTouchCrosshair) return;
-    const rawPoint = this.visibleScale.pixelToPoint(
-      e.x,
-      e.y,
-      this.getContext("main").canvas
-    );
-    const closestDataPoint = this.findClosestDataPoint(rawPoint);
-    if (!closestDataPoint) return;
-    this.crosshairDataPoint = closestDataPoint;
-    this.pointerTime = closestDataPoint.time;
-    this.pointerY = Math.min(
-      e.y,
-      this.container.offsetHeight - this.xLabelHeight
-    );
-    this.pointerPane =
-      this.paneLayout.getPaneAtY(this.pointerY) ?? this.getMainPane();
-    this.isProgrammaticCrosshair = false;
-    this.notifyExtensionsPointer({
-      type: "move",
-      x: e.x,
-      y: this.pointerY,
-      time: this.pointerTime,
-      pane: this.pointerPane,
-      dataPoint: closestDataPoint
-    });
-
-    this.requestRedraw("crosshair");
-    const state = this.getCrosshairState();
-    if (state) {
-      this.emit("crosshair-change", state);
-    }
   }
 
   private drawVolumeBars() {
@@ -2649,22 +2401,21 @@ export class FinancialChart extends EventEmitter {
     const sizes = this.getLogicalCanvas("crosshair");
     ctx.clearRect(0, 0, sizes.width, sizes.height);
 
-    if (this.pointerTime === -1) return;
-    if (this.pointerY === -1) return;
-    if (
-      this.isTouchCapable &&
-      !this.isTouchCrosshair &&
-      !this.isProgrammaticCrosshair
-    ) {
-      return;
-    }
+    const state = this.interactionController.getCrosshairState();
+    if (!state || !this.interactionController.shouldDrawCrosshair()) return;
+    const {
+      time: pointerTime,
+      y: pointerY,
+      pane: pointerPane,
+      dataPoint: crosshairDataPoint
+    } = state;
 
-    if (this.pointerY >= this.container.offsetHeight - this.xLabelHeight) {
+    if (pointerY >= this.container.offsetHeight - this.xLabelHeight) {
       this.getContext("crosshair").clearRect(0, 0, sizes.width, sizes.height);
       return;
     }
 
-    const x = this.getTimeScale().project(this.pointerTime, {
+    const x = this.getTimeScale().project(pointerTime, {
       canvas: this.getContext("main").canvas,
       barAlignment: this.getTimeAnchorAlignment()
     });
@@ -2674,10 +2425,10 @@ export class FinancialChart extends EventEmitter {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, this.container.offsetHeight - this.xLabelHeight);
-    ctx.moveTo(0, this.pointerY);
-    ctx.lineTo(this.getDrawingSize().width, this.pointerY);
+    ctx.moveTo(0, pointerY);
+    ctx.lineTo(this.getDrawingSize().width, pointerY);
     ctx.stroke();
-    const text = this.options.formatter.formatTooltipDate(this.pointerTime);
+    const text = this.options.formatter.formatTooltipDate(pointerTime);
     const textWidth = ctx.measureText(text).width;
     const textPadding = 10;
     const rectWidth = textWidth + textPadding * 2;
@@ -2701,20 +2452,19 @@ export class FinancialChart extends EventEmitter {
 
     const price = this.visibleScale.pixelToPoint(
       0,
-      this.pointerY,
+      pointerY,
       this.getContext("main").canvas
     ).price;
     const decimals = this.estimatePriceLabelDecimalPlaces(30);
     let priceText = "";
-    const pointerPane = this.pointerPane;
     const paneIndicator = this.paneLayout.getIndicatorForPane(pointerPane);
 
     if (pointerPane === this.getMainPane() || !paneIndicator) {
       priceText = this.options.formatter.formatTooltipPrice(price, decimals);
     } else {
       priceText = paneIndicator.getCrosshairValue(
-        this.pointerTime,
-        pointerPane.getRelativeY(this.pointerY)
+        pointerTime,
+        pointerPane.getRelativeY(pointerY)
       );
     }
     const priceRectWidth = this.getLogicalCanvas("y-label").width;
@@ -2724,7 +2474,7 @@ export class FinancialChart extends EventEmitter {
 
     ctx.rect(
       priceRectX,
-      Math.max(this.pointerY - textPadding / 2 - 6, 1 + textPadding / 2 - 6),
+      Math.max(pointerY - textPadding / 2 - 6, 1 + textPadding / 2 - 6),
       priceRectWidth,
       textPadding + 12
     );
@@ -2740,12 +2490,12 @@ export class FinancialChart extends EventEmitter {
     ctx.fillText(
       priceText,
       priceTextX,
-      Math.max(this.pointerY + textPadding / 2, textPadding + 6)
+      Math.max(pointerY + textPadding / 2, textPadding + 6)
     );
 
     ctx.font = `${this.options.theme.crosshair.infoLine.fontSize}px ${this.options.theme.crosshair.infoLine.font}, monospace`;
 
-    const p = this.crosshairDataPoint!;
+    const p = crosshairDataPoint;
 
     const labels =
       this.options.theme.crosshair.infoLine.labels[this.options.locale] ||
@@ -2793,7 +2543,7 @@ export class FinancialChart extends EventEmitter {
       ohlcTextX += valueWidth + spacing;
     }
 
-    this.refreshIndicatorLabels(this.pointerTime);
+    this.refreshIndicatorLabels(pointerTime);
   }
 
   /**
@@ -2803,6 +2553,7 @@ export class FinancialChart extends EventEmitter {
     if (this.disposed) return;
     this.disposed = true;
 
+    this.interactionController.dispose();
     for (const dispose of this.eventDisposers.splice(0)) dispose();
     let extensionError: unknown;
     try {

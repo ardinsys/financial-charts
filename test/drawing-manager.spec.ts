@@ -170,32 +170,30 @@ function dragChart(
   end: DrawingPoint,
   options: { button?: number } = {}
 ) {
-  const pointerChart = chart as unknown as {
-    onMouseDown(event: PointerEvent): void;
-    onMouseMove(event: MouseEvent): void;
-    onMouseUp(event: PointerEvent): void;
-  };
-
-  pointerChart.onMouseDown(
+  const canvas = chart.getContext("crosshair").canvas;
+  canvas.dispatchEvent(
     new PointerEvent("pointerdown", {
       clientX: start.x,
       clientY: start.y,
       pointerType: "mouse",
-      button: options.button ?? 0
+      button: options.button ?? 0,
+      bubbles: true
     })
   );
-  pointerChart.onMouseMove(
+  canvas.dispatchEvent(
     new MouseEvent("mousemove", {
       clientX: end.x,
-      clientY: end.y
+      clientY: end.y,
+      bubbles: true
     })
   );
-  pointerChart.onMouseUp(
+  canvas.dispatchEvent(
     new PointerEvent("pointerup", {
       clientX: end.x,
       clientY: end.y,
       pointerType: "mouse",
-      button: options.button ?? 0
+      button: options.button ?? 0,
+      bubbles: true
     })
   );
 }

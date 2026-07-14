@@ -169,15 +169,14 @@ describe("Pane", () => {
     expect(indicatorContainer.style.top).toBe("277.5px");
     expect(indicatorContainer.style.height).toBe("92.5px");
 
-    const pointerChart = chart as unknown as {
-      drawCrosshair(): void;
-      isTouchCapable: boolean;
-      pointerMove(event: { x: number; y: number }): void;
-    };
-
-    pointerChart.isTouchCapable = false;
-    pointerChart.pointerMove({ x: 360, y: 300 });
-    pointerChart.drawCrosshair();
+    chart.getContext("crosshair").canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        clientX: 360,
+        clientY: 300,
+        bubbles: true
+      })
+    );
+    chart.requestRedraw("crosshair", true);
 
     expect(indicator.crosshairCalls).toHaveLength(1);
     expect(indicator.crosshairCalls[0].time).toBe(start + 60_000);
