@@ -102,6 +102,11 @@ Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
   },
 });
 
+const canvasContexts = new WeakMap<
+  HTMLCanvasElement,
+  CanvasRenderingContext2D
+>();
+
 Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
   configurable: true,
   writable: true,
@@ -110,7 +115,10 @@ Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
     contextId: string
   ) {
     if (contextId !== "2d") return null;
-
-    return createCanvasContext(this) as CanvasRenderingContext2D;
+    const existing = canvasContexts.get(this);
+    if (existing) return existing;
+    const context = createCanvasContext(this) as CanvasRenderingContext2D;
+    canvasContexts.set(this, context);
+    return context;
   }),
 });

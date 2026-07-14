@@ -92,4 +92,70 @@ describe("RenderPipeline", () => {
     expect(beforeDraw).toHaveBeenCalledTimes(1);
     expect(afterDraw).toHaveBeenCalledTimes(1);
   });
+
+  it("coalesces repeated layer invalidations into one frame", async () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 11 }
+    ]);
+    chart.requestRedraw(["grid", "axes"], true);
+    const beforeDraw = vi.fn();
+    const grid = vi.fn();
+    const axes = vi.fn();
+    const afterDraw = vi.fn();
+    chart.onRenderStage("beforeDraw", beforeDraw);
+    chart.onRenderStage("grid", grid);
+    chart.onRenderStage("axes", axes);
+    chart.onRenderStage("afterDraw", afterDraw);
+
+    chart.requestRedraw("grid");
+    chart.requestRedraw("axes");
+    chart.requestRedraw("grid");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(beforeDraw).toHaveBeenCalledOnce();
+    expect(grid).toHaveBeenCalledOnce();
+    expect(axes).toHaveBeenCalledOnce();
+    expect(afterDraw).toHaveBeenCalledOnce();
+  });
+
+  it("schedules invalidations raised during rendering for the next frame", async () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 11 }
+    ]);
+    chart.requestRedraw("grid", true);
+    const beforeDraw = vi.fn();
+    const axes = vi.fn();
+    chart.onRenderStage("beforeDraw", beforeDraw);
+    chart.onRenderStage("grid", () => chart.requestRedraw("axes"));
+    chart.onRenderStage("axes", axes);
+
+    chart.requestRedraw("grid");
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(beforeDraw).toHaveBeenCalledTimes(2);
+    expect(axes).toHaveBeenCalledOnce();
+  });
+
+  it("cancels a pending frame when the chart is disposed", async () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 11 }
+    ]);
+    chart.requestRedraw("grid", true);
+    const grid = vi.fn();
+    chart.onRenderStage("grid", grid);
+
+    chart.requestRedraw("grid");
+    chart.dispose();
+    charts.pop();
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(grid).not.toHaveBeenCalled();
+  });
 });

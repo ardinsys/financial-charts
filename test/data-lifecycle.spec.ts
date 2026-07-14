@@ -56,6 +56,20 @@ describe("chart data lifecycle", () => {
     ]);
   });
 
+  it("updates visible derived state before rendering streamed data", () => {
+    const chart = createChart();
+    const start = Date.UTC(2024, 0, 1, 9);
+    chart.setData([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 12 },
+    ]);
+
+    chart.updateData({ time: start + 60_000, close: 100 });
+
+    expect(chart.getLastVisibleDataPoints().at(-1)?.close).toBe(100);
+    expect(chart.getVisibleScale().getYMax()).toBeGreaterThanOrEqual(100);
+  });
+
   it("clears data-dependent state and rendered chart layers immediately", () => {
     const chart = createChart();
     const start = Date.UTC(2024, 0, 1, 9);

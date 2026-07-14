@@ -52,6 +52,10 @@ export class RenderPipeline {
     }
   }
 
+  clear(): void {
+    for (const callbacks of this.callbacks.values()) callbacks.clear();
+  }
+
   private shouldRunStage(stage: RenderStage, layers: Set<RenderLayer>) {
     return stage === "beforeDraw" || stage === "afterDraw" || layers.has(stage);
   }

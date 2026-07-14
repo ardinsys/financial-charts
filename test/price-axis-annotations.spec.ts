@@ -66,11 +66,9 @@ function createChart() {
 }
 
 function getAnnotationContext(chart: FinancialChart) {
-  return (
-    chart as unknown as {
-      contexts: Map<string, CanvasRenderingContext2D>;
-    }
-  ).contexts.get("annotations")!;
+  const canvas = [...chart.getOutsideContainer().querySelectorAll("canvas")]
+    .find((candidate) => candidate.style.zIndex === "70");
+  return canvas!.getContext("2d")!;
 }
 
 describe("price axis annotations", () => {
@@ -330,13 +328,13 @@ describe("price axis annotations", () => {
 
   it("keeps its owned canvas between drawings and crosshair", () => {
     const { chart } = createChart();
-    const canvases = (
-      chart as unknown as { canvases: Map<string, HTMLCanvasElement> }
-    ).canvases;
+    const canvases = [
+      ...chart.getOutsideContainer().querySelectorAll("canvas")
+    ];
 
-    expect(canvases.get("drawings")?.style.zIndex).toBe("60");
-    expect(canvases.get("annotations")?.style.zIndex).toBe("70");
-    expect(canvases.get("crosshair")?.style.zIndex).toBe("100");
+    expect(canvases.some((canvas) => canvas.style.zIndex === "60")).toBe(true);
+    expect(canvases.some((canvas) => canvas.style.zIndex === "70")).toBe(true);
+    expect(canvases.some((canvas) => canvas.style.zIndex === "100")).toBe(true);
   });
 
   it("rejects ambiguous or invalid provider models", () => {

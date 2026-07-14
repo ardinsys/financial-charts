@@ -3,15 +3,17 @@ import { DefaultFormatter } from "../src/chart/formatter";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { AxisLabel, ChartData, TimeRange } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
+import { calculateYAxisLabels } from "../src/scales/ticks/price-ticks";
 
 type CharacterizedChart = {
   calculateStepSize(range: number, maxLabels: number): number;
-  calculateYAxisLabels(labelSpacing: number): AxisLabel[];
   estimatePriceLabelDecimalPlaces(labelSpacing: number): number;
   getContext: FinancialChart["getContext"];
+  getLogicalCanvas: FinancialChart["getLogicalCanvas"];
   getLastXGridCoords: FinancialChart["getLastXGridCoords"];
+  getTheme: FinancialChart["getTheme"];
   getVisibleScale: FinancialChart["getVisibleScale"];
-  drawXAxis: FinancialChart["drawXAxis"];
+  requestRedraw: FinancialChart["requestRedraw"];
 };
 
 const charts: FinancialChart[] = [];
@@ -62,7 +64,7 @@ function getFillTextLabels(chart: CharacterizedChart) {
     mockClear: () => void;
   };
   fillText.mockClear();
-  chart.drawXAxis();
+  chart.requestRedraw("axes", true);
   return fillText.mock.calls.map((call) => call[0]);
 }
 
@@ -96,7 +98,18 @@ describe("current price tick calculations", () => {
       { start, end: start + 240_000 }
     );
 
-    expect(roundedLabels(chart.calculateYAxisLabels(30))).toEqual([
+    const scale = chart.getVisibleScale();
+    expect(
+      roundedLabels(
+        calculateYAxisLabels({
+          yMin: scale.getYMin(),
+          yMax: scale.getYMax(),
+          canvasHeight: chart.getLogicalCanvas("y-label").height,
+          fontSize: chart.getTheme().yAxis.fontSize,
+          labelSpacing: 30
+        })
+      )
+    ).toEqual([
       { value: 8, position: 360.864198 },
       { value: 9, position: 315.185185 },
       { value: 10, position: 269.506173 },

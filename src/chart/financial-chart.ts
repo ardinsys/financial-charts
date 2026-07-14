@@ -1,4 +1,3 @@
-import { renderPriceAxisAnnotations } from "../annotations/price-axis-annotation";
 import { ChartController } from "../controllers/controller";
 import { DataStore } from "../data/data-store";
 import type { PaneledIndicator } from "../indicators/paneled-indicator";
@@ -15,11 +14,7 @@ import {
   DataScaleTimeOptions
 } from "../scales/data-scale-model";
 import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
-import {
-  calculateStepSize as calculatePriceStepSize,
-  calculateYAxisLabels as calculatePriceYAxisLabels
-} from "../scales/ticks/price-ticks";
-import { TimeTickGenerator } from "../scales/ticks/time-ticks";
+import { calculateStepSize as calculatePriceStepSize } from "../scales/ticks/price-ticks";
 import { DefaultFormatter, Formatter } from "./formatter";
 import {
   ChartTheme,
@@ -27,24 +22,17 @@ import {
   mergeThemes,
   type ResolvedChartTheme
 } from "./themes";
-import { ChartData, type ChartDataValueKey, TimeRange } from "./types";
+import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
-import { pixelRatio } from "../utils/screen";
-import {
-  bindEvent,
-  createCanvasLayer,
-  createPositionedContainer,
-  resizeCanvasLayer,
-  scaleCanvasContext
-} from "../utils/dom";
+import { createPositionedContainer } from "../utils/dom";
 import type { ChartDOMOverlay, ChartDOMAdapter } from "../ui/chart-dom-adapter";
 import { DefaultDOMAdapter } from "../ui/default-dom-adapter";
 import {
-  RenderCallback,
-  RenderLayer,
-  RenderPipeline,
-  RenderStage
+  type RenderCallback,
+  type RenderLayer,
+  type RenderStage
 } from "../render/render-pipeline";
+import { ChartRenderer } from "../render/chart-renderer";
 import { Pane } from "../panes/pane";
 import {
   PaneLayout,
@@ -57,13 +45,6 @@ import { getDefaultControllerConstructors } from "./internal-default-controllers
 import { cloneJSONStateValue, isPlainRecord } from "../utils/json-state";
 
 const logicalRangeEpsilon = 1e-9;
-const crosshairLabelIndex: Record<ChartDataValueKey, number> = {
-  open: 0,
-  high: 1,
-  low: 2,
-  close: 3,
-  volume: 4
-};
 
 type DeepReadonly<T> = T extends Function
   ? T
@@ -245,11 +226,6 @@ type MutableResolvedChartOptions = {
   -readonly [P in keyof ResolvedChartOptions]: ResolvedChartOptions[P];
 };
 
-type Resizer = {
-  resize: (force: boolean) => void;
-  ratioResize: () => void;
-};
-
 export type ChartCanvasLayer =
   | "main"
   | "crosshair"
@@ -257,8 +233,6 @@ export type ChartCanvasLayer =
   | "y-label"
   | "indicator"
   | "drawings";
-
-type ChartOwnedCanvasLayer = ChartCanvasLayer | "annotations";
 
 export type ChartRedrawPart = RenderLayer;
 export type { PaneHeightsInput } from "../panes/pane-layout";
@@ -295,15 +269,6 @@ interface ChartChange {
 }
 
 export class FinancialChart extends EventEmitter {
-  private readonly types: readonly ChartOwnedCanvasLayer[] = [
-    "main",
-    "crosshair",
-    "x-label",
-    "y-label",
-    "indicator",
-    "drawings",
-    "annotations"
-  ] as const;
   private readonly controllers = new Map<
     ControllerType,
     ControllerConstructor
@@ -312,8 +277,6 @@ export class FinancialChart extends EventEmitter {
   protected outsideContainer: HTMLElement;
   protected container: HTMLElement;
   protected indicatorLabelContainer: HTMLElement;
-  protected canvases: Map<string, HTMLCanvasElement> = new Map();
-  protected contexts: Map<string, CanvasRenderingContext2D> = new Map();
   protected dataStore = new DataStore();
   private originalDataStore = new DataStore();
   protected options!: MutableResolvedChartOptions;
@@ -325,13 +288,11 @@ export class FinancialChart extends EventEmitter {
   protected autoTimeRange = false;
   protected dataScale!: DataScaleModel;
   protected visibleScale: DataScaleModel;
-  private resizer!: Resizer;
   private domAdapter: ChartDOMAdapter;
   private overlay!: ChartDOMOverlay;
-  private readonly renderPipeline = new RenderPipeline();
+  private readonly renderer: ChartRenderer;
   private readonly paneLayout: PaneLayout;
   private readonly interactionController: InteractionController;
-  private restoringState = false;
   private pendingRestoredVisibleRange?: TimeRange;
 
   private readonly extensionHost: ExtensionHost;
@@ -339,10 +300,6 @@ export class FinancialChart extends EventEmitter {
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
-  private resizeObserver: ResizeObserver;
-  private readonly eventDisposers: Array<() => void> = [];
-
-  private readonly timeTickGenerator = new TimeTickGenerator();
   private readonly controllerRedrawParts: readonly RenderLayer[] = [
     "grid",
     "axes",
@@ -367,7 +324,6 @@ export class FinancialChart extends EventEmitter {
     "crosshair"
   ];
 
-  private lastXGridCoords: readonly number[] = Object.freeze([]);
 
   public registerController(controllerClass: ControllerConstructor) {
     const id = this.getRegistrationId(controllerClass);
@@ -634,7 +590,7 @@ export class FinancialChart extends EventEmitter {
     }
 
     let optionsEvent: ChartOptionsChangeEvent | undefined;
-    this.restoringState = true;
+    this.renderer.setPaused(true);
     this.paneLayout.setRestoredPaneIds(paneIdsByIndicator);
     try {
       for (const indicator of this.getAllIndicators()) {
@@ -674,7 +630,7 @@ export class FinancialChart extends EventEmitter {
       this.extensionHost.deliverCurrentState(this.getPlugins(), optionsEvent);
     } finally {
       this.paneLayout.setRestoredPaneIds();
-      this.restoringState = false;
+      this.renderer.setPaused(false);
       this.requestRedraw(this.allRedrawParts);
     }
 
@@ -1208,7 +1164,7 @@ export class FinancialChart extends EventEmitter {
       themeKey: this.options.theme.key
     });
 
-    if (resizeCanvases) this.resizeCanvases();
+    if (resizeCanvases && this.renderer) this.renderer.resizeCanvases();
     if (resizeIndicators) this.paneLayout.resizeIndicators();
     if (redraw) this.requestRedraw(this.allRedrawParts, immediate);
   }
@@ -1276,29 +1232,11 @@ export class FinancialChart extends EventEmitter {
     };
   }
 
-  private configureRenderPipeline() {
-    this.renderPipeline.addHook("beforeDraw", () => this.beforeDrawPlugins());
-    this.renderPipeline.addHook("grid", () => this.prepareControllerDraw());
-    this.renderPipeline.addHook("axes", () => this.drawControllerAxes());
-    this.renderPipeline.addHook("series", () => this.drawControllerSeries());
-    this.renderPipeline.addHook("indicators", () => this.drawIndicators());
-    this.renderPipeline.addHook("drawings", () => this.drawPlugins());
-    this.renderPipeline.addHook("annotations", () =>
-      this.drawPriceAxisAnnotations()
-    );
-    this.renderPipeline.addHook("crosshair", () => this.drawCrosshair());
-    this.renderPipeline.addHook("afterDraw", () => this.afterDrawPlugins());
-  }
-
   public onRenderStage(
     stage: RenderStage,
     callback: RenderCallback
   ): () => void {
-    return this.renderPipeline.addHook(stage, callback);
-  }
-
-  private redraw(layers: Iterable<RenderLayer>) {
-    this.renderPipeline.render(layers);
+    return this.renderer.onRenderStage(stage, callback);
   }
 
   public changeType(type: ControllerType) {
@@ -1372,10 +1310,56 @@ export class FinancialChart extends EventEmitter {
       start: 0,
       end: 0
     });
-    this.configureRenderPipeline();
     this.applyPaneLayout({ resizeCanvases: false, resizeIndicators: false });
-    // Init and scale canveses
-    this.types.forEach((type) => this.getOwnedCanvas(type));
+    this.renderer = new ChartRenderer(
+      this.container,
+      {
+        getOptions: () => this.options,
+        hasData: () => this.dataStore.length > 0,
+        getTimes: () => this.dataStore.times(),
+        getVisibleData: () => this.lastVisibleDataPoints,
+        getVisibleIndexRange: () => this.visibleIndexRange,
+        getTimeRange: () => this.timeRange,
+        getTimeScale: () => this.getTimeScale(),
+        getVisibleScale: () => this.visibleScale,
+        getTimeAnchorAlignment: () => this.getTimeAnchorAlignment(),
+        getPixelsPerBar: () => this.getPixelsPerBar(),
+        getController: () => this.controller,
+        getIndicators: () => this.getIndicators(),
+        getPaneledIndicators: () => this.getPaneledIndicators(),
+        getPanes: () => this.getPanes(),
+        getMainPane: () => this.getMainPane(),
+        getPaneIndicator: (pane) =>
+          this.paneLayout.getIndicatorForPane(pane),
+        getPriceAxisAnnotations: () =>
+          this.extensionHost.getPriceAxisAnnotations(),
+        getCrosshairState: () =>
+          this.interactionController.getCrosshairState(),
+        shouldDrawCrosshair: () =>
+          this.interactionController.shouldDrawCrosshair(),
+        refreshIndicatorLabels: (time) => this.refreshIndicatorLabels(time),
+        beforeDraw: () => this.beforeDrawPlugins(),
+        drawPlugins: () => this.drawPlugins(),
+        afterDraw: () => this.afterDrawPlugins()
+      },
+      {
+        getLayout: () => {
+          const region = this.getMainPane().getRegion();
+          const yAxisRegion = this.getMainPane().getYAxisRegion();
+          return {
+            plotWidth: region.width,
+            plotHeight: region.height,
+            paneLayoutHeight: this.getPaneLayoutHeight(),
+            yAxisWidth: yAxisRegion.width,
+            yAxisHeight: yAxisRegion.height,
+            fullWidth: this.container.offsetWidth,
+            fullHeight: this.container.offsetHeight,
+            xAxisHeight: this.xLabelHeight
+          };
+        },
+        onResize: () => this.handleRendererResize()
+      }
+    );
     const topCanvas = this.getCanvas("crosshair");
     this.interactionController = new InteractionController(
       {
@@ -1400,70 +1384,31 @@ export class FinancialChart extends EventEmitter {
       this.container,
       topCanvas
     );
+  }
 
-    const createResizers = (): Resizer => {
-      let alreadyResized = false;
-      let oldRatio = pixelRatio();
+  private handleRendererResize(): void {
+    this.applyPaneLayout();
+    this.indicatorLabelContainer.style.maxHeight =
+      this.getLogicalCanvas("main").height -
+      this.options.theme.crosshair.infoLine.fontSize -
+      30 +
+      "px";
 
-      const resizer = (force: boolean) => {
-        if (alreadyResized && !force) {
-          alreadyResized = false;
-          return;
-        }
-        this.applyPaneLayout();
-
-        this.indicatorLabelContainer.style.maxHeight =
-          this.getLogicalCanvas("main").height -
-          this.options.theme.crosshair.infoLine.fontSize -
-          30 +
-          "px";
-
-        if (this.dataStore.length > 0) {
-          // requestAnimationFrame(() => {
-          const preserveRightEdge = this.isPinnedToRightEdge();
-          const span = this.getVisibleIndexSpan();
-          if (this.autoTimeRange) {
-            this.updateAutoTimeRange(true);
-          }
-
-          const rangeChanged = this.refreshIndexBounds({
-            reset: span === this.getIndexBoundsSpan(),
-            preserveRightEdge,
-            span
-          });
-          if (rangeChanged) {
-            this.recalculateVisibleScale();
-          }
-          this.commitChange({
-            visibleRange: rangeChanged
-              ? this.getVisibleTimeRange()
-              : undefined,
-            redraw: this.allRedrawParts,
-            immediate: true
-          });
-        }
-      };
-
-      return {
-        resize: resizer,
-        ratioResize: () => {
-          const newRatio = pixelRatio();
-          if (oldRatio === newRatio) return;
-          oldRatio = newRatio;
-          resizer(true);
-          alreadyResized = true;
-        }
-      };
-    };
-
-    this.resizer = createResizers();
-
-    this.eventDisposers.push(
-      bindEvent(window, "resize", this.resizer.ratioResize)
-    );
-
-    this.resizeObserver = new ResizeObserver(() => this.resizer.resize(false));
-    this.resizeObserver.observe(this.container);
+    if (this.dataStore.length === 0) return;
+    const preserveRightEdge = this.isPinnedToRightEdge();
+    const span = this.getVisibleIndexSpan();
+    if (this.autoTimeRange) this.updateAutoTimeRange(true);
+    const rangeChanged = this.refreshIndexBounds({
+      reset: span === this.getIndexBoundsSpan(),
+      preserveRightEdge,
+      span
+    });
+    if (rangeChanged) this.recalculateVisibleScale();
+    this.commitChange({
+      visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
+      redraw: this.allRedrawParts,
+      immediate: true
+    });
   }
 
   private getDefaultLocaleValues(): LocaleValuesMap {
@@ -1750,197 +1695,12 @@ export class FinancialChart extends EventEmitter {
     this.updateLocalization({ locale, localeValues: values });
   }
 
-  private prepareControllerDraw() {
-    const ctx = this.getContext("main");
-    const sizes = this.getLogicalCanvas("main");
-    ctx.clearRect(0, 0, sizes.width, sizes.height);
-    ctx.fillStyle = this.options.theme.backgroundColor;
-    ctx.fillRect(0, 0, sizes.width, sizes.height);
-
-    if (this.dataStore.length === 0) return;
-    this.recalculateVisibleScale();
-    this.drawControllerGrid();
-  }
-
-  private drawControllerGrid() {
-    const mainCtx = this.getContext("main");
-    const mainSize = this.getLogicalCanvas("main");
-    const yAxisSize = this.getLogicalCanvas("y-label");
-    const yAxisValues = this.calculateYAxisLabels(30);
-
-    mainCtx.lineWidth = this.options.theme.grid.width;
-    mainCtx.strokeStyle = this.options.theme.grid.color;
-
-    for (const value of yAxisValues) {
-      const y = value.position;
-      if (y - this.options.theme.yAxis.fontSize < 0) continue;
-      if (y + this.options.theme.yAxis.fontSize > yAxisSize.height) continue;
-
-      mainCtx.beginPath();
-      mainCtx.moveTo(0, y);
-      mainCtx.lineTo(mainSize.width, y);
-      mainCtx.stroke();
-    }
-
-    const xAxisCtx = this.getContext("x-label");
-    xAxisCtx.font = `${this.options.theme.xAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
-    const xGridCoords: number[] = [];
-
-    for (const label of this.getXAxisLabels(xAxisCtx)) {
-      mainCtx.beginPath();
-      mainCtx.moveTo(label.x, 0);
-      mainCtx.lineTo(label.x, mainSize.height);
-      mainCtx.stroke();
-      xGridCoords.push(label.x);
-    }
-    this.lastXGridCoords = freezeSnapshot(xGridCoords);
-  }
-
-  private drawControllerAxes() {
-    if (this.dataStore.length === 0) {
-      for (const layer of ["x-label", "y-label"] as const) {
-        const ctx = this.getContext(layer);
-        const size = this.getLogicalCanvas(layer);
-        ctx.clearRect(0, 0, size.width, size.height);
-      }
-      return;
-    }
-    this.drawYAxis();
-    this.drawXAxis();
-  }
-
-  private drawControllerSeries() {
-    if (this.dataStore.length === 0) return;
-    if (this.options.volume) {
-      this.drawVolumeBars();
-    }
-    this.controller.draw();
-  }
-
-  private adjustCanvas(
-    type: ChartOwnedCanvasLayer,
-    canvas: HTMLCanvasElement
-  ) {
-    const devicePixelRatio = pixelRatio();
-    let width: number;
-    let height: number;
-    let right: number | undefined;
-    let bottom: number | undefined;
-
-    if (type === "y-label") {
-      const yAxisRegion = this.getMainPane().getYAxisRegion();
-      right = 0;
-      width = yAxisRegion.width;
-      height = yAxisRegion.height;
-    } else if (type === "annotations" || type === "drawings") {
-      width =
-        type === "annotations"
-          ? this.container.offsetWidth
-          : this.getMainPane().getRegion().width;
-      height = this.getPaneLayoutHeight();
-    } else if (type === "x-label" || type === "crosshair") {
-      width = this.container.offsetWidth;
-      height =
-        type === "x-label" ? this.xLabelHeight : this.container.offsetHeight;
-      if (type === "x-label") {
-        bottom = 0;
-      }
-    } else {
-      const region = this.getMainPane().getRegion();
-      width = region.width;
-      height = region.height;
-    }
-
-    resizeCanvasLayer(canvas, {
-      right,
-      bottom,
-      width,
-      height,
-      pixelRatio: devicePixelRatio,
-      context: this.contexts.get(type)
-    });
-  }
-
   protected getCanvas(type: ChartCanvasLayer): HTMLCanvasElement {
-    return this.getOwnedCanvas(type);
-  }
-
-  private getOwnedCanvas(type: ChartOwnedCanvasLayer): HTMLCanvasElement {
-    const canvas: HTMLCanvasElement =
-      this.canvases.get(type) || createCanvasLayer();
-
-    if (!this.canvases.has(type)) {
-      canvas.style.zIndex =
-        type === "crosshair"
-          ? "100"
-          : type === "drawings"
-            ? "60"
-            : type === "annotations"
-              ? "70"
-              : type === "indicator"
-                ? "50"
-                : "1";
-      this.container.appendChild(canvas);
-      this.canvases.set(type, canvas);
-    }
-
-    this.adjustCanvas(type, canvas);
-
-    if (type === "crosshair") {
-      canvas.style.touchAction = "pan-x";
-    }
-
-    return canvas;
-  }
-
-  protected font(): string {
-    return `12px monospace`;
-  }
-
-  private resizeCanvases() {
-    const types = this.types;
-    types.forEach((type) => {
-      const canvas = this.canvases.get(type);
-      if (!canvas) return;
-
-      this.adjustCanvas(type, canvas);
-    });
-  }
-
-  /**
-   * Convert logical pixels to physical pixels
-   *
-   * @param num number to convert
-   * @returns number in device pixels
-   */
-  protected p(num: number) {
-    return num * pixelRatio();
-  }
-
-  /**
-   * Convert physical pixels to logical pixels
-   *
-   * @param num number to convert
-   * @returns number in logical pixels
-   */
-  protected l(num: number) {
-    return num / pixelRatio();
+    return this.renderer.getCanvas(type);
   }
 
   getContext(type: ChartCanvasLayer): CanvasRenderingContext2D {
-    return this.getOwnedContext(type);
-  }
-
-  private getOwnedContext(
-    type: ChartOwnedCanvasLayer
-  ): CanvasRenderingContext2D {
-    if (!this.contexts.has(type)) {
-      const ctx = this.getOwnedCanvas(type).getContext("2d")!;
-      scaleCanvasContext(ctx);
-      this.contexts.set(type, ctx);
-    }
-
-    return this.contexts.get(type)!;
+    return this.renderer.getContext(type);
   }
 
   /**
@@ -1950,14 +1710,7 @@ export class FinancialChart extends EventEmitter {
    * @returns    the logical canvas size
    */
   getLogicalCanvas(type: ChartCanvasLayer) {
-    return this.getOwnedLogicalCanvas(type);
-  }
-
-  private getOwnedLogicalCanvas(type: ChartOwnedCanvasLayer) {
-    const ratio = pixelRatio();
-    const width = this.getOwnedContext(type).canvas.width / ratio;
-    const height = this.getOwnedContext(type).canvas.height / ratio;
-    return { width, height };
+    return this.renderer.getLogicalSize(type);
   }
 
   /**
@@ -1966,7 +1719,7 @@ export class FinancialChart extends EventEmitter {
    * @returns the logical size of the main canvas
    */
   getDrawingSize() {
-    return this.getLogicalCanvas("main");
+    return this.renderer.getDrawingSize();
   }
 
   /**
@@ -1975,7 +1728,7 @@ export class FinancialChart extends EventEmitter {
    * @returns the logical size of the full drawing area
    */
   getFullSize() {
-    return this.getLogicalCanvas("crosshair");
+    return this.renderer.getFullSize();
   }
 
   getFormatter() {
@@ -2122,9 +1875,7 @@ export class FinancialChart extends EventEmitter {
     }
 
     const rangeChanged = this.refreshIndexBounds({ preserveRightEdge, span });
-    if (rangeChanged) {
-      this.recalculateVisibleScale();
-    }
+    this.recalculateVisibleScale();
     this.commitChange({
       data: this.dataStore.snapshot(),
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
@@ -2144,7 +1895,7 @@ export class FinancialChart extends EventEmitter {
     this.indexBounds = { from: 0, to: 1, rightOffset: 0 };
     this.visibleIndexRange = { ...this.indexBounds };
     this.lastVisibleDataPoints = Object.freeze([]);
-    this.lastXGridCoords = Object.freeze([]);
+    this.renderer.resetDerivedState();
     this.dataScale = this.controller.createDataScale([], this.timeRange);
     this.visibleScale.clearModifiers();
     this.visibleScale.recalculate(
@@ -2245,6 +1996,7 @@ export class FinancialChart extends EventEmitter {
         release: () => indicator.releaseAttachment()
       });
     } finally {
+      if (this.dataStore.length > 0) this.recalculateVisibleScale();
       this.requestRedraw(this.allRedrawParts);
     }
 
@@ -2274,6 +2026,7 @@ export class FinancialChart extends EventEmitter {
     try {
       removed = this.extensionHost.removeIndicator(indicator);
     } finally {
+      if (this.dataStore.length > 0) this.recalculateVisibleScale();
       this.requestRedraw(this.allRedrawParts);
     }
     if (!removed) return false;
@@ -2318,234 +2071,6 @@ export class FinancialChart extends EventEmitter {
     return hadCrosshair;
   }
 
-  private drawVolumeBars() {
-    const ctx = this.getContext("main");
-    const spacing = 0.1;
-    const pixelsPerBar = this.getPixelsPerBar();
-    const visibleDataPoints = this.recalculateVisibleScale();
-    const candleSpacing = pixelsPerBar * spacing;
-    const candleWidth = pixelsPerBar - candleSpacing;
-
-    ctx.lineWidth = Math.min(1, candleWidth / 5);
-
-    const timeRange = this.getTimeRange();
-    const timeScale = this.getTimeScale();
-    const volumeScale = this.getVolumeScale();
-    const scaleOptions = {
-      canvas: ctx.canvas,
-      barAlignment: "edge" as const
-    };
-
-    for (let i = 0; i < visibleDataPoints.length; i++) {
-      const point = visibleDataPoints[i];
-      if (point.time < timeRange.start) continue;
-      if (point.time > timeRange.end) break;
-
-      const x = timeScale.project(point.time, scaleOptions);
-      const y = volumeScale.projectVolume(point.volume!, scaleOptions);
-
-      const volumeBarStartY = this.getDrawingSize().height - y;
-
-      ctx.beginPath();
-      ctx.fillStyle =
-        point.close! > point.open!
-          ? this.options.theme.volume.upColor
-          : this.options.theme.volume.downColor;
-      ctx.rect(
-        x + candleSpacing / 2,
-        volumeBarStartY, // This ensures bars grow upwards from the bottom
-        candleWidth,
-        y // Height of the bar
-      );
-      ctx.fill();
-    }
-  }
-
-  private drawIndicators() {
-    const ctx = this.getContext("indicator");
-    const sizes = this.getLogicalCanvas("indicator");
-
-    ctx.clearRect(0, 0, sizes.width, sizes.height);
-
-    if (this.dataStore.length === 0) {
-      for (const indicator of this.getPaneledIndicators()) {
-        indicator.clearDrawing();
-      }
-      return;
-    }
-
-    for (const indicator of this.getIndicators()) {
-      indicator.draw();
-    }
-    for (const indicator of this.getPaneledIndicators()) {
-      indicator.draw();
-    }
-  }
-
-  private drawPriceAxisAnnotations() {
-    const context = this.getOwnedContext("annotations");
-    const size = this.getOwnedLogicalCanvas("annotations");
-    renderPriceAxisAnnotations({
-      context,
-      width: size.width,
-      height: size.height,
-      panes: this.getPanes(),
-      annotations: this.extensionHost.getPriceAxisAnnotations(),
-      theme: this.options.theme,
-      formatter: this.options.formatter
-    });
-  }
-
-  private drawCrosshair(): void {
-    const ctx = this.getContext("crosshair");
-    const sizes = this.getLogicalCanvas("crosshair");
-    ctx.clearRect(0, 0, sizes.width, sizes.height);
-
-    const state = this.interactionController.getCrosshairState();
-    if (!state || !this.interactionController.shouldDrawCrosshair()) return;
-    const {
-      time: pointerTime,
-      y: pointerY,
-      pane: pointerPane,
-      dataPoint: crosshairDataPoint
-    } = state;
-
-    if (pointerY >= this.container.offsetHeight - this.xLabelHeight) {
-      this.getContext("crosshair").clearRect(0, 0, sizes.width, sizes.height);
-      return;
-    }
-
-    const x = this.getTimeScale().project(pointerTime, {
-      canvas: this.getContext("main").canvas,
-      barAlignment: this.getTimeAnchorAlignment()
-    });
-    ctx.strokeStyle = this.options.theme.crosshair.color;
-    ctx.lineWidth = this.options.theme.crosshair.width;
-    ctx.setLineDash(this.options.theme.crosshair.lineDash);
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, this.container.offsetHeight - this.xLabelHeight);
-    ctx.moveTo(0, pointerY);
-    ctx.lineTo(this.getDrawingSize().width, pointerY);
-    ctx.stroke();
-    const text = this.options.formatter.formatTooltipDate(pointerTime);
-    const textWidth = ctx.measureText(text).width;
-    const textPadding = 10;
-    const rectWidth = textWidth + textPadding * 2;
-    const maxRectX = this.getFullSize().width - rectWidth;
-    const rectX = Math.min(
-      Math.max(x - textWidth / 2 - textPadding, 0),
-      maxRectX
-    );
-    const textX = Math.min(
-      Math.max(x - textWidth / 2, textPadding),
-      maxRectX + textPadding
-    );
-
-    ctx.fillStyle = this.options.theme.crosshair.tooltip.backgroundColor;
-    ctx.rect(
-      rectX,
-      this.container.offsetHeight - this.xLabelHeight,
-      rectWidth,
-      textPadding * 2 + 12
-    );
-
-    const price = this.visibleScale.pixelToPoint(
-      0,
-      pointerY,
-      this.getContext("main").canvas
-    ).price;
-    const decimals = this.estimatePriceLabelDecimalPlaces(30);
-    let priceText = "";
-    const paneIndicator = this.paneLayout.getIndicatorForPane(pointerPane);
-
-    if (pointerPane === this.getMainPane() || !paneIndicator) {
-      priceText = this.options.formatter.formatTooltipPrice(price, decimals);
-    } else {
-      priceText = paneIndicator.getCrosshairValue(
-        pointerTime,
-        pointerPane.getRelativeY(pointerY)
-      );
-    }
-    const priceRectWidth = this.getLogicalCanvas("y-label").width;
-    const priceMaxRectX = this.l(ctx.canvas.width) - priceRectWidth;
-    const priceRectX = priceMaxRectX;
-    const priceTextX = priceMaxRectX + 10;
-
-    ctx.rect(
-      priceRectX,
-      Math.max(pointerY - textPadding / 2 - 6, 1 + textPadding / 2 - 6),
-      priceRectWidth,
-      textPadding + 12
-    );
-    ctx.fill();
-
-    ctx.font = `${this.options.theme.crosshair.tooltip.fontSize}px ${this.options.theme.crosshair.tooltip.font}, monospace`;
-    ctx.fillStyle = this.options.theme.crosshair.tooltip.color;
-    ctx.fillText(
-      text,
-      textX,
-      this.container.offsetHeight - this.xLabelHeight + textPadding * 2
-    );
-    ctx.fillText(
-      priceText,
-      priceTextX,
-      Math.max(pointerY + textPadding / 2, textPadding + 6)
-    );
-
-    ctx.font = `${this.options.theme.crosshair.infoLine.fontSize}px ${this.options.theme.crosshair.infoLine.font}, monospace`;
-
-    const p = crosshairDataPoint;
-
-    const labels =
-      this.options.theme.crosshair.infoLine.labels[this.options.locale] ||
-      this.options.theme.crosshair.infoLine.labels["*"];
-
-    let ohlcTextX = 10;
-    const spacing = 10;
-
-    for (const key of this.controller.getCrosshairValues()) {
-      if (key === "volume" && !this.options.volume) {
-        continue;
-      }
-      const price = p[key];
-      if (price == undefined) continue;
-      let ohlcText = this.options.formatter.formatTooltipPrice(price, decimals);
-      if (key === "volume") {
-        ohlcText = this.options.formatter.formatVolume(price, p.close ?? 1);
-      }
-
-      const label = labels[crosshairLabelIndex[key]];
-      const labelWidth = ctx.measureText(label).width;
-      const valueWidth = ctx.measureText(ohlcText).width;
-      if (ohlcTextX + labelWidth + valueWidth > this.getDrawingSize().width)
-        break;
-
-      ctx.fillStyle = this.options.theme.crosshair.infoLine.color;
-      ctx.fillText(
-        label,
-        ohlcTextX,
-        this.options.theme.crosshair.tooltip.fontSize + 10
-      );
-      ohlcTextX += labelWidth;
-
-      if (p.open != undefined && p.close != undefined) {
-        ctx.fillStyle =
-          p.open! > p.close!
-            ? this.options.theme.crosshair.infoLine.downColor
-            : this.options.theme.crosshair.infoLine.upColor;
-      }
-      ctx.fillText(
-        ohlcText,
-        ohlcTextX,
-        this.options.theme.crosshair.tooltip.fontSize + 10
-      );
-      ohlcTextX += valueWidth + spacing;
-    }
-
-    this.refreshIndicatorLabels(pointerTime);
-  }
-
   /**
    * Properly dispose the chart.
    */
@@ -2554,7 +2079,7 @@ export class FinancialChart extends EventEmitter {
     this.disposed = true;
 
     this.interactionController.dispose();
-    for (const dispose of this.eventDisposers.splice(0)) dispose();
+    this.renderer.stop();
     let extensionError: unknown;
     try {
       this.extensionHost.dispose();
@@ -2563,12 +2088,9 @@ export class FinancialChart extends EventEmitter {
     }
     this.paneLayout.dispose();
     this.removeAllListeners();
-    this.resizeObserver.unobserve(this.container);
-    this.resizeObserver.disconnect();
-    this.canvases.forEach((canvas) => canvas.remove());
+    this.renderer.dispose();
     this.overlay.destroy();
     this.container.remove();
-    this.canvases.clear();
     if (extensionError !== undefined) throw extensionError;
   }
 
@@ -2581,26 +2103,7 @@ export class FinancialChart extends EventEmitter {
    * @returns             number of decimal places needed
    */
   protected estimatePriceLabelDecimalPlaces(labelSpacing: number) {
-    const labels = this.calculateYAxisLabels(labelSpacing);
-    let stepSize = Infinity;
-
-    for (let i = 1; i < labels.length; i++) {
-      const step = Math.abs(labels[i].value - labels[i - 1].value);
-      if (step > 0) {
-        stepSize = Math.min(stepSize, step);
-      }
-    }
-
-    if (!Number.isFinite(stepSize)) return 0;
-
-    for (let decimals = 0; decimals <= 6; decimals++) {
-      const scaledStep = stepSize * 10 ** decimals;
-      if (Math.abs(Math.round(scaledStep) - scaledStep) < 1e-8) {
-        return decimals;
-      }
-    }
-
-    return 6;
+    return this.renderer.estimatePriceLabelDecimalPlaces(labelSpacing);
   }
 
   protected mapDataToStepSize(
@@ -2621,127 +2124,8 @@ export class FinancialChart extends EventEmitter {
     return isNewData;
   }
 
-  private calculateYAxisLabels(labelSpacing: number) {
-    return calculatePriceYAxisLabels({
-      yMin: this.visibleScale.getYMin(),
-      yMax: this.visibleScale.getYMax(),
-      canvasHeight: this.getLogicalCanvas("y-label").height,
-      fontSize: this.options.theme.yAxis.fontSize,
-      labelSpacing
-    });
-  }
-
   protected calculateStepSize(range: number, maxLabels: number) {
     return calculatePriceStepSize(range, maxLabels);
-  }
-
-  private getXAxisLabels(ctx: CanvasRenderingContext2D) {
-    const canvasWidth = ctx.canvas.width - this.p(this.yLabelWidth);
-    const logicalCanvasWidth = this.l(canvasWidth);
-    const padding = 20;
-    const targetTickCount = Math.max(2, Math.floor(logicalCanvasWidth / 90));
-    const labels = this.timeTickGenerator.generate({
-      times: this.dataStore.times(),
-      visibleRange: this.visibleIndexRange,
-      formatter: this.options.formatter,
-      targetTickCount
-    });
-
-    const drawnLabels: { start: number; end: number }[] = [];
-    const visibleLabels: Array<{
-      label: string;
-      x: number;
-      start: number;
-    }> = [];
-
-    labels.sort((a, b) => b.priority - a.priority);
-
-    labels.forEach((label) => {
-      const x = this.dataScale.getTimeScale().project(label.time, {
-        canvas: { width: canvasWidth, height: 0 },
-        barAlignment: this.getTimeAnchorAlignment()
-      });
-
-      const textWidth = ctx.measureText(label.label).width;
-      const labelPos = { start: x - textWidth / 2, end: x + textWidth / 2 };
-
-      const overlaps = drawnLabels.some(
-        (drawnLabel) =>
-          labelPos.start < drawnLabel.end + padding &&
-          labelPos.end > drawnLabel.start - padding
-      );
-
-      if (!overlaps && labelPos.end < logicalCanvasWidth) {
-        if (labelPos.start >= 0) {
-          visibleLabels.push({
-            label: label.label,
-            x,
-            start: labelPos.start
-          });
-        }
-
-        drawnLabels.push(labelPos);
-      }
-    });
-
-    return visibleLabels;
-  }
-
-  drawYAxis(): void {
-    const yAxisValues = this.calculateYAxisLabels(30);
-
-    const ctx = this.getContext("y-label");
-    const sizes = this.getLogicalCanvas("y-label");
-    ctx.fillStyle = this.options.theme.yAxis.backgroundColor;
-    ctx.fillRect(0, 0, sizes.width, sizes.height);
-
-    ctx.fillStyle = this.options.theme.yAxis.color;
-    ctx.font = `${this.options.theme.yAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
-
-    for (let i = 0; i < yAxisValues.length; i++) {
-      const value = yAxisValues[i];
-      const y = value.position;
-      if (y - this.options.theme.yAxis.fontSize < 0) continue;
-      if (y + this.options.theme.yAxis.fontSize > sizes.height) continue;
-      const text = this.options.formatter.formatPrice(value.value);
-      const textWidth = ctx.measureText(text).width;
-
-      ctx.fillText(
-        text,
-        (this.l(ctx.canvas.width) - textWidth) / 2 + textWidth,
-        y
-      );
-    }
-  }
-
-  drawXAxis(): void {
-    const ctx = this.getContext("x-label");
-    const sizes = this.getLogicalCanvas("x-label");
-
-    // Setting up the canvas
-    ctx.fillStyle = this.options.theme.xAxis.backgroundColor;
-    ctx.fillRect(0, 0, sizes.width, sizes.height);
-
-    // Drawing the axis line
-    ctx.strokeStyle = this.options.theme.xAxis.separatorColor;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(sizes.width, 0);
-    ctx.stroke();
-
-    // Setting text properties
-    ctx.fillStyle = this.options.theme.xAxis.color;
-    ctx.font = `${this.options.theme.xAxis.fontSize}px ${this.options.theme.xAxis.font}, monospace`;
-    ctx.textBaseline = "middle";
-
-    const labels = this.getXAxisLabels(ctx);
-    this.lastXGridCoords = freezeSnapshot(labels.map((label) => label.x));
-
-    for (const label of labels) {
-      ctx.fillText(label.label, label.start, sizes.height - 15);
-    }
   }
 
   private lastVisibleDataPoints: readonly ChartData[] = Object.freeze([]);
@@ -2780,60 +2164,14 @@ export class FinancialChart extends EventEmitter {
   }
 
   getLastXGridCoords(): readonly number[] {
-    return this.lastXGridCoords;
+    return this.renderer.getLastXGridCoords();
   }
-
-  private redrawScheduled = false;
-  private redrawParts = new Set<RenderLayer>();
 
   public requestRedraw(
     part: ChartRedrawPart | ReadonlyArray<ChartRedrawPart>,
     immediate = false
   ) {
-    this.addRedrawParts(part);
-    if (this.restoringState) return;
-
-    if (immediate) {
-      this.flushRedraw();
-      return;
-    }
-
-    if (this.redrawScheduled) {
-      // A redraw is already scheduled, the parts to redraw are accumulated
-      return;
-    }
-
-    this.redrawScheduled = true;
-
-    requestAnimationFrame(() => {
-      // Perform the redraw for the requested parts
-      this.flushRedraw();
-
-      // Reset for the next redraw cycle
-      this.redrawScheduled = false;
-
-      // If additional parts were requested for redraw while the current frame was being processed,
-      // They are already added to redrawParts, so we can immediately schedule another redraw if needed
-      if (this.redrawParts.size > 0) {
-        this.requestRedraw([...this.redrawParts]);
-      }
-    });
-  }
-
-  private addRedrawParts(
-    part: ChartRedrawPart | ReadonlyArray<ChartRedrawPart>
-  ) {
-    const parts = Array.isArray(part) ? part : [part];
-
-    for (const p of parts) {
-      this.redrawParts.add(p);
-    }
-  }
-
-  private flushRedraw() {
-    const layers = new Set(this.redrawParts);
-    this.redrawParts.clear();
-    this.redraw(layers);
+    this.renderer.requestRedraw(part, immediate);
   }
 }
 

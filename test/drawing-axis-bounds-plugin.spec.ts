@@ -77,11 +77,9 @@ function createChart() {
 }
 
 function getAnnotationContext(chart: FinancialChart) {
-  return (
-    chart as unknown as {
-      contexts: Map<string, CanvasRenderingContext2D>;
-    }
-  ).contexts.get("annotations")!;
+  const canvas = [...chart.getOutsideContainer().querySelectorAll("canvas")]
+    .find((candidate) => candidate.style.zIndex === "70");
+  return canvas!.getContext("2d")!;
 }
 
 describe("DrawingAxisBoundsPlugin", () => {

@@ -64,7 +64,7 @@ price scale and Y-axis region.
 | Indicator behavior | `Indicator`, `PaneledIndicator` | Indicator state, labels, drawing, and optional pane-specific scale/container behavior |
 | Pane layout | `PaneLayout`, `Pane` | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales |
 | Browser interaction | `InteractionController` | Listener lifetime, gesture state, pointer normalization, and crosshair source/state |
-| Render ordering | `RenderPipeline` plus `FinancialChart` scheduler | Ordered render stages and animation-frame layer coalescing |
+| Rendering | `ChartRenderer`, `RenderPipeline` | Canvas/context ownership, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
 | DOM chrome | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
 | Public events | `EventEmitter` and `ChartEventMap` | Application-facing chart, indicator, drawing, options, and state events |
 | Persistence | chart/indicator state helpers | Versioned JSON-safe chart, indicator, drawing, and contributor state |
@@ -230,10 +230,16 @@ and rendering state, while remaining independent of active gesture state.
 
 ## Rendering
 
-`requestRedraw()` accepts one layer or several layers. It adds them to a set, so
-duplicate invalidations in one frame are free. Unless an immediate redraw is
-requested, one animation frame flushes the accumulated set. Invalidations raised
-during a render schedule a following frame.
+`ChartRenderer` owns every chart canvas and context, logical sizing, device-pixel
+ratio changes, resize observation, built-in drawing stages, and frame lifetime.
+It reads model, pane, extension, and crosshair state through one render-model
+interface. Rendering does not repair or recalculate model state; chart commands
+make derived scales and visible-data caches current before invalidating layers.
+
+`requestRedraw()` delegates to the renderer. One or more layers are added to a
+set, so duplicate invalidations in one frame are free. Unless an immediate redraw
+is requested, one animation frame flushes the accumulated set. Invalidations
+raised during a render schedule a following frame.
 
 The `RenderPipeline` visits stages in this order:
 
@@ -254,7 +260,8 @@ non-empty render pass. Extensions register attachment-scoped stage hooks through
 `ChartContext.onRenderStage()`.
 
 Canvas backing-store sizes use the device pixel ratio, while chart calculations
-and extension-facing canvas sizes use logical pixels.
+and extension-facing canvas sizes use logical pixels. Resize observers and
+pending animation frames are canceled when rendering stops during chart disposal.
 
 ## State restoration
 
@@ -280,15 +287,15 @@ Disposal is idempotent. The current ownership order is:
 
 1. Mark the chart disposed.
 2. Dispose interaction listeners, timers, and gesture state while keeping the
-   final crosshair snapshot readable, then remove the chart's remaining browser
-   listeners.
+   final crosshair snapshot readable, then stop renderer resize observation and
+   pending frames.
 3. Ask `ExtensionHost` to abort attachment scopes and detach indicators, then
    plugins. Registry snapshots remain readable during detachment so a plugin can
    persist the final chart state.
 4. Clear extension collections and annotations, then dispose pane associations,
-   dividers, active pane resizing, and resize listeners.
-5. Remove public event listeners and disconnect resize observation.
-6. Destroy canvases, overlay DOM, and the chart container.
+   dividers, and active pane resizing.
+5. Remove public event listeners and dispose renderer canvases and hooks.
+6. Destroy overlay DOM and the chart container.
 
 New resources must belong to one of these lifetimes: chart, pane, extension
 attachment, or render frame. A resource without an explicit owner and release
