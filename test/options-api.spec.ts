@@ -231,6 +231,65 @@ describe("chart options API", () => {
     expect(onVisibleRangeChanged).not.toHaveBeenCalled();
   });
 
+  it("commits option, data, range, and redraw effects in one order", () => {
+    const chart = createChart();
+    const order: string[] = [];
+    const plugin: ChartPlugin = {
+      key: "change-order-probe",
+      attach: vi.fn(),
+      onOptionsChanged: () => order.push("extension-options"),
+      onData: () => order.push("data"),
+      onVisibleRangeChanged: () => order.push("range")
+    };
+    chart.addPlugin(plugin);
+    chart.on("options-change", () => order.push("public-options"));
+    const redraw = vi
+      .spyOn(chart, "requestRedraw")
+      .mockImplementation(() => order.push("redraw"));
+    order.length = 0;
+
+    chart.updateOptions({ stepSize: 120_000 });
+
+    expect(order).toEqual([
+      "extension-options",
+      "data",
+      "range",
+      "public-options",
+      "redraw"
+    ]);
+
+    redraw.mockRestore();
+  });
+
+  it("commits replacement data before its derived range and redraw", () => {
+    const chart = createChart();
+    const order: string[] = [];
+    const plugin: ChartPlugin = {
+      key: "data-change-order-probe",
+      attach: vi.fn(),
+      onData: () => order.push("data"),
+      onVisibleRangeChanged: () => order.push("range")
+    };
+    chart.addPlugin(plugin);
+    chart.setVisibleIndexRange({ from: 1, to: 3 });
+    const redraw = vi
+      .spyOn(chart, "requestRedraw")
+      .mockImplementation(() => order.push("redraw"));
+    order.length = 0;
+
+    const start = Date.UTC(2024, 0, 1, 9);
+    chart.setData(
+      Array.from({ length: 8 }, (_, index) => ({
+        time: start + index * 60_000,
+        close: 20 + index
+      }))
+    );
+
+    expect(order).toEqual(["data", "range", "redraw"]);
+
+    redraw.mockRestore();
+  });
+
   it("validates a patch before changing chart state", () => {
     const chart = createChart();
     const initial = chart.getOptions();

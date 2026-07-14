@@ -15,8 +15,8 @@ export interface ChartData {
 export type ChartDataValueKey = Exclude<keyof ChartData, "time">;
 
 export interface TimeRange {
-  start: number;
-  end: number;
+  readonly start: number;
+  readonly end: number;
 }
 
 export type AxisLabel = {

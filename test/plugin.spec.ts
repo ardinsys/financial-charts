@@ -7,6 +7,7 @@ import type { Drawing } from "../src/drawings";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import type {
+  ChartContext,
   ChartPlugin,
   ChartPointerEvent
 } from "../src/plugin/chart-plugin";
@@ -182,9 +183,12 @@ describe("plugin lifecycle", () => {
       onOptionsChanged: vi.fn(),
       onDrawingFinished: vi.fn()
     };
+    let pluginContext: ChartContext | undefined;
     const plugin: ChartPlugin = {
       key: "lifecycle-probe",
-      attach: vi.fn(),
+      attach: vi.fn((context) => {
+        pluginContext = context;
+      }),
       ...pluginHooks
     };
 
@@ -247,9 +251,19 @@ describe("plugin lifecycle", () => {
     const drawingEvent = {
       operation: "create"
     } as ChartEventMap["drawing-finished"];
-    chart.emit("drawing-finished", drawingEvent);
+    const publicDrawingFinished = vi.fn();
+    chart.on("drawing-finished", publicDrawingFinished);
+    pluginContext!.emit("drawing-finished", drawingEvent);
     expect(indicator.onDrawingFinished).toHaveBeenCalledWith(drawingEvent);
     expect(pluginHooks.onDrawingFinished).toHaveBeenCalledWith(drawingEvent);
+    expect(publicDrawingFinished).toHaveBeenCalledWith(drawingEvent);
+
+    indicator.onDrawingFinished.mockClear();
+    pluginHooks.onDrawingFinished.mockClear();
+    chart.emit("drawing-finished", drawingEvent);
+    expect(indicator.onDrawingFinished).not.toHaveBeenCalled();
+    expect(pluginHooks.onDrawingFinished).not.toHaveBeenCalled();
+    expect(publicDrawingFinished).toHaveBeenCalledTimes(2);
 
     chart.requestRedraw("indicators", true);
     expect(draw).toHaveBeenCalledOnce();

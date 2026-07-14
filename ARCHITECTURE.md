@@ -152,22 +152,31 @@ the event and stops dispatch.
 
 ### Current runtime notification order
 
-The notification paths are still coordinated by `FinancialChart` and are not yet
-centralized:
+Data, view, and option notification paths are coordinated by one change commit
+inside `FinancialChart`:
 
 | Trigger | Extension callbacks | Public event | Render effect |
 |---|---|---|---|
-| `setData` / `updateData` | Visible range when changed, then data | None | All dependent layers |
+| `setData` / `updateData` | Data, then visible range when changed | None | All dependent layers |
 | Visible-range setter or interaction | Visible range | None | View-dependent layers |
-| `updateOptions` | Range/data effects for remapping, then options | `options-change` before extension `onOptionsChanged` | Layers classified by changed keys |
+| `updateOptions` | Options, remapped data when changed, then visible range | `options-change` after extension delivery | Layers classified by changed keys |
 | Add indicator | Initial options, data, range | `indicator-add` after initial delivery | Indicator/all layers as required |
 | Remove indicator | Detach and release resources | `indicator-remove` after cleanup | Indicator/all layers as required |
-| Drawing completion | Drawing callback | `drawing-finished` before extension callback | Drawing-dependent layers |
+| Drawing completion | Drawing callback | `drawing-finished` after extension callback | Drawing-dependent layers |
 | State restore | Recreated indicators receive initial state; existing plugins receive one final refresh | `state-restored` after restoration | One final full redraw |
 
+Data, view, and option mutations produce one internal change description. Its
+commit path delivers extension callbacks, emits the public completion event,
+and requests rendering last. State restoration applies the same model mutation
+without committing intermediate effects, then performs its final plugin refresh
+and redraw.
+
 Public events are application observations. Direct lifecycle callbacks are the
-engine-to-extension contract. Internal state propagation should not be routed
-through the public emitter merely to reach engine-owned extensions.
+engine-to-extension contract. New internal state propagation should not be
+routed through the public emitter merely to reach engine-owned extensions.
+`ChartContext.emit()` marks an extension-originated event; drawing completion
+uses that path to deliver `onDrawingFinished()` before publishing the public
+event. Calling `chart.emit()` itself only publishes to public listeners.
 
 ## Panes and layout
 

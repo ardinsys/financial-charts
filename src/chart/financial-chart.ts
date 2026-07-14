@@ -306,10 +306,13 @@ type PaneResizeDrag = {
   disposers: Dispose[];
 };
 
-interface OptionsUpdateBehavior {
-  emit?: boolean;
-  notifyExtensions?: boolean;
-  redraw?: boolean;
+interface ChartChange {
+  data?: readonly ChartData[];
+  visibleRange?: TimeRange;
+  options?: ChartOptionsChangeEvent;
+  crosshairCleared?: boolean;
+  redraw?: ChartRedrawPart | ReadonlyArray<ChartRedrawPart>;
+  immediate?: boolean;
 }
 
 export class FinancialChart extends EventEmitter {
@@ -708,11 +711,7 @@ export class FinancialChart extends EventEmitter {
         this.removeIndicator(indicator, { emit: false });
       }
 
-      optionsEvent = this.applyOptionsUpdate(validatedState.core, {
-        emit: false,
-        notifyExtensions: false,
-        redraw: false
-      });
+      optionsEvent = this.applyOptionsUpdate(validatedState.core)?.options;
 
       if (this.dataStore.length > 0) {
         this.updateVisibleIndexRange(
@@ -940,8 +939,10 @@ export class FinancialChart extends EventEmitter {
     if (!changed) return false;
 
     this.recalculateVisibleScale();
-    this.notifyExtensionsVisibleRangeChanged();
-    this.requestRedraw(this.viewRedrawParts);
+    this.commitChange({
+      visibleRange: this.getVisibleTimeRange(),
+      redraw: this.viewRedrawParts
+    });
     return true;
   }
 
@@ -1141,20 +1142,6 @@ export class FinancialChart extends EventEmitter {
     return true;
   }
 
-  public emit<K extends keyof ChartEventMap>(event: K, data: ChartEventMap[K]) {
-    super.emit(event, data);
-
-    if (event === "drawing-finished") {
-      this.notifyExtensionsDrawingFinished(
-        data as ChartEventMap["drawing-finished"]
-      );
-    } else if (event === "options-change") {
-      this.notifyExtensionsOptionsChanged(
-        data as ChartEventMap["options-change"]
-      );
-    }
-  }
-
   private createChartContext(extension: ChartPlugin): ChartContext {
     const abortController = new AbortController();
     const { signal } = abortController;
@@ -1165,7 +1152,7 @@ export class FinancialChart extends EventEmitter {
       chart: this,
       domAdapter: this.domAdapter,
       signal,
-      emit: (event, data) => this.emit(event, data),
+      emit: (event, data) => this.emitFromExtension(event, data),
       getCanvasContext: (layer) => this.getContext(layer),
       getLogicalCanvas: (layer) => this.getLogicalCanvas(layer),
       getPanes: () => this.getPanes(),
@@ -1187,6 +1174,18 @@ export class FinancialChart extends EventEmitter {
       setCrosshair: (options) => this.setCrosshair(options),
       clearCrosshair: () => this.clearCrosshair()
     };
+  }
+
+  private emitFromExtension<K extends keyof ChartEventMap>(
+    event: K,
+    data: ChartEventMap[K]
+  ) {
+    if (event === "drawing-finished") {
+      this.notifyExtensionsDrawingFinished(
+        data as ChartEventMap["drawing-finished"]
+      );
+    }
+    super.emit(event, data);
   }
 
   private createExtensionScopedDisposer(
@@ -1305,8 +1304,7 @@ export class FinancialChart extends EventEmitter {
     });
   }
 
-  private notifyExtensionsVisibleRangeChanged() {
-    const range = this.getVisibleTimeRange();
+  private notifyExtensionsVisibleRangeChanged(range: TimeRange) {
     this.forEachLifecycleExtension((extension) => {
       extension.onVisibleRangeChanged?.(range);
     });
@@ -1326,6 +1324,34 @@ export class FinancialChart extends EventEmitter {
       if (!this.isExtensionAttached(extension)) return;
       extension.onOptionsChanged?.(event);
     });
+  }
+
+  private commitChange(change: ChartChange) {
+    if (change.options) {
+      this.notifyExtensionsOptionsChanged(change.options);
+    }
+    if (change.data) {
+      this.notifyExtensionsData(change.data);
+    }
+    if (change.visibleRange) {
+      this.notifyExtensionsVisibleRangeChanged(change.visibleRange);
+    }
+    if (change.options) {
+      super.emit("options-change", change.options);
+    }
+    if (change.crosshairCleared) {
+      super.emit("crosshair-clear", {});
+    }
+    const shouldRedraw = Array.isArray(change.redraw)
+      ? change.redraw.length > 0
+      : change.redraw !== undefined;
+    if (change.redraw && shouldRedraw) {
+      if (change.immediate) {
+        this.requestRedraw(change.redraw, true);
+      } else {
+        this.requestRedraw(change.redraw);
+      }
+    }
   }
 
   private notifyPluginsAfterStateRestore(event?: ChartOptionsChangeEvent) {
@@ -2026,10 +2052,14 @@ export class FinancialChart extends EventEmitter {
           });
           if (rangeChanged) {
             this.recalculateVisibleScale();
-            this.notifyExtensionsVisibleRangeChanged();
           }
-
-          this.requestRedraw(this.allRedrawParts, true);
+          this.commitChange({
+            visibleRange: rangeChanged
+              ? this.getVisibleTimeRange()
+              : undefined,
+            redraw: this.allRedrawParts,
+            immediate: true
+          });
         }
       };
 
@@ -2170,16 +2200,13 @@ export class FinancialChart extends EventEmitter {
 
   /** Applies an options patch in one reset, remap, and redraw cycle. */
   public updateOptions(update: ChartOptionsUpdate): void {
-    this.applyOptionsUpdate(update);
+    const change = this.applyOptionsUpdate(update);
+    if (change) this.commitChange(change);
   }
 
   private applyOptionsUpdate(
-    update: ChartOptionsUpdate,
-    behavior: OptionsUpdateBehavior = {}
-  ): ChartOptionsChangeEvent | undefined {
-    const emit = behavior.emit ?? true;
-    const notifyExtensions = behavior.notifyExtensions ?? emit;
-    const redraw = behavior.redraw ?? true;
+    update: ChartOptionsUpdate
+  ): ChartChange | undefined {
     const has = (key: ChartOptionKey) =>
       Object.prototype.hasOwnProperty.call(update, key);
 
@@ -2277,17 +2304,8 @@ export class FinancialChart extends EventEmitter {
       }
       this.applyConfiguredTimeRange();
       this.rebuildScales(true);
-      if (notifyExtensions && this.dataStore.length > 0) {
-        this.notifyExtensionsVisibleRangeChanged();
-        if (stepSizeChanged) {
-          this.notifyExtensionsData(this.dataStore.snapshot());
-        }
-      }
     } else if (typeChanged) {
       this.rebuildScales(false);
-      if (notifyExtensions && this.dataStore.length > 0) {
-        this.notifyExtensionsVisibleRangeChanged();
-      }
     }
 
     if (changed.has("theme")) this.applyThemeChrome(previousThemeKey);
@@ -2320,20 +2338,24 @@ export class FinancialChart extends EventEmitter {
       redrawParts.add("annotations");
     }
 
-    if (redraw && redrawParts.size > 0) {
-      this.requestRedraw([...redrawParts]);
-    }
     const event = {
       previous,
       current: this.optionsSnapshot,
       changedKeys: Object.freeze(changedKeys)
     } satisfies ChartOptionsChangeEvent;
-    if (emit) {
-      this.emit("options-change", event);
-    } else if (notifyExtensions) {
-      this.notifyExtensionsOptionsChanged(event);
-    }
-    return event;
+    const hasData = this.dataStore.length > 0;
+    return {
+      options: event,
+      data:
+        hasData && stepSizeChanged
+          ? this.dataStore.snapshot()
+          : undefined,
+      visibleRange:
+        hasData && (coreChanged || typeChanged)
+          ? this.getVisibleTimeRange()
+          : undefined,
+      redraw: [...redrawParts]
+    };
   }
 
   public updateTheme(theme: ChartTheme) {
@@ -2846,9 +2868,13 @@ export class FinancialChart extends EventEmitter {
     );
 
     if (this.dataStore.length === 0) {
-      this.resetEmptyDataState();
-      this.notifyExtensionsData(this.dataStore.snapshot());
-      this.requestRedraw(this.allRedrawParts, true);
+      const crosshairCleared = this.resetEmptyDataState();
+      this.commitChange({
+        data: this.dataStore.snapshot(),
+        crosshairCleared,
+        redraw: this.allRedrawParts,
+        immediate: true
+      });
       return;
     }
 
@@ -2870,11 +2896,13 @@ export class FinancialChart extends EventEmitter {
       this.pendingRestoredVisibleRange = undefined;
     }
     this.recalculateVisibleScale();
-    this.clearCrosshair();
-    if (rangeChanged) this.notifyExtensionsVisibleRangeChanged();
-    this.notifyExtensionsData(this.dataStore.snapshot());
-
-    this.requestRedraw(this.allRedrawParts);
+    const crosshairCleared = this.clearCrosshairModel();
+    this.commitChange({
+      data: this.dataStore.snapshot(),
+      visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
+      crosshairCleared,
+      redraw: this.allRedrawParts
+    });
   }
 
   /**
@@ -2911,17 +2939,19 @@ export class FinancialChart extends EventEmitter {
     const rangeChanged = this.refreshIndexBounds({ preserveRightEdge, span });
     if (rangeChanged) {
       this.recalculateVisibleScale();
-      this.notifyExtensionsVisibleRangeChanged();
     }
-    this.notifyExtensionsData(this.dataStore.snapshot());
-    this.requestRedraw(this.allRedrawParts);
+    this.commitChange({
+      data: this.dataStore.snapshot(),
+      visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
+      redraw: this.allRedrawParts
+    });
   }
 
   public clearData(): void {
     this.setData([]);
   }
 
-  private resetEmptyDataState(): void {
+  private resetEmptyDataState(): boolean {
     if (this.autoTimeRange) {
       this.timeRange = { start: 0, end: 0 };
     }
@@ -2939,7 +2969,7 @@ export class FinancialChart extends EventEmitter {
     );
     this.syncTimeScales();
     this.syncMainPanePriceScale();
-    this.clearCrosshair();
+    return this.clearCrosshairModel();
   }
 
   private recalcPaneledIndicators() {
@@ -3157,13 +3187,18 @@ export class FinancialChart extends EventEmitter {
   }
 
   public clearCrosshair(): void {
+    const crosshairCleared = this.clearCrosshairModel();
+    this.commitChange({
+      crosshairCleared,
+      redraw: "crosshair"
+    });
+  }
+
+  private clearCrosshairModel() {
     const hadCrosshair = this.getCrosshairState() !== undefined;
     this.clearCrosshairState();
     this.refreshIndicatorLabels();
-    this.requestRedraw("crosshair");
-    if (hadCrosshair) {
-      this.emit("crosshair-clear", {});
-    }
+    return hadCrosshair;
   }
 
   protected pointerMove(e: { x: number; y: number }) {
