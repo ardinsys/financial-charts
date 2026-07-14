@@ -8,7 +8,6 @@ export {
   type ChartOptions,
   type ChartOptionsChangeEvent,
   type ChartOptionsSnapshot,
-  type ChartOptionsState,
   type ChartOptionsUpdate,
   type ChartPaneState,
   type ChartRedrawPart,

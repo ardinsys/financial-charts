@@ -18,7 +18,7 @@ reference pages.
 | --- | --- |
 | `FinancialChart`, `CoreChartOptions` | [FinancialChart](/reference/chart) |
 | `ChartData`, `TimeRange` | [Data contracts](/reference/chart#data-contracts) |
-| `ChartOptions`, `ChartOptionsUpdate`, `ChartOptionsSnapshot`, `ChartOptionsState`, `ChartOptionsChangeEvent`, `ChartOptionKey`, `ChartLocalizationOptions` | [Options](/reference/chart#chartoptions) |
+| `ChartOptions`, `ChartOptionsUpdate`, `ChartOptionsSnapshot`, `ChartOptionsChangeEvent`, `ChartOptionKey`, `ChartLocalizationOptions` | [Options](/reference/chart#chartoptions) |
 | `LocaleValues`, `LocaleValuesMap` | [i18n](/guide/i18n) |
 | `ControllerID`, `ControllerType`, `ControllerConstructor` | [Controllers](/reference/engine#custom-controllers) |
 | `ChartRedrawPart`, `PaneHeightsInput` | [Lifecycle and panes](/reference/chart#lifecycle) |

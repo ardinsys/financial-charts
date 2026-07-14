@@ -196,6 +196,7 @@ describe("plugin lifecycle", () => {
     const initialData = indicator.onData.mock.calls[0][0];
     expect(initialOptions.changedKeys).toEqual([]);
     expect(initialOptions.previous).toBe(initialOptions.current);
+    expect(initialOptions.current).toBe(chart.getOptions());
     expect(initialOptions.current).toMatchObject({
       type: "line",
       timeRange: expect.any(Object),

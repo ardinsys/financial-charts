@@ -91,6 +91,7 @@ describe("chart options API", () => {
     const chart = createChart();
     const redraw = vi.spyOn(chart, "requestRedraw");
     const events: ChartOptionsChangeEvent[] = [];
+    const previousOptions = chart.getOptions();
     chart.on("options-change", (event) => events.push(event));
 
     chart.updateOptions({
@@ -108,6 +109,9 @@ describe("chart options API", () => {
       "theme",
       "locale"
     ]);
+    expect(events[0].previous).toBe(previousOptions);
+    expect(events[0].current).toBe(chart.getOptions());
+    expect(events[0].current.formatter).toBe(chart.getFormatter());
     expect(events[0].previous).toMatchObject({
       type: "line",
       volume: true,
@@ -125,10 +129,71 @@ describe("chart options API", () => {
     ).not.toBeNull();
   });
 
+  it("owns retained option values without retaining caller mutations", () => {
+    const timeRange = { start: 100, end: 400 };
+    const theme = {
+      key: "owned",
+      randomColors: ["#123456"],
+      line: { color: "#abcdef" }
+    };
+    const localeValues = {
+      "en-US": {
+        indicators: {
+          actions: {
+            show: "Show",
+            hide: "Hide",
+            settings: "Settings",
+            remove: "Remove"
+          }
+        },
+        common: {
+          sources: {
+            open: "open",
+            high: "high",
+            low: "low",
+            close: "closing",
+            volume: "volume"
+          }
+        }
+      }
+    };
+    const chart = new FinancialChart(createContainer(), {
+      type: "line",
+      timeRange,
+      stepSize: 60_000,
+      locale: "en-US",
+      theme,
+      localeValues
+    });
+    charts.push(chart);
+    const initial = chart.getOptions();
+
+    timeRange.start = -100;
+    theme.randomColors[0] = "#000000";
+    theme.line.color = "#000000";
+    localeValues["en-US"].common.sources.close = "mutated";
+
+    expect(initial.timeRange).toEqual({ start: 100, end: 400 });
+    expect(initial.theme.randomColors).toEqual(["#123456"]);
+    expect(initial.theme.line.color).toBe("#abcdef");
+    expect(initial.localeValues["en-US"].common.sources.close).toBe(
+      "closing"
+    );
+
+    const themeUpdate = { key: "updated", randomColors: ["#fedcba"] };
+    chart.updateOptions({ theme: themeUpdate });
+    const updated = chart.getOptions();
+    themeUpdate.randomColors[0] = "#000000";
+
+    expect(updated.theme.randomColors).toEqual(["#fedcba"]);
+    expect(Object.isFrozen(updated.timeRange)).toBe(true);
+    expect(Object.isFrozen(updated.theme.randomColors)).toBe(true);
+  });
+
   it("remaps data and resets the view only for core option changes", () => {
     const chart = createChart();
     const onData = vi.fn();
-    const onVisibleRangeChanged = vi.fn();
+    const onVisibleRangeChanged = vi.fn(() => chart.getOptions());
     const plugin: ChartPlugin = {
       key: "options-probe",
       attach: vi.fn(),
@@ -149,6 +214,10 @@ describe("chart options API", () => {
     });
     expect(onData).toHaveBeenCalledTimes(1);
     expect(onVisibleRangeChanged).toHaveBeenCalledTimes(1);
+    expect(onVisibleRangeChanged.mock.results[0].value).toBe(
+      chart.getOptions()
+    );
+    expect(chart.getOptions().stepSize).toBe(120_000);
 
     const visibleRange = chart.getVisibleLogicalRange();
     const redraw = vi.spyOn(chart, "requestRedraw");

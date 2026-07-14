@@ -191,26 +191,15 @@ export interface ChartOptionsSnapshot {
   readonly includeDefaultControllers: boolean;
   readonly locale: string;
   readonly timeZone?: string;
-  readonly theme: DeepReadonly<ResolvedChartTheme>;
-  readonly localeValues: DeepReadonly<LocaleValuesMap>;
-}
-
-export interface ChartOptionsState {
-  readonly type: ControllerType;
-  readonly timeRange: DeepReadonly<TimeRange> | "auto";
-  readonly stepSize: number;
-  readonly maxZoom: number;
-  readonly volume: boolean;
-  readonly theme: DeepReadonly<ResolvedChartTheme>;
-  readonly locale: string;
-  readonly timeZone?: string;
   readonly formatter: Formatter;
+  readonly theme: DeepReadonly<ResolvedChartTheme>;
+  readonly domAdapter: ChartDOMAdapter;
   readonly localeValues: DeepReadonly<LocaleValuesMap>;
 }
 
 export interface ChartOptionsChangeEvent {
-  readonly previous: ChartOptionsState;
-  readonly current: ChartOptionsState;
+  readonly previous: ChartOptionsSnapshot;
+  readonly current: ChartOptionsSnapshot;
   readonly changedKeys: readonly ChartOptionKey[];
 }
 
@@ -475,7 +464,7 @@ export class FinancialChart extends EventEmitter {
 
   private syncRegisteredControllers() {
     if (!this.options) return;
-    this.options.controllers = [...this.controllers.values()];
+    this.options.controllers = Object.freeze([...this.controllers.values()]);
     this.refreshOptionsSnapshot();
   }
 
@@ -532,40 +521,40 @@ export class FinancialChart extends EventEmitter {
 
     return {
       type,
-      timeRange,
+      timeRange:
+        timeRange === "auto" ? "auto" : Object.freeze({ ...timeRange }),
       stepSize: options.stepSize,
       maxZoom: options.maxZoom ?? 100,
       volume: options.volume ?? true,
-      controllers: [...this.controllers.values()],
+      controllers: Object.freeze([...this.controllers.values()]),
       includeDefaultControllers,
       locale,
       timeZone,
       formatter,
-      theme: mergeThemes(defaultLightTheme, options.theme),
+      theme: cloneAndFreeze(mergeThemes(defaultLightTheme, options.theme)),
       domAdapter: options.domAdapter ?? new DefaultDOMAdapter(),
-      localeValues: {
+      localeValues: cloneAndFreeze({
         ...this.getDefaultLocaleValues(),
         ...options.localeValues
-      }
+      })
     };
   }
 
   private refreshOptionsSnapshot() {
     this.optionsSnapshot = Object.freeze({
       type: this.options.type,
-      timeRange:
-        this.options.timeRange === "auto"
-          ? "auto"
-          : Object.freeze({ ...this.options.timeRange }),
+      timeRange: this.options.timeRange,
       stepSize: this.options.stepSize,
       maxZoom: this.options.maxZoom,
       volume: this.options.volume,
-      controllers: Object.freeze([...this.options.controllers]),
+      controllers: this.options.controllers,
       includeDefaultControllers: this.options.includeDefaultControllers,
       locale: this.options.locale,
       timeZone: this.options.timeZone,
-      theme: cloneAndFreeze(this.options.theme),
-      localeValues: cloneAndFreeze(this.options.localeValues)
+      formatter: this.options.formatter,
+      theme: this.options.theme,
+      domAdapter: this.options.domAdapter,
+      localeValues: this.options.localeValues
     });
   }
 
@@ -1293,7 +1282,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private createInitialOptionsChangeEvent(): ChartOptionsChangeEvent {
-    const current = this.createOptionsState();
+    const current = this.optionsSnapshot;
     return Object.freeze({
       previous: current,
       current,
@@ -2118,24 +2107,6 @@ export class FinancialChart extends EventEmitter {
     }
   }
 
-  private createOptionsState(): ChartOptionsState {
-    return Object.freeze({
-      type: this.options.type,
-      timeRange:
-        this.options.timeRange === "auto"
-          ? "auto"
-          : Object.freeze({ ...this.options.timeRange }),
-      stepSize: this.options.stepSize,
-      maxZoom: this.options.maxZoom,
-      volume: this.options.volume,
-      theme: cloneAndFreeze(this.options.theme),
-      locale: this.options.locale,
-      timeZone: this.options.timeZone,
-      formatter: this.options.formatter,
-      localeValues: cloneAndFreeze(this.options.localeValues)
-    });
-  }
-
   private resetViewInteractionState() {
     this.visibleIndexRange = { from: 0, to: 1 };
     this.indexBounds = { from: 0, to: 1 };
@@ -2228,14 +2199,14 @@ export class FinancialChart extends EventEmitter {
         ? formatter.getTimeZone?.() ?? this.options.timeZone
         : this.options.timeZone;
     const theme = has("theme")
-      ? mergeThemes(this.options.theme, update.theme)
+      ? cloneAndFreeze(mergeThemes(this.options.theme, update.theme))
       : this.options.theme;
     const localeValues = has("localeValues")
-      ? {
+      ? cloneAndFreeze({
           ...this.getDefaultLocaleValues(),
           ...this.options.localeValues,
           ...(update.localeValues ?? {})
-        }
+        })
       : this.options.localeValues;
 
     assertTimeRange(timeRange);
@@ -2260,7 +2231,7 @@ export class FinancialChart extends EventEmitter {
       .map(([key]) => key);
     if (changedKeys.length === 0) return;
 
-    const previous = this.createOptionsState();
+    const previous = this.optionsSnapshot;
     const changed = new Set(changedKeys);
     const typeChanged = changed.has("type");
     const stepSizeChanged = changed.has("stepSize");
@@ -2278,7 +2249,7 @@ export class FinancialChart extends EventEmitter {
     }
     this.options.type = type;
     this.options.timeRange =
-      timeRange === "auto" ? "auto" : { ...timeRange };
+      timeRange === "auto" ? "auto" : Object.freeze({ ...timeRange });
     this.options.stepSize = stepSize;
     this.options.maxZoom = maxZoom;
     this.options.volume = volume;
@@ -2287,6 +2258,7 @@ export class FinancialChart extends EventEmitter {
     this.options.timeZone = timeZone;
     this.options.formatter = formatter;
     this.options.localeValues = localeValues;
+    this.refreshOptionsSnapshot();
 
     if (typeChanged) {
       const ControllerClass = this.getControllerClass(type);
@@ -2348,13 +2320,12 @@ export class FinancialChart extends EventEmitter {
       redrawParts.add("annotations");
     }
 
-    this.refreshOptionsSnapshot();
     if (redraw && redrawParts.size > 0) {
       this.requestRedraw([...redrawParts]);
     }
     const event = {
       previous,
-      current: this.createOptionsState(),
+      current: this.optionsSnapshot,
       changedKeys: Object.freeze(changedKeys)
     } satisfies ChartOptionsChangeEvent;
     if (emit) {
@@ -3781,7 +3752,7 @@ export class FinancialChart extends EventEmitter {
   }
 }
 
-function cloneAndFreeze<T>(value: T): DeepReadonly<T> {
+function cloneAndFreeze<T>(value: T): T {
   const clone =
     typeof structuredClone === "function"
       ? structuredClone(value)
@@ -3789,15 +3760,15 @@ function cloneAndFreeze<T>(value: T): DeepReadonly<T> {
   return freezeDeep(clone);
 }
 
-function freezeDeep<T>(value: T): DeepReadonly<T> {
+function freezeDeep<T>(value: T): T {
   if (value == null || typeof value !== "object") {
-    return value as DeepReadonly<T>;
+    return value;
   }
 
   for (const nested of Object.values(value)) {
     freezeDeep(nested);
   }
-  return Object.freeze(value) as DeepReadonly<T>;
+  return Object.freeze(value);
 }
 
 function freezeSnapshot<T>(values: T[]): readonly T[] {

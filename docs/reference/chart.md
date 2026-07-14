@@ -274,12 +274,12 @@ entry.
 | `getIndicatorsByType(typeId)`                                       | Returns a readonly snapshot of every indicator with the stable type ID.                     |
 | `getCrosshairState()`                                               | Returns the current crosshair state, or `undefined` when hidden.                            |
 
-`getOptions()` returns controller, timeframe, theme, and localization data. Its
-nested time range, theme, locale, and controller collections are immutable and
-cannot mutate the chart. The same snapshot object is returned until an
-effective option or controller-registration change replaces it. Use
-`getFormatter()` for the active formatter; DOM adapters are available to
-extensions through `ChartContext`.
+`getOptions()` returns the complete resolved configuration. Its time range,
+theme, locale values, and controller collection are immutable owned values and
+cannot mutate the chart. Formatter and DOM adapter values are service references;
+the formatter is also available through `getFormatter()`, while extensions
+receive the adapter through `ChartContext`. The same snapshot object is returned
+until an effective option or controller-registration change replaces it.
 
 View setters enforce a minimum one-bar span and clamp to the chart's current
 index bounds. They synchronously update the visible price scale, notify

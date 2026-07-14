@@ -23,9 +23,9 @@ options. Use `registerController()` to add a controller class after
 construction; the DOM adapter cannot be replaced.
 
 The complete patch is validated before state changes. One effective patch emits
-one `options-change` event with frozen `previous` and `current` snapshots plus
-the ordered `changedKeys`. A patch with no effective change emits nothing and
-does not redraw.
+one `options-change` event with the previous and current `getOptions()` snapshots
+plus the frozen, ordered `changedKeys`. A patch with no effective change emits
+nothing and does not redraw.
 
 Option effects are deliberately narrow:
 

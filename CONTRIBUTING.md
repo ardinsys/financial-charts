@@ -2,6 +2,9 @@
 
 Please follow these simple rules when contributing.
 
+Read [ARCHITECTURE.md](./ARCHITECTURE.md) before changing core chart state,
+extension lifecycle, panes, interaction, or rendering.
+
 ## Node and Package manager
 
 The repo uses `pnpm` as its package manager. We use `fnm` to setup proper node version automatically.
