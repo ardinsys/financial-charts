@@ -62,7 +62,7 @@ price scale and Y-axis region.
 | Extension lifecycle | `ExtensionHost` | Plugin/indicator registries, attachment scopes, state delivery, pointer order, annotations, and detachment |
 | Extension contract | `ChartPlugin`, `ChartContext` | Attachment-scoped services and optional lifecycle/render callbacks |
 | Indicator behavior | `Indicator`, `PaneledIndicator` | Indicator state, labels, drawing, and optional pane-specific scale/container behavior |
-| Pane state | `Pane` plus `FinancialChart` layout code | Shared time scale, per-pane price scale, pane regions, heights, dividers, and resize interaction |
+| Pane layout | `PaneLayout`, `Pane` | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales |
 | Render ordering | `RenderPipeline` plus `FinancialChart` scheduler | Ordered render stages and animation-frame layer coalescing |
 | DOM chrome | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
 | Public events | `EventEmitter` and `ChartEventMap` | Application-facing chart, indicator, drawing, options, and state events |
@@ -111,8 +111,8 @@ adapter instances.
 `ExtensionHost` owns the plugin, overlay-indicator, and paneled-indicator frozen
 arrays used as their own public snapshots. Add and remove operations replace the
 affected array. The host rebuilds combined lifecycle and reverse pointer-order
-snapshots when extension membership changes. `FinancialChart` owns the pane
-snapshot until pane layout is extracted.
+snapshots when extension membership changes. `PaneLayout` owns the pane snapshot
+and replaces it when indicator panes are added or removed.
 
 This also defines dispatch behavior: a callback loop retains the membership
 snapshot from the start of the dispatch, checks that each extension is still
@@ -187,8 +187,9 @@ event. Calling `chart.emit()` itself only publishes to public listeners.
 ## Panes and layout
 
 Pane `0` is always the main pane. Every paneled indicator owns exactly one
-additional pane. The chart maintains both indicator-to-pane and pane-to-indicator
-maps so persistence and pointer lookup do not depend on array position.
+additional pane. `PaneLayout` maintains both indicator-to-pane and
+pane-to-indicator maps so persistence and pointer lookup do not depend on array
+position.
 
 Layout works in logical CSS pixels:
 
@@ -198,8 +199,9 @@ Layout works in logical CSS pixels:
 4. Normalize all heights to the available total.
 5. Assign pane regions, resize canvases/indicators, and position dividers.
 
-The DOM adapter owns divider elements; chart layout owns their geometry and drag
-state.
+The DOM adapter renders divider elements. `PaneLayout` owns their models, DOM
+handles, geometry, drag state, and window-listener lifetime. `FinancialChart`
+coordinates canvas resizing and redraw after layout changes.
 
 ## Interaction
 
@@ -267,9 +269,10 @@ Disposal is idempotent. The current ownership order is:
 3. Ask `ExtensionHost` to abort attachment scopes and detach indicators, then
    plugins. Registry snapshots remain readable during detachment so a plugin can
    persist the final chart state.
-4. Clear extension collections, annotations, and pane associations.
+4. Clear extension collections and annotations, then dispose pane associations,
+   dividers, and resize listeners.
 5. Remove public event listeners and disconnect resize observation.
-6. Destroy dividers, canvases, overlay DOM, and the chart container.
+6. Destroy canvases, overlay DOM, and the chart container.
 
 New resources must belong to one of these lifetimes: chart, pane, extension
 attachment, or render frame. A resource without an explicit owner and release
