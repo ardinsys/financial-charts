@@ -26,6 +26,7 @@ const createCanvasContext = (
   arc: vi.fn(),
   clearRect: vi.fn(),
   clip: vi.fn(),
+  closePath: vi.fn(),
   createLinearGradient: vi.fn(() => new CanvasGradientMock()),
   fill: vi.fn(),
   fillRect: vi.fn(),
@@ -50,6 +51,7 @@ const createCanvasContext = (
     };
   }),
   moveTo: vi.fn(),
+  quadraticCurveTo: vi.fn(),
   rect: vi.fn(),
   restore: vi.fn(),
   save: vi.fn(),

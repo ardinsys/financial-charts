@@ -953,7 +953,7 @@ export class FinancialChart extends EventEmitter {
 
     const snapshot = snapshotPriceAxisAnnotations(annotations);
     if (snapshot.length === 0) {
-      this.priceAxisAnnotations.delete(extension);
+      if (!this.priceAxisAnnotations.delete(extension)) return;
     } else {
       this.priceAxisAnnotations.set(extension, snapshot);
     }

@@ -13,7 +13,8 @@ export interface PriceAxisAnnotation {
   /** Text shown in the axis label. Defaults to the formatted value. */
   readonly text?: string;
   readonly visible?: boolean;
-  readonly line?: boolean;
+  /** Defaults to a plot line. */
+  readonly line?: boolean | "plot" | "axis";
   readonly label?: boolean;
   readonly color?: string;
   readonly labelColor?: string;
@@ -21,6 +22,23 @@ export interface PriceAxisAnnotation {
   readonly emphasized?: boolean;
   readonly lineWidth?: number;
   readonly lineDash?: readonly number[];
+  readonly collision?: "hide" | "allow";
+  readonly range?: {
+    readonly to: number;
+    readonly color?: string;
+    readonly inset?: number;
+  };
+  readonly labelStyle?: {
+    readonly borderColor?: string;
+    readonly borderWidth?: number;
+    readonly edgeInset?: number;
+    readonly font?: string;
+    readonly fontSize?: number;
+    readonly height?: number;
+    readonly inset?: number;
+    readonly paddingX?: number;
+    readonly radius?: number;
+  };
   /** Behavior when the value projects outside its pane. Defaults to `hide`. */
   readonly offscreen?: PriceAxisAnnotationOffscreenBehavior;
 }
@@ -109,8 +127,45 @@ export function renderPriceAxisAnnotations({
   }
 
   for (const item of resolved) {
+    const range = item.annotation.range;
+    if (!range) continue;
+
+    const paneRegion = item.pane.getRegion();
+    const axisRegion = item.pane.getYAxisRegion();
+    const targetY = item.pane.getPriceScale().project(range.to, {
+      canvas: { width: paneRegion.width, height: paneRegion.height },
+      devicePixelRatio: 1
+    });
+    if (!Number.isFinite(targetY)) continue;
+
+    const start = Math.max(
+      paneRegion.y,
+      Math.min(item.y, paneRegion.y + paneRegion.height)
+    );
+    const end = Math.max(
+      paneRegion.y,
+      Math.min(paneRegion.y + targetY, paneRegion.y + paneRegion.height)
+    );
+    const top = Math.min(start, end);
+    const rangeHeight = Math.abs(end - start);
+    if (rangeHeight === 0) continue;
+
+    const inset = Math.max(0, range.inset ?? 0);
+    context.fillStyle = range.color ?? item.labelColor;
+    context.fillRect(
+      axisRegion.x + inset,
+      top,
+      Math.max(0, axisRegion.width - inset * 2),
+      rangeHeight
+    );
+  }
+
+  for (const item of resolved) {
     if (item.annotation.line === false) continue;
-    const region = item.pane.getRegion();
+    const region =
+      item.annotation.line === "axis"
+        ? item.pane.getYAxisRegion()
+        : item.pane.getRegion();
     const y = Math.max(
       region.y + item.lineWidth / 2,
       Math.min(item.y, region.y + region.height - item.lineWidth / 2)
@@ -130,7 +185,6 @@ export function renderPriceAxisAnnotations({
     context.restore();
   }
 
-  const labelHeight = theme.priceAxisAnnotation.labelHeight;
   const acceptedByPane = new Map<
     number,
     Array<{ top: number; bottom: number }>
@@ -145,11 +199,18 @@ export function renderPriceAxisAnnotations({
     });
 
   for (const item of labels) {
+    const labelStyle = item.annotation.labelStyle;
+    const labelHeight =
+      labelStyle?.height ?? theme.priceAxisAnnotation.labelHeight;
+    const edgeInset = Math.max(0, labelStyle?.edgeInset ?? 0);
     const paneRegion = item.pane.getRegion();
     const axisRegion = item.pane.getYAxisRegion();
     const centerY = Math.max(
-      paneRegion.y + labelHeight / 2,
-      Math.min(item.y, paneRegion.y + paneRegion.height - labelHeight / 2)
+      paneRegion.y + labelHeight / 2 + edgeInset,
+      Math.min(
+        item.y,
+        paneRegion.y + paneRegion.height - labelHeight / 2 - edgeInset
+      )
     );
     const bounds = {
       top: centerY - labelHeight / 2,
@@ -157,6 +218,7 @@ export function renderPriceAxisAnnotations({
     };
     const accepted = acceptedByPane.get(item.pane.getId()) ?? [];
     if (
+      item.annotation.collision !== "allow" &&
       accepted.some(
         (existing) =>
           bounds.top < existing.bottom && bounds.bottom > existing.top
@@ -164,24 +226,51 @@ export function renderPriceAxisAnnotations({
     ) {
       continue;
     }
-    accepted.push(bounds);
-    acceptedByPane.set(item.pane.getId(), accepted);
+    if (item.annotation.collision !== "allow") {
+      accepted.push(bounds);
+      acceptedByPane.set(item.pane.getId(), accepted);
+    }
 
+    const inset = Math.max(0, labelStyle?.inset ?? 0);
+    const left = axisRegion.x + inset;
+    const width = Math.max(0, axisRegion.width - inset * 2);
+    const radius = Math.max(0, labelStyle?.radius ?? 0);
+    const borderWidth = Math.max(0, labelStyle?.borderWidth ?? 0);
+
+    context.save();
     context.fillStyle = item.labelColor;
-    context.fillRect(axisRegion.x, bounds.top, axisRegion.width, labelHeight);
+    if (radius > 0 || borderWidth > 0) {
+      roundedRect(context, left, bounds.top, width, labelHeight, radius);
+      context.fill();
+      if (borderWidth > 0) {
+        context.strokeStyle = labelStyle?.borderColor ?? item.color;
+        context.lineWidth = borderWidth;
+        context.stroke();
+      }
+    } else {
+      context.fillRect(left, bounds.top, width, labelHeight);
+    }
     context.fillStyle = item.textColor;
-    context.font = `${item.annotation.emphasized ? "600 " : ""}${theme.priceAxisAnnotation.fontSize}px ${theme.priceAxisAnnotation.font}, monospace`;
+    const fontWeight = item.annotation.emphasized ? "600 " : "";
+    const fontSize =
+      labelStyle?.fontSize ?? theme.priceAxisAnnotation.fontSize;
+    const font = labelStyle?.font ?? theme.priceAxisAnnotation.font;
+    context.font = `${fontWeight}${fontSize}px ${font}, monospace`;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(
       item.text,
-      axisRegion.x + axisRegion.width / 2,
+      left + width / 2,
       centerY,
       Math.max(
         0,
-        axisRegion.width - theme.priceAxisAnnotation.labelPaddingX * 2
+        width -
+          (labelStyle?.paddingX ??
+            theme.priceAxisAnnotation.labelPaddingX) *
+            2
       )
     );
+    context.restore();
   }
 }
 
@@ -211,6 +300,12 @@ export function snapshotPriceAxisAnnotations(
       );
     }
     if (
+      annotation.range !== undefined &&
+      !Number.isFinite(annotation.range.to)
+    ) {
+      throw new RangeError("Price axis annotation range values must be finite.");
+    }
+    if (
       annotation.lineWidth !== undefined &&
       (!Number.isFinite(annotation.lineWidth) || annotation.lineWidth <= 0)
     ) {
@@ -228,6 +323,12 @@ export function snapshotPriceAxisAnnotations(
 
     return Object.freeze({
       ...annotation,
+      labelStyle: annotation.labelStyle
+        ? Object.freeze({ ...annotation.labelStyle })
+        : undefined,
+      range: annotation.range
+        ? Object.freeze({ ...annotation.range })
+        : undefined,
       lineDash: annotation.lineDash
         ? Object.freeze([...annotation.lineDash])
         : undefined
@@ -235,4 +336,28 @@ export function snapshotPriceAxisAnnotations(
   });
 
   return Object.freeze(snapshot);
+}
+
+function roundedRect(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  const right = x + width;
+  const bottom = y + height;
+  context.beginPath();
+  context.moveTo(x + safeRadius, y);
+  context.lineTo(right - safeRadius, y);
+  context.quadraticCurveTo(right, y, right, y + safeRadius);
+  context.lineTo(right, bottom - safeRadius);
+  context.quadraticCurveTo(right, bottom, right - safeRadius, bottom);
+  context.lineTo(x + safeRadius, bottom);
+  context.quadraticCurveTo(x, bottom, x, bottom - safeRadius);
+  context.lineTo(x, y + safeRadius);
+  context.quadraticCurveTo(x, y, x + safeRadius, y);
+  context.closePath();
 }

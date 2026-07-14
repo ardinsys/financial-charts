@@ -128,6 +128,10 @@ remain visible. Missing pane IDs are ignored. Annotation colors, typography,
 line widths, dashes, and label dimensions can be set through
 `theme.priceAxisAnnotation`, with per-item overrides where supported.
 
+Use `line: "axis"` for an axis-only boundary. The optional `range` and
+`labelStyle` fields support axis range fills and specialized badge treatment;
+`collision: "allow"` is available for providers that must retain every label.
+
 Calling `clearPriceAxisAnnotations()` or submitting an empty array removes the
 collection. Detaching the extension removes it automatically. The owned canvas
 renders above drawings and below the crosshair.
@@ -299,6 +303,10 @@ hide specific tools.
 Date text uses the active chart formatter (`formatter.formatTooltipDate()`), so
 `locale`, `timeZone`, and custom formatter options are respected automatically.
 Price text uses `formatter.formatPrice()`.
+
+Y-axis bounds are contributed through the shared price-axis annotation layer,
+so they can coexist with order, position, and alert labels without clearing the
+axis canvas. X-axis bounds remain in the axis render stage.
 
 Plugin-owned labels can be localized without adding anything to global
 `localeValues`:

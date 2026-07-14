@@ -1,4 +1,5 @@
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
+import type { PriceAxisAnnotation } from "../annotations/price-axis-annotation";
 import type { ChartData } from "../chart/types";
 import type { ChartTheme } from "../chart/themes";
 import type { Drawing, DrawingAnchor } from "../drawings/drawing";
@@ -63,8 +64,11 @@ interface AxisMark {
   label: string;
 }
 
-interface PositionedAxisMark extends AxisMark {
+interface FormattedAxisMark extends AxisMark {
   value: string;
+}
+
+interface PositionedAxisMark extends FormattedAxisMark {
   position: number;
 }
 
@@ -131,13 +135,23 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
   }
 
   detach(): void {
+    this.ctx?.clearPriceAxisAnnotations();
     for (const unsubscribe of this.unsubscribers.splice(0)) {
       unsubscribe();
     }
     this.selectedDrawing = undefined;
+    this.ctx = undefined;
   }
 
   onVisibleRangeChanged(): void {
+    this.requestAxisRedraw();
+  }
+
+  onData(): void {
+    this.requestAxisRedraw();
+  }
+
+  onOptionsChanged(): void {
     this.requestAxisRedraw();
   }
 
@@ -151,8 +165,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       .getPanes()
       .find((candidate) => candidate.getId() === drawing.getPaneId());
     const timeScale = pane?.getTimeScale();
-    const priceScale = pane?.getPriceScale();
-    if (!pane || !timeScale || !priceScale) return;
+    if (!pane || !timeScale) return;
 
     const data = ctx.chart.getData();
     const locale = ctx.chart.getOptions().locale;
@@ -185,28 +198,6 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       });
 
       this.drawXAxis(theme, xAxis, xAxisSize, xMarks);
-    }
-
-    if (this.options.showYAxis ?? defaultOptions.showYAxis) {
-      const yAxis = ctx.getCanvasContext("y-label");
-      const yAxisSize = ctx.getLogicalCanvas("y-label");
-      const yMarks = this.createAxisMarks(
-        axisBounds.y ?? [],
-        "y",
-        data,
-        labels
-      ).map((mark) => {
-        const position = priceScale.project(mark.anchor.price, {
-          canvas: drawingCanvas
-        });
-        return {
-          ...mark,
-          position,
-          value: this.formatYValue(mark, locale)
-        };
-      });
-
-      this.drawYAxis(theme, yAxis, yAxisSize, yMarks);
     }
   }
 
@@ -248,7 +239,83 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
   }
 
   private requestAxisRedraw() {
+    this.updateYAxisAnnotations();
     this.ctx?.requestRedraw("axes");
+  }
+
+  private updateYAxisAnnotations() {
+    const ctx = this.ctx;
+    const drawing = this.selectedDrawing;
+    if (
+      !ctx ||
+      !drawing ||
+      this.isBlacklisted(drawing) ||
+      !(this.options.showYAxis ?? defaultOptions.showYAxis)
+    ) {
+      ctx?.clearPriceAxisAnnotations();
+      return;
+    }
+
+    const pane = ctx
+      .getPanes()
+      .find((candidate) => candidate.getId() === drawing.getPaneId());
+    if (!pane) {
+      ctx.clearPriceAxisAnnotations();
+      return;
+    }
+
+    const data = ctx.chart.getData();
+    const locale = ctx.chart.getOptions().locale;
+    const labels = this.resolveLabels(locale);
+    const drawingCanvas = ctx.getCanvasContext("drawings").canvas;
+    const axisBounds = drawing.getAxisBounds({ pane, canvas: drawingCanvas });
+    const marks: FormattedAxisMark[] = this.createAxisMarks(
+      axisBounds.y ?? [],
+      "y",
+      data,
+      labels
+    ).map((mark) => ({
+      ...mark,
+      value: this.formatYValue(mark, locale)
+    }));
+    const theme = this.resolveTheme(ctx.chart.getTheme());
+    const showRange = this.options.showRange ?? defaultOptions.showRange;
+
+    ctx.setPriceAxisAnnotations(
+      marks.map((mark, index): PriceAxisAnnotation => ({
+        id: `${drawing.id}:y:${index}`,
+        paneId: pane.getId(),
+        value: mark.anchor.price,
+        text: this.formatText(mark),
+        color: theme.strokeColor,
+        labelColor: theme.labelBackgroundColor,
+        textColor: theme.textColor,
+        line: "axis",
+        lineWidth: theme.lineWidth,
+        lineDash: [],
+        offscreen: "clamp",
+        collision: "allow",
+        range:
+          showRange && index === 0 && marks.length > 1
+            ? {
+                to: marks[1].anchor.price,
+                color: theme.rangeBackgroundColor,
+                inset: 5
+              }
+            : undefined,
+        labelStyle: {
+          borderColor: theme.strokeColor,
+          borderWidth: theme.lineWidth,
+          edgeInset: 4,
+          font: theme.font,
+          fontSize: theme.fontSize,
+          height: theme.labelHeight,
+          inset: 5,
+          paddingX: 2,
+          radius: theme.borderRadius
+        }
+      }))
+    );
   }
 
   private drawXAxis(
@@ -336,88 +403,6 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
     ctx.restore();
   }
 
-  private drawYAxis(
-    theme: DrawingAxisBoundsTheme,
-    ctx: CanvasRenderingContext2D,
-    size: { width: number; height: number },
-    marks: PositionedAxisMark[]
-  ) {
-    if (this.options.showRange ?? defaultOptions.showRange) {
-      this.drawYAxisRange(theme, ctx, size, marks);
-    }
-
-    for (const mark of marks) {
-      this.drawYAxisBadge(theme, ctx, size, mark);
-    }
-  }
-
-  private drawYAxisRange(
-    theme: DrawingAxisBoundsTheme,
-    ctx: CanvasRenderingContext2D,
-    size: { width: number; height: number },
-    marks: PositionedAxisMark[]
-  ) {
-    if (marks.length < 2) return;
-
-    const [rawStart, rawEnd] = getRange(marks);
-    const start = clamp(rawStart, 0, size.height);
-    const end = clamp(rawEnd, 0, size.height);
-    if (end <= start) return;
-
-    ctx.save();
-    ctx.fillStyle = theme.rangeBackgroundColor;
-    ctx.fillRect(5, start, size.width - 10, end - start);
-    ctx.strokeStyle = theme.strokeColor;
-    ctx.lineWidth = theme.lineWidth;
-    ctx.beginPath();
-    ctx.moveTo(0, start);
-    ctx.lineTo(size.width, start);
-    ctx.moveTo(0, end);
-    ctx.lineTo(size.width, end);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  private drawYAxisBadge(
-    theme: DrawingAxisBoundsTheme,
-    ctx: CanvasRenderingContext2D,
-    size: { width: number; height: number },
-    mark: PositionedAxisMark
-  ) {
-    const text = this.formatText(mark);
-    const top = clamp(
-      mark.position - theme.labelHeight / 2,
-      4,
-      size.height - theme.labelHeight - 4
-    );
-
-    ctx.save();
-    ctx.font = getAxisBoundFont(theme);
-    ctx.strokeStyle = theme.strokeColor;
-    ctx.fillStyle = theme.labelBackgroundColor;
-    ctx.lineWidth = theme.lineWidth;
-    roundedRect(
-      ctx,
-      5,
-      top,
-      size.width - 10,
-      theme.labelHeight,
-      theme.borderRadius
-    );
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = theme.textColor;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(
-      text,
-      size.width / 2,
-      top + theme.labelHeight / 2,
-      size.width - 14
-    );
-    ctx.restore();
-  }
-
   private resolveLabels(locale: string): DrawingAxisBoundsLabels {
     return {
       ...defaultLabels,
@@ -471,7 +456,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
     return this.ctx!.chart.getFormatter().formatPrice(mark.anchor.price);
   }
 
-  private formatText(mark: PositionedAxisMark): string {
+  private formatText(mark: FormattedAxisMark): string {
     const drawing = this.selectedDrawing!;
     const locale = this.ctx!.chart.getOptions().locale;
     if (this.options.formatText) {

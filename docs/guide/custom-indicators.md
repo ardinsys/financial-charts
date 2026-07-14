@@ -262,3 +262,38 @@ drawing, and crosshair targets default to `true`; `scale` defaults to `false` so
 ordinary external updates do not pay for price-scale recalculation. Chart-owned
 label cleanup runs after a subclass `detach()` hook even when the override does
 not call `super.detach()`.
+
+## Price markers and axis annotations
+
+Draw time-positioned order markers on the indicator canvas, but publish price
+lines and Y-axis labels through the attachment context. The chart owns the
+annotation canvas, clips each line to its pane, resolves label collisions, and
+removes the collection automatically on detach:
+
+```ts
+private updateOrderAnnotations() {
+  const visible = this.chartContext.getVisibleTimeRange();
+  const paneId = this.chartContext.getPanes()[0].getId();
+
+  this.chartContext.setPriceAxisAnnotations(
+    this.orders
+      .filter((order) => order.time < visible.start || order.time >= visible.end)
+      .map((order) => ({
+        id: order.id,
+        paneId,
+        value: order.price,
+        text: this.chart.getFormatter().formatPrice(order.price),
+        color: order.side === "buy" ? "#00c853" : "#d81b60",
+        textColor: "#fff",
+        lineDash: [4, 3],
+        emphasized: order.id === this.hoveredOrderId
+      }))
+  );
+}
+```
+
+Call the helper when external orders, the visible range, hover state, locale,
+or theme changes. Submitting a new array replaces only this extension's
+collection, so multiple indicators and drawing plugins can contribute without
+clearing one another's pixels. Use `clearPriceAxisAnnotations()` when hiding the
+collection without detaching.

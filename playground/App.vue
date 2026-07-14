@@ -38,6 +38,10 @@ import {
   stepSize as baseStepSize
 } from "./market-data";
 import { SelectedDrawingToolbarPlugin } from "./plugins/selected-drawing-toolbar";
+import {
+  createProbeOrders,
+  OrdersProbePlugin
+} from "./plugins/orders-probe";
 
 const timeframeOptions = [
   { label: "15m", value: baseStepSize },
@@ -361,6 +365,11 @@ function createChart(root: HTMLElement, slot: ChartSlot): PlaygroundChart {
   chart.addPlugin(drawingManager);
   chart.addPlugin(new ChartSyncPlugin({ group: syncGroup, drawingManager }));
   chart.addPlugin(new DrawingAxisBoundsPlugin());
+  if (slot.id.endsWith("-0")) {
+    chart.addPlugin(
+      new OrdersProbePlugin(createProbeOrders(slot.data, slot.stepSize))
+    );
+  }
   chart.addPlugin(selectedDrawingToolbar);
   chart.addPlugin(
     new DrawingSelectionPlugin((drawing) => {

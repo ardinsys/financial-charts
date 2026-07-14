@@ -13,6 +13,7 @@ Themes, locales, and formatters let you align the chart with your brand and lang
 | `candle`, `bar`, `line`, `area`, `hlcArea` | Style specific controller types.                               |
 | `volume`                                   | Up/down fill colors for the histogram.                         |
 | `xAxis`, `yAxis`                           | Typography, colors, and separators for labels.                 |
+| `priceAxisAnnotation`                      | Shared price-line and Y-axis annotation styling.               |
 | `crosshair`                                | Line color/dash plus tooltip styling and info-line labels.     |
 | `drawingAxisBounds`                        | Selected drawing axis-bound labels and translucent ranges.     |
 | `randomColors`                             | Palette used when multiple indicators request auto colors.     |

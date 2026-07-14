@@ -249,6 +249,61 @@ describe("price axis annotations", () => {
     );
   });
 
+  it("supports axis-only lines, ranges, styled labels, and overlap opt-out", () => {
+    const { chart } = createChart();
+    const probe = new AnnotationProbe();
+    chart.addPlugin(probe);
+    const context = getAnnotationContext(chart);
+    const axisRegion = chart.getMainPane().getYAxisRegion();
+    vi.mocked(context.rect).mockClear();
+    vi.mocked(context.fillRect).mockClear();
+    vi.mocked(context.fillText).mockClear();
+    vi.mocked(context.quadraticCurveTo).mockClear();
+
+    probe.set([
+      {
+        id: "start",
+        value: 11,
+        text: "start",
+        line: "axis",
+        collision: "allow",
+        range: { to: 13, color: "range", inset: 5 },
+        labelStyle: {
+          borderColor: "border",
+          borderWidth: 1,
+          edgeInset: 4,
+          height: 22,
+          inset: 5,
+          paddingX: 8,
+          radius: 5
+        }
+      },
+      {
+        id: "end",
+        value: 11,
+        text: "end",
+        line: "axis",
+        collision: "allow"
+      }
+    ]);
+    chart.requestRedraw("annotations", true);
+
+    expect(context.rect).toHaveBeenCalledWith(
+      axisRegion.x,
+      axisRegion.y,
+      axisRegion.width,
+      axisRegion.height
+    );
+    expect(context.fillRect).toHaveBeenCalledWith(
+      axisRegion.x + 5,
+      expect.any(Number),
+      axisRegion.width - 10,
+      expect.any(Number)
+    );
+    expect(context.quadraticCurveTo).toHaveBeenCalled();
+    expect(context.fillText).toHaveBeenCalledTimes(2);
+  });
+
   it("uses updated theme defaults without changing provider models", () => {
     const { chart } = createChart();
     const probe = new AnnotationProbe();
