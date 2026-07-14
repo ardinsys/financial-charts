@@ -30,6 +30,8 @@ class ExtensionIndicator extends Indicator<{}, DefaultIndicatorOptions> {
 }
 
 class ExtensionDrawing extends Drawing {
+  readonly type = "extension-drawing";
+
   constructor(options: DrawingOptions) {
     super(options);
   }

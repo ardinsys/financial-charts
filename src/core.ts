@@ -50,7 +50,9 @@ export {
   type DrawingDeserializer,
   type DrawingFactory,
   type DrawingManagerJSON,
-  type DrawingManagerOptions
+  type DrawingManagerOptions,
+  type DrawingMutationOptions,
+  type DrawingSelectionOptions
 } from "./drawings/drawing-manager";
 export {
   HorizontalLine,

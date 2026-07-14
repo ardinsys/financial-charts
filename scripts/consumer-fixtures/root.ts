@@ -7,7 +7,9 @@ import {
   TrendLine,
   type ChartData,
   type ChartOptions,
-  type ChartState
+  type ChartState,
+  type DrawingMutationOptions,
+  type DrawingSelectionOptions
 } from "@ardinsys/financial-charts";
 
 // @ts-expect-error Indicator authoring contracts use the extensions entry.
@@ -29,6 +31,8 @@ const options: ChartOptions = {
   stepSize: 60_000
 };
 const state = {} as ChartState;
+const drawingMutation = {} as DrawingMutationOptions;
+const drawingSelection = {} as DrawingSelectionOptions;
 const chart = null as unknown as FinancialChart;
 
 // @ts-expect-error v1 uses setData() for full data replacement.
@@ -50,6 +54,8 @@ void [
   data,
   options,
   state,
+  drawingMutation,
+  drawingSelection,
   chart
 ];
 void [

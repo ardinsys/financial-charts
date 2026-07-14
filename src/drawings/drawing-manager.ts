@@ -19,21 +19,23 @@ import { TextDrawing } from "./text";
 import { TrendLine } from "./trendline";
 
 export type DrawingFactory = (options: {
-  anchors: DrawingAnchor[];
-  paneId: number;
+  readonly anchors: readonly DrawingAnchor[];
+  readonly paneId: number;
 }) => Drawing;
 
 export type DrawingDeserializer = (json: DrawingJSON) => Drawing;
 
 export interface DrawingManagerJSON {
-  drawings: DrawingJSON[];
-  selectedDrawingId?: string;
+  readonly drawings: readonly DrawingJSON[];
+  readonly selectedDrawingId?: string;
 }
 
 export interface DrawingManagerOptions {
-  drawingDeserializers?: Record<string, DrawingDeserializer>;
-  drawingFactory?: DrawingFactory;
-  hitTestTolerance?: number;
+  readonly drawingDeserializers?: Readonly<
+    Record<string, DrawingDeserializer>
+  >;
+  readonly drawingFactory?: DrawingFactory;
+  readonly hitTestTolerance?: number;
 }
 
 const builtInDrawingDeserializers: Record<string, DrawingDeserializer> = {
@@ -80,20 +82,27 @@ type DrawingHistoryEntry =
       after: DrawingAnchor[];
     };
 
-interface SelectDrawingOptions {
-  emit?: boolean;
-  force?: boolean;
+export interface DrawingSelectionOptions {
+  /** Emits `drawing-select` when the selection changes. Defaults to `true`. */
+  readonly emit?: boolean;
+  /** Re-emits selection even when the selected object is unchanged. */
+  readonly force?: boolean;
 }
 
-interface DrawingMutationOptions {
-  emit?: boolean;
-  emitSelection?: boolean;
+export interface DrawingMutationOptions {
+  /** Emits the matching create/change/delete event. Defaults to `false`. */
+  readonly emit?: boolean;
+  /**
+   * Emits `drawing-select` when the mutation changes selection. Defaults to
+   * `true`.
+   */
+  readonly emitSelection?: boolean;
 }
 
 export class DrawingManager implements ChartPlugin {
   readonly key = "drawing-manager";
 
-  private ctx!: ChartContext;
+  private ctx?: ChartContext;
   private drawings: Drawing[] = [];
   private selectedDrawing?: Drawing;
   private interaction?: Interaction;
@@ -121,30 +130,81 @@ export class DrawingManager implements ChartPlugin {
   }
 
   attach(ctx: ChartContext) {
+    if (this.ctx && !this.ctx.signal.aborted) {
+      throw new Error("DrawingManager is already attached to a chart.");
+    }
     this.ctx = ctx;
     this.bindKeyboard();
+    if (this.selectedDrawing) {
+      this.emitDrawingSelection(this.selectedDrawing);
+    }
   }
 
   setDrawingFactory(factory?: DrawingFactory) {
     this.drawingFactory = factory;
   }
 
+  /** Registers a serialized drawing type and returns an idempotent disposer. */
   registerDrawingDeserializer(type: string, deserializer: DrawingDeserializer) {
+    if (typeof type !== "string" || type.trim().length === 0) {
+      throw new TypeError(
+        "Drawing deserializer type must be a non-empty string."
+      );
+    }
+    const previous = this.drawingDeserializers.get(type);
     this.drawingDeserializers.set(type, deserializer);
+    return () => {
+      if (this.drawingDeserializers.get(type) !== deserializer) return;
+      if (previous) {
+        this.drawingDeserializers.set(type, previous);
+      } else {
+        this.drawingDeserializers.delete(type);
+      }
+    };
   }
 
   getDrawings() {
     return [...this.drawings];
   }
 
+  /** Returns a managed drawing by its unique identity. */
+  getDrawingById(id: string) {
+    return this.drawings.find((drawing) => drawing.id === id);
+  }
+
   getSelectedDrawing() {
     return this.selectedDrawing;
   }
 
+  /** Clears drawing state and history, returning the removed drawings. */
+  clearDrawings(options: DrawingMutationOptions = {}) {
+    const drawings = this.getDrawings();
+    const hadSelection = this.selectedDrawing !== undefined;
+    this.interaction = undefined;
+    this.selectedDrawing?.setSelected(false);
+    this.selectedDrawing = undefined;
+    this.drawings = [];
+    this.undoStack = [];
+    this.redoStack = [];
+
+    if (options.emit) {
+      for (const drawing of drawings) {
+        this.ctx?.emit("drawing-delete", { drawing });
+      }
+    }
+    if (hadSelection && (options.emitSelection ?? true)) {
+      this.emitDrawingSelection(undefined);
+    }
+    this.ctx?.requestRedraw("drawings");
+    return drawings;
+  }
+
   addDrawing(drawing: Drawing) {
+    this.assertDrawingType(drawing.type);
+    this.assertUniqueDrawingId(drawing.id);
     this.drawings.push(drawing);
     this.selectDrawing(drawing);
-    this.ctx.requestRedraw("drawings");
+    this.ctx?.requestRedraw("drawings");
     return drawing;
   }
 
@@ -159,28 +219,31 @@ export class DrawingManager implements ChartPlugin {
     if (existingIndex === -1) {
       this.drawings.push(drawing);
       if (options.emit) {
-        this.ctx.emit("drawing-create", { drawing });
+        this.ctx?.emit("drawing-create", { drawing });
       }
     } else {
       this.drawings[existingIndex].setSelected(false);
       this.drawings[existingIndex] = drawing;
       if (options.emit) {
-        this.ctx.emit("drawing-change", { drawing });
+        this.ctx?.emit("drawing-change", { drawing });
       }
     }
 
     if (wasSelected) {
       this.selectedDrawing = drawing;
-      if (options.emitSelection) {
+      if (options.emitSelection ?? true) {
         this.emitDrawingSelection(drawing);
       }
     }
-    this.ctx.requestRedraw("drawings");
+    this.ctx?.requestRedraw("drawings");
     return drawing;
   }
 
-  selectDrawing(drawing?: Drawing, options: SelectDrawingOptions = {}) {
+  selectDrawing(drawing?: Drawing, options: DrawingSelectionOptions = {}) {
     const { emit = true, force = false } = options;
+    if (drawing && !this.drawings.includes(drawing)) {
+      throw new Error("Cannot select a drawing that is not managed.");
+    }
     if (this.selectedDrawing === drawing && !force) return;
 
     this.selectedDrawing?.setSelected(false);
@@ -190,7 +253,7 @@ export class DrawingManager implements ChartPlugin {
     if (emit) {
       this.emitDrawingSelection(drawing);
     }
-    this.ctx.requestRedraw("drawings");
+    this.ctx?.requestRedraw("drawings");
   }
 
   deleteSelected() {
@@ -203,7 +266,7 @@ export class DrawingManager implements ChartPlugin {
     if (index === undefined) return false;
 
     this.recordHistory({ type: "delete", drawing, index });
-    this.ctx.emit("drawing-delete", { drawing });
+    this.ctx?.emit("drawing-delete", { drawing });
     return true;
   }
 
@@ -211,22 +274,25 @@ export class DrawingManager implements ChartPlugin {
     const drawing = this.drawings.find((candidate) => candidate.id === id);
     if (!drawing) return false;
 
-    const removed = this.removeDrawing(drawing);
+    const removed = this.removeDrawing(drawing, {
+      emit: options.emitSelection ?? true
+    });
     if (removed === undefined) return false;
 
     if (options.emit) {
-      this.ctx.emit("drawing-delete", { drawing });
+      this.ctx?.emit("drawing-delete", { drawing });
     }
     return true;
   }
 
-  selectDrawingById(id?: string, options: SelectDrawingOptions = {}) {
+  selectDrawingById(id?: string, options: DrawingSelectionOptions = {}) {
     if (!id) {
       this.selectDrawing(undefined, options);
       return undefined;
     }
 
     const drawing = this.drawings.find((candidate) => candidate.id === id);
+    if (!drawing) return undefined;
     this.selectDrawing(drawing, options);
     return drawing;
   }
@@ -257,23 +323,31 @@ export class DrawingManager implements ChartPlugin {
     return true;
   }
 
-  private removeDrawing(drawing: Drawing) {
+  private removeDrawing(
+    drawing: Drawing,
+    selectionOptions: DrawingSelectionOptions = {}
+  ) {
     const index = this.drawings.indexOf(drawing);
     if (index === -1) return undefined;
 
     this.drawings.splice(index, 1);
     if (this.selectedDrawing === drawing) {
-      this.selectDrawing(undefined);
+      this.selectDrawing(undefined, selectionOptions);
     }
     if (this.interaction?.drawing === drawing) {
       this.interaction = undefined;
     }
-    this.ctx.requestRedraw("drawings");
+    this.ctx?.requestRedraw("drawings");
     return index;
   }
 
   private insertDrawing(drawing: Drawing, index: number) {
-    if (this.drawings.includes(drawing)) return false;
+    if (
+      this.drawings.includes(drawing) ||
+      this.drawings.some((candidate) => candidate.id === drawing.id)
+    ) {
+      return false;
+    }
 
     drawing.setSelected(false);
     this.drawings.splice(
@@ -281,7 +355,7 @@ export class DrawingManager implements ChartPlugin {
       0,
       drawing
     );
-    this.ctx.requestRedraw("drawings");
+    this.ctx?.requestRedraw("drawings");
     return true;
   }
 
@@ -294,11 +368,11 @@ export class DrawingManager implements ChartPlugin {
     if (entry.type === "create") {
       if (direction === "undo") {
         if (this.removeDrawing(entry.drawing) !== undefined) {
-          this.ctx.emit("drawing-delete", { drawing: entry.drawing });
+          this.ctx?.emit("drawing-delete", { drawing: entry.drawing });
         }
       } else {
         if (this.insertDrawing(entry.drawing, entry.index)) {
-          this.ctx.emit("drawing-create", { drawing: entry.drawing });
+          this.ctx?.emit("drawing-create", { drawing: entry.drawing });
         }
       }
       return;
@@ -307,51 +381,59 @@ export class DrawingManager implements ChartPlugin {
     if (entry.type === "delete") {
       if (direction === "undo") {
         if (this.insertDrawing(entry.drawing, entry.index)) {
-          this.ctx.emit("drawing-create", { drawing: entry.drawing });
+          this.ctx?.emit("drawing-create", { drawing: entry.drawing });
         }
       } else {
         if (this.removeDrawing(entry.drawing) !== undefined) {
-          this.ctx.emit("drawing-delete", { drawing: entry.drawing });
+          this.ctx?.emit("drawing-delete", { drawing: entry.drawing });
         }
       }
       return;
     }
 
     entry.drawing.setAnchors(direction === "undo" ? entry.before : entry.after);
-    this.ctx.emit("drawing-change", { drawing: entry.drawing });
-    this.ctx.requestRedraw("drawings");
+    this.ctx?.emit("drawing-change", { drawing: entry.drawing });
+    this.ctx?.requestRedraw("drawings");
   }
 
   toJSON(): DrawingManagerJSON {
-    const json: DrawingManagerJSON = {
-      drawings: this.drawings.map((drawing) => drawing.toJSON())
+    return {
+      drawings: this.drawings.map((drawing) => drawing.toJSON()),
+      ...(this.selectedDrawing
+        ? { selectedDrawingId: this.selectedDrawing.id }
+        : {})
     };
-
-    if (this.selectedDrawing) {
-      json.selectedDrawingId = this.selectedDrawing.id;
-    }
-
-    return json;
   }
 
   fromJSON(json: DrawingManagerJSON) {
-    this.interaction = undefined;
-    this.selectedDrawing?.setSelected(false);
-    this.drawings = json.drawings.map((drawing) =>
+    const drawings = json.drawings.map((drawing) =>
       this.deserializeDrawing(drawing)
     );
-    this.undoStack = [];
-    this.redoStack = [];
-    this.selectedDrawing = this.drawings.find(
+    this.assertUniqueDrawingIds(drawings);
+    const selectedDrawing = drawings.find(
       (drawing) => drawing.id === json.selectedDrawingId
     );
+    if (json.selectedDrawingId !== undefined && !selectedDrawing) {
+      throw new Error(
+        `Selected drawing "${json.selectedDrawingId}" was not found.`
+      );
+    }
+
+    this.interaction = undefined;
+    this.selectedDrawing?.setSelected(false);
+    this.drawings = drawings;
+    this.undoStack = [];
+    this.redoStack = [];
+    this.selectedDrawing = selectedDrawing;
     this.selectedDrawing?.setSelected(true);
-    this.ctx.requestRedraw("drawings");
+    this.emitDrawingSelection(this.selectedDrawing);
+    this.ctx?.requestRedraw("drawings");
 
     return this.getDrawings();
   }
 
   onPointer(event: ChartPointerEvent) {
+    if (!this.ctx) return false;
     const panePoint = this.toPanePoint(event);
     const anchor = anchorFromPoint(panePoint, event.pane);
 
@@ -368,6 +450,7 @@ export class DrawingManager implements ChartPlugin {
   }
 
   draw() {
+    if (!this.ctx) return;
     const ctx = this.ctx.getCanvasContext("drawings");
     const sizes = this.ctx.getLogicalCanvas("drawings");
 
@@ -376,10 +459,19 @@ export class DrawingManager implements ChartPlugin {
     for (const drawing of this.drawings) {
       const pane = this.getPane(drawing.getPaneId());
       if (!pane) continue;
-      drawing.draw(ctx, {
-        pane,
-        canvas: ctx.canvas
-      });
+      const region = pane.getRegion();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(region.x, region.y, region.width, region.height);
+      ctx.clip();
+      try {
+        drawing.draw(ctx, {
+          pane,
+          canvas: ctx.canvas
+        });
+      } finally {
+        ctx.restore();
+      }
     }
   }
 
@@ -396,10 +488,10 @@ export class DrawingManager implements ChartPlugin {
     }
     this.keyboardHost = undefined;
     this.interaction = undefined;
-    this.selectDrawing(undefined);
-    this.drawings = [];
-    this.undoStack = [];
-    this.redoStack = [];
+    if (this.selectedDrawing) {
+      this.emitDrawingSelection(undefined);
+    }
+    this.ctx = undefined;
   }
 
   hitTest(point: DrawingPoint, pane: Pane) {
@@ -453,6 +545,8 @@ export class DrawingManager implements ChartPlugin {
       anchors: [anchor, anchor],
       paneId: event.pane.getId()
     });
+    this.assertDrawingType(drawing.type);
+    this.assertUniqueDrawingId(drawing.id);
     this.drawings.push(drawing);
     if (this.selectedDrawing) {
       this.selectDrawing(undefined);
@@ -463,7 +557,7 @@ export class DrawingManager implements ChartPlugin {
       drawing,
       start: anchor
     };
-    this.ctx.requestRedraw("drawings");
+    this.ctx?.requestRedraw("drawings");
     return true;
   }
 
@@ -472,19 +566,19 @@ export class DrawingManager implements ChartPlugin {
 
     if (this.interaction.type === "creating") {
       this.interaction.drawing.setAnchors([this.interaction.start, anchor]);
-      this.ctx.emit("drawing-change", {
+      this.ctx?.emit("drawing-change", {
         drawing: this.interaction.drawing
       });
-      this.ctx.requestRedraw("drawings");
+      this.ctx?.requestRedraw("drawings");
       return;
     }
 
     if (this.interaction.type === "anchor") {
       this.interaction.drawing.moveAnchor(this.interaction.index, anchor);
-      this.ctx.emit("drawing-change", {
+      this.ctx?.emit("drawing-change", {
         drawing: this.interaction.drawing
       });
-      this.ctx.requestRedraw("drawings");
+      this.ctx?.requestRedraw("drawings");
       return;
     }
 
@@ -498,10 +592,10 @@ export class DrawingManager implements ChartPlugin {
         price: originalAnchor.price + delta.price
       }))
     );
-    this.ctx.emit("drawing-change", {
+    this.ctx?.emit("drawing-change", {
       drawing: this.interaction.drawing
     });
-    this.ctx.requestRedraw("drawings");
+    this.ctx?.requestRedraw("drawings");
   }
 
   private pointerUp() {
@@ -513,7 +607,7 @@ export class DrawingManager implements ChartPlugin {
       if (index !== -1) {
         this.recordHistory({ type: "create", drawing, index });
       }
-      this.ctx.emit("drawing-create", {
+      this.ctx?.emit("drawing-create", {
         drawing
       });
       this.interaction = undefined;
@@ -534,7 +628,7 @@ export class DrawingManager implements ChartPlugin {
   }
 
   private emitDrawingFinished(drawing: Drawing, operation: "create" | "move") {
-    this.ctx.emit("drawing-finished", {
+    this.ctx?.emit("drawing-finished", {
       drawing,
       operation,
       id: drawing.id,
@@ -546,7 +640,7 @@ export class DrawingManager implements ChartPlugin {
   }
 
   private emitDrawingSelection(drawing?: Drawing) {
-    this.ctx.emit(
+    this.ctx?.emit(
       "drawing-select",
       drawing
         ? {
@@ -572,15 +666,16 @@ export class DrawingManager implements ChartPlugin {
   }
 
   private getHitTestContext(pane: Pane): DrawingHitTestContext {
+    const ctx = this.requireContext();
     return {
       pane,
-      canvas: this.ctx.getCanvasContext("drawings").canvas,
+      canvas: ctx.getCanvasContext("drawings").canvas,
       tolerance: this.hitTestTolerance
     };
   }
 
   private bindKeyboard() {
-    const host = this.ctx.chart.getOutsideContainer();
+    const host = this.requireContext().chart.getOutsideContainer();
     this.keyboardHost = host;
     if (!host.hasAttribute("tabindex")) {
       host.tabIndex = 0;
@@ -636,15 +731,16 @@ export class DrawingManager implements ChartPlugin {
   }
 
   private toPanePoint(event: ChartPointerEvent): DrawingPoint {
-    const region = event.pane.getRegion();
     return {
-      x: event.x - region.x,
-      y: event.y - region.y
+      x: event.x,
+      y: event.y
     };
   }
 
   private getPane(paneId: number) {
-    return this.ctx.getPanes().find((pane) => pane.getId() === paneId);
+    return this.requireContext()
+      .getPanes()
+      .find((pane) => pane.getId() === paneId);
   }
 
   private deserializeDrawing(json: DrawingJSON) {
@@ -653,6 +749,42 @@ export class DrawingManager implements ChartPlugin {
       throw new Error(`Unknown drawing type: ${json.type}`);
     }
 
-    return deserializer(json);
+    const drawing = deserializer(json);
+    this.assertDrawingType(drawing.type);
+    if (drawing.id !== json.id || drawing.type !== json.type) {
+      throw new Error(
+        `Drawing deserializer for "${json.type}" must preserve id and type.`
+      );
+    }
+    return drawing;
+  }
+
+  private assertUniqueDrawingId(id: string) {
+    if (this.drawings.some((drawing) => drawing.id === id)) {
+      throw new Error(`Drawing id "${id}" is already registered.`);
+    }
+  }
+
+  private assertDrawingType(type: string) {
+    if (typeof type !== "string" || type.trim().length === 0) {
+      throw new TypeError("Drawing type must be a non-empty string.");
+    }
+  }
+
+  private assertUniqueDrawingIds(drawings: readonly Drawing[]) {
+    const ids = new Set<string>();
+    for (const drawing of drawings) {
+      if (ids.has(drawing.id)) {
+        throw new Error(`Drawing id "${drawing.id}" is duplicated.`);
+      }
+      ids.add(drawing.id);
+    }
+  }
+
+  private requireContext() {
+    if (!this.ctx) {
+      throw new Error("DrawingManager is not attached to a chart.");
+    }
+    return this.ctx;
   }
 }

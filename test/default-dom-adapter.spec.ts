@@ -104,14 +104,14 @@ describe("DefaultDOMAdapter indicator label", () => {
     expect(q("remove")).toBeNull();
   });
 
-  it("cross-wires action tooltips (hide shows the 'show' title and vice versa)", () => {
+  it("labels visibility actions with their resulting operation", () => {
     const { q } = makeLabel();
-    expect(q("hide").title).toBe(titles.show);
-    expect(q("show").title).toBe(titles.hide);
+    expect(q("hide").title).toBe(titles.hide);
+    expect(q("show").title).toBe(titles.show);
     expect(q("settings").title).toBe(titles.settings);
     expect(q("remove").title).toBe(titles.remove);
-    expect(q("hide").getAttribute("aria-label")).toBe(titles.show);
-    expect(q("show").getAttribute("aria-label")).toBe(titles.hide);
+    expect(q("hide").getAttribute("aria-label")).toBe(titles.hide);
+    expect(q("show").getAttribute("aria-label")).toBe(titles.show);
     expect(q("settings").getAttribute("aria-label")).toBe(titles.settings);
     expect(q("remove").getAttribute("aria-label")).toBe(titles.remove);
   });
@@ -138,9 +138,9 @@ describe("DefaultDOMAdapter indicator label", () => {
     const { spies, q } = makeLabel();
 
     q("hide").click();
-    expect(spies.onToggleVisibility).toHaveBeenLastCalledWith(true);
-    q("show").click();
     expect(spies.onToggleVisibility).toHaveBeenLastCalledWith(false);
+    q("show").click();
+    expect(spies.onToggleVisibility).toHaveBeenLastCalledWith(true);
     q("settings").click();
     expect(spies.onOpenSettings).toHaveBeenCalledTimes(1);
     q("remove").click();
@@ -151,10 +151,10 @@ describe("DefaultDOMAdapter indicator label", () => {
     const { handle, q } = makeLabel();
     handle.update(model({ visible: false }));
     expect(q("label").classList.contains("fci-hidden")).toBe(true);
-    expect(q("show").classList.contains("fci-hide")).toBe(true);
+    expect(q("hide").classList.contains("fci-hide")).toBe(true);
     handle.update(model({ visible: true }));
     expect(q("label").classList.contains("fci-hidden")).toBe(false);
-    expect(q("hide").classList.contains("fci-hide")).toBe(true);
+    expect(q("show").classList.contains("fci-hide")).toBe(true);
   });
 
   it("detaches listeners on destroy", () => {

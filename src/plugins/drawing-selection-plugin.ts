@@ -1,5 +1,6 @@
 import type { DrawingSelectionEvent } from "../chart/event-emitter";
 import type { Drawing } from "../drawings/drawing";
+import type { DrawingManager } from "../drawings/drawing-manager";
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
 
 export type DrawingSelectionCallback = (
@@ -18,7 +19,6 @@ export class DrawingSelectionPlugin implements ChartPlugin {
 
   private readonly onSelect: DrawingSelectionCallback;
   private selectedDrawing?: Drawing;
-  private unsubscribe?: () => void;
 
   constructor(
     options: DrawingSelectionPluginOptions | DrawingSelectionCallback = {}
@@ -28,19 +28,33 @@ export class DrawingSelectionPlugin implements ChartPlugin {
   }
 
   attach(ctx: ChartContext): void {
-    this.unsubscribe = ctx.on("drawing-select", (event) => {
-      this.selectedDrawing = event.drawing;
-      this.onSelect(event.drawing, event);
-    });
+    ctx.on("drawing-select", (event) => this.applySelection(event));
+
+    const drawing = ctx
+      .getPlugin<DrawingManager>("drawing-manager")
+      ?.getSelectedDrawing();
+    if (drawing) {
+      this.applySelection({
+        drawing,
+        id: drawing.id,
+        type: drawing.type,
+        paneId: drawing.getPaneId(),
+        anchors: drawing.getAnchors(),
+        json: drawing.toJSON()
+      });
+    }
   }
 
   detach(): void {
-    this.unsubscribe?.();
-    this.unsubscribe = undefined;
     this.selectedDrawing = undefined;
   }
 
   getSelectedDrawing() {
     return this.selectedDrawing;
+  }
+
+  private applySelection(event: DrawingSelectionEvent) {
+    this.selectedDrawing = event.drawing;
+    this.onSelect(event.drawing, event);
   }
 }

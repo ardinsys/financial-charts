@@ -61,6 +61,11 @@ The default adapter also adds `data-id` hooks for tests and integration code: `i
 
 Pass a custom adapter when the DOM should be app-owned. The model is declarative: the core tells you the indicator name, detail, visible state, action titles, and value segments; your adapter renders them however it wants.
 
+`onToggleVisibility()` receives the resulting visibility. A control displaying
+the hide action passes `false`; a control displaying the show action passes
+`true`. The chart mounts label and divider roots, while the adapter owns their
+listeners and child DOM until `destroy()`.
+
 ```ts
 import {
   DefaultDOMAdapter,
@@ -178,5 +183,10 @@ const chart = new FinancialChart(root, {
 ```
 
 Adapters can also override `createOverlay(host, context)` when the indicator label region needs to live inside app-owned scaffolding. The returned `indicatorLabelContainer` is the element where the chart appends label roots.
+
+Overlay and handle `update()` calls always contain complete current models, so
+the adapter does not need to retain chart objects or inspect indicator
+internals. Geometry uses logical CSS pixels. Removing the chart calls every
+handle's `destroy()` and then destroys the overlay.
 
 Canvas surfaces such as candles, axes, grid, crosshair labels, and volume remain theme-driven. Use `mergeThemes()` and `chart.updateTheme()` for those.

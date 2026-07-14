@@ -105,23 +105,23 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
 
     const applyVisible = (visible: boolean) => {
       if (visible) {
-        show?.classList.remove("fci-hide");
-        hide?.classList.add("fci-hide");
-        label?.classList.remove("fci-hidden");
-      } else {
         hide?.classList.remove("fci-hide");
         show?.classList.add("fci-hide");
+        label?.classList.remove("fci-hidden");
+      } else {
+        show?.classList.remove("fci-hide");
+        hide?.classList.add("fci-hide");
         label?.classList.add("fci-hidden");
       }
     };
 
     on(hide, () => {
-      applyVisible(true);
-      actions.onToggleVisibility(true);
-    });
-    on(show, () => {
       applyVisible(false);
       actions.onToggleVisibility(false);
+    });
+    on(show, () => {
+      applyVisible(true);
+      actions.onToggleVisibility(true);
     });
     on(settings, () => actions.onOpenSettings());
     on(remove, () => actions.onRemove());
@@ -146,14 +146,12 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
           })
         );
       }
-      // Titles are intentionally cross-wired: the "hide" control shows the
-      // "show" tooltip and vice versa (matches the original behavior).
-      if (hide) hide.title = next.actionTitles.show;
-      if (show) show.title = next.actionTitles.hide;
+      if (hide) hide.title = next.actionTitles.hide;
+      if (show) show.title = next.actionTitles.show;
       if (settings) settings.title = next.actionTitles.settings;
       if (remove) remove.title = next.actionTitles.remove;
-      if (hide) hide.setAttribute("aria-label", next.actionTitles.show);
-      if (show) show.setAttribute("aria-label", next.actionTitles.hide);
+      if (hide) hide.setAttribute("aria-label", next.actionTitles.hide);
+      if (show) show.setAttribute("aria-label", next.actionTitles.show);
       if (settings) {
         settings.setAttribute("aria-label", next.actionTitles.settings);
       }

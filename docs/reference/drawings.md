@@ -34,6 +34,62 @@ All built-ins persist `{ index, price }` anchors, the target `paneId`, their
 Pointer-created and pointer-edited anchors snap `index` to whole bar slots while
 keeping `price` continuous.
 
+Drawing IDs must be non-empty and unique within a manager. Pane IDs must be
+non-negative integers, and anchor indexes/prices must be finite. Custom
+`Drawing` subclasses must declare a stable `readonly type`; this is the key used
+to find their deserializer.
+
+The drawings canvas covers the complete pane stack. Each drawing is clipped to
+its target pane, and the protected projection helpers return logical,
+chart-local coordinates that already include the pane offset. `hitTest()`
+receives coordinates in the same space.
+
+## Manager state and attachment
+
+Drawing state is independent of chart attachment. You can add or restore
+drawings before attaching the manager:
+
+```ts
+const manager = new DrawingManager();
+manager.addDrawing(
+  new TrendLine({
+    id: "opening-range",
+    anchors: [
+      { index: 10, price: 100 },
+      { index: 20, price: 110 }
+    ]
+  })
+);
+
+chart.addPlugin(manager);
+```
+
+Removing the plugin releases keyboard and chart resources but preserves its
+drawings, selection, factory, deserializers, and history. The same manager can
+therefore be attached again later. One manager cannot be attached to two charts
+at the same time. Detach publishes a cleared chart selection without erasing
+the retained manager selection; reattachment publishes that selection again.
+
+| Method                                      | Result                                                                 |
+| ------------------------------------------- | ---------------------------------------------------------------------- |
+| `getDrawings()`                             | Returns a snapshot of managed drawing objects.                         |
+| `getDrawingById(id)`                        | Returns one drawing by its unique ID.                                  |
+| `getSelectedDrawing()`                      | Returns the selected drawing, if any.                                  |
+| `addDrawing(drawing)`                       | Adds and selects a programmatic drawing.                               |
+| `upsertDrawing(json, options?)`             | Replaces or inserts serialized state by ID.                            |
+| `selectDrawing(drawing?, options?)`         | Selects a managed drawing or clears selection.                         |
+| `selectDrawingById(id?, options?)`          | Selects by ID; an unknown ID leaves the current selection unchanged.   |
+| `deleteDrawing(drawing)` / `deleteSelected()` | Deletes with history and emits `drawing-delete`.                     |
+| `removeDrawingById(id, options?)`           | Reconciliation-oriented removal with opt-in event emission.            |
+| `clearDrawings(options?)`                   | Clears drawings, selection, interactions, and undo/redo history.       |
+| `setDrawingFactory(factory?)`               | Arms or clears the one-shot pointer creation factory.                  |
+| `registerDrawingDeserializer(type, fn)`     | Registers a loader and returns an idempotent unregister function.      |
+
+`emit` on mutation options controls create/change/delete events and defaults to
+`false`. `emitSelection` controls the separate selection event and defaults to
+`true`, keeping headless selection UI synchronized. Pointer gestures and
+explicit `deleteDrawing()` use interactive event semantics.
+
 ## Serialization
 
 Use `toJSON()` and `fromJSON()` on the manager to persist drawings. Storage is up
@@ -49,8 +105,11 @@ if (restored) {
 }
 ```
 
-`fromJSON()` replaces the manager's current drawing set, restores the selected
-drawing by id when present, and requests one drawings-layer redraw.
+`fromJSON()` validates and deserializes the complete input before replacing
+current state, restores the selected drawing by ID, clears history, publishes
+the resulting selection, and requests one drawings-layer redraw. Duplicate IDs,
+unknown types, deserializers that do not preserve ID/type, and a missing
+selected ID throw without replacing the current drawing set.
 
 To persist drawings together with controller, view, pane, and indicator state,
 pass the attached manager directly to the chart state API:
@@ -70,20 +129,17 @@ indicator pane remain on that pane.
 Custom drawings can participate by registering a deserializer:
 
 ```ts
-import { Drawing } from "@ardinsys/financial-charts/extensions";
+import { MyDrawing } from "./my-drawing";
 
-class MyDrawing extends Drawing {
-  readonly type = "my-drawing";
-  // ...
-}
-
-manager.registerDrawingDeserializer("my-drawing", (json) => {
+const unregister = manager.registerDrawingDeserializer("my-drawing", (json) => {
   return new MyDrawing({
     anchors: json.anchors,
     id: json.id,
     paneId: json.paneId
   });
 });
+
+unregister();
 ```
 
 For a complete custom drawing class and factory, see [Drawing tools](/guide/drawing-tools#write-a-custom-drawing-tool).
@@ -117,5 +173,5 @@ reserved for drawings and do not pan the chart.
 Drawing gestures use the primary mouse button; right-clicks are ignored by the
 drawing manager.
 
-Loading drawings with `fromJSON()` is treated as state restoration and does not
-emit per-drawing create/delete events.
+Loading drawings with `fromJSON()` and clearing with default options are treated
+as state reconciliation and do not emit per-drawing create/delete events.

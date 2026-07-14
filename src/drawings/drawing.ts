@@ -1,64 +1,67 @@
 import type { Pane } from "../panes/pane";
 
 export interface DrawingAnchor {
-  index: number;
-  price: number;
+  readonly index: number;
+  readonly price: number;
 }
 
 export interface DrawingPoint {
-  x: number;
-  y: number;
+  readonly x: number;
+  readonly y: number;
 }
 
 export interface DrawingAnchorHandle {
-  index: number;
-  point: DrawingPoint;
+  readonly index: number;
+  readonly point: DrawingPoint;
 }
 
 export interface DrawingAxisBounds {
-  x?: DrawingAnchor[];
-  y?: DrawingAnchor[];
+  readonly x?: readonly DrawingAnchor[];
+  readonly y?: readonly DrawingAnchor[];
 }
 
 export interface DrawingRenderContext {
-  pane: Pane;
-  canvas: HTMLCanvasElement;
+  /** Target pane; projected drawing points use chart-local logical pixels. */
+  readonly pane: Pane;
+  /** Physical backing canvas for the shared drawings layer. */
+  readonly canvas: HTMLCanvasElement;
 }
 
 export interface DrawingHitTestContext extends DrawingRenderContext {
-  tolerance: number;
+  readonly tolerance: number;
 }
 
 export interface DrawingOptions {
-  anchors: DrawingAnchor[];
-  id?: string;
-  paneId?: number;
+  readonly anchors: readonly DrawingAnchor[];
+  readonly id?: string;
+  readonly paneId?: number;
 }
 
 export interface DrawingJSON<
   TType extends string = string,
   TData extends object = object
 > {
-  anchors: DrawingAnchor[];
-  data?: TData;
-  id: string;
-  paneId: number;
-  type: TType;
+  readonly anchors: readonly DrawingAnchor[];
+  readonly data?: TData;
+  readonly id: string;
+  readonly paneId: number;
+  readonly type: TType;
 }
 
 let drawingId = 0;
 
 export abstract class Drawing {
-  readonly type: string = "drawing";
+  /** Stable serialization key handled by a registered deserializer. */
+  abstract readonly type: string;
   readonly id: string;
   private anchors: DrawingAnchor[];
   private paneId: number;
   private selected = false;
 
   constructor({ anchors, id, paneId = 0 }: DrawingOptions) {
-    this.id = id ?? `drawing-${++drawingId}`;
-    this.anchors = anchors.map((anchor) => ({ ...anchor }));
-    this.paneId = paneId;
+    this.id = validateDrawingId(id ?? `drawing-${++drawingId}`);
+    this.anchors = copyDrawingAnchors(anchors);
+    this.paneId = validatePaneId(paneId);
   }
 
   getPaneId() {
@@ -66,15 +69,15 @@ export abstract class Drawing {
   }
 
   setPaneId(paneId: number) {
-    this.paneId = paneId;
+    this.paneId = validatePaneId(paneId);
   }
 
   getAnchors() {
     return this.anchors.map((anchor) => ({ ...anchor }));
   }
 
-  setAnchors(anchors: DrawingAnchor[]) {
-    this.anchors = anchors.map((anchor) => ({ ...anchor }));
+  setAnchors(anchors: readonly DrawingAnchor[]) {
+    this.anchors = copyDrawingAnchors(anchors);
   }
 
   isSelected() {
@@ -139,18 +142,14 @@ export abstract class Drawing {
   }
 
   toJSON(): DrawingJSON {
-    const json: DrawingJSON = {
+    const data = this.getDataJSON();
+    return {
       anchors: this.getAnchors(),
       id: this.id,
       paneId: this.paneId,
-      type: this.type
+      type: this.type,
+      ...(data === undefined ? {} : { data })
     };
-    const data = this.getDataJSON();
-    if (data !== undefined) {
-      json.data = data;
-    }
-
-    return json;
   }
 
   protected getDataJSON(): object | undefined {
@@ -159,19 +158,23 @@ export abstract class Drawing {
 
   protected projectAnchor(
     anchor: DrawingAnchor,
-    { pane, canvas }: DrawingRenderContext
+    { pane }: DrawingRenderContext
   ): DrawingPoint {
     const timeScale = pane.getTimeScale();
     if (!timeScale) {
       return { x: 0, y: 0 };
     }
 
+    const region = pane.getRegion();
+    const scaleOptions = {
+      canvas: { width: region.width, height: region.height },
+      devicePixelRatio: 1,
+      barAlignment: pane.getTimeAnchorAlignment()
+    };
+
     return {
-      x: timeScale.projectIndex(anchor.index, {
-        canvas,
-        barAlignment: pane.getTimeAnchorAlignment()
-      }),
-      y: pane.getPriceScale().project(anchor.price, { canvas })
+      x: region.x + timeScale.projectIndex(anchor.index, scaleOptions),
+      y: region.y + pane.getPriceScale().project(anchor.price, scaleOptions)
     };
   }
 
@@ -181,21 +184,25 @@ export abstract class Drawing {
 
   protected unprojectPoint(
     point: DrawingPoint,
-    { pane, canvas }: DrawingRenderContext
+    { pane }: DrawingRenderContext
   ): DrawingAnchor {
     const timeScale = pane.getTimeScale();
     if (!timeScale) {
       return { index: 0, price: 0 };
     }
 
+    const region = pane.getRegion();
+    const scaleOptions = {
+      canvas: { width: region.width, height: region.height },
+      devicePixelRatio: 1,
+      barAlignment: pane.getTimeAnchorAlignment()
+    };
+
     return {
       index: Math.round(
-        timeScale.unprojectIndex(point.x, {
-          canvas,
-          barAlignment: pane.getTimeAnchorAlignment()
-        })
+        timeScale.unprojectIndex(point.x - region.x, scaleOptions)
       ),
-      price: pane.getPriceScale().unproject(point.y, { canvas })
+      price: pane.getPriceScale().unproject(point.y - region.y, scaleOptions)
     };
   }
 
@@ -246,7 +253,7 @@ export function anchorFromPoint(
     height: region.height
   };
 
-  const index = timeScale.unprojectIndex(point.x, {
+  const index = timeScale.unprojectIndex(point.x - region.x, {
     canvas,
     devicePixelRatio: 1,
     barAlignment: pane.getTimeAnchorAlignment()
@@ -254,9 +261,34 @@ export function anchorFromPoint(
 
   return {
     index: Math.round(index),
-    price: pane.getPriceScale().unproject(point.y, {
+    price: pane.getPriceScale().unproject(point.y - region.y, {
       canvas,
       devicePixelRatio: 1
     })
   };
+}
+
+function copyDrawingAnchors(anchors: readonly DrawingAnchor[]) {
+  return anchors.map((anchor) => {
+    if (!Number.isFinite(anchor.index) || !Number.isFinite(anchor.price)) {
+      throw new TypeError(
+        "Drawing anchors must contain finite index and price values."
+      );
+    }
+    return { index: anchor.index, price: anchor.price };
+  });
+}
+
+function validateDrawingId(id: string) {
+  if (typeof id !== "string" || id.trim().length === 0) {
+    throw new TypeError("Drawing id must be a non-empty string.");
+  }
+  return id;
+}
+
+function validatePaneId(paneId: number) {
+  if (!Number.isInteger(paneId) || paneId < 0) {
+    throw new RangeError("Drawing paneId must be a non-negative integer.");
+  }
+  return paneId;
 }

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
+import { TestIndicator } from "../src/indicators/paneled/test-indicator";
+import { DrawingSelectionPlugin } from "../src/plugins/drawing-selection-plugin";
 import type { BarAlignment } from "../src/scales/time-scale";
 import {
   Drawing,
@@ -9,7 +11,8 @@ import {
   type DrawingFactory,
   DrawingManager,
   type DrawingPoint,
-  type DrawingRenderContext
+  type DrawingRenderContext,
+  TrendLine
 } from "../src/drawings";
 import type {
   ChartPlugin,
@@ -19,6 +22,8 @@ import type {
 const charts: FinancialChart[] = [];
 
 class StubDrawing extends Drawing {
+  readonly type = "stub";
+
   draw = vi.fn(
     (ctx: CanvasRenderingContext2D, context: DrawingRenderContext) => {
       const anchors = this.projectForTest(context);
@@ -200,6 +205,119 @@ function waitForRedraw() {
 }
 
 describe("DrawingManager", () => {
+  it("supports state before attachment and preserves it across reattachment", () => {
+    const manager = new DrawingManager();
+    const drawing = new TrendLine({
+      anchors: [
+        { index: 0, price: 10 },
+        { index: 1, price: 12 }
+      ],
+      id: "preloaded-trend"
+    });
+
+    manager.addDrawing(drawing);
+    expect(manager.getDrawings()).toEqual([drawing]);
+    expect(manager.getSelectedDrawing()).toBe(drawing);
+
+    const { chart } = createChart();
+    chart.addPlugin(manager);
+    chart.removePlugin(manager);
+
+    expect(manager.getDrawings()).toEqual([drawing]);
+    expect(manager.getSelectedDrawing()).toBe(drawing);
+
+    chart.addPlugin(manager);
+    expect(manager.deleteSelected()).toBe(true);
+    expect(manager.getDrawings()).toEqual([]);
+  });
+
+  it("validates drawing identity and restores state atomically", () => {
+    const manager = new DrawingManager();
+    const drawing = new TrendLine({
+      anchors: [
+        { index: 0, price: 10 },
+        { index: 1, price: 12 }
+      ],
+      id: "trend"
+    });
+    manager.addDrawing(drawing);
+
+    expect(() =>
+      manager.addDrawing(
+        new TrendLine({
+          anchors: [{ index: 2, price: 14 }],
+          id: drawing.id
+        })
+      )
+    ).toThrow('Drawing id "trend" is already registered.');
+
+    const json = drawing.toJSON();
+    expect(() =>
+      manager.fromJSON({ drawings: [json, json] })
+    ).toThrow('Drawing id "trend" is duplicated.');
+    expect(() =>
+      manager.fromJSON({
+        drawings: [json],
+        selectedDrawingId: "missing"
+      })
+    ).toThrow('Selected drawing "missing" was not found.');
+
+    expect(manager.getDrawings()).toEqual([drawing]);
+    expect(manager.getSelectedDrawing()).toBe(drawing);
+    expect(manager.getDrawingById("trend")).toBe(drawing);
+    expect(manager.clearDrawings()).toEqual([drawing]);
+    expect(manager.getDrawings()).toEqual([]);
+  });
+
+  it("synchronizes retained selection with selection plugins", () => {
+    const { chart } = createChart();
+    const manager = new DrawingManager();
+    const drawing = manager.addDrawing(
+      new TrendLine({
+        anchors: [{ index: 0, price: 10 }],
+        id: "selected"
+      })
+    );
+    const onSelect = vi.fn();
+
+    chart.addPlugin(manager);
+    const selection = new DrawingSelectionPlugin(onSelect);
+    chart.addPlugin(selection);
+    expect(onSelect).toHaveBeenLastCalledWith(
+      drawing,
+      expect.objectContaining({ id: drawing.id })
+    );
+
+    chart.removePlugin(manager);
+    expect(onSelect).toHaveBeenLastCalledWith(undefined, {
+      drawing: undefined
+    });
+    expect(manager.getSelectedDrawing()).toBe(drawing);
+
+    chart.addPlugin(manager);
+    expect(onSelect).toHaveBeenLastCalledWith(
+      drawing,
+      expect.objectContaining({ id: drawing.id })
+    );
+
+    manager.clearDrawings();
+    expect(onSelect).toHaveBeenLastCalledWith(undefined, {
+      drawing: undefined
+    });
+  });
+
+  it("validates persisted drawing primitives", () => {
+    expect(
+      () => new StubDrawing({ anchors: [{ index: NaN, price: 10 }] })
+    ).toThrow("Drawing anchors must contain finite index and price values.");
+    expect(
+      () => new StubDrawing({ anchors: [], id: " " })
+    ).toThrow("Drawing id must be a non-empty string.");
+    expect(
+      () => new StubDrawing({ anchors: [], paneId: -1 })
+    ).toThrow("Drawing paneId must be a non-negative integer.");
+  });
+
   it("creates, selects, moves, and deletes a stub drawing", () => {
     const { chart, data } = createChart();
     const manager = createManager(chart);
@@ -563,5 +681,38 @@ describe("DrawingManager", () => {
     chart.requestRedraw("drawings", true);
 
     expect(drawing.draw).toHaveBeenCalled();
+  });
+
+  it("projects and clips drawings in their target pane", () => {
+    const { chart } = createChart();
+    const indicator = new TestIndicator();
+    chart.addIndicator(indicator);
+    const pane = chart.getPanes()[1];
+    const manager = createManager(chart);
+    const priceRange = pane.getPriceScale().getRange();
+    const drawing = new StubDrawing({
+      anchors: [{ index: 1, price: (priceRange.min + priceRange.max) / 2 }],
+      paneId: pane.getId()
+    });
+    manager.addDrawing(drawing);
+
+    const context = chart.getContext("drawings");
+    const [point] = drawing.projectForTest({ pane, canvas: context.canvas });
+    const region = pane.getRegion();
+
+    expect(chart.getLogicalCanvas("drawings").height).toBe(
+      region.y + region.height
+    );
+    expect(point.y).toBeGreaterThanOrEqual(region.y);
+    expect(point.y).toBeLessThanOrEqual(region.y + region.height);
+
+    vi.mocked(context.rect).mockClear();
+    chart.requestRedraw("drawings", true);
+    expect(context.rect).toHaveBeenCalledWith(
+      region.x,
+      region.y,
+      region.width,
+      region.height
+    );
   });
 });

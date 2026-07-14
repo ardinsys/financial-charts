@@ -19,8 +19,21 @@ const manager = new DrawingManager({
   drawingFactory: ({ anchors, paneId }) => new TrendLine({ anchors, paneId })
 });
 
+manager.addDrawing(
+  new HorizontalLine({
+    id: "previous-close",
+    anchors: [{ index: 0, price: 102.5 }]
+  })
+);
+
 chart.addPlugin(manager);
 ```
+
+Factories, deserializers, programmatic drawings, and restored JSON can all be
+configured before `chart.addPlugin(manager)`. Detaching releases interaction
+resources but preserves manager state for later reattachment. Use
+`clearDrawings()` when the application intentionally wants to discard all
+drawings and undo/redo history.
 
 Switch tools by swapping the factory:
 
@@ -126,8 +139,8 @@ interface PriceBandData {
 }
 
 class PriceBandDrawing extends Drawing {
-  static readonly type = "price-band";
-  readonly type = PriceBandDrawing.type;
+  static readonly TYPE = "price-band";
+  readonly type = PriceBandDrawing.TYPE;
 
   constructor(
     options: DrawingOptions & {
@@ -190,11 +203,20 @@ const manager = new DrawingManager({
   drawingFactory: ({ anchors, paneId }) =>
     new PriceBandDrawing({ anchors, paneId }),
   drawingDeserializers: {
-    [PriceBandDrawing.type]: PriceBandDrawing.fromJSON
+    [PriceBandDrawing.TYPE]: PriceBandDrawing.fromJSON
   }
 });
 
 chart.addPlugin(manager);
 ```
 
-`draw()` receives the shared drawings canvas and the target pane. `hitTest()` receives pane-local pointer coordinates plus the configured tolerance. Use protected helpers such as `projectAnchors()` so drawings stay attached to index-space bars while the chart pans and zooms.
+`draw()` receives the shared drawings canvas and the target pane. Drawing
+coordinates are logical and chart-local; the manager clips rendering to the
+target pane. `hitTest()` receives coordinates in the same space plus the
+configured tolerance. Use protected helpers such as `projectAnchors()` so
+drawings include pane offsets and stay attached to index-space bars while the
+chart pans and zooms.
+
+The manager rejects duplicate IDs. Constructors also reject blank IDs,
+negative/non-integer pane IDs, and non-finite anchors before invalid state can
+enter serialization or interaction history.

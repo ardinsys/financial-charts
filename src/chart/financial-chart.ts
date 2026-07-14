@@ -2610,8 +2610,11 @@ export class FinancialChart extends EventEmitter {
       right = 0;
       width = yAxisRegion.width;
       height = yAxisRegion.height;
-    } else if (type === "annotations") {
-      width = this.container.offsetWidth;
+    } else if (type === "annotations" || type === "drawings") {
+      width =
+        type === "annotations"
+          ? this.container.offsetWidth
+          : this.mainPane.getRegion().width;
       height = this.getPaneLayoutHeight();
     } else if (type === "x-label" || type === "crosshair") {
       width = this.container.offsetWidth;

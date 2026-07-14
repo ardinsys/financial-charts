@@ -304,6 +304,10 @@ chart.addPlugin(
 ```
 
 The default callback is a no-op, so `new DrawingSelectionPlugin()` is valid.
+When it attaches after a `DrawingManager`, it immediately receives the
+manager's current selection. It also tracks selection clearing while the
+manager is detached and the retained selection when that manager is attached
+again.
 You can also pass an options object:
 
 ```ts

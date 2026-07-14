@@ -10,6 +10,7 @@ export interface IndicatorLabelActionTitles {
  * behavior (redraw, events, removal); the adapter only wires the controls.
  */
 export interface IndicatorLabelActions {
+  /** Requests the resulting indicator visibility. */
   onToggleVisibility(visible: boolean): void;
   onOpenSettings(): void;
   onRemove(): void;

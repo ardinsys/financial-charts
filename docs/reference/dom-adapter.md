@@ -28,6 +28,10 @@ interface ChartDOMAdapter {
 
 Use `DefaultDOMAdapter` when CSS hooks are enough. Pass a custom adapter in `ChartOptions.domAdapter` when your app should render labels or pane dividers through its own DOM primitives.
 
+Adapter models are declarative inputs. Treat them as immutable and render the
+complete current state on every `update()` rather than diffing against chart
+internals. Geometry fields are logical CSS pixels.
+
 ## Overlay
 
 `createOverlay(host, context)` is called once during chart construction.
@@ -40,6 +44,9 @@ Use `DefaultDOMAdapter` when CSS hooks are enough. Pass a custom adapter in `Cha
 | `indicatorLabelContainer` | Element where the chart appends indicator label roots. |
 | `update(context)`         | Repositions or rethemes overlay DOM.                   |
 | `destroy()`               | Removes overlay DOM and listeners.                     |
+
+The adapter mounts the overlay into `host`. The chart calls `update()` after
+theme or layout changes and calls `destroy()` once during chart disposal.
 
 ## Indicator labels
 
@@ -66,7 +73,15 @@ The adapter returns a handle:
 | `update(model)` | Re-render from new label state.                         |
 | `destroy()`     | Remove listeners and adapter-owned resources.           |
 
-Action callbacks keep behavior in the chart core: `onToggleVisibility(visible)`, `onOpenSettings()`, and `onRemove()`.
+The chart mounts `root`; the adapter must not append it itself. It may replace
+the root's children during `update()`, but the `root` identity must remain
+stable. The chart calls `destroy()` before removing the root.
+
+Action callbacks keep behavior in the chart core:
+`onToggleVisibility(visible)`, `onOpenSettings()`, and `onRemove()`. The
+visibility argument is the requested resulting state: the show action passes
+`true`, and the hide action passes `false`. `DefaultDOMAdapter` uses matching
+`show`/`hide` classes, titles, ARIA labels, and callback values.
 
 ## Pane dividers
 
@@ -80,6 +95,11 @@ Action callbacks keep behavior in the chart core: `onToggleVisibility(visible)`,
 | `x`, `y`, `width`, `height`    | Logical pixel bounds for the hit area. |
 
 Call `actions.onPointerDown(event)` from the divider's pointer-down handler to let the chart run pane resizing.
+
+The chart mounts the returned `root`, calls `update()` as panes move or themes
+change, and calls `destroy()` when the divider disappears or the chart is
+disposed. If `createPaneDivider()` is omitted, only the divider falls back to
+`DefaultDOMAdapter`; custom overlay and label methods remain active.
 
 ## Default DOM hooks
 
