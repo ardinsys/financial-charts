@@ -259,7 +259,7 @@ describe("ChartSyncPlugin", () => {
       paneId: source.chart.getMainPane().getId()
     });
     const sourceIndicator = new CustomMovingAverageIndicator(null, {
-      key: "deferred-data-sma",
+      instanceId: "deferred-data-sma",
       names: { default: "Deferred Data SMA" },
       period: 7,
       source: "close"
@@ -309,7 +309,7 @@ describe("ChartSyncPlugin", () => {
       paneId: source.chart.getMainPane().getId()
     });
     const sourceIndicator = new CustomMovingAverageIndicator(null, {
-      key: "retained-sma",
+      instanceId: "retained-sma",
       names: { default: "Retained SMA" },
       period: 13,
       source: "close"
@@ -351,7 +351,7 @@ describe("ChartSyncPlugin", () => {
 
     source.chart.addIndicator(
       new CustomMovingAverageIndicator(null, {
-        key: "initial-sync-disabled-sma",
+        instanceId: "initial-sync-disabled-sma",
         names: { default: "Disabled Initial Sync SMA" },
         period: 11,
         source: "close"
@@ -421,34 +421,61 @@ describe("ChartSyncPlugin", () => {
     expect(target.drawingManager.getDrawings()).toEqual([]);
   });
 
-  it("syncs cloned indicators", () => {
+  it("syncs multiple indicators of the same type by instance ID", () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const target = createSyncedChart(group);
-    const indicator = new CustomMovingAverageIndicator(null, {
-      key: "SMA-sync",
-      names: { default: "Synced SMA" },
+    const fast = new CustomMovingAverageIndicator(null, {
+      instanceId: "fast-sma",
+      names: { default: "Fast SMA" },
       period: 9,
       source: "close"
     });
+    const slow = new CustomMovingAverageIndicator(null, {
+      instanceId: "slow-sma",
+      names: { default: "Slow SMA" },
+      period: 21,
+      source: "close"
+    });
 
-    source.chart.addIndicator(indicator);
+    source.chart.addIndicator(fast);
+    source.chart.addIndicator(slow);
 
-    const syncedIndicator = target.chart.getIndicators()[0];
-    expect(syncedIndicator).toBeInstanceOf(CustomMovingAverageIndicator);
-    expect(syncedIndicator?.getOptions().period).toBe(9);
+    expect(target.chart.getIndicatorById("fast-sma")).toBeInstanceOf(
+      CustomMovingAverageIndicator
+    );
+    expect(target.chart.getIndicatorById("fast-sma")?.getOptions().period).toBe(
+      9
+    );
+    expect(target.chart.getIndicatorById("slow-sma")?.getOptions().period).toBe(
+      21
+    );
+    expect(
+      target.chart.getIndicatorsByType("custom-moving-average")
+    ).toHaveLength(2);
 
-    indicator.updateOptions({ period: 12 });
+    fast.updateOptions({ period: 12 });
 
-    expect(target.chart.getIndicators()[0]?.getOptions().period).toBe(12);
+    expect(target.chart.getIndicatorById("fast-sma")?.getOptions().period).toBe(
+      12
+    );
+    expect(target.chart.getIndicatorById("slow-sma")?.getOptions().period).toBe(
+      21
+    );
 
-    indicator.setVisible(false);
+    slow.setVisible(false);
 
-    expect(target.chart.getIndicators()[0]?.isIndicatorVisible()).toBe(false);
+    expect(
+      target.chart.getIndicatorById("slow-sma")?.isIndicatorVisible()
+    ).toBe(false);
+    expect(
+      target.chart.getIndicatorById("fast-sma")?.isIndicatorVisible()
+    ).toBe(true);
 
-    source.chart.removeIndicator(indicator);
+    source.chart.removeIndicator(fast);
 
-    expect(target.chart.getAllIndicators()).toEqual([]);
+    expect(target.chart.getIndicatorById("fast-sma")).toBeUndefined();
+    expect(target.chart.getIndicatorById("slow-sma")).toBeDefined();
   });
 
   it("lets third-party plugins exchange custom messages through context lookup", () => {

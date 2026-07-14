@@ -186,10 +186,17 @@ unmount briefly and the next mounted chart can still rehydrate without holding
 old chart or DOM instances alive.
 
 ```ts
+import {
+  Indicator,
+  type IndicatorOptionsInput
+} from "@ardinsys/financial-charts";
+
 class MyIndicator extends Indicator<MyTheme, MyOptions> {
+  static readonly ID = "my-indicator";
+
   constructor(
     private readonly feed: PriceFeed,
-    options?: Partial<MyOptions>
+    options?: IndicatorOptionsInput<MyOptions>
   ) {
     super(null, options);
   }

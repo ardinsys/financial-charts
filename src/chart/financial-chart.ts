@@ -813,6 +813,27 @@ export class FinancialChart extends EventEmitter {
     return freezeSnapshot([...this.indicators, ...this.paneledIndicators]);
   }
 
+  /** Returns an attached indicator by its unique instance identity. */
+  getIndicatorById(instanceId: string): Indicator<any, any> | undefined {
+    return (
+      this.indicators.find(
+        (indicator) => indicator.getInstanceId() === instanceId
+      ) ??
+      this.paneledIndicators.find(
+        (indicator) => indicator.getInstanceId() === instanceId
+      )
+    );
+  }
+
+  /** Returns all attached indicators sharing a factory/type identity. */
+  getIndicatorsByType(typeId: string): readonly Indicator<any, any>[] {
+    return freezeSnapshot(
+      [...this.indicators, ...this.paneledIndicators].filter(
+        (indicator) => indicator.getIndicatorType() === typeId
+      )
+    );
+  }
+
   getPanes(): readonly Pane[] {
     return freezeSnapshot([...this.panes]);
   }
@@ -2637,6 +2658,11 @@ export class FinancialChart extends EventEmitter {
       this.paneledIndicators.some((item) => item === indicator)
     ) {
       throw new Error("Indicator instance is already attached to this chart.");
+    }
+    if (this.getIndicatorById(indicator.getInstanceId())) {
+      throw new Error(
+        `Indicator instanceId "${indicator.getInstanceId()}" is already attached to this chart.`
+      );
     }
 
     try {

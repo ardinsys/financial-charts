@@ -15,6 +15,8 @@ class ExternalDataProbeIndicator extends Indicator<
   ExternalIndicatorTheme,
   DefaultIndicatorOptions
 > {
+  static readonly ID = "external-data-probe";
+
   readonly onOptionsChanged = vi.fn();
   detachCalls = 0;
   labelReads = 0;
@@ -23,7 +25,7 @@ class ExternalDataProbeIndicator extends Indicator<
 
   getDefaultOptions(): DefaultIndicatorOptions {
     return {
-      key: "external-data-probe",
+      labelKey: "external-data-probe",
       names: { default: "External data" }
     };
   }

@@ -44,7 +44,9 @@ Use `DefaultDOMAdapter` when CSS hooks are enough. Pass a custom adapter in `Cha
 
 | Field          | Description                                                    |
 | -------------- | -------------------------------------------------------------- |
-| `key`          | Indicator key.                                                 |
+| `instanceId`   | Unique identity of this configured indicator instance.         |
+| `typeId`       | Stable factory/type identifier shared by same-type instances.  |
+| `labelKey`     | Stable application-facing identifier for the label kind.       |
 | `themeKey`     | Active theme key.                                              |
 | `name`         | Localized display name.                                        |
 | `detail`       | Optional parameter/source text such as `20 close`.             |
@@ -81,7 +83,9 @@ Call `actions.onPointerDown(event)` from the divider's pointer-down handler to l
 `DefaultDOMAdapter` exposes stable CSS and data hooks for restyling:
 
 - Overlay: `.fci-overlay`, `.fci-indicator-labels`, `data-id="indicator-labels"`.
-- Label root: `.financial-indicator`, `.fci-indicator`, `data-id="indicator-label"`.
+- Label root: `.financial-indicator`, `.fci-indicator`,
+  `data-id="indicator-label"`, `data-indicator-instance-id`,
+  `data-indicator-type`, and `data-indicator-label-key`.
 - Label parts: `.fci-wrapper`, `.fci-label`, `.fci-name`, `.fci-extra`, `.fci-value`, `.fci-value-segment`.
 - Actions: `.fci-actions`, `.fci-btn`, `.fci-action`, `.fci-action-show`, `.fci-action-hide`, `.fci-action-settings`, `.fci-action-remove`.
 - States: `.fci-hide`, `.fci-hidden`.

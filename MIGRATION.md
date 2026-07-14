@@ -139,6 +139,25 @@ What to update:
   `{ detail, segments }`.
 - Use `getModifier(visibleTimeRange)` to contribute to price auto-ranging.
 
+Indicator type, instance, and label identity are now separate:
+
+- Add a stable static `ID` to every custom indicator hierarchy for factory and
+  sync lookup. Subclasses may override it when they represent a distinct type.
+- Replace the removed default option `key` with the required `labelKey`.
+- Pass `{ instanceId }` to the constructor when restoring a persisted
+  indicator. Otherwise the base class generates a unique instance ID.
+- Replace removed `getKey()` calls with `getInstanceId()` and removed
+  constructor `key` values with `instanceId`.
+- Use `getLabelKey()` for application label lookup and `getIndicatorType()` for
+  factory lookup.
+- `clone()` now creates a distinct instance ID; `copyFrom()` preserves the
+  target identity.
+
+Charts reject duplicate instance IDs and expose `getIndicatorById()` and
+`getIndicatorsByType()`. Indicator event payloads expose the indicator instance;
+read its identity through the methods above. Indicator synchronization uses the
+instance ID so multiple instances of one type no longer overwrite one another.
+
 ### Paneled indicators are pane-backed
 
 Paneled indicators are laid out through `Pane` models that share the chart's
@@ -258,8 +277,9 @@ protected getLabelContent(dataTime?: number): IndicatorLabelContent {
 }
 ```
 
-The base `Indicator` builds an `IndicatorLabelModel` (name from localized
-`names`, actions, visibility) and hands it to the adapter. Multi-color values
+The base `Indicator` builds an `IndicatorLabelModel` (`instanceId`, `typeId`,
+`labelKey`, name from localized `names`, actions, visibility) and hands it to
+the adapter. Multi-color values
 (Bollinger, MACD) are expressed as multiple
 `segments`. This is what lets DOM adapters render labels using app-owned
 markup, styling, or framework components.

@@ -229,6 +229,8 @@ root entry.
 | `getPaneHeights()`                                                  | Returns current logical pixel heights keyed by pane id.                                     |
 | `getPlugins()`                                                      | Returns a readonly snapshot of attached plugins.                                            |
 | `getIndicators()` / `getPaneledIndicators()` / `getAllIndicators()` | Returns readonly snapshots of overlay, paneled, or all indicators.                          |
+| `getIndicatorById(instanceId)`                                      | Returns the indicator with that unique instance ID, if attached.                            |
+| `getIndicatorsByType(typeId)`                                       | Returns a readonly snapshot of every indicator with the stable type ID.                     |
 | `getCrosshairState()`                                               | Returns the current crosshair state, or `undefined` when hidden.                            |
 
 `getOptions()` returns controller, timeframe, theme, and localization data. Its
@@ -256,7 +258,8 @@ Create indicators directly with `new MyIndicator(args)` and pass the instance to
 [Indicators reference](./indicators.md) for implementation details.
 
 The disposer returned by `addIndicator()` removes that instance once; later
-calls are no-ops. Adding an already attached instance throws.
+calls are no-ops. Adding an already attached instance or a duplicate instance
+ID throws.
 
 Paneled indicator heights can be resized by dragging the pane divider. Use
 `chart.setPaneHeights({ [paneId]: height })` to restore or persist a custom

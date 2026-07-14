@@ -24,8 +24,17 @@ export type { IndicatorLabelSegment };
 
 export interface DefaultIndicatorOptions {
   names: Record<string, string>;
-  key: string;
+  /** Stable label identifier used by adapters and application UI. */
+  labelKey: string;
 }
+
+export interface IndicatorIdentityOptions {
+  /** Restores the identity of a persisted or synchronized indicator. */
+  instanceId?: string;
+}
+
+export type IndicatorOptionsInput<TOptions extends DefaultIndicatorOptions> =
+  Partial<TOptions> & IndicatorIdentityOptions;
 
 /** What a concrete indicator contributes to its label on each update. */
 export interface IndicatorLabelContent {
@@ -94,17 +103,31 @@ export abstract class Indicator<
   protected visible = true;
   private labelHandle?: IndicatorLabelHandle;
   private attached = false;
+  private readonly typeId: string;
+  private instanceId: string;
 
   constructor(
     themes?: Record<string, Partial<TTheme>> | undefined | null,
-    options?: Partial<TOptions> | undefined | null
+    options?: IndicatorOptionsInput<TOptions> | undefined | null
   ) {
+    const optionOverrides = { ...(options ?? {}) };
+    const configuredInstanceId = optionOverrides.instanceId;
+    delete optionOverrides.instanceId;
+
     this.themes = mergeThemes(this.getDefaultThemes(), themes);
-    this.options = mergeThemes(this.getDefaultOptions(), options);
+    this.options = mergeThemes(
+      this.getDefaultOptions(),
+      optionOverrides as Partial<TOptions>
+    );
+    const Constructor = this.constructor as { ID?: string };
+    this.typeId = validateTypeId(Constructor.ID);
+    this.instanceId = validateInstanceId(
+      configuredInstanceId ?? createInstanceId(this.typeId)
+    );
   }
 
   public get key() {
-    return this.options.key;
+    return this.instanceId;
   }
 
   public attach(ctx: ChartContext): void {
@@ -136,7 +159,9 @@ export abstract class Indicator<
     const content = this.getLabelContent(dataTime);
     const actions = this.chart.getLocaleValues().indicators.actions;
     return {
-      key: this.options.key,
+      instanceId: this.instanceId,
+      typeId: this.getIndicatorType(),
+      labelKey: this.getLabelKey(),
       themeKey: this.chart.getOptions().theme.key,
       name: content.name ?? this.resolveName(),
       detail: content.detail,
@@ -156,7 +181,7 @@ export abstract class Indicator<
     return (
       this.options.names[this.chart.getOptions().locale] ||
       this.options.names.default ||
-      this.options.key
+      this.getLabelKey()
     );
   }
 
@@ -289,12 +314,13 @@ export abstract class Indicator<
   public clone(): Indicator<TTheme, TOptions> {
     const Constructor = this.constructor as new (
       themes?: Record<string, Partial<TTheme>> | undefined | null,
-      options?: Partial<TOptions> | undefined | null
+      options?: IndicatorOptionsInput<TOptions> | undefined | null
     ) => Indicator<TTheme, TOptions>;
-    const clone = new Constructor(
-      cloneIndicatorValue(this.themes),
-      cloneIndicatorValue(this.options)
-    );
+    const clonedOptions = cloneIndicatorValue(this.options);
+    const clone = new Constructor(cloneIndicatorValue(this.themes), {
+      ...clonedOptions,
+      instanceId: createInstanceId(this.getIndicatorType())
+    });
     clone.visible = this.visible;
     return clone;
   }
@@ -329,17 +355,55 @@ export abstract class Indicator<
     return this.labelContainer;
   }
 
-  public getKey() {
-    return this.options.key;
+  public getInstanceId(): string {
+    return this.instanceId;
   }
 
-  public getIndicatorType() {
-    return (this.constructor as { ID?: string }).ID ?? this.options.key;
+  /** Returns the stable application-facing identifier for this label kind. */
+  public getLabelKey(): string {
+    return this.options.labelKey;
+  }
+
+  /** Returns the stable factory/type identifier shared by same-type instances. */
+  public getIndicatorType(): string {
+    return this.typeId;
+  }
+
+  /** @internal Restores identity before attaching a synchronized clone. */
+  public restoreInstanceId(instanceId: string): void {
+    if (this.attached) {
+      throw new Error("Cannot change the identity of an attached indicator.");
+    }
+    this.instanceId = validateInstanceId(instanceId);
   }
 
   public getOptions() {
     return this.options;
   }
+}
+
+let nextIndicatorInstanceId = 0;
+
+function createInstanceId(typeId: string): string {
+  const randomId = globalThis.crypto?.randomUUID?.();
+  if (randomId) return `${typeId}-${randomId}`;
+
+  nextIndicatorInstanceId += 1;
+  return `${typeId}-${nextIndicatorInstanceId}`;
+}
+
+function validateInstanceId(instanceId: string): string {
+  if (typeof instanceId !== "string" || instanceId.trim().length === 0) {
+    throw new Error("Indicator instanceId must not be empty.");
+  }
+  return instanceId;
+}
+
+function validateTypeId(typeId: unknown): string {
+  if (typeof typeId !== "string" || typeId.trim().length === 0) {
+    throw new Error("Indicator classes must define a non-empty static ID.");
+  }
+  return typeId;
 }
 
 function cloneIndicatorValue<T>(value: T): T {

@@ -16,7 +16,9 @@ function model(
   overrides: Partial<IndicatorLabelModel> = {}
 ): IndicatorLabelModel {
   return {
-    key: "sma",
+    instanceId: "sma-1",
+    typeId: "moving-average",
+    labelKey: "SMA",
     themeKey: "light",
     name: "SMA",
     detail: "10 close",
@@ -51,7 +53,9 @@ describe("DefaultDOMAdapter indicator label", () => {
     expect(handle.root.classList.contains("financial-indicator")).toBe(true);
     expect(handle.root.classList.contains("fci-indicator")).toBe(true);
     expect(handle.root.dataset.id).toBe("indicator-label");
-    expect(handle.root.dataset.indicatorKey).toBe("sma");
+    expect(handle.root.dataset.indicatorInstanceId).toBe("sma-1");
+    expect(handle.root.dataset.indicatorType).toBe("moving-average");
+    expect(handle.root.dataset.indicatorLabelKey).toBe("SMA");
     expect(handle.root.dataset.themeKey).toBe("light");
     expect(q("name").textContent).toBe("SMA");
     expect(q("extra").textContent).toBe("10 close");
@@ -114,8 +118,19 @@ describe("DefaultDOMAdapter indicator label", () => {
 
   it("updates design-system data hooks when the label model changes", () => {
     const { handle } = makeLabel();
-    handle.update(model({ key: "ema", themeKey: "dark" }));
-    expect(handle.root.dataset.indicatorKey).toBe("ema");
+    handle.update(
+      model({
+        instanceId: "ema-2",
+        typeId: "exponential-moving-average",
+        labelKey: "EMA",
+        themeKey: "dark"
+      })
+    );
+    expect(handle.root.dataset.indicatorInstanceId).toBe("ema-2");
+    expect(handle.root.dataset.indicatorType).toBe(
+      "exponential-moving-average"
+    );
+    expect(handle.root.dataset.indicatorLabelKey).toBe("EMA");
     expect(handle.root.dataset.themeKey).toBe("dark");
   });
 

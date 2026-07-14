@@ -25,7 +25,12 @@ export interface IndicatorLabelSegment {
  * than authoring HTML, so DOM adapters can render it in app-native markup.
  */
 export interface IndicatorLabelModel {
-  key: string;
+  /** Unique identity of this indicator instance. */
+  instanceId: string;
+  /** Stable factory/type identifier shared by instances of the same indicator. */
+  typeId: string;
+  /** Stable application-facing identifier for the label kind. */
+  labelKey: string;
   themeKey: string;
   /** Localized display name. */
   name: string;

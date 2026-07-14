@@ -38,7 +38,7 @@ export class TestIndicator extends PaneledIndicator<
 
   public getDefaultOptions(): DefaultIndicatorOptions {
     return {
-      key: "test",
+      labelKey: "test",
       names: {
         default: "Test"
       }

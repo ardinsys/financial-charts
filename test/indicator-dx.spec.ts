@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
+import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import {
   DefaultIndicatorOptions,
   Indicator,
@@ -17,11 +18,12 @@ import { DataScaleModel } from "../src/scales/data-scale-model";
 const charts: FinancialChart[] = [];
 
 class OverlayProbeIndicator extends Indicator<{}, DefaultIndicatorOptions> {
+  static readonly ID = "overlay-probe";
   lastContext?: IndicatorDrawingContext;
 
   public getDefaultOptions(): DefaultIndicatorOptions {
     return {
-      key: "overlay-probe",
+      labelKey: "overlay-probe",
       names: { default: "Overlay probe" }
     };
   }
@@ -47,6 +49,7 @@ class PaneledProbeIndicator extends PaneledIndicator<
   {},
   DefaultIndicatorOptions
 > {
+  static readonly ID = "paneled-probe";
   lastContext?: PaneledIndicatorDrawingContext;
 
   public createScale(): DataScaleModel {
@@ -55,7 +58,7 @@ class PaneledProbeIndicator extends PaneledIndicator<
 
   public getDefaultOptions(): DefaultIndicatorOptions {
     return {
-      key: "paneled-probe",
+      labelKey: "paneled-probe",
       names: { default: "Paneled probe" }
     };
   }
@@ -183,5 +186,76 @@ describe("indicator authoring contexts", () => {
         y: expect.any(Number)
       })
     );
+  });
+});
+
+describe("indicator identity", () => {
+  it("separates generated instance identity from type and label identity", () => {
+    const first = new MovingAverageIndicator();
+    const second = new MovingAverageIndicator();
+
+    expect(first.getInstanceId()).not.toBe(second.getInstanceId());
+    expect(first.getIndicatorType()).toBe("moving-average");
+    expect(second.getIndicatorType()).toBe("moving-average");
+    expect(first.getLabelKey()).toBe("SMA");
+  });
+
+  it("restores caller-provided IDs and rejects duplicates on one chart", () => {
+    const chart = createChart(createData());
+    const first = new MovingAverageIndicator(null, {
+      instanceId: "primary-sma"
+    });
+    const duplicate = new MovingAverageIndicator(null, {
+      instanceId: "primary-sma"
+    });
+
+    chart.addIndicator(first);
+
+    expect(chart.getIndicatorById("primary-sma")).toBe(first);
+    expect(chart.getIndicatorsByType("moving-average")).toEqual([first]);
+    expect(() => chart.addIndicator(duplicate)).toThrow(
+      'Indicator instanceId "primary-sma" is already attached to this chart.'
+    );
+  });
+
+  it("gives clones new identity while copyFrom preserves target identity", () => {
+    const source = new MovingAverageIndicator(null, {
+      instanceId: "source-sma",
+      period: 21
+    });
+    const clone = source.clone();
+    const target = new MovingAverageIndicator(null, {
+      instanceId: "target-sma"
+    });
+
+    target.copyFrom(source);
+
+    expect(clone.getInstanceId()).not.toBe(source.getInstanceId());
+    expect(clone.getOptions().period).toBe(21);
+    expect(target.getInstanceId()).toBe("target-sma");
+    expect(target.getOptions().period).toBe(21);
+  });
+
+  it("provides the indicator instance in indicator events", () => {
+    const chart = createChart(createData());
+    const indicator = new MovingAverageIndicator(null, {
+      instanceId: "event-sma"
+    });
+    const events: Indicator<any, any>[] = [];
+    chart.on("indicator-add", ({ indicator: eventIndicator }) => {
+      events.push(eventIndicator);
+    });
+    chart.on("indicator-change", ({ indicator: eventIndicator }) => {
+      events.push(eventIndicator);
+    });
+    chart.on("indicator-remove", ({ indicator: eventIndicator }) => {
+      events.push(eventIndicator);
+    });
+
+    chart.addIndicator(indicator);
+    indicator.updateOptions({ period: 12 });
+    chart.removeIndicator(indicator);
+
+    expect(events).toEqual([indicator, indicator, indicator]);
   });
 });

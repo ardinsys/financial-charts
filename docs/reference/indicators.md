@@ -11,6 +11,8 @@ import {
 } from "@ardinsys/financial-charts";
 
 abstract class MyIndicator extends Indicator<MyTheme, MyOptions> {
+  static readonly ID = "my-indicator";
+
   public getDefaultOptions(): MyOptions {
     /* ... */
   }
@@ -31,10 +33,31 @@ abstract class MyIndicator extends Indicator<MyTheme, MyOptions> {
 
 Every indicator merges its supplied options with these defaults:
 
-| Field   | Description                                                                |
-| ------- | -------------------------------------------------------------------------- |
-| `key`   | Unique identifier (for labels and debugging).                              |
-| `names` | Localized display names keyed by locale (`default` is used as a fallback). |
+| Field      | Description                                                                |
+| ---------- | -------------------------------------------------------------------------- |
+| `labelKey` | Required stable label kind used by adapters and application UI.            |
+| `names`    | Localized display names keyed by locale (`default` is used as a fallback). |
+
+### Type, instance, and label identity
+
+Indicator identity has three separate parts:
+
+- The class's static `ID` is the stable type identifier used by factories and
+  synchronization. Every indicator hierarchy must define it; subclasses may
+  inherit the same type ID or override it when they represent a distinct type.
+- `getInstanceId()` identifies one configured instance. The base generates an
+  ID unless the constructor receives `{ instanceId }`, which is useful when
+  restoring persisted state.
+- `getLabelKey()` identifies the label kind and comes from `labelKey`. Multiple
+  instances of one type normally share it.
+
+Use `chart.getIndicatorById(instanceId)` for one instance and
+`chart.getIndicatorsByType(typeId)` for every instance of a type. A chart
+rejects duplicate instance IDs.
+
+If a custom indicator declares its own constructor, accept
+`IndicatorOptionsInput<MyOptions>` for the options argument and forward it to
+`super(...)` so callers can supply `instanceId`.
 
 The base class builds an `IndicatorLabelModel` from these options, the current label content, visibility, and localized action titles. The chart hands that model to the active `ChartDOMAdapter`.
 
@@ -55,7 +78,7 @@ The default adapter renders and wires:
 - `getModifier(visibleTimeRange)` lets you modify the price range. Return a `ScaleRangeModifier` when the indicator should influence automatic scaling (for example, Bollinger Bands).
 - `invalidate(options?)` is the protected update path for indicator-owned external state. It is safe before attachment and after detachment. Labels, indicator drawing, and crosshair drawing are invalidated by default; pass `{ scale: true }` when `getModifier()` may have changed.
 - `updateOptions(partial)` merges new options, requests a redraw, and re-renders the label.
-- `clone()` creates another indicator instance with the same themes, options, and visibility. Override it if your custom indicator has constructor dependencies beyond the standard `(themes, options)` shape.
+- `clone()` creates another indicator with the same themes, options, and visibility but a new instance ID. `copyFrom()` copies configurable state without changing the target's identity. Override `clone()` if your custom indicator has constructor dependencies beyond the standard `(themes, options)` shape.
 - `detach()` is called when an indicator is removed or the chart is disposed. `chartContext.signal` is aborted first. Chart-owned label cleanup always runs afterward, so subclass cleanup cannot accidentally bypass it by omitting `super.detach()`.
 
 The base re-resolves `this.theme` and rebuilds the label before delivering a
@@ -85,7 +108,12 @@ protected getLabelContent(dataTime?: number): IndicatorLabelContent {
 }
 ```
 
-`DefaultDOMAdapter` renders the model with stable `fci-*` CSS classes and `data-id` hooks. Pass a custom `domAdapter` in `ChartOptions` to render labels/actions through app-owned DOM or framework components. See [Design-system adapter](/guide/design-system-adapter).
+`IndicatorLabelModel` exposes `instanceId`, `typeId`, and `labelKey` separately.
+`DefaultDOMAdapter` renders the model with stable `fci-*` CSS classes,
+`data-id` hooks, and `data-indicator-instance-id`, `data-indicator-type`, and
+`data-indicator-label-key` identity hooks. Pass a custom `domAdapter` in
+`ChartOptions` to render labels/actions through app-owned DOM or framework
+components. See [Design-system adapter](/guide/design-system-adapter).
 
 ## Paneled indicators
 
@@ -93,6 +121,8 @@ protected getLabelContent(dataTime?: number): IndicatorLabelContent {
 
 ```ts
 abstract class MyPaneledIndicator extends PaneledIndicator<MyTheme, MyOptions> {
+  static readonly ID = "my-paneled-indicator";
+
   public createScale(): DataScaleModel {
     /* setup scale model */
   }
@@ -127,6 +157,8 @@ emits add/remove/change events for programmatic updates:
 | `indicator-remove`             | Fired after an indicator is removed.       |
 
 Listen to these events via `chart.on(...)` to open modals, persist state, or synchronize UI.
+Every indicator event includes `{ indicator }`; the visibility event also
+includes `visible`. Read instance, type, and label identity from the indicator.
 
 ## Example
 
@@ -134,6 +166,7 @@ Listen to these events via `chart.on(...)` to open modals, persist state, or syn
 import { MovingAverageIndicator } from "@ardinsys/financial-charts";
 
 const sma = new MovingAverageIndicator(null, {
+  instanceId: "primary-sma",
   period: 20,
   source: "close"
 });

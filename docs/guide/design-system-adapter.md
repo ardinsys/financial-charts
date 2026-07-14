@@ -94,6 +94,9 @@ class DesignSystemAdapter extends DefaultDOMAdapter {
     let visible = model.visible;
     const render = (next: IndicatorLabelModel) => {
       visible = next.visible;
+      root.dataset.indicatorInstanceId = next.instanceId;
+      root.dataset.indicatorType = next.typeId;
+      root.dataset.indicatorLabelKey = next.labelKey;
       root.dataset.visible = String(next.visible);
       title.textContent = next.name;
       detail.textContent = next.detail ?? "";

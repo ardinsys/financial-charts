@@ -153,7 +153,7 @@ const selectedIndicatorTitle = computed(() => {
   const indicator = selectedIndicator.value;
   if (!indicator) return "";
 
-  return indicator.getOptions().names.default ?? indicator.getKey();
+  return indicator.getOptions().names.default ?? indicator.getLabelKey();
 });
 
 interface PlaygroundChart {
@@ -290,7 +290,7 @@ function addIndicator(kind: IndicatorKind) {
   if (kind === "moving-average") {
     chart.addIndicator(
       new MovingAverageIndicator(null, {
-        key: `SMA-${indicatorIndex}`,
+        instanceId: `SMA-${indicatorIndex}`,
         names: { default: "Moving Average" },
         period: 9,
         source: "close"
@@ -299,7 +299,7 @@ function addIndicator(kind: IndicatorKind) {
   } else {
     chart.addIndicator(
       new TestIndicator(null, {
-        key: `MARKERS-${indicatorIndex}`,
+        instanceId: `MARKERS-${indicatorIndex}`,
         names: { default: "Pane Markers" }
       })
     );

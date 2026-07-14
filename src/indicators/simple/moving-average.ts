@@ -28,7 +28,7 @@ export class MovingAverageIndicator extends Indicator<
     return {
       period: 5,
       source: "close",
-      key: "SMA",
+      labelKey: "SMA",
       names: {
         default: "Simple Moving Average"
       }

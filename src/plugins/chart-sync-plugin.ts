@@ -8,8 +8,6 @@ import type { FinancialChart } from "../chart/financial-chart";
 
 export interface ChartSyncIndicatorSnapshot {
   indicator: Indicator<any, any>;
-  key: string;
-  type: string;
 }
 
 export interface ChartSyncCrosshairSnapshot {
@@ -256,8 +254,8 @@ export class ChartSyncPlugin implements ChartPlugin {
         ctx.on("indicator-remove", ({ indicator }) => {
           if (this.applying) return;
           this.storeIndicatorState();
-          const key = indicator.getKey();
-          this.broadcast((peer) => peer.applyIndicatorRemove(key));
+          const instanceId = indicator.getInstanceId();
+          this.broadcast((peer) => peer.applyIndicatorRemove(instanceId));
         })
       );
     }
@@ -550,17 +548,18 @@ export class ChartSyncPlugin implements ChartPlugin {
     indicator: Indicator<any, any>
   ): ChartSyncIndicatorSnapshot {
     const clonedIndicator = indicator.clone();
+    clonedIndicator.restoreInstanceId(indicator.getInstanceId());
     return {
-      indicator: clonedIndicator,
-      key: clonedIndicator.getKey(),
-      type: clonedIndicator.getIndicatorType()
+      indicator: clonedIndicator
     };
   }
 
   private applyIndicatorState(snapshots: ChartSyncIndicatorSnapshot[]) {
-    const keys = new Set(snapshots.map((snapshot) => snapshot.key));
+    const instanceIds = new Set(
+      snapshots.map((snapshot) => snapshot.indicator.getInstanceId())
+    );
     for (const indicator of this.ctx?.chart.getAllIndicators() ?? []) {
-      if (!keys.has(indicator.getKey())) {
+      if (!instanceIds.has(indicator.getInstanceId())) {
         this.ctx?.chart.removeIndicator(indicator, { emit: false });
       }
     }
@@ -573,14 +572,19 @@ export class ChartSyncPlugin implements ChartPlugin {
   private applyIndicator(snapshot: ChartSyncIndicatorSnapshot) {
     if (!this.ctx) return;
 
-    let indicator = this.findIndicator(snapshot.key);
-    if (indicator && indicator.getIndicatorType() !== snapshot.type) {
+    const instanceId = snapshot.indicator.getInstanceId();
+    let indicator = this.findIndicator(instanceId);
+    if (
+      indicator &&
+      indicator.getIndicatorType() !== snapshot.indicator.getIndicatorType()
+    ) {
       this.ctx.chart.removeIndicator(indicator, { emit: false });
       indicator = undefined;
     }
 
     if (!indicator) {
       indicator = snapshot.indicator.clone();
+      indicator.restoreInstanceId(instanceId);
       this.ctx.chart.addIndicator(indicator, { emit: false });
       return;
     }
@@ -588,17 +592,15 @@ export class ChartSyncPlugin implements ChartPlugin {
     indicator.copyFrom(snapshot.indicator, { emit: false });
   }
 
-  private applyIndicatorRemove(key: string) {
-    const indicator = this.findIndicator(key);
+  private applyIndicatorRemove(instanceId: string) {
+    const indicator = this.findIndicator(instanceId);
     if (indicator) {
       this.ctx?.chart.removeIndicator(indicator, { emit: false });
     }
   }
 
-  private findIndicator(key: string) {
-    return this.ctx?.chart
-      .getAllIndicators()
-      .find((indicator) => indicator.getKey() === key);
+  private findIndicator(instanceId: string) {
+    return this.ctx?.chart.getIndicatorById(instanceId);
   }
 
   private getDrawingManager() {
@@ -652,11 +654,8 @@ function cloneIndicatorSnapshots(
 ): ChartSyncIndicatorSnapshot[] {
   return snapshots.map((snapshot) => {
     const indicator = snapshot.indicator.clone();
-    return {
-      indicator,
-      key: indicator.getKey(),
-      type: indicator.getIndicatorType()
-    };
+    indicator.restoreInstanceId(snapshot.indicator.getInstanceId());
+    return { indicator };
   });
 }
 

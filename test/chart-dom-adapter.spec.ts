@@ -44,7 +44,9 @@ class CustomDOMAdapter implements ChartDOMAdapter {
     root.className = "custom-indicator-label";
 
     const update = (next: IndicatorLabelModel) => {
-      root.dataset.key = next.key;
+      root.dataset.instanceId = next.instanceId;
+      root.dataset.typeId = next.typeId;
+      root.dataset.labelKey = next.labelKey;
       root.dataset.themeKey = next.themeKey;
       root.textContent = [next.name, next.detail].filter(Boolean).join(" ");
     };

@@ -60,7 +60,9 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
     });
     root.classList.add("financial-indicator", "fci-indicator");
     root.dataset.id = "indicator-label";
-    root.dataset.indicatorKey = model.key;
+    root.dataset.indicatorInstanceId = model.instanceId;
+    root.dataset.indicatorType = model.typeId;
+    root.dataset.indicatorLabelKey = model.labelKey;
     root.dataset.themeKey = model.themeKey;
 
     const button = (id: string, icon: string, extraClass = "") =>
@@ -127,7 +129,9 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
     const update = (next: IndicatorLabelModel) => {
       if (name) name.textContent = next.name;
       if (extra) extra.textContent = next.detail ?? "";
-      root.dataset.indicatorKey = next.key;
+      root.dataset.indicatorInstanceId = next.instanceId;
+      root.dataset.indicatorType = next.typeId;
+      root.dataset.indicatorLabelKey = next.labelKey;
       root.dataset.themeKey = next.themeKey;
       if (value) {
         value.replaceChildren(

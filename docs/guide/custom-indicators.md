@@ -27,11 +27,13 @@ interface LastPriceOptions extends DefaultIndicatorOptions {
 }
 
 class LastPriceIndicator extends Indicator<LastPriceTheme, LastPriceOptions> {
+  static readonly ID = "last-price";
+
   private values = new Map<number, number>();
 
   public getDefaultOptions(): LastPriceOptions {
     return {
-      key: "last-price",
+      labelKey: "last-price",
       names: { default: "Last price" },
       source: "close"
     };
@@ -123,11 +125,13 @@ class RangePaneIndicator extends PaneledIndicator<
   RangePaneTheme,
   DefaultIndicatorOptions
 > {
+  static readonly ID = "range-pane";
+
   private rangeData: ChartData[] = [];
 
   public getDefaultOptions(): DefaultIndicatorOptions {
     return {
-      key: "range-pane",
+      labelKey: "range-pane",
       names: { default: "Range" }
     };
   }
@@ -209,6 +213,20 @@ chart.addIndicator(indicator);
 indicator.updateOptions({ source: "close" });
 ```
 
+Pass `instanceId` when restoring a persisted indicator or when application
+state needs a known identity:
+
+```ts
+const fast = new LastPriceIndicator(null, { instanceId: "fast-last-price" });
+const slow = new LastPriceIndicator(null, { instanceId: "slow-last-price" });
+
+chart.addIndicator(fast);
+chart.addIndicator(slow);
+
+chart.getIndicatorById("fast-last-price");
+chart.getIndicatorsByType(LastPriceIndicator.ID);
+```
+
 The label is rebuilt from `getLabelContent()` when options, locale, theme, or crosshair state changes. If an indicator should affect auto-scaling, override `getModifier(visibleTimeRange)` and return a `ScaleRangeModifier`.
 
 ## External data and async work
@@ -220,6 +238,8 @@ indicator redraw:
 
 ```ts
 class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
+  static readonly ID = "orders";
+
   private orders: Order[] = [];
   private requestVersion = 0;
 
