@@ -18,6 +18,7 @@ import {
   MovingAverageIndicator,
   type ChartData,
   type ControllerType,
+  type IndicatorResolver,
   type MovingAverageOptions
 } from "@ardinsys/financial-charts";
 import type { Indicator } from "@ardinsys/financial-charts/extensions";
@@ -94,6 +95,16 @@ const selectedIndicator = ref<Indicator<any, any>>();
 const movingAveragePeriod = ref(9);
 const movingAverageSource = ref<MovingAverageOptions["source"]>("close");
 const syncGroup = "playground-sync";
+const indicatorResolver: IndicatorResolver = ({ typeId }) => {
+  switch (typeId) {
+    case MovingAverageIndicator.ID:
+      return new MovingAverageIndicator();
+    case PaneMarkerIndicator.ID:
+      return new PaneMarkerIndicator();
+    default:
+      return undefined;
+  }
+};
 
 const priceChange = (lastPoint.close ?? 0) - (previousPoint.close ?? 0);
 const priceChangeClass = computed(() =>
@@ -363,7 +374,13 @@ function createChart(root: HTMLElement, slot: ChartSlot): PlaygroundChart {
     drawingManager
   );
   chart.addPlugin(drawingManager);
-  chart.addPlugin(new ChartSyncPlugin({ group: syncGroup, drawingManager }));
+  chart.addPlugin(
+    new ChartSyncPlugin({
+      group: syncGroup,
+      drawingManager,
+      indicatorResolver
+    })
+  );
   chart.addPlugin(new DrawingAxisBoundsPlugin());
   if (slot.id.endsWith("-0")) {
     chart.addPlugin(
