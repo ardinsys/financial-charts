@@ -8,7 +8,7 @@ Indicators can be drawn either on top of the main price chart (overlay indicator
 import {
   Indicator,
   type DefaultIndicatorOptions
-} from "@ardinsys/financial-charts";
+} from "@ardinsys/financial-charts/extensions";
 
 abstract class MyIndicator extends Indicator<MyTheme, MyOptions> {
   static readonly ID = "my-indicator";
@@ -92,7 +92,7 @@ Indicators with non-JSON option values or a custom serialized shape can
 override the paired hooks:
 
 ```ts
-import type { IndicatorStateOptions } from "@ardinsys/financial-charts";
+import type { IndicatorStateOptions } from "@ardinsys/financial-charts/extensions";
 
 protected serializeStateOptions(): Record<string, unknown> {
   return { symbol: this.options.symbol };

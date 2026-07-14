@@ -13,7 +13,7 @@ import {
   type PaneledIndicatorDrawingContext,
   type ResolvedChartOptions,
   type TimeRange
-} from "@ardinsys/financial-charts/advanced";
+} from "@ardinsys/financial-charts/engine";
 
 class ExtensionController extends ChartController {
   static readonly ID = "extension-controller";

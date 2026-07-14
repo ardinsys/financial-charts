@@ -16,18 +16,18 @@ import {
   DrawingSelectionPlugin,
   FinancialChart,
   MovingAverageIndicator,
-  TestIndicator,
   type ChartData,
   type ControllerType,
-  type Indicator,
   type MovingAverageOptions
 } from "@ardinsys/financial-charts";
+import type { Indicator } from "@ardinsys/financial-charts/extensions";
 import {
   createDrawingFactory,
   drawingTools,
   type DrawingTool
 } from "./drawing-tools";
 import { indicatorCatalog, type IndicatorKind } from "./indicator-catalog";
+import { PaneMarkerIndicator } from "./pane-marker-indicator";
 import {
   darkTheme,
   formatNumber,
@@ -298,7 +298,7 @@ function addIndicator(kind: IndicatorKind) {
     );
   } else {
     chart.addIndicator(
-      new TestIndicator(null, {
+      new PaneMarkerIndicator(null, {
         instanceId: `MARKERS-${indicatorIndex}`,
         names: { default: "Pane Markers" }
       })

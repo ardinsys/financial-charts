@@ -1,42 +1,82 @@
-export * from "./chart/financial-chart";
+export {
+  CHART_STATE_VERSION,
+  type ChartCoreState,
+  type ChartCrosshairOptions,
+  type ChartCrosshairState,
+  type ChartLocalizationOptions,
+  type ChartOptionKey,
+  type ChartOptions,
+  type ChartOptionsChangeEvent,
+  type ChartOptionsSnapshot,
+  type ChartOptionsState,
+  type ChartOptionsUpdate,
+  type ChartPaneState,
+  type ChartRedrawPart,
+  type ChartState,
+  type ChartStateContributor,
+  type ChartStateRestoreOptions,
+  type ChartStateRestoredEvent,
+  type ChartStateSerializationOptions,
+  type ControllerConstructor,
+  type ControllerID,
+  type ControllerType,
+  type IndicatorMutationOptions,
+  type LocaleValues,
+  type LocaleValuesMap,
+  type PaneHeightsInput
+} from "./chart/financial-chart";
 export { FinancialChart } from "./chart/core-financial-chart";
 export type { CoreChartOptions } from "./chart/core-financial-chart";
 export * from "./chart/event-emitter";
 export * from "./chart/formatter";
 export * from "./chart/themes";
-export * from "./chart/types";
+export type { ChartData, TimeRange } from "./chart/types";
+
 export type {
   PriceAxisAnnotation,
   PriceAxisAnnotationOffscreenBehavior
 } from "./annotations/price-axis-annotation";
 
-export * from "./utils/color";
-export * from "./utils/dom";
-export * from "./utils/screen";
+export { DefaultDOMAdapter } from "./ui/default-dom-adapter";
 
-export * from "./controllers/controller";
+export {
+  Drawing,
+  type DrawingAnchor,
+  type DrawingJSON,
+  type DrawingOptions
+} from "./drawings/drawing";
+export {
+  DrawingManager,
+  type DrawingDeserializer,
+  type DrawingFactory,
+  type DrawingManagerJSON,
+  type DrawingManagerOptions
+} from "./drawings/drawing-manager";
+export {
+  HorizontalLine,
+  type HorizontalLineOptions
+} from "./drawings/horizontal-line";
+export {
+  RectangleDrawing,
+  type RectangleDrawingOptions
+} from "./drawings/rectangle";
+export { TextDrawing, type TextDrawingOptions } from "./drawings/text";
+export { TrendLine, type TrendLineOptions } from "./drawings/trendline";
 
-export * from "./scales/scale";
-export * from "./scales/time-scale";
-export * from "./scales/price-scale";
-export * from "./scales/data-scale-model";
-export * from "./scales/ticks/price-ticks";
-export * from "./scales/ticks/time-ticks";
-
-export * from "./render/render-pipeline";
-
-export * from "./panes/pane";
-
-export * from "./plugin/chart-plugin";
 export * from "./plugins";
 
-export * from "./ui/chart-dom-adapter";
-export * from "./ui/default-dom-adapter";
-export * from "./ui/icons";
-
-export * from "./drawings";
-
-export * from "./indicators/indicator";
-export * from "./indicators/paneled-indicator";
-export * from "./indicators/paneled/test-indicator";
-export * from "./indicators/simple/moving-average";
+export {
+  INDICATOR_STATE_VERSION,
+  restoreIndicator,
+  type IndicatorIdentityOptions,
+  type IndicatorResolver,
+  type IndicatorState,
+  type IndicatorStateOptions,
+  type IndicatorStateValue,
+  type IndicatorUpdateOptions
+} from "./indicators/indicator";
+export {
+  MovingAverageIndicator,
+  type MovingAverageOptions,
+  type MovingAverageTheme
+} from "./indicators/simple/moving-average";

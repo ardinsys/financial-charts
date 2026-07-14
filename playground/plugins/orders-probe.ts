@@ -1,9 +1,9 @@
+import type { ChartData } from "@ardinsys/financial-charts";
 import type {
   ChartContext,
-  ChartData,
   ChartPlugin,
   ChartPointerEvent
-} from "@ardinsys/financial-charts";
+} from "@ardinsys/financial-charts/extensions";
 
 export interface ProbeOrder {
   id: string;

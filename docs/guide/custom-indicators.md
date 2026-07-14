@@ -9,11 +9,11 @@ Overlay indicators draw on the shared indicator canvas. The base class handles a
 ```ts
 import {
   Indicator,
-  type ChartData,
   type DefaultIndicatorOptions,
   type IndicatorDrawingContext,
   type IndicatorLabelContent
-} from "@ardinsys/financial-charts";
+} from "@ardinsys/financial-charts/extensions";
+import type { ChartData } from "@ardinsys/financial-charts";
 
 type PriceSource = "open" | "high" | "low" | "close";
 
@@ -109,13 +109,13 @@ Paneled indicators get their own pane under the main chart. The chart handles pa
 
 ```ts
 import {
-  DataScaleModel,
   PaneledIndicator,
-  type ChartData,
   type DefaultIndicatorOptions,
   type IndicatorLabelContent,
   type PaneledIndicatorDrawingContext
-} from "@ardinsys/financial-charts";
+} from "@ardinsys/financial-charts/extensions";
+import { DataScaleModel } from "@ardinsys/financial-charts/engine";
+import type { ChartData } from "@ardinsys/financial-charts";
 
 interface RangePaneTheme {
   color: string;
@@ -269,6 +269,9 @@ version prevents an older response from replacing a newer one, while
 indicator redraw:
 
 ```ts
+import type { ChartOptionsChangeEvent } from "@ardinsys/financial-charts";
+import type { ScaleRangeModifier } from "@ardinsys/financial-charts/engine";
+
 class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
   static readonly ID = "orders";
 

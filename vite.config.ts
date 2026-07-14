@@ -7,11 +7,24 @@ export default defineConfig({
   root: "./playground",
   plugins: [vue()],
   resolve: {
-    alias: {
-      "@ardinsys/financial-charts": fileURLToPath(
-        new URL("./src/index.ts", import.meta.url)
-      )
-    }
+    alias: [
+      {
+        find: /^@ardinsys\/financial-charts\/extensions$/,
+        replacement: fileURLToPath(
+          new URL("./src/extensions.ts", import.meta.url)
+        )
+      },
+      {
+        find: /^@ardinsys\/financial-charts\/engine$/,
+        replacement: fileURLToPath(
+          new URL("./src/engine.ts", import.meta.url)
+        )
+      },
+      {
+        find: /^@ardinsys\/financial-charts$/,
+        replacement: fileURLToPath(new URL("./src/index.ts", import.meta.url))
+      }
+    ]
   },
   server: {
     fs: {

@@ -8,7 +8,10 @@ cannot be attached twice. `addPlugin()` returns an idempotent disposer. After
 visible range, so plugins added after `setData()` do not need to poll the chart.
 
 ```ts
-import type { ChartContext, ChartPlugin } from "@ardinsys/financial-charts";
+import type {
+  ChartContext,
+  ChartPlugin
+} from "@ardinsys/financial-charts/extensions";
 
 class WatermarkPlugin implements ChartPlugin {
   readonly key = "watermark";
@@ -207,7 +210,8 @@ sync plugin before plugins that read it from `attach()`, then use
 `postMessage()` and `onMessage()` with an app-owned channel name:
 
 ```ts
-import { ChartSyncPlugin, type ChartPlugin } from "@ardinsys/financial-charts";
+import { ChartSyncPlugin } from "@ardinsys/financial-charts";
+import type { ChartPlugin } from "@ardinsys/financial-charts/extensions";
 
 const sync = new ChartSyncPlugin({ group: "watchlist" });
 chart.addPlugin(sync);

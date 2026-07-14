@@ -10,6 +10,19 @@ import {
   type ChartState
 } from "@ardinsys/financial-charts";
 
+// @ts-expect-error Indicator authoring contracts use the extensions entry.
+import type { Indicator } from "@ardinsys/financial-charts";
+// @ts-expect-error Plugin authoring contracts use the extensions entry.
+import type { ChartPlugin } from "@ardinsys/financial-charts";
+// @ts-expect-error Scale contracts use the engine entry.
+import type { DataScaleModel } from "@ardinsys/financial-charts";
+// @ts-expect-error Test fixtures are not public API.
+import { TestIndicator } from "@ardinsys/financial-charts";
+// @ts-expect-error Adapter implementation assets are not public API.
+import { ICON_SHOW } from "@ardinsys/financial-charts";
+// @ts-expect-error The built-in controller registry is an implementation detail.
+import { defaultControllers } from "@ardinsys/financial-charts";
+
 const data: ChartData[] = [{ time: 0, close: 1 }];
 const options: ChartOptions = {
   type: LineController.ID,
@@ -27,6 +40,14 @@ void [
   data,
   options,
   state
+];
+void [
+  null as unknown as Indicator,
+  null as unknown as ChartPlugin,
+  null as unknown as DataScaleModel,
+  TestIndicator,
+  ICON_SHOW,
+  defaultControllers
 ];
 
 // @ts-expect-error Package internals are not public subpaths.

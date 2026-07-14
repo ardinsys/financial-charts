@@ -118,7 +118,7 @@ import {
   type DrawingOptions,
   type DrawingPoint,
   type DrawingRenderContext
-} from "@ardinsys/financial-charts";
+} from "@ardinsys/financial-charts/extensions";
 
 interface PriceBandData {
   color: string;

@@ -1,11 +1,13 @@
 import {
   DrawingManager,
   RectangleDrawing,
-  TextDrawing,
-  type ChartContext,
-  type ChartPlugin,
-  type Drawing
+  TextDrawing
 } from "@ardinsys/financial-charts";
+import type {
+  ChartContext,
+  ChartPlugin,
+  Drawing
+} from "@ardinsys/financial-charts/extensions";
 
 export class SelectedDrawingToolbarPlugin implements ChartPlugin {
   readonly key = "playground-selected-drawing-toolbar";

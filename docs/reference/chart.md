@@ -2,6 +2,16 @@
 
 `FinancialChart` is the main class exported by the library. It manages canvas creation, index-based scales, rendering, user input, indicators, plugins, drawings, and event emission.
 
+## Package entry points
+
+- `@ardinsys/financial-charts` contains application-facing chart APIs and built-ins.
+- `@ardinsys/financial-charts/core` provides the controller-neutral chart for
+  tree-shaken controller selection.
+- `@ardinsys/financial-charts/extensions` contains indicator, plugin, drawing,
+  annotation, and DOM-adapter authoring contracts.
+- `@ardinsys/financial-charts/engine` contains controller, scale, pane,
+  render-pipeline, tick, and low-level DOM/canvas contracts.
+
 ## Constructor
 
 ```ts
@@ -388,3 +398,5 @@ Controllers are registered per chart instance. The library ships with the follow
 - `HLCAreaController`
 
 Custom controllers can extend the base types to add renderers tailored to your application. Controllers receive access to the chart instance, canvas contexts, visible data, and active scales. Override `getTimeAnchorAlignment()` when drawings, crosshair, axis labels, and indicator helpers should snap to a different point inside each time slot than the default center.
+Import controller base classes and their scale/render dependencies from
+`@ardinsys/financial-charts/engine`.

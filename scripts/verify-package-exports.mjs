@@ -22,6 +22,32 @@ for (const internalPath of [
   assertPackagePathNotExported(`${packageJson.name}/${internalPath}`);
 }
 
+for (const declarationPath of [
+  "dist/index.d.ts",
+  "dist/core.d.ts",
+  "dist/extensions.d.ts",
+  "dist/engine.d.ts"
+]) {
+  const declaration = await readFile(
+    new URL(`../${declarationPath}`, import.meta.url),
+    "utf8"
+  );
+  for (const forbiddenExport of [
+    "TestIndicator",
+    "ICON_SHOW",
+    "ICON_HIDE",
+    "ICON_SETTINGS",
+    "ICON_REMOVE",
+    "defaultControllers"
+  ]) {
+    if (declaration.includes(forbiddenExport)) {
+      throw new Error(
+        `${forbiddenExport} must not appear in ${declarationPath}`
+      );
+    }
+  }
+}
+
 function collectExportTargets(exports) {
   const targets = new Set();
 

@@ -64,15 +64,15 @@ Pass a custom adapter when the DOM should be app-owned. The model is declarative
 ```ts
 import {
   DefaultDOMAdapter,
-  FinancialChart,
-  bindEvent,
   type IndicatorLabelActions,
   type IndicatorLabelHandle,
   type IndicatorLabelModel,
   type PaneDividerActions,
   type PaneDividerHandle,
   type PaneDividerModel
-} from "@ardinsys/financial-charts";
+} from "@ardinsys/financial-charts/extensions";
+import { FinancialChart } from "@ardinsys/financial-charts";
+import { bindEvent } from "@ardinsys/financial-charts/engine";
 
 class DesignSystemAdapter extends DefaultDOMAdapter {
   createIndicatorLabel(

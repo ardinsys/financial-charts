@@ -1,6 +1,5 @@
 export * from "./core";
 export { FinancialChart } from "./chart/default-financial-chart";
-export * from "./controllers/default-controllers";
 export * from "./controllers/area-controller";
 export * from "./controllers/candle-controller";
 export * from "./controllers/line-controller";

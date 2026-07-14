@@ -34,9 +34,9 @@
       "types": "./dist/extensions.d.ts",
       "import": "./dist/extensions.js"
     },
-    "./advanced": {
-      "types": "./dist/advanced.d.ts",
-      "import": "./dist/advanced.js"
+    "./engine": {
+      "types": "./dist/engine.d.ts",
+      "import": "./dist/engine.js"
     },
     "./controllers/area": {
       "types": "./dist/controllers/area.d.ts",

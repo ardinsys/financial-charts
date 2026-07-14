@@ -5,7 +5,7 @@ export default defineConfig({
     index: "./src/index.ts",
     core: "./src/core.ts",
     extensions: "./src/extensions.ts",
-    advanced: "./src/advanced.ts",
+    engine: "./src/engine.ts",
     "controllers/area": "./src/controllers/area-controller.ts",
     "controllers/bar": "./src/controllers/bar-controller.ts",
     "controllers/candle": "./src/controllers/candle-controller.ts",

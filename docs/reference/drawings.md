@@ -70,6 +70,8 @@ indicator pane remain on that pane.
 Custom drawings can participate by registering a deserializer:
 
 ```ts
+import { Drawing } from "@ardinsys/financial-charts/extensions";
+
 class MyDrawing extends Drawing {
   readonly type = "my-drawing";
   // ...

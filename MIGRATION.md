@@ -330,6 +330,47 @@ markup, styling, or framework components.
   `labelTemplate`/`labelRenderer` options with a `getLabelContent()` returning
   `{ detail, segments }`.
 
+### Package entry points are split by audience
+
+The root package now contains application-facing chart construction, options,
+data, state, built-in controllers and indicators, drawings, plugins, themes,
+formatting, and common events. Import extension-authoring contracts from
+`@ardinsys/financial-charts/extensions` and low-level chart internals from
+`@ardinsys/financial-charts/engine`:
+
+```ts
+import { FinancialChart, MovingAverageIndicator } from "@ardinsys/financial-charts";
+import {
+  Indicator,
+  PaneledIndicator,
+  type ChartPlugin
+} from "@ardinsys/financial-charts/extensions";
+import {
+  DataScaleModel,
+  Pane,
+  TimeScale
+} from "@ardinsys/financial-charts/engine";
+```
+
+| Previously imported from the root | v1 entry point |
+| --------------------------------- | -------------- |
+| `Indicator`, `PaneledIndicator`, indicator drawing/label contracts | `./extensions` |
+| `ChartPlugin`, `ChartContext`, pointer and drawing authoring contracts | `./extensions` |
+| `ChartDOMAdapter` and adapter model/handle contracts | `./extensions` |
+| `ChartController`, scales, panes, render stages, ticks, DOM/canvas helpers | `./engine` |
+
+`TestIndicator` and the default adapter's raw icon strings are implementation
+fixtures and are no longer exported. Applications should provide their own
+paneled indicator class and icon assets.
+
+For the `commons-js` financial indicator package, move base indicator,
+paneled-indicator, drawing-context, and label-contract imports to
+`@ardinsys/financial-charts/extensions`. Move `DataScaleModel`, scale contracts,
+and `randomColor` to `@ardinsys/financial-charts/engine`. Concrete chart APIs,
+`ChartData`, themes, formatter types, and indicator state restoration remain on
+the root entry. This is an import-path migration only; updating the downstream
+indicator implementations remains a separate repository change.
+
 ## Removed or replaced internals
 
 - Continuous `Extent` mapping was replaced by scales and `DataScaleModel`.
