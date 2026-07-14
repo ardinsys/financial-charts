@@ -59,6 +59,7 @@ price scale and Y-axis region.
 | Bar storage | `DataStore` | Sorted immutable points, binary-search lookup, bucketing, merging, and stable data/time snapshots |
 | Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and visible bounds |
 | Series behavior | `ChartController` implementations | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing |
+| Extension lifecycle | `ExtensionHost` | Plugin/indicator registries, attachment scopes, state delivery, pointer order, annotations, and detachment |
 | Extension contract | `ChartPlugin`, `ChartContext` | Attachment-scoped services and optional lifecycle/render callbacks |
 | Indicator behavior | `Indicator`, `PaneledIndicator` | Indicator state, labels, drawing, and optional pane-specific scale/container behavior |
 | Pane state | `Pane` plus `FinancialChart` layout code | Shared time scale, per-pane price scale, pane regions, heights, dividers, and resize interaction |
@@ -107,10 +108,11 @@ adapter instances.
 
 ### Extensions and panes
 
-The plugin, overlay-indicator, paneled-indicator, and pane collections are frozen
+`ExtensionHost` owns the plugin, overlay-indicator, and paneled-indicator frozen
 arrays used as their own public snapshots. Add and remove operations replace the
-affected array. Combined lifecycle and reverse pointer-order snapshots are rebuilt
-when extension membership changes.
+affected array. The host rebuilds combined lifecycle and reverse pointer-order
+snapshots when extension membership changes. `FinancialChart` owns the pane
+snapshot until pane layout is extracted.
 
 This also defines dispatch behavior: a callback loop retains the membership
 snapshot from the start of the dispatch, checks that each extension is still
@@ -128,6 +130,10 @@ The intended lifecycle is:
 ```text
 register -> attach -> receive current state -> receive changes -> detach
 ```
+
+`ExtensionHost` implements the shared plugin and indicator lifecycle.
+`FinancialChart` supplies explicit indicator mount and unmount hooks because
+labels and panes belong to chart layout rather than the base extension contract.
 
 `ChartContext` belongs to one attachment. Its `AbortSignal`, public-event
 subscriptions, render hooks, and owned price-axis annotations are released when
@@ -245,7 +251,7 @@ changes. Restoration temporarily suppresses frame scheduling, then:
 4. Restores the visible range immediately or defers it until data exists.
 5. Recreates indicators and pane identities.
 6. Restores pane heights and contributor state.
-7. Refreshes existing plugins with the final state.
+7. Uses the host's normal current-state delivery to refresh existing plugins.
 8. Requests one full redraw and emits `state-restored`.
 
 State contributors must return JSON-safe values. Persistence cloning is
@@ -258,7 +264,9 @@ Disposal is idempotent. The current ownership order is:
 
 1. Mark the chart disposed and stop active pane resizing.
 2. Remove browser event listeners.
-3. Abort extension scopes and detach indicators, then plugins.
+3. Ask `ExtensionHost` to abort attachment scopes and detach indicators, then
+   plugins. Registry snapshots remain readable during detachment so a plugin can
+   persist the final chart state.
 4. Clear extension collections, annotations, and pane associations.
 5. Remove public event listeners and disconnect resize observation.
 6. Destroy dividers, canvases, overlay DOM, and the chart container.

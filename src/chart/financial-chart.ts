@@ -1,8 +1,4 @@
-import {
-  renderPriceAxisAnnotations,
-  snapshotPriceAxisAnnotations,
-  type PriceAxisAnnotation
-} from "../annotations/price-axis-annotation";
+import { renderPriceAxisAnnotations } from "../annotations/price-axis-annotation";
 import { ChartController } from "../controllers/controller";
 import { DataStore } from "../data/data-store";
 import type {
@@ -35,7 +31,7 @@ import {
   type ResolvedChartTheme
 } from "./themes";
 import { ChartData, type ChartDataValueKey, TimeRange } from "./types";
-import { EventEmitter, type ChartEventMap } from "./event-emitter";
+import { EventEmitter } from "./event-emitter";
 import { pixelRatio } from "../utils/screen";
 import {
   bindEvent,
@@ -59,11 +55,8 @@ import {
   RenderStage
 } from "../render/render-pipeline";
 import { Pane } from "../panes/pane";
-import type {
-  ChartContext,
-  ChartPlugin,
-  ChartPointerEvent
-} from "../plugin/chart-plugin";
+import type { ChartPlugin, ChartPointerEvent } from "../plugin/chart-plugin";
+import { ExtensionHost } from "../plugin/extension-host";
 import { getDefaultControllerConstructors } from "./internal-default-controllers";
 import { cloneJSONStateValue, isPlainRecord } from "../utils/json-state";
 
@@ -370,23 +363,7 @@ export class FinancialChart extends EventEmitter {
   private restoringPaneIds?: ReadonlyMap<string, number>;
   private pendingRestoredVisibleRange?: TimeRange;
 
-  private indicators: readonly Indicator<any, any>[] = Object.freeze([]);
-  private paneledIndicators: readonly PaneledIndicator<any, any>[] =
-    Object.freeze([]);
-  private plugins: readonly ChartPlugin[] = Object.freeze([]);
-  private allIndicatorsSnapshot: readonly Indicator<any, any>[] =
-    Object.freeze([]);
-  private lifecycleExtensionsSnapshot: readonly ChartPlugin[] =
-    Object.freeze([]);
-  private pointerExtensionsSnapshot: readonly ChartPlugin[] = Object.freeze([]);
-  private readonly priceAxisAnnotations = new Map<
-    ChartPlugin,
-    readonly PriceAxisAnnotation[]
-  >();
-  private readonly extensionAbortControllers = new WeakMap<
-    ChartPlugin,
-    AbortController
-  >();
+  private readonly extensionHost: ExtensionHost;
   private disposed = false;
 
   protected yLabelWidth = 80;
@@ -741,7 +718,7 @@ export class FinancialChart extends EventEmitter {
       if (this.dataStore.length > 0) {
         this.recalculateVisibleScale();
       }
-      this.notifyPluginsAfterStateRestore(optionsEvent);
+      this.extensionHost.deliverCurrentState(this.getPlugins(), optionsEvent);
     } finally {
       this.restoringPaneIds = undefined;
       this.restoringState = false;
@@ -1020,36 +997,25 @@ export class FinancialChart extends EventEmitter {
   }
 
   getIndicators(): readonly Indicator<any, any>[] {
-    return this.indicators;
+    return this.extensionHost.getIndicators();
   }
 
   getPaneledIndicators(): readonly PaneledIndicator<any, any>[] {
-    return this.paneledIndicators;
+    return this.extensionHost.getPaneledIndicators();
   }
 
   getAllIndicators(): readonly Indicator<any, any>[] {
-    return this.allIndicatorsSnapshot;
+    return this.extensionHost.getAllIndicators();
   }
 
   /** Returns an attached indicator by its unique instance identity. */
   getIndicatorById(instanceId: string): Indicator<any, any> | undefined {
-    return (
-      this.indicators.find(
-        (indicator) => indicator.getInstanceId() === instanceId
-      ) ??
-      this.paneledIndicators.find(
-        (indicator) => indicator.getInstanceId() === instanceId
-      )
-    );
+    return this.extensionHost.getIndicatorById(instanceId);
   }
 
   /** Returns all attached indicators sharing a factory/type identity. */
   getIndicatorsByType(typeId: string): readonly Indicator<any, any>[] {
-    return freezeSnapshot(
-      this.allIndicatorsSnapshot.filter(
-        (indicator) => indicator.getIndicatorType() === typeId
-      )
-    );
+    return this.extensionHost.getIndicatorsByType(typeId);
   }
 
   getPanes(): readonly Pane[] {
@@ -1086,38 +1052,17 @@ export class FinancialChart extends EventEmitter {
   }
 
   getPlugins(): readonly ChartPlugin[] {
-    return this.plugins;
+    return this.extensionHost.getPlugins();
   }
 
   addPlugin(plugin: ChartPlugin): () => void {
     if (this.disposed) {
       throw new Error("Cannot add a plugin to a disposed chart.");
     }
-    if (this.plugins.includes(plugin)) {
-      throw new Error("Plugin instance is already attached to this chart.");
-    }
-    if (this.plugins.some((item) => item.key === plugin.key)) {
-      throw new Error(
-        `Plugin key "${plugin.key}" is already registered on this chart.`
-      );
-    }
-
-    this.plugins = freezeSnapshot([...this.plugins, plugin]);
-    this.refreshExtensionOrderSnapshots();
     try {
-      plugin.attach(this.createChartContext(plugin));
-      this.deliverInitialExtensionState(plugin);
+      this.extensionHost.addPlugin(plugin);
+    } finally {
       this.requestRedraw(this.allRedrawParts);
-    } catch (error) {
-      this.disposeExtensionScope(plugin);
-      const index = this.plugins.indexOf(plugin);
-      if (index !== -1) {
-        this.plugins = freezeSnapshot(
-          this.plugins.filter((item) => item !== plugin)
-        );
-        this.refreshExtensionOrderSnapshots();
-      }
-      throw error;
     }
 
     return () => {
@@ -1126,215 +1071,22 @@ export class FinancialChart extends EventEmitter {
   }
 
   removePlugin(plugin: ChartPlugin): boolean {
-    const index = this.plugins.indexOf(plugin);
-    if (index === -1) return false;
-
-    this.plugins = freezeSnapshot(
-      this.plugins.filter((item) => item !== plugin)
-    );
-    this.refreshExtensionOrderSnapshots();
-    this.disposeExtensionScope(plugin);
     try {
-      plugin.detach?.();
+      return this.extensionHost.removePlugin(plugin);
     } finally {
       this.requestRedraw(this.allRedrawParts);
     }
-    return true;
-  }
-
-  private createChartContext(extension: ChartPlugin): ChartContext {
-    const abortController = new AbortController();
-    const { signal } = abortController;
-    const scoped = (dispose: () => void) =>
-      this.createExtensionScopedDisposer(signal, dispose);
-    this.extensionAbortControllers.set(extension, abortController);
-    return {
-      chart: this,
-      domAdapter: this.domAdapter,
-      signal,
-      emit: (event, data) => this.emitFromExtension(event, data),
-      getCanvasContext: (layer) => this.getContext(layer),
-      getLogicalCanvas: (layer) => this.getLogicalCanvas(layer),
-      getPanes: () => this.getPanes(),
-      getPlugin: <TPlugin extends ChartPlugin = ChartPlugin>(key: string) =>
-        this.plugins.find((plugin) => plugin.key === key) as
-          | TPlugin
-          | undefined,
-      getPlugins: () => this.getPlugins(),
-      getVisibleTimeWindow: () => this.getVisibleTimeWindow(),
-      getVisibleTimeRange: () => this.getVisibleTimeRange(),
-      on: (event, listener) => scoped(this.on(event, listener)),
-      onRenderStage: (stage, callback) =>
-        scoped(this.onRenderStage(stage, callback)),
-      requestRedraw: (part, immediate) => this.requestRedraw(part, immediate),
-      setPriceAxisAnnotations: (annotations) =>
-        this.setPriceAxisAnnotations(extension, annotations),
-      clearPriceAxisAnnotations: () =>
-        this.setPriceAxisAnnotations(extension, []),
-      setCrosshair: (options) => this.setCrosshair(options),
-      clearCrosshair: () => this.clearCrosshair()
-    };
-  }
-
-  private emitFromExtension<K extends keyof ChartEventMap>(
-    event: K,
-    data: ChartEventMap[K]
-  ) {
-    if (event === "drawing-finished") {
-      this.notifyExtensionsDrawingFinished(
-        data as ChartEventMap["drawing-finished"]
-      );
-    }
-    super.emit(event, data);
-  }
-
-  private createExtensionScopedDisposer(
-    signal: AbortSignal,
-    dispose: () => void
-  ): () => void {
-    let active = true;
-    const scopedDispose = () => {
-      if (!active) return;
-      active = false;
-      signal.removeEventListener("abort", scopedDispose);
-      dispose();
-    };
-    signal.addEventListener("abort", scopedDispose, { once: true });
-    if (signal.aborted) scopedDispose();
-    return scopedDispose;
-  }
-
-  private disposeExtensionScope(extension: ChartPlugin) {
-    this.extensionAbortControllers.get(extension)?.abort();
-    this.extensionAbortControllers.delete(extension);
-    this.priceAxisAnnotations.delete(extension);
-  }
-
-  private setPriceAxisAnnotations(
-    extension: ChartPlugin,
-    annotations: readonly PriceAxisAnnotation[]
-  ) {
-    const scope = this.extensionAbortControllers.get(extension);
-    if (!scope || scope.signal.aborted) return;
-
-    const snapshot = snapshotPriceAxisAnnotations(annotations);
-    if (snapshot.length === 0) {
-      if (!this.priceAxisAnnotations.delete(extension)) return;
-    } else {
-      this.priceAxisAnnotations.set(extension, snapshot);
-    }
-    this.requestRedraw("annotations");
-  }
-
-  private refreshIndicatorSnapshots() {
-    this.allIndicatorsSnapshot = freezeSnapshot([
-      ...this.indicators,
-      ...this.paneledIndicators
-    ]);
-    this.refreshExtensionOrderSnapshots();
-  }
-
-  private refreshExtensionOrderSnapshots() {
-    this.lifecycleExtensionsSnapshot = freezeSnapshot([
-      ...this.indicators,
-      ...this.paneledIndicators,
-      ...this.plugins
-    ]);
-    const pointerExtensions: ChartPlugin[] = [];
-    for (let index = this.plugins.length - 1; index >= 0; index--) {
-      pointerExtensions.push(this.plugins[index]);
-    }
-    for (let index = this.paneledIndicators.length - 1; index >= 0; index--) {
-      pointerExtensions.push(this.paneledIndicators[index]);
-    }
-    for (let index = this.indicators.length - 1; index >= 0; index--) {
-      pointerExtensions.push(this.indicators[index]);
-    }
-    this.pointerExtensionsSnapshot = freezeSnapshot(pointerExtensions);
-  }
-
-  private getLifecycleExtensions(): readonly ChartPlugin[] {
-    return this.lifecycleExtensionsSnapshot;
-  }
-
-  private getPointerExtensions(): readonly ChartPlugin[] {
-    return this.pointerExtensionsSnapshot;
-  }
-
-  private isExtensionAttached(extension: ChartPlugin) {
-    return (
-      this.plugins.includes(extension) ||
-      this.indicators.includes(extension as Indicator<any, any>) ||
-      this.paneledIndicators.includes(
-        extension as PaneledIndicator<any, any>
-      )
-    );
-  }
-
-  private forEachLifecycleExtension(
-    notify: (extension: ChartPlugin) => void
-  ) {
-    const extensions = this.getLifecycleExtensions();
-    for (const extension of extensions) {
-      if (this.isExtensionAttached(extension)) notify(extension);
-    }
-  }
-
-  private createInitialOptionsChangeEvent(): ChartOptionsChangeEvent {
-    const current = this.optionsSnapshot;
-    return Object.freeze({
-      previous: current,
-      current,
-      changedKeys: Object.freeze([])
-    });
-  }
-
-  private deliverInitialExtensionState(extension: ChartPlugin) {
-    if (!this.isExtensionAttached(extension)) return;
-    extension.onOptionsChanged?.(this.createInitialOptionsChangeEvent());
-    if (!this.isExtensionAttached(extension)) return;
-    extension.onData?.(this.dataStore.snapshot());
-    if (!this.isExtensionAttached(extension)) return;
-    extension.onVisibleRangeChanged?.(this.getVisibleTimeRange());
-  }
-
-  private notifyExtensionsData(data: readonly ChartData[]) {
-    this.forEachLifecycleExtension((extension) => {
-      extension.onData?.(data);
-    });
-  }
-
-  private notifyExtensionsVisibleRangeChanged(range: TimeRange) {
-    this.forEachLifecycleExtension((extension) => {
-      extension.onVisibleRangeChanged?.(range);
-    });
-  }
-
-  private notifyExtensionsOptionsChanged(event: ChartOptionsChangeEvent) {
-    this.forEachLifecycleExtension((extension) => {
-      const indicator = extension as Indicator<any, any>;
-      if (
-        this.indicators.includes(indicator) ||
-        this.paneledIndicators.includes(
-          indicator as PaneledIndicator<any, any>
-        )
-      ) {
-        indicator.applyChartOptions(event);
-      }
-      if (!this.isExtensionAttached(extension)) return;
-      extension.onOptionsChanged?.(event);
-    });
   }
 
   private commitChange(change: ChartChange) {
     if (change.options) {
-      this.notifyExtensionsOptionsChanged(change.options);
+      this.extensionHost.notifyOptionsChanged(change.options);
     }
     if (change.data) {
-      this.notifyExtensionsData(change.data);
+      this.extensionHost.notifyData(change.data);
     }
     if (change.visibleRange) {
-      this.notifyExtensionsVisibleRangeChanged(change.visibleRange);
+      this.extensionHost.notifyVisibleRangeChanged(change.visibleRange);
     }
     if (change.options) {
       super.emit("options-change", change.options);
@@ -1351,19 +1103,6 @@ export class FinancialChart extends EventEmitter {
       } else {
         this.requestRedraw(change.redraw);
       }
-    }
-  }
-
-  private notifyPluginsAfterStateRestore(event?: ChartOptionsChangeEvent) {
-    const data = this.dataStore.snapshot();
-    const visibleRange = this.getVisibleTimeRange();
-    for (const plugin of this.getPlugins()) {
-      if (!this.isExtensionAttached(plugin)) continue;
-      if (event) plugin.onOptionsChanged?.(event);
-      if (!this.isExtensionAttached(plugin)) continue;
-      plugin.onData?.(data);
-      if (!this.isExtensionAttached(plugin)) continue;
-      plugin.onVisibleRangeChanged?.(visibleRange);
     }
   }
 
@@ -1423,20 +1162,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private notifyExtensionsPointer(event: ChartPointerEvent) {
-    for (const extension of this.getPointerExtensions()) {
-      if (!this.isExtensionAttached(extension)) continue;
-      if (extension.onPointer?.(event) === true) return true;
-    }
-
-    return false;
-  }
-
-  private notifyExtensionsDrawingFinished(
-    event: ChartEventMap["drawing-finished"]
-  ) {
-    this.forEachLifecycleExtension((extension) => {
-      extension.onDrawingFinished?.(event);
-    });
+    return this.extensionHost.notifyPointer(event);
   }
 
   private createPluginPointerEvent(
@@ -1472,21 +1198,15 @@ export class FinancialChart extends EventEmitter {
   }
 
   private beforeDrawPlugins() {
-    for (const plugin of this.plugins) {
-      plugin.beforeDraw?.();
-    }
+    this.extensionHost.beforeDrawPlugins();
   }
 
   private drawPlugins() {
-    for (const plugin of this.plugins) {
-      plugin.draw?.();
-    }
+    this.extensionHost.drawPlugins();
   }
 
   private afterDrawPlugins() {
-    for (const plugin of this.plugins) {
-      plugin.afterDraw?.();
-    }
+    this.extensionHost.afterDrawPlugins();
   }
 
   private isPaneledIndicator(
@@ -1546,7 +1266,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private getDefaultIndicatorPaneHeight(totalHeight: number) {
-    const indicatorCount = this.paneledIndicators.length;
+    const indicatorCount = this.getPaneledIndicators().length;
     if (indicatorCount === 0) return 0;
 
     const canUseQuarter =
@@ -1562,10 +1282,10 @@ export class FinancialChart extends EventEmitter {
     const desired = new Map<Pane, number>();
     desired.set(
       this.mainPane,
-      totalHeight - indicatorHeight * this.paneledIndicators.length
+      totalHeight - indicatorHeight * this.getPaneledIndicators().length
     );
 
-    for (const indicator of this.paneledIndicators) {
+    for (const indicator of this.getPaneledIndicators()) {
       const pane = this.paneByIndicator.get(indicator);
       if (pane) desired.set(pane, indicatorHeight);
     }
@@ -1697,7 +1417,7 @@ export class FinancialChart extends EventEmitter {
     }
 
     if (resizeIndicators) {
-      for (const indicator of this.paneledIndicators) {
+      for (const indicator of this.getPaneledIndicators()) {
         const pane = this.paneByIndicator.get(indicator);
         if (!pane) continue;
         indicator.resize(this.getPaneInitParams(pane));
@@ -1845,10 +1565,10 @@ export class FinancialChart extends EventEmitter {
   }
 
   private refreshIndicatorLabels(dataTime?: number) {
-    for (const indicator of this.paneledIndicators) {
+    for (const indicator of this.getPaneledIndicators()) {
       indicator.refreshLabel(dataTime);
     }
-    for (const indicator of this.indicators) {
+    for (const indicator of this.getIndicators()) {
       indicator.refreshLabel(dataTime);
     }
   }
@@ -1957,6 +1677,7 @@ export class FinancialChart extends EventEmitter {
     this.options = this.resolveOptions(options, includeDefaultControllers);
     this.refreshOptionsSnapshot();
     this.domAdapter = this.options.domAdapter;
+    this.extensionHost = new ExtensionHost(this, this.domAdapter);
 
     this.outsideContainer = container;
     this.container = createPositionedContainer({
@@ -2190,10 +1911,10 @@ export class FinancialChart extends EventEmitter {
   }
 
   private refreshLocalizationLabels() {
-    for (const indicator of this.indicators) {
+    for (const indicator of this.getIndicators()) {
       indicator.refreshLabel();
     }
-    for (const indicator of this.paneledIndicators) {
+    for (const indicator of this.getPaneledIndicators()) {
       indicator.refreshLabel();
     }
   }
@@ -2332,7 +2053,7 @@ export class FinancialChart extends EventEmitter {
       }
     }
     if (
-      this.priceAxisAnnotations.size > 0 &&
+      this.extensionHost.hasPriceAxisAnnotations() &&
       (changed.has("theme") || localizationChanged)
     ) {
       redrawParts.add("annotations");
@@ -2981,7 +2702,7 @@ export class FinancialChart extends EventEmitter {
     indicator: Indicator<any, any>,
     options: IndicatorInvalidationOptions = {}
   ): void {
-    if (!this.isExtensionAttached(indicator)) return;
+    if (!this.extensionHost.isAttached(indicator)) return;
 
     const redrawParts = new Set<RenderLayer>();
     if (options.scale && this.dataStore.length > 0) {
@@ -3017,65 +2738,52 @@ export class FinancialChart extends EventEmitter {
     if (this.disposed) {
       throw new Error("Cannot add an indicator to a disposed chart.");
     }
-    if (
-      this.indicators.includes(indicator) ||
-      this.paneledIndicators.some((item) => item === indicator)
-    ) {
-      throw new Error("Indicator instance is already attached to this chart.");
-    }
-    if (this.getIndicatorById(indicator.getInstanceId())) {
-      throw new Error(
-        `Indicator instanceId "${indicator.getInstanceId()}" is already attached to this chart.`
-      );
-    }
-
+    const paneled = this.isPaneledIndicator(indicator);
     try {
-      indicator.attach(this.createChartContext(indicator));
-    } catch (error) {
-      this.disposeExtensionScope(indicator);
-      indicator.releaseAttachment();
-      throw error;
-    }
-
-    if (this.isPaneledIndicator(indicator)) {
-      // Main chart must have at least 25% of the height
-      // every indicator by default gets 25% of the height
-      // if it is possible. Otherwise they equally get less.
-
-      this.paneledIndicators = freezeSnapshot([
-        ...this.paneledIndicators,
-        indicator
-      ]);
-      this.refreshIndicatorSnapshots();
-      const pane = this.createPaneForIndicator(indicator);
-      this.applyPaneLayout({
-        resizeCanvases: false,
-        resizeIndicators: false
+      this.extensionHost.addIndicator(indicator, paneled, {
+        mount: () => {
+          if (paneled) {
+            const pane = this.createPaneForIndicator(indicator);
+            this.applyPaneLayout({
+              resizeCanvases: false,
+              resizeIndicators: false
+            });
+            indicator.init(this.getPaneInitParams(pane));
+            this.container.appendChild(indicator.getContainer());
+            this.recalcPaneledIndicators();
+          } else {
+            this.indicatorLabelContainer.appendChild(
+              indicator.getLabelContainer()
+            );
+          }
+          indicator.refreshLabel();
+        },
+        unmount: () => {
+          if (paneled) {
+            if (indicator.getContainer().parentElement === this.container) {
+              this.container.removeChild(indicator.getContainer());
+            }
+            this.removePaneForIndicator(indicator);
+            this.recalcPaneledIndicators();
+          } else {
+            this.visibleScale.removeModifier(indicator);
+            if (
+              indicator.getLabelContainer().parentElement ===
+              this.indicatorLabelContainer
+            ) {
+              this.indicatorLabelContainer.removeChild(
+                indicator.getLabelContainer()
+              );
+            }
+          }
+        },
+        release: () => indicator.releaseAttachment()
       });
-      indicator.init(this.getPaneInitParams(pane));
-
-      this.container.appendChild(indicator.getContainer());
-
-      this.recalcPaneledIndicators();
-
+    } finally {
       this.requestRedraw(this.allRedrawParts);
-      indicator.refreshLabel();
-    } else {
-      this.indicators = freezeSnapshot([...this.indicators, indicator]);
-      this.refreshIndicatorSnapshots();
-      this.requestRedraw(this.allRedrawParts);
-      this.indicatorLabelContainer.appendChild(indicator.getLabelContainer());
-      indicator.refreshLabel();
     }
 
-    try {
-      this.deliverInitialExtensionState(indicator);
-    } catch (error) {
-      this.removeIndicator(indicator, { emit: false });
-      throw error;
-    }
-
-    if (!this.isExtensionAttached(indicator)) {
+    if (!this.extensionHost.isAttached(indicator)) {
       return () => {};
     }
     if (emit) {
@@ -3097,51 +2805,13 @@ export class FinancialChart extends EventEmitter {
     indicator: Indicator<any, any>,
     options: IndicatorMutationOptions = {}
   ): boolean {
-    if (this.isPaneledIndicator(indicator)) {
-      const index = this.paneledIndicators.indexOf(indicator);
-      if (index === -1) return false;
-
-      this.paneledIndicators = freezeSnapshot(
-        this.paneledIndicators.filter((item) => item !== indicator)
-      );
-      this.refreshIndicatorSnapshots();
-      this.disposeExtensionScope(indicator);
-      try {
-        indicator.detach();
-      } finally {
-        indicator.releaseAttachment();
-        if (indicator.getContainer().parentElement === this.container) {
-          this.container.removeChild(indicator.getContainer());
-        }
-        this.removePaneForIndicator(indicator);
-        this.recalcPaneledIndicators();
-        this.requestRedraw(this.allRedrawParts);
-      }
-    } else {
-      const index = this.indicators.indexOf(indicator);
-      if (index === -1) return false;
-
-      this.indicators = freezeSnapshot(
-        this.indicators.filter((item) => item !== indicator)
-      );
-      this.refreshIndicatorSnapshots();
-      this.disposeExtensionScope(indicator);
-      try {
-        indicator.detach();
-      } finally {
-        indicator.releaseAttachment();
-        this.visibleScale.removeModifier(indicator);
-        if (
-          indicator.getLabelContainer().parentElement ===
-          this.indicatorLabelContainer
-        ) {
-          this.indicatorLabelContainer.removeChild(
-            indicator.getLabelContainer()
-          );
-        }
-        this.requestRedraw(this.allRedrawParts);
-      }
+    let removed = false;
+    try {
+      removed = this.extensionHost.removeIndicator(indicator);
+    } finally {
+      this.requestRedraw(this.allRedrawParts);
     }
+    if (!removed) return false;
 
     if (options.emit ?? true) {
       this.emit("indicator-remove", { indicator });
@@ -3284,16 +2954,16 @@ export class FinancialChart extends EventEmitter {
     ctx.clearRect(0, 0, sizes.width, sizes.height);
 
     if (this.dataStore.length === 0) {
-      for (const indicator of this.paneledIndicators) {
+      for (const indicator of this.getPaneledIndicators()) {
         indicator.clearDrawing();
       }
       return;
     }
 
-    for (const indicator of this.indicators) {
+    for (const indicator of this.getIndicators()) {
       indicator.draw();
     }
-    for (const indicator of this.paneledIndicators) {
+    for (const indicator of this.getPaneledIndicators()) {
       indicator.draw();
     }
   }
@@ -3306,25 +2976,10 @@ export class FinancialChart extends EventEmitter {
       width: size.width,
       height: size.height,
       panes: this.panes,
-      annotations: this.getPriceAxisAnnotations(),
+      annotations: this.extensionHost.getPriceAxisAnnotations(),
       theme: this.options.theme,
       formatter: this.options.formatter
     });
-  }
-
-  private *getPriceAxisAnnotations(): IterableIterator<PriceAxisAnnotation> {
-    for (const indicator of this.indicators) {
-      const annotations = this.priceAxisAnnotations.get(indicator);
-      if (annotations) yield* annotations;
-    }
-    for (const indicator of this.paneledIndicators) {
-      const annotations = this.priceAxisAnnotations.get(indicator);
-      if (annotations) yield* annotations;
-    }
-    for (const plugin of this.plugins) {
-      const annotations = this.priceAxisAnnotations.get(plugin);
-      if (annotations) yield* annotations;
-    }
   }
 
   private drawCrosshair(): void {
@@ -3486,28 +3141,14 @@ export class FinancialChart extends EventEmitter {
     if (this.disposed) return;
     this.disposed = true;
 
-    const indicators = [...this.indicators, ...this.paneledIndicators];
-    const plugins = [...this.plugins].reverse();
-
     this.stopPaneResize();
     for (const dispose of this.eventDisposers.splice(0)) dispose();
-    for (const indicator of indicators) {
-      this.disposeExtensionScope(indicator);
-      try {
-        indicator.detach();
-      } finally {
-        indicator.releaseAttachment();
-      }
+    let extensionError: unknown;
+    try {
+      this.extensionHost.dispose();
+    } catch (error) {
+      extensionError = error;
     }
-    for (const plugin of plugins) {
-      this.disposeExtensionScope(plugin);
-      plugin.detach?.();
-    }
-    this.indicators = Object.freeze([]);
-    this.paneledIndicators = Object.freeze([]);
-    this.plugins = Object.freeze([]);
-    this.refreshIndicatorSnapshots();
-    this.priceAxisAnnotations.clear();
     this.paneByIndicator.clear();
     this.indicatorByPane.clear();
     this.removeAllListeners();
@@ -3520,6 +3161,7 @@ export class FinancialChart extends EventEmitter {
     this.overlay.destroy();
     this.container.remove();
     this.canvases.clear();
+    if (extensionError !== undefined) throw extensionError;
   }
 
   /**
@@ -3704,7 +3346,7 @@ export class FinancialChart extends EventEmitter {
       this.visibleIndexRange.to + 1
     );
 
-    for (const indicator of this.indicators) {
+    for (const indicator of this.getIndicators()) {
       this.visibleScale.removeModifier(indicator);
       const modifier = indicator.getModifier(visibleTimeRange);
       if (modifier) {

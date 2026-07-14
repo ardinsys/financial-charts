@@ -23,6 +23,15 @@ class DetachProbeIndicator extends MovingAverageIndicator {
   }
 }
 
+class ThrowingDetachIndicator extends MovingAverageIndicator {
+  shouldThrow = true;
+
+  public override detach(): void {
+    if (this.shouldThrow) throw new Error("indicator detach failed");
+    super.detach();
+  }
+}
+
 class LifecycleProbeIndicator extends MovingAverageIndicator {
   onData = vi.fn();
   onVisibleRangeChanged = vi.fn();
@@ -267,6 +276,30 @@ describe("plugin lifecycle", () => {
 
     chart.requestRedraw("indicators", true);
     expect(draw).toHaveBeenCalledOnce();
+  });
+
+  it("stops current-state delivery when an extension removes itself", () => {
+    const { chart } = createChart();
+    const onData = vi.fn();
+    const onVisibleRangeChanged = vi.fn();
+    const detach = vi.fn();
+    const plugin: ChartPlugin = {
+      key: "self-removing-probe",
+      attach: vi.fn(),
+      onOptionsChanged: () => chart.removePlugin(plugin),
+      onData,
+      onVisibleRangeChanged,
+      detach
+    };
+
+    const remove = chart.addPlugin(plugin);
+
+    expect(chart.getPlugins()).toEqual([]);
+    expect(onData).not.toHaveBeenCalled();
+    expect(onVisibleRangeChanged).not.toHaveBeenCalled();
+    expect(detach).toHaveBeenCalledOnce();
+    expect(remove()).toBeUndefined();
+    expect(detach).toHaveBeenCalledOnce();
   });
 
   it("dispatches pointers from topmost extensions until consumed", () => {
@@ -592,6 +625,38 @@ describe("plugin lifecycle", () => {
     chart.removePlugin(plugin);
     chart.requestRedraw("drawings", true);
     expect(renderHook).toHaveBeenCalledOnce();
+  });
+
+  it("releases attachment resources when detach throws", () => {
+    const { chart } = createChart();
+    const indicator = new ThrowingDetachIndicator();
+    const eventListener = vi.fn();
+    const plugin: ChartPlugin = {
+      key: "throwing-detach",
+      attach: (ctx) => {
+        ctx.on("drawing-select", eventListener);
+      },
+      detach: () => {
+        throw new Error("plugin detach failed");
+      }
+    };
+
+    chart.addIndicator(indicator);
+    chart.addPlugin(plugin);
+
+    expect(() => chart.removeIndicator(indicator)).toThrow(
+      "indicator detach failed"
+    );
+    expect(() => chart.removePlugin(plugin)).toThrow("plugin detach failed");
+    expect(chart.getIndicators()).toEqual([]);
+    expect(chart.getPlugins()).toEqual([]);
+
+    chart.emit("drawing-select", {});
+    expect(eventListener).not.toHaveBeenCalled();
+
+    indicator.shouldThrow = false;
+    chart.addIndicator(indicator);
+    expect(chart.removeIndicator(indicator)).toBe(true);
   });
 
   it("cleans scoped subscriptions when plugin attachment fails", () => {

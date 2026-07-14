@@ -214,6 +214,39 @@ describe("chart state", () => {
     expect(target.getIndicatorById("deferred-sma")).toBeDefined();
   });
 
+  it("delivers coherent final plugin state when options do not change", () => {
+    const source = createChart();
+    const target = createChart();
+    const onOptionsChanged = vi.fn();
+    const onData = vi.fn();
+    const onVisibleRangeChanged = vi.fn();
+    target.addPlugin({
+      key: "unchanged-state-lifecycle-probe",
+      attach: vi.fn(),
+      onOptionsChanged,
+      onData,
+      onVisibleRangeChanged
+    });
+    onOptionsChanged.mockClear();
+    onData.mockClear();
+    onVisibleRangeChanged.mockClear();
+
+    target.restoreState(source.toJSON());
+
+    expect(onOptionsChanged).toHaveBeenCalledOnce();
+    expect(onOptionsChanged).toHaveBeenCalledWith({
+      previous: target.getOptions(),
+      current: target.getOptions(),
+      changedKeys: []
+    });
+    expect(onData).toHaveBeenCalledOnce();
+    expect(onData).toHaveBeenCalledWith(target.getData());
+    expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
+    expect(onVisibleRangeChanged).toHaveBeenCalledWith(
+      target.getVisibleTimeRange()
+    );
+  });
+
   it("validates the complete state before mutating the chart", () => {
     const source = createChart();
     const sourceDrawings = new DrawingManager();
