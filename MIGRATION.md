@@ -158,6 +158,14 @@ Charts reject duplicate instance IDs and expose `getIndicatorById()` and
 read its identity through the methods above. Indicator synchronization uses the
 instance ID so multiple instances of one type no longer overwrite one another.
 
+Use `indicator.toJSON()` for versioned, JSON-safe indicator state and
+`restoreIndicator(state, resolver)` to rebuild it. The resolver is
+application-owned and supplies concrete classes and runtime dependencies; no
+global registry is installed. Default state excludes label metadata, themes,
+DOM state, computed data, and other instance fields. Indicators with non-JSON
+options should override `serializeStateOptions()` and
+`restoreStateOptions()`.
+
 ### Paneled indicators are pane-backed
 
 Paneled indicators are laid out through `Pane` models that share the chart's

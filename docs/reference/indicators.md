@@ -59,6 +59,57 @@ If a custom indicator declares its own constructor, accept
 `IndicatorOptionsInput<MyOptions>` for the options argument and forward it to
 `super(...)` so callers can supply `instanceId`.
 
+### Serializable state
+
+`toJSON()` returns a versioned, JSON-safe `IndicatorState` containing the type
+ID, instance ID, configurable options, and visibility. The default option
+serializer excludes `names` and `labelKey`; themes, DOM state, computed data,
+and other instance fields are not part of the snapshot.
+
+Restore through an application-owned resolver. The resolver supplies the class
+and any runtime dependencies; the library applies options, identity, and
+visibility after checking the state:
+
+```ts
+import {
+  MovingAverageIndicator,
+  restoreIndicator
+} from "@ardinsys/financial-charts";
+
+const stored = JSON.stringify(indicator.toJSON());
+const restored = restoreIndicator(JSON.parse(stored), ({ typeId }) => {
+  if (typeId === MovingAverageIndicator.ID) {
+    return new MovingAverageIndicator();
+  }
+});
+```
+
+There is no global indicator registry. Missing or malformed fields,
+non-JSON-safe option values, unsupported versions, unknown types, and resolver
+type mismatches throw descriptive errors.
+
+Indicators with non-JSON option values or a custom serialized shape can
+override the paired hooks:
+
+```ts
+import type { IndicatorStateOptions } from "@ardinsys/financial-charts";
+
+protected serializeStateOptions(): Record<string, unknown> {
+  return { symbol: this.options.symbol };
+}
+
+protected restoreStateOptions(options: IndicatorStateOptions): void {
+  if (typeof options.symbol !== "string") {
+    throw new Error("Indicator state requires a symbol.");
+  }
+  this.options = { ...this.options, symbol: options.symbol };
+}
+```
+
+Functions and service objects should remain constructor dependencies or be
+excluded by these hooks. The serializer rejects unsupported values rather than
+silently dropping them.
+
 The base class builds an `IndicatorLabelModel` from these options, the current label content, visibility, and localized action titles. The chart hands that model to the active `ChartDOMAdapter`.
 
 The default adapter renders and wires:

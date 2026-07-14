@@ -36,6 +36,40 @@ export interface IndicatorIdentityOptions {
 export type IndicatorOptionsInput<TOptions extends DefaultIndicatorOptions> =
   Partial<TOptions> & IndicatorIdentityOptions;
 
+export type IndicatorStateValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly IndicatorStateValue[]
+  | { readonly [key: string]: IndicatorStateValue };
+
+export type IndicatorStateOptions = Readonly<
+  Record<string, IndicatorStateValue>
+>;
+
+export const INDICATOR_STATE_VERSION = 1 as const;
+
+/** Versioned, JSON-safe state for one indicator instance. */
+export interface IndicatorState {
+  /** Indicator state schema version. */
+  version: typeof INDICATOR_STATE_VERSION;
+  /** Factory identity returned by `getIndicatorType()`. */
+  typeId: string;
+  /** Instance identity returned by `getInstanceId()`. */
+  instanceId: string;
+  /** Indicator-specific configuration without label or runtime metadata. */
+  options: IndicatorStateOptions;
+  visible: boolean;
+}
+
+/** Creates a detached indicator for validated state supplied by the caller. */
+export type IndicatorResolver<
+  TIndicator extends Indicator<any, any> = Indicator<any, any>
+> = (
+  state: IndicatorState
+) => TIndicator | undefined;
+
 /** What a concrete indicator contributes to its label on each update. */
 export interface IndicatorLabelContent {
   /** Override the display name (defaults to the localized `options.names`). */
@@ -268,6 +302,19 @@ export abstract class Indicator<
   public abstract getDefaultThemes(): Record<string, TTheme>;
   public abstract draw(): void;
 
+  /** Returns the configurable, JSON-safe option values stored in state. */
+  protected serializeStateOptions(): Record<string, unknown> {
+    const options = { ...this.options } as Record<string, unknown>;
+    delete options.names;
+    delete options.labelKey;
+    return options;
+  }
+
+  /** Applies option values produced by `serializeStateOptions()`. */
+  protected restoreStateOptions(options: IndicatorStateOptions): void {
+    this.options = mergeThemes(this.options, options as Partial<TOptions>);
+  }
+
   /**
    * Produce the label content for the given crosshair time (undefined = no
    * hover). The base fills name/actions/visibility; return detail + value
@@ -369,6 +416,17 @@ export abstract class Indicator<
     return this.typeId;
   }
 
+  /** Returns a JSON-safe snapshot of this indicator's configurable state. */
+  public toJSON(): IndicatorState {
+    return {
+      version: INDICATOR_STATE_VERSION,
+      typeId: this.typeId,
+      instanceId: this.instanceId,
+      options: cloneIndicatorStateOptions(this.serializeStateOptions()),
+      visible: this.visible
+    };
+  }
+
   /** @internal Restores identity before attaching a synchronized clone. */
   public restoreInstanceId(instanceId: string): void {
     if (this.attached) {
@@ -377,9 +435,47 @@ export abstract class Indicator<
     this.instanceId = validateInstanceId(instanceId);
   }
 
+  /** @internal Applies validated state to a detached resolved indicator. */
+  public restoreState(state: IndicatorState): void {
+    if (this.attached) {
+      throw new Error("Cannot restore the state of an attached indicator.");
+    }
+    if (state.typeId !== this.typeId) {
+      throw new Error(
+        `Cannot restore indicator type "${state.typeId}" into "${this.typeId}".`
+      );
+    }
+
+    this.restoreStateOptions(state.options);
+    this.instanceId = state.instanceId;
+    this.visible = state.visible;
+  }
+
   public getOptions() {
     return this.options;
   }
+}
+
+/** Restores validated state through an application-owned indicator resolver. */
+export function restoreIndicator<TIndicator extends Indicator<any, any>>(
+  state: unknown,
+  resolver: IndicatorResolver<TIndicator>
+): TIndicator {
+  const validatedState = validateIndicatorState(state);
+  const indicator = resolver(validatedState);
+  if (!indicator) {
+    throw new Error(
+      `No indicator resolver matched type "${validatedState.typeId}".`
+    );
+  }
+  if (indicator.getIndicatorType() !== validatedState.typeId) {
+    throw new Error(
+      `Indicator resolver returned type "${indicator.getIndicatorType()}" for "${validatedState.typeId}".`
+    );
+  }
+
+  indicator.restoreState(validatedState);
+  return indicator;
 }
 
 let nextIndicatorInstanceId = 0;
@@ -404,6 +500,120 @@ function validateTypeId(typeId: unknown): string {
     throw new Error("Indicator classes must define a non-empty static ID.");
   }
   return typeId;
+}
+
+function validateIndicatorState(state: unknown): IndicatorState {
+  if (!isPlainRecord(state)) {
+    throw new Error("Invalid indicator state: expected an object.");
+  }
+  if (!("version" in state) || typeof state.version !== "number") {
+    throw new Error("Invalid indicator state: version must be a number.");
+  }
+  if (state.version !== INDICATOR_STATE_VERSION) {
+    throw new Error(
+      `Unsupported indicator state version "${state.version}"; expected ${INDICATOR_STATE_VERSION}.`
+    );
+  }
+  if (typeof state.typeId !== "string" || state.typeId.trim().length === 0) {
+    throw new Error("Invalid indicator state: typeId must not be empty.");
+  }
+  if (
+    typeof state.instanceId !== "string" ||
+    state.instanceId.trim().length === 0
+  ) {
+    throw new Error("Invalid indicator state: instanceId must not be empty.");
+  }
+  if (typeof state.visible !== "boolean") {
+    throw new Error("Invalid indicator state: visible must be a boolean.");
+  }
+  if (!isPlainRecord(state.options)) {
+    throw new Error("Invalid indicator state: options must be an object.");
+  }
+  if ("names" in state.options || "labelKey" in state.options) {
+    throw new Error(
+      "Invalid indicator state: options must not contain label metadata."
+    );
+  }
+
+  return {
+    version: INDICATOR_STATE_VERSION,
+    typeId: state.typeId,
+    instanceId: state.instanceId,
+    options: cloneIndicatorStateOptions(state.options),
+    visible: state.visible
+  };
+}
+
+function cloneIndicatorStateOptions(
+  options: Record<string, unknown>
+): IndicatorStateOptions {
+  return cloneIndicatorStateValue(options, "options", new WeakSet()) as {
+    readonly [key: string]: IndicatorStateValue;
+  };
+}
+
+function cloneIndicatorStateValue(
+  value: unknown,
+  path: string,
+  ancestors: WeakSet<object>
+): IndicatorStateValue {
+  if (value === null || typeof value === "string" || typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      throw new Error(`Indicator state ${path} must contain finite numbers.`);
+    }
+    return value;
+  }
+  if (typeof value !== "object") {
+    throw new Error(`Indicator state ${path} is not JSON-safe.`);
+  }
+  if (ancestors.has(value)) {
+    throw new Error(`Indicator state ${path} must not contain circular values.`);
+  }
+
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) {
+      return Array.from(value, (item, index) =>
+        cloneIndicatorStateValue(item, `${path}[${index}]`, ancestors)
+      );
+    }
+    if (!isPlainRecord(value)) {
+      throw new Error(`Indicator state ${path} must contain plain objects.`);
+    }
+
+    const clone: Record<string, IndicatorStateValue> = {};
+    for (const key of Reflect.ownKeys(value)) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (!descriptor?.enumerable) continue;
+      if (typeof key === "symbol" || !("value" in descriptor)) {
+        throw new Error(`Indicator state ${path} is not JSON-safe.`);
+      }
+      Object.defineProperty(clone, key, {
+        configurable: true,
+        enumerable: true,
+        value: cloneIndicatorStateValue(
+          descriptor.value,
+          `${path}.${key}`,
+          ancestors
+        ),
+        writable: true
+      });
+    }
+    return clone;
+  } finally {
+    ancestors.delete(value);
+  }
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function cloneIndicatorValue<T>(value: T): T {

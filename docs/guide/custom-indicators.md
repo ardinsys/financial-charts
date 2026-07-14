@@ -229,6 +229,38 @@ chart.getIndicatorsByType(LastPriceIndicator.ID);
 
 The label is rebuilt from `getLabelContent()` when options, locale, theme, or crosshair state changes. If an indicator should affect auto-scaling, override `getModifier(visibleTimeRange)` and return a `ScaleRangeModifier`.
 
+## Persistence
+
+Persist an indicator with `toJSON()` and restore it through an application
+resolver. The resolver owns concrete class construction and runtime services;
+the chart library owns state validation and applying options, identity, and
+visibility:
+
+```ts
+import { restoreIndicator } from "@ardinsys/financial-charts";
+
+const state = indicator.toJSON();
+localStorage.setItem("indicator", JSON.stringify(state));
+
+const restored = restoreIndicator(
+  JSON.parse(localStorage.getItem("indicator")!),
+  ({ typeId }) => {
+    switch (typeId) {
+      case LastPriceIndicator.ID:
+        return new LastPriceIndicator();
+    }
+  }
+);
+
+chart.addIndicator(restored);
+```
+
+The default state contains regular configurable options but excludes localized
+names, label metadata, themes, DOM state, and loaded external data. Override
+`serializeStateOptions()` and `restoreStateOptions()` as a pair when an option
+shape contains functions or needs a different JSON representation. Runtime
+services should stay in constructor fields and must not be serialized.
+
 ## External data and async work
 
 Use the attachment-scoped signal for requests and subscriptions. A request
