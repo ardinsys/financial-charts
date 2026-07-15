@@ -1,14 +1,27 @@
 import type { ResolvedChartOptions } from "../chart/chart-options";
-import type { FinancialChart } from "../chart/financial-chart";
 import type { ChartData, ChartDataValueKey, TimeRange } from "../chart/types";
 import { DataScaleModel } from "../scales/data-scale-model";
 import type { BarAlignment } from "../scales/time-scale";
+
+export interface ChartControllerDrawingContext {
+  readonly canvasContext: CanvasRenderingContext2D;
+  readonly logicalSize: Readonly<{ width: number; height: number }>;
+  readonly visibleData: readonly ChartData[];
+  readonly timeRange: TimeRange;
+  readonly pixelsPerBar: number;
+  projectTime(time: number): number;
+  projectPrice(price: number): number;
+}
+
+export interface ChartControllerContext {
+  getDrawingContext(): ChartControllerDrawingContext;
+}
 
 export abstract class ChartController {
   static ID = "default";
 
   constructor(
-    protected chart: FinancialChart,
+    protected context: ChartControllerContext,
     protected options: ResolvedChartOptions
   ) {}
 

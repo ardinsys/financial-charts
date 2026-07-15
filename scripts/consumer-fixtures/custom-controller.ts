@@ -35,27 +35,31 @@ class CloseController extends ChartController {
   }
 
   draw(): void {
-    const context = this.chart.getContext("main");
-    const points = this.chart.getLastVisibleDataPoints();
-    const timeScale = this.chart.getTimeScale();
-    const priceScale = this.chart.getPriceScale();
-    const scaleOptions = { canvas: context.canvas };
+    const {
+      canvasContext,
+      visibleData,
+      projectTime,
+      projectPrice
+    } = this.context.getDrawingContext();
     let started = false;
 
-    context.beginPath();
-    for (const point of points) {
+    canvasContext.beginPath();
+    for (const point of visibleData) {
       if (point.close == null) continue;
 
-      const x = timeScale.project(point.time, scaleOptions);
-      const y = priceScale.project(point.close, scaleOptions);
+      const x = projectTime(point.time);
+      const y = projectPrice(point.close);
       if (started) {
-        context.lineTo(x, y);
+        canvasContext.lineTo(x, y);
       } else {
-        context.moveTo(x, y);
+        canvasContext.moveTo(x, y);
         started = true;
       }
     }
-    context.stroke();
+    canvasContext.stroke();
+
+    // @ts-expect-error Controllers cannot issue application commands.
+    this.context.setData([]);
   }
 }
 

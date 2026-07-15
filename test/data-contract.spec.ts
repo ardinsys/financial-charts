@@ -44,7 +44,7 @@ describe("chart data contracts", () => {
 
     const context = chart.getContext("main");
     vi.mocked(context.moveTo).mockClear();
-    chart.getController().draw();
+    chart.requestRedraw("series", true);
 
     expect(chart.getData()).toEqual([
       { time: start, close: 0, volume: 0 },
@@ -69,7 +69,7 @@ describe("chart data contracts", () => {
 
     const context = chart.getContext("main");
     vi.mocked(context.rect).mockClear();
-    chart.getController().draw();
+    chart.requestRedraw("series", true);
 
     expect(context.rect).toHaveBeenCalled();
     expect(
@@ -88,7 +88,7 @@ describe("chart data contracts", () => {
       { time: start + 60_000, close: 1 }
     ]);
 
-    expect(() => chart.getController().draw()).not.toThrow();
+    expect(() => chart.requestRedraw("series", true)).not.toThrow();
   });
 
   it("rejects older streaming timestamps without changing data", () => {

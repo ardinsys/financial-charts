@@ -62,7 +62,7 @@ price scale and Y-axis region.
 | Chart model | `ChartModel` | Retained source bars, step-size remapping, streaming updates, logical/time view ranges, data/visible scales, and their derived snapshots |
 | Bar storage | `DataStore` | Sorted immutable points, binary-search lookup, bucketing, merging, and stable data/time snapshots |
 | Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and numeric scale ranges |
-| Series behavior | `ChartController` implementations | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing |
+| Series behavior | `ChartController`, `ChartControllerContext` | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing through a projection-only context |
 | Extension lifecycle | `ExtensionHost` | Plugin/indicator registries, attachment scopes, state delivery, pointer order, annotations, and detachment |
 | Extension contract | `ChartPlugin`, `ChartContext` | Attachment-scoped services and optional lifecycle/render callbacks |
 | Change publication | `ChartChangePublisher` | Ordered extension delivery, public model-change events, and render invalidation after completed mutations |
@@ -146,6 +146,14 @@ directly instead of copying it at the adjacent boundary.
 `formatter` and `domAdapter` are service references. Their identities are part of
 the resolved snapshot, but the chart does not recursively freeze application or
 adapter instances.
+
+### Controller capabilities
+
+Controllers receive a stable `ChartControllerContext` rather than the chart
+facade. Each draw obtains one current drawing snapshot containing the main canvas,
+logical size, cached visible bars, time range, pixels per bar, and projection
+functions. The context cannot mutate chart-owned scales or invoke application,
+extension, event, persistence, or lifecycle commands.
 
 ### Extensions and panes
 

@@ -1,6 +1,8 @@
-import type { ChartController } from "../controllers/controller";
+import type {
+  ChartController,
+  ChartControllerContext
+} from "../controllers/controller";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
-import type { FinancialChart } from "./financial-chart";
 import type { Formatter } from "./formatter";
 import type { ChartTheme, ResolvedChartTheme } from "./themes";
 import type { TimeRange } from "./types";
@@ -66,7 +68,7 @@ export type ChartOptionKey = keyof ChartOptionsUpdate;
 
 export interface ControllerConstructor {
   new (
-    chart: FinancialChart,
+    context: ChartControllerContext,
     options: ResolvedChartOptions
   ): ChartController;
   readonly ID: string;

@@ -4,9 +4,14 @@ export class AreaController extends SimpleController {
   static ID = "area";
 
   draw(): void {
-    const ctx = this.chart.getContext("main");
-
-    const visibleDataPoints = this.chart.getLastVisibleDataPoints();
+    const {
+      canvasContext: ctx,
+      logicalSize,
+      visibleData,
+      timeRange,
+      projectTime,
+      projectPrice
+    } = this.context.getDrawingContext();
 
     ctx.lineWidth = this.options.theme.area.width;
     const linePath = new Path2D();
@@ -16,47 +21,38 @@ export class AreaController extends SimpleController {
     let firstX = 0,
       lastX = 0;
 
-    const timeRange = this.chart.getTimeRange();
-    const timeScale = this.chart.getTimeScale();
-    const priceScale = this.chart.getPriceScale();
-    const scaleOptions = {
-      canvas: ctx.canvas
-    };
-
-    for (let i = 0; i < visibleDataPoints.length; i++) {
-      const point = visibleDataPoints[i];
+    for (let i = 0; i < visibleData.length; i++) {
+      const point = visibleData[i];
       if (point.time < timeRange.start) continue;
       if (point.time > timeRange.end) break;
 
       if (point.close == undefined) continue;
 
-      const x = timeScale.project(point.time, scaleOptions);
-      const y = priceScale.project(point.close!, scaleOptions);
+      const x = projectTime(point.time);
+      const y = projectPrice(point.close!);
 
       if (firstPoint) {
         linePath.moveTo(x, y);
         firstPoint = false;
-        firstX = x; // Remember the first point to close the path later
+        firstX = x;
       } else {
         linePath.lineTo(x, y);
       }
-      lastX = x; // Remember the last point to close the path later
+      lastX = x;
     }
 
     ctx.stroke(linePath);
 
-    const sizes = this.chart.getLogicalCanvas("main");
-
     ctx.strokeStyle = "transparent";
     ctx.lineWidth = 0;
-    linePath.lineTo(lastX, sizes.height); // Down to the bottom of the chart
-    linePath.lineTo(firstX, sizes.height); // Line to the start along the bottom
+    linePath.lineTo(lastX, logicalSize.height);
+    linePath.lineTo(firstX, logicalSize.height);
     linePath.closePath();
 
     if (typeof this.options.theme.area.fill === "string") {
       ctx.fillStyle = this.options.theme.area.fill;
     } else {
-      const gradient = ctx.createLinearGradient(0, 0, 0, sizes.height);
+      const gradient = ctx.createLinearGradient(0, 0, 0, logicalSize.height);
       for (const stop of this.options.theme.area.fill) {
         gradient.addColorStop(stop[0], stop[1]);
       }

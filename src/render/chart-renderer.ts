@@ -2,7 +2,10 @@ import type { PriceAxisAnnotation } from "../annotations/price-axis-annotation";
 import { renderPriceAxisAnnotations } from "../annotations/price-axis-annotation";
 import type { ResolvedChartOptions } from "../chart/chart-options";
 import type { ChartData, ChartDataValueKey, TimeRange } from "../chart/types";
-import type { ChartController } from "../controllers/controller";
+import type {
+  ChartController,
+  ChartControllerDrawingContext
+} from "../controllers/controller";
 import type { Indicator } from "../indicators/indicator";
 import type { PaneledIndicator } from "../indicators/paneled-indicator";
 import type { Pane } from "../panes/pane";
@@ -158,6 +161,22 @@ export class ChartRenderer {
 
   getFullSize(): { width: number; height: number } {
     return this.getLogicalSize("crosshair");
+  }
+
+  getDrawingContext(): ChartControllerDrawingContext {
+    const canvasContext = this.getContext("main");
+    const scaleOptions = { canvas: canvasContext.canvas };
+    const timeScale = this.model.getTimeScale();
+    const priceScale = this.model.getVisibleScale().getPriceScale();
+    return {
+      canvasContext,
+      logicalSize: this.getLogicalSize("main"),
+      visibleData: this.model.getVisibleData(),
+      timeRange: this.model.getTimeRange(),
+      pixelsPerBar: this.model.getPixelsPerBar(),
+      projectTime: (time) => timeScale.project(time, scaleOptions),
+      projectPrice: (price) => priceScale.project(price, scaleOptions)
+    };
   }
 
   getLastXGridCoords(): readonly number[] {

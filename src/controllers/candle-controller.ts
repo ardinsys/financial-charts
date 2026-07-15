@@ -6,36 +6,33 @@ export class CandlestickController extends OHLCController {
   private spacing = 0.1;
 
   draw(): void {
-    const ctx = this.chart.getContext("main");
-    const pixelsPerBar = this.chart.getPixelsPerBar();
-    const visibleDataPoints = this.chart.getLastVisibleDataPoints();
+    const {
+      canvasContext: ctx,
+      pixelsPerBar,
+      visibleData,
+      projectTime,
+      projectPrice
+    } = this.context.getDrawingContext();
 
     const candleSpacing = pixelsPerBar * this.spacing;
     const candleWidth = pixelsPerBar - candleSpacing;
 
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 
-    const timeScale = this.chart.getTimeScale();
-    const priceScale = this.chart.getPriceScale();
-    const scaleOptions = {
-      canvas: ctx.canvas
-    };
-
-    for (let i = 0; i < visibleDataPoints.length; i++) {
-      const point = visibleDataPoints[i];
+    for (let i = 0; i < visibleData.length; i++) {
+      const point = visibleData[i];
 
       if (point.close == undefined) continue;
       if (point.open == undefined) continue;
       if (point.high == undefined) continue;
       if (point.low == undefined) continue;
 
-      const x = timeScale.project(point.time, scaleOptions);
-      const high = priceScale.project(point.high!, scaleOptions);
-      const low = priceScale.project(point.low!, scaleOptions);
-      const open = priceScale.project(point.open!, scaleOptions);
-      const close = priceScale.project(point.close!, scaleOptions);
+      const x = projectTime(point.time);
+      const high = projectPrice(point.high!);
+      const low = projectPrice(point.low!);
+      const open = projectPrice(point.open!);
+      const close = projectPrice(point.close!);
 
-      // Draw the high-low line
       ctx.beginPath();
       ctx.strokeStyle =
         point.close! > point.open!
@@ -45,7 +42,6 @@ export class CandlestickController extends OHLCController {
       ctx.lineTo(x + (candleWidth / 2 + candleSpacing / 2), low);
       ctx.stroke();
 
-      // Draw the open-close box
       ctx.beginPath();
       ctx.fillStyle =
         point.close! > point.open!

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   type ResolvedChartOptions
 } from "../src/chart/financial-chart";
+import type { ChartControllerContext } from "../src/controllers/controller";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import { FinancialChart as CoreFinancialChart } from "../src/chart/core-financial-chart";
 import { LineController } from "../src/controllers/line-controller";
@@ -10,8 +11,8 @@ class AlternateLineController extends LineController {
   static override ID = "alternate-line";
   static receivedOptions: ResolvedChartOptions | undefined;
 
-  constructor(chart: FinancialChart, options: ResolvedChartOptions) {
-    super(chart, options);
+  constructor(context: ChartControllerContext, options: ResolvedChartOptions) {
+    super(context, options);
     AlternateLineController.receivedOptions = options;
   }
 }

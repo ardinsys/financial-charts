@@ -4,9 +4,12 @@ export class LineController extends SimpleController {
   static ID = "line";
 
   draw(): void {
-    const ctx = this.chart.getContext("main");
-
-    const visibleDataPoints = this.chart.getLastVisibleDataPoints();
+    const {
+      canvasContext: ctx,
+      visibleData,
+      projectTime,
+      projectPrice
+    } = this.context.getDrawingContext();
 
     ctx.fillStyle = this.options.theme.line.color;
     ctx.lineWidth = this.options.theme.line.width;
@@ -15,19 +18,13 @@ export class LineController extends SimpleController {
     ctx.lineWidth = this.options.theme.line.width;
     let firstPoint = true;
 
-    const timeScale = this.chart.getTimeScale();
-    const priceScale = this.chart.getPriceScale();
-    const scaleOptions = {
-      canvas: ctx.canvas
-    };
-
-    for (let i = 0; i < visibleDataPoints.length; i++) {
-      const point = visibleDataPoints[i];
+    for (let i = 0; i < visibleData.length; i++) {
+      const point = visibleData[i];
 
       if (point.close == undefined) continue;
 
-      const x = timeScale.project(point.time, scaleOptions);
-      const y = priceScale.project(point.close!, scaleOptions);
+      const x = projectTime(point.time);
+      const y = projectPrice(point.close!);
 
       if (firstPoint) {
         ctx.moveTo(x, y);

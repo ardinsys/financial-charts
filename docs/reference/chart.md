@@ -162,9 +162,9 @@ type LocaleValues = {
 | `clearData()`          | Convenience equivalent of `setData([])`.                                                                                                                |
 | `getData()`            | Returns a frozen readonly snapshot of the dataset after it has been mapped to the active `stepSize`.                                                    |
 
-Each `getData()` call returns a new frozen array. Stored points are frozen copies
-unless the caller supplied an already frozen point, so later mutation of the
-input array or mutable input objects cannot alter chart state.
+Repeated `getData()` calls return the same frozen snapshot until mapped data
+changes. Stored points are frozen copies, so later mutation of the input array
+or mutable input objects cannot alter chart state.
 
 `updateData` behavior:
 
@@ -226,9 +226,9 @@ set, pass `includeDefaultControllers: false`; the supplied list must then includ
 the initial `type`. Call `registerController(...)` when extensions load after
 construction. Registrations are not shared between charts.
 
-Controller constructors receive `ResolvedChartOptions`: a readonly contract
-with defaults populated for controllers, theme, formatting, localization, and
-DOM integration.
+Controller constructors receive a focused `ChartControllerContext` plus
+`ResolvedChartOptions`. The context contains the current series drawing inputs
+and projection functions; it does not expose chart commands or lifecycle APIs.
 
 ### Tree-shakable controller setup
 

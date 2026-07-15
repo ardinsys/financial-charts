@@ -201,10 +201,6 @@ export class FinancialChart extends EventEmitter {
     return this.model.getVisibleIndexRange();
   }
 
-  getController() {
-    return this.controller;
-  }
-
   getTimeAnchorAlignment(): BarAlignment {
     return this.controller.getTimeAnchorAlignment();
   }
@@ -266,7 +262,7 @@ export class FinancialChart extends EventEmitter {
     return this.model.getVisibleIndexSpan();
   }
 
-  getPixelsPerBar() {
+  private getPixelsPerBar() {
     return this.getDrawingSize().width / this.getVisibleIndexSpan();
   }
 
@@ -568,15 +564,6 @@ export class FinancialChart extends EventEmitter {
       1
     );
 
-    const ControllerClass = this.getControllerClass(this.options.type);
-
-    this.controller = new ControllerClass(this, this.options);
-    this.model.configureScales(
-      (data, timeRange) =>
-        this.controller.createDataScale(data, timeRange),
-      this.controller.getBarAlignment()
-    );
-    this.applyPaneLayout({ resizeCanvases: false, resizeIndicators: false });
     this.renderer = new ChartRenderer(
       this.container,
       {
@@ -626,6 +613,14 @@ export class FinancialChart extends EventEmitter {
         onResize: () => this.handleRendererResize()
       }
     );
+    const ControllerClass = this.getControllerClass(this.options.type);
+    this.controller = new ControllerClass(this.renderer, this.options);
+    this.model.configureScales(
+      (data, timeRange) =>
+        this.controller.createDataScale(data, timeRange),
+      this.controller.getBarAlignment()
+    );
+    this.applyPaneLayout({ resizeCanvases: false, resizeIndicators: false });
     this.crosshairResolver = new CrosshairResolver(
       this.model,
       this.paneLayout,
@@ -876,7 +871,7 @@ export class FinancialChart extends EventEmitter {
 
     if (typeChanged) {
       const ControllerClass = this.getControllerClass(this.options.type);
-      this.controller = new ControllerClass(this, this.options);
+      this.controller = new ControllerClass(this.renderer, this.options);
     }
 
     if (coreChanged) {

@@ -24,42 +24,35 @@ export class SteplineController extends OHLCController {
   }
 
   draw(): void {
-    const ctx = this.chart.getContext("main");
-
-    const visibleDataPoints = this.chart.getLastVisibleDataPoints();
+    const {
+      canvasContext: ctx,
+      visibleData,
+      projectTime,
+      projectPrice
+    } = this.context.getDrawingContext();
 
     ctx.beginPath();
     ctx.strokeStyle = this.options.theme.line.color;
     ctx.lineWidth = this.options.theme.line.width;
 
-    const timeScale = this.chart.getTimeScale();
-    const priceScale = this.chart.getPriceScale();
-    const scaleOptions = {
-      canvas: ctx.canvas
-    };
-
-    // Start from the first data point
     let lastX = null;
     let lastY = null;
 
-    for (let i = 0; i < visibleDataPoints.length; i++) {
-      const point = visibleDataPoints[i];
+    for (let i = 0; i < visibleData.length; i++) {
+      const point = visibleData[i];
 
       if (point.close == undefined) continue;
 
-      const x = timeScale.project(point.time, scaleOptions);
-      const y = priceScale.project(point.close!, scaleOptions);
+      const x = projectTime(point.time);
+      const y = projectPrice(point.close!);
 
       if (lastX === null || lastY === null) {
         ctx.moveTo(x, y);
       } else {
-        // Move horizontally to the new X position
         ctx.lineTo(x, lastY);
-        // Then move vertically to the new Y position
         ctx.lineTo(x, y);
       }
 
-      // Update the last positions
       lastX = x;
       lastY = y;
     }

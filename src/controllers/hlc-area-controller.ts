@@ -31,12 +31,15 @@ export class HLCAreaController extends OHLCController {
   }
 
   draw(): void {
-    const ctx = this.chart.getContext("main");
-
-    const visibleDataPoints = this.chart.getLastVisibleDataPoints();
-    if (visibleDataPoints.length === 0) return;
+    const {
+      canvasContext: ctx,
+      visibleData,
+      projectTime,
+      projectPrice
+    } = this.context.getDrawingContext();
+    if (visibleData.length === 0) return;
     if (
-      !visibleDataPoints.some(
+      !visibleData.some(
         (point) =>
           point.high != null && point.low != null && point.close != null
       )
@@ -44,29 +47,20 @@ export class HLCAreaController extends OHLCController {
       return;
     }
 
-    const timeScale = this.chart.getTimeScale();
-    const priceScale = this.chart.getPriceScale();
-    const scaleOptions = {
-      canvas: ctx.canvas
-    };
-
-    // Paths for the lines
     const highPath = new Path2D();
     const lowPath = new Path2D();
     const closePath = new Path2D();
 
-    // Paths for the filled areas
     const highCloseArea = new Path2D();
     const closeLowArea = new Path2D();
 
-    // Move to the first data point for each path
     let firstHigh!: Point,
       firstClose!: Point,
       firstLow!: Point;
 
     let foundFirst = false;
-    for (let i = 0; i < visibleDataPoints.length; i++) {
-      const point = visibleDataPoints[i];
+    for (let i = 0; i < visibleData.length; i++) {
+      const point = visibleData[i];
 
       if (
         point.high == undefined ||
@@ -76,12 +70,12 @@ export class HLCAreaController extends OHLCController {
         continue;
 
       const high = {
-        x: timeScale.project(point.time, scaleOptions),
-        y: priceScale.project(point.high!, scaleOptions)
+        x: projectTime(point.time),
+        y: projectPrice(point.high!)
       };
       const low = {
-        x: timeScale.project(point.time, scaleOptions),
-        y: priceScale.project(point.low!, scaleOptions)
+        x: projectTime(point.time),
+        y: projectPrice(point.low!)
       };
 
       if (!foundFirst) {
@@ -100,8 +94,8 @@ export class HLCAreaController extends OHLCController {
 
     foundFirst = false;
 
-    for (let i = visibleDataPoints.length - 1; i >= 0; i--) {
-      const point = visibleDataPoints[i];
+    for (let i = visibleData.length - 1; i >= 0; i--) {
+      const point = visibleData[i];
       if (
         point.high == undefined ||
         point.low == undefined ||
@@ -110,8 +104,8 @@ export class HLCAreaController extends OHLCController {
         continue;
 
       const close = {
-        x: timeScale.project(point.time, scaleOptions),
-        y: priceScale.project(point.close!, scaleOptions)
+        x: projectTime(point.time),
+        y: projectPrice(point.close!)
       };
 
       if (!foundFirst) {
@@ -125,7 +119,6 @@ export class HLCAreaController extends OHLCController {
 
     }
 
-    // Draw the lines
     ctx.lineWidth = this.options.theme.hlcArea.width;
     ctx.strokeStyle = this.options.theme.hlcArea.high.color;
     ctx.stroke(highPath);
@@ -136,7 +129,6 @@ export class HLCAreaController extends OHLCController {
     ctx.strokeStyle = this.options.theme.hlcArea.closeColor;
     ctx.stroke(closePath);
 
-    // Close and fill the area between high and close
     highCloseArea.addPath(highPath);
     highCloseArea.lineTo(firstClose.x, firstClose.y);
     highCloseArea.addPath(closePath);

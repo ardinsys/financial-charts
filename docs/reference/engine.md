@@ -53,26 +53,27 @@ class CloseController extends ChartController {
   }
 
   draw(): void {
-    const context = this.chart.getContext("main");
-    const points = this.chart.getLastVisibleDataPoints();
-    const timeScale = this.chart.getTimeScale();
-    const priceScale = this.chart.getPriceScale();
-    const scaleOptions = { canvas: context.canvas };
+    const {
+      canvasContext,
+      visibleData,
+      projectTime,
+      projectPrice
+    } = this.context.getDrawingContext();
     let started = false;
 
-    context.beginPath();
-    for (const point of points) {
+    canvasContext.beginPath();
+    for (const point of visibleData) {
       if (point.close == null) continue;
 
-      const x = timeScale.project(point.time, scaleOptions);
-      const y = priceScale.project(point.close, scaleOptions);
-      if (started) context.lineTo(x, y);
+      const x = projectTime(point.time);
+      const y = projectPrice(point.close);
+      if (started) canvasContext.lineTo(x, y);
       else {
-        context.moveTo(x, y);
+        canvasContext.moveTo(x, y);
         started = true;
       }
     }
-    context.stroke();
+    canvasContext.stroke();
   }
 }
 
@@ -96,9 +97,16 @@ const chart = new FinancialChart(container, {
 | `getTimeFromRawDataPoint(point)`   | Maps a raw timestamp to the controller's bucket timestamp.                                                                   |
 | `draw()`                           | Draws the series into the main context. Chart contexts use logical coordinates.                                              |
 
-`getLastVisibleDataPoints()` is a precomputed, readonly render input. The chart
-returns the same cached array throughout a render instead of rebuilding or
-copying the visible slice for every controller and indicator.
+Controllers receive a `ChartControllerContext`, not the chart instance.
+`getDrawingContext()` returns the current canvas, logical size, visible-data
+snapshot, time range, pixels per bar, and time/price projection functions. This
+is the complete controller capability set. It deliberately cannot mutate chart
+scales, load data, change options, attach extensions, publish events, or dispose
+the chart.
+
+`drawingContext.visibleData` is a precomputed, readonly render input. The same
+cached array is returned throughout a render instead of rebuilding or copying
+the visible slice for every controller.
 
 ## Panes
 
