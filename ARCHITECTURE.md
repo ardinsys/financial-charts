@@ -57,7 +57,8 @@ price scale and Y-axis region.
 |---|---|---|
 | Public coordination | `FinancialChart` | Validates commands and coordinates model, lifecycle, layout, interaction, and rendering effects |
 | Public option contracts | `chart-options.ts` | Constructor/update options, resolved controller options, locale values, and immutable option snapshots |
-| Resolved option state | `ChartOptionsState` | Input isolation, runtime option ownership, effective update detection, controller snapshots, and public snapshot identity |
+| Resolved option state | `ChartOptionsState` | Input isolation, runtime option ownership, effective update detection, controller snapshot reuse, and public snapshot identity |
+| Controller registration | `ControllerRegistry` | Chart-scoped constructor identity, class defaults, lookup, and stable frozen registration snapshots |
 | Chart model | `ChartModel` | Retained source bars, step-size remapping, streaming updates, logical/time view ranges, data/visible scales, and their derived snapshots |
 | Bar storage | `DataStore` | Sorted immutable points, binary-search lookup, bucketing, merging, and stable data/time snapshots |
 | Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and numeric scale ranges |
@@ -123,6 +124,8 @@ values, and controller arrays. `getOptions()` returns its shallow-frozen
 `options-change` events and is replaced only after an effective option or
 controller-registration change. `FinancialChart` applies the behavioral effects
 described by that change after the new resolved state is complete.
+`ControllerRegistry` owns the frozen controller array, which option state reuses
+directly instead of copying it at the adjacent boundary.
 
 `formatter` and `domAdapter` are service references. Their identities are part of
 the resolved snapshot, but the chart does not recursively freeze application or

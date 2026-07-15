@@ -38,6 +38,7 @@ import type {
 import { getDefaultControllerConstructors } from "./internal-default-controllers";
 import { ChartModel } from "./chart-model";
 import { ChartOptionsState } from "./chart-options-state";
+import { ControllerRegistry } from "./controller-registry";
 import {
   type ChartLocalizationOptions,
   type ChartOptions,
@@ -106,17 +107,13 @@ interface ChartChange {
 }
 
 export class FinancialChart extends EventEmitter {
-  private readonly controllers = new Map<
-    ControllerType,
-    ControllerConstructor
-  >();
+  private readonly controllerRegistry: ControllerRegistry;
   private controller: ChartController;
   protected outsideContainer: HTMLElement;
   protected container: HTMLElement;
   protected indicatorLabelContainer: HTMLElement;
   private readonly model = new ChartModel();
   private readonly optionsState!: ChartOptionsState;
-  private readonly defaultControllerConstructors: readonly ControllerConstructor[];
   private domAdapter: ChartDOMAdapter;
   private overlay!: ChartDOMOverlay;
   private readonly renderer: ChartRenderer;
@@ -159,17 +156,15 @@ export class FinancialChart extends EventEmitter {
 
 
   public registerController(controllerClass: ControllerConstructor) {
-    const id = this.getRegistrationId(controllerClass);
-    this.controllers.set(id as ControllerType, controllerClass);
-    this.syncRegisteredControllers();
+    if (this.controllerRegistry.register(controllerClass)) {
+      this.syncRegisteredControllers();
+    }
   }
 
   public registerDefaults() {
-    for (const controller of this.defaultControllerConstructors) {
-      const id = this.getRegistrationId(controller);
-      this.controllers.set(id as ControllerType, controller);
+    if (this.controllerRegistry.registerDefaults()) {
+      this.syncRegisteredControllers();
     }
-    this.syncRegisteredControllers();
   }
 
   private registerConstructorOptions(
@@ -186,25 +181,11 @@ export class FinancialChart extends EventEmitter {
 
   private syncRegisteredControllers() {
     if (!this.optionsState) return;
-    this.optionsState.setControllers([...this.controllers.values()]);
-  }
-
-  private getRegistrationId(registrationClass: ControllerConstructor) {
-    if (registrationClass.ID === "default" || !registrationClass.ID) {
-      throw new Error("Controller must have a static ID field!");
-    }
-
-    return registrationClass.ID;
+    this.optionsState.setControllers(this.controllerRegistry.getSnapshot());
   }
 
   private getControllerClass(type: ControllerType) {
-    const ControllerClass = this.controllers.get(type);
-
-    if (!ControllerClass) {
-      throw new Error(`Controller: ${type} is not registered!`);
-    }
-
-    return ControllerClass;
+    return this.controllerRegistry.get(type);
   }
 
   getYLabelWidth() {
@@ -886,15 +867,18 @@ export class FinancialChart extends EventEmitter {
 
   constructor(container: HTMLElement, options: ChartOptions) {
     super();
-    this.defaultControllerConstructors =
+    const defaultControllerConstructors =
       getDefaultControllerConstructors(options);
+    this.controllerRegistry = new ControllerRegistry(
+      defaultControllerConstructors
+    );
     const includeDefaultControllers =
       options.includeDefaultControllers ??
-      this.defaultControllerConstructors.length > 0;
+      defaultControllerConstructors.length > 0;
     this.registerConstructorOptions(options, includeDefaultControllers);
     this.optionsState = new ChartOptionsState(
       options,
-      [...this.controllers.values()],
+      this.controllerRegistry.getSnapshot(),
       includeDefaultControllers
     );
     this.domAdapter = this.options.domAdapter;

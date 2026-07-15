@@ -63,7 +63,7 @@ export class ChartOptionsState {
       stepSize: options.stepSize,
       maxZoom,
       volume: options.volume ?? true,
-      controllers: Object.freeze([...controllers]),
+      controllers: ownControllerSnapshot(controllers),
       includeDefaultControllers,
       locale,
       timeZone,
@@ -89,7 +89,7 @@ export class ChartOptionsState {
   }
 
   setControllers(controllers: readonly ControllerConstructor[]): void {
-    this.resolved.controllers = Object.freeze([...controllers]);
+    this.resolved.controllers = ownControllerSnapshot(controllers);
     this.snapshot = this.createSnapshot();
   }
 
@@ -233,4 +233,12 @@ function getDefaultLocaleValues(): LocaleValuesMap {
       }
     }
   };
+}
+
+function ownControllerSnapshot(
+  controllers: readonly ControllerConstructor[]
+): readonly ControllerConstructor[] {
+  return Object.isFrozen(controllers)
+    ? controllers
+    : Object.freeze([...controllers]);
 }
