@@ -31,6 +31,7 @@ import {
 import type { ChartPlugin, ChartPointerEvent } from "../plugin/chart-plugin";
 import { ExtensionHost } from "../plugin/extension-host";
 import { InteractionController } from "../interaction/interaction-controller";
+import { CrosshairResolver } from "../interaction/crosshair-resolver";
 import type {
   ChartCrosshairOptions,
   ChartCrosshairState
@@ -118,6 +119,7 @@ export class FinancialChart extends EventEmitter {
   private overlay!: ChartDOMOverlay;
   private readonly renderer: ChartRenderer;
   private readonly paneLayout: PaneLayout;
+  private readonly crosshairResolver: CrosshairResolver;
   private readonly interactionController: InteractionController;
   private pendingRestoredVisibleRange?: TimeRange;
 
@@ -672,59 +674,6 @@ export class FinancialChart extends EventEmitter {
     return this.extensionHost.notifyPointer(event);
   }
 
-  private createInteractionPointerEvent(
-    type: ChartPointerEvent["type"],
-    x: number,
-    y: number,
-    source?: PointerEvent | MouseEvent
-  ): ChartPointerEvent | undefined {
-    const state = this.resolveInteractionCrosshair(x, y);
-    if (!state) return undefined;
-
-    return {
-      type,
-      x,
-      y: state.y,
-      time: state.time,
-      pane: state.pane,
-      dataPoint: state.dataPoint,
-      button: source?.button,
-      buttons: source?.buttons
-    };
-  }
-
-  private resolveInteractionDataPoint(
-    x: number,
-    y: number,
-    scale: "data" | "visible"
-  ): ChartData | undefined {
-    if (!this.model.hasData()) return undefined;
-    const rawPoint = (
-      scale === "data"
-        ? this.model.getDataScale()
-        : this.model.getVisibleScale()
-    ).pixelToPoint(x, y, this.getContext("main").canvas);
-    return this.findClosestDataPoint(rawPoint);
-  }
-
-  private resolveInteractionCrosshair(
-    x: number,
-    y: number
-  ): ChartCrosshairState | undefined {
-    const pointerY = Math.min(
-      y,
-      this.container.offsetHeight - this.xLabelHeight
-    );
-    const dataPoint = this.resolveInteractionDataPoint(x, pointerY, "visible");
-    if (!dataPoint) return undefined;
-    return {
-      time: dataPoint.time,
-      y: pointerY,
-      pane: this.paneLayout.getPaneAtY(pointerY) ?? this.getMainPane(),
-      dataPoint
-    };
-  }
-
   private beforeDrawPlugins() {
     this.extensionHost.beforeDrawPlugins();
   }
@@ -794,57 +743,6 @@ export class FinancialChart extends EventEmitter {
     }
   }
 
-  private getCrosshairDefaultPrice(point: ChartData) {
-    return point.close ?? point.open ?? point.high ?? point.low;
-  }
-
-  private resolveCrosshairY(
-    options: ChartCrosshairOptions,
-    pane: Pane,
-    point: ChartData
-  ) {
-    const plotHeight = this.container.offsetHeight - this.xLabelHeight;
-    if (options.y !== undefined) {
-      return Math.max(0, Math.min(options.y, plotHeight));
-    }
-
-    const region = pane.getRegion();
-    const price = options.price ?? this.getCrosshairDefaultPrice(point);
-    if (price === undefined || price === null) {
-      return region.y + region.height / 2;
-    }
-
-    return (
-      region.y +
-      pane.getPriceScale().project(price, {
-        canvas: { width: region.width, height: region.height }
-      })
-    );
-  }
-
-  private resolveCrosshairState(
-    options: ChartCrosshairOptions
-  ): ChartCrosshairState | undefined {
-    const dataPoint = this.model.getNearestData(options.time);
-    if (!dataPoint) return undefined;
-
-    const x = this.getTimeScale().project(dataPoint.time, {
-      canvas: this.getContext("main").canvas,
-      barAlignment: this.getTimeAnchorAlignment()
-    });
-    if (x < 0 || x > this.getDrawingSize().width) return undefined;
-
-    const pane = this.paneLayout.getPaneById(options.paneId);
-    const y = this.resolveCrosshairY(options, pane, dataPoint);
-
-    return {
-      time: dataPoint.time,
-      y,
-      pane,
-      dataPoint
-    };
-  }
-
   public onRenderStage(
     stage: RenderStage,
     callback: RenderCallback
@@ -854,11 +752,6 @@ export class FinancialChart extends EventEmitter {
 
   public changeType(type: ControllerType) {
     this.updateOptions({ type });
-  }
-
-  private findClosestDataPoint(rawPoint: ChartData): ChartData | undefined {
-    const time = this.controller.getTimeFromRawDataPoint(rawPoint);
-    return this.model.getNearestData(time);
   }
 
   getOutsideContainer() {
@@ -975,16 +868,30 @@ export class FinancialChart extends EventEmitter {
         onResize: () => this.handleRendererResize()
       }
     );
+    this.crosshairResolver = new CrosshairResolver(
+      this.model,
+      this.paneLayout,
+      {
+        normalizeTime: (point) =>
+          this.controller.getTimeFromRawDataPoint(point),
+        getMainCanvas: () => this.renderer.getCanvas("main"),
+        getDrawingWidth: () => this.renderer.getDrawingSize().width,
+        getPlotHeight: () =>
+          this.container.offsetHeight - this.xLabelHeight,
+        getTimeAnchorAlignment: () => this.getTimeAnchorAlignment()
+      }
+    );
     const topCanvas = this.renderer.getCanvas("crosshair");
     this.interactionController = new InteractionController(
       {
         hasData: () => this.model.hasData(),
         createPointerEvent: (type, x, y, source) =>
-          this.createInteractionPointerEvent(type, x, y, source),
+          this.crosshairResolver.createPointerEvent(type, x, y, source),
         dispatchPointer: (event) => this.dispatchInteractionPointer(event),
         resolveDataPoint: (x, y, scale) =>
-          this.resolveInteractionDataPoint(x, y, scale),
-        resolveCrosshair: (x, y) => this.resolveInteractionCrosshair(x, y),
+          this.crosshairResolver.resolveDataPoint(x, y, scale),
+        resolveCrosshair: (x, y) =>
+          this.crosshairResolver.resolvePointer(x, y),
         panByPixels: (dx) => this.panInteractionByPixels(dx),
         zoomAtPixel: (factor, pixel) =>
           this.zoomInteractionAtPixel(factor, pixel),
@@ -1476,7 +1383,7 @@ export class FinancialChart extends EventEmitter {
   public setCrosshair(
     options: ChartCrosshairOptions
   ): ChartCrosshairState | undefined {
-    const state = this.resolveCrosshairState(options);
+    const state = this.crosshairResolver.resolveProgrammatic(options);
     if (!state) {
       this.clearCrosshair();
       return undefined;

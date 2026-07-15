@@ -67,7 +67,7 @@ price scale and Y-axis region.
 | Extension contract | `ChartPlugin`, `ChartContext` | Attachment-scoped services and optional lifecycle/render callbacks |
 | Indicator behavior | `Indicator`, `PaneledIndicator` | Indicator state, labels, drawing, and optional pane-specific scale/container behavior |
 | Pane layout | `PaneLayout`, `Pane` | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales |
-| Browser interaction | `InteractionController`, `interaction/crosshair.ts` | Listener lifetime, gesture state, pointer normalization, and the public crosshair command/state contract |
+| Browser interaction | `InteractionController`, `CrosshairResolver`, `interaction/crosshair.ts` | Listener lifetime, gesture state, pointer normalization, shared coordinate resolution, and the public crosshair contract |
 | Rendering | `ChartRenderer`, `RenderPipeline`, `chart-render-types.ts` | Canvas/context ownership, public layer contracts, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
 | DOM chrome | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
 | Public events | `EventEmitter` and `ChartEventMap` | Application-facing chart, indicator, drawing, options, and state events |
@@ -231,14 +231,15 @@ coordinates canvas resizing and redraw after layout changes.
 ## Interaction
 
 `InteractionController` owns browser listeners, mouse and touch gesture state,
-touch timers, and the current crosshair model. It translates input into semantic
-operations supplied by `FinancialChart`; it does not reach into chart model
-fields.
+touch timers, and the current crosshair model. `CrosshairResolver` resolves both
+pointer-driven and programmatic crosshairs through the chart model, pane layout,
+and active controller alignment. Neither component reaches into
+`FinancialChart` state.
 
 ```text
 browser event
   -> InteractionController normalizes coordinates and gesture state
-  -> FinancialChart resolves data/panes or applies a view command
+  -> CrosshairResolver resolves data and pane coordinates, or FinancialChart applies a view command
   -> normal change commit notifies extensions and invalidates render layers
 ```
 
