@@ -57,7 +57,7 @@ price scale and Y-axis region.
 |---|---|---|
 | Public coordination | `FinancialChart` | Validates commands and coordinates model, lifecycle, layout, interaction, and rendering effects |
 | Public option contracts | `chart-options.ts` | Constructor/update options, resolved controller options, locale values, and immutable option snapshots |
-| Chart model | `ChartModel` | Retained source bars, step-size remapping, streaming updates, stable mapped snapshots, and logical/time view ranges |
+| Chart model | `ChartModel` | Retained source bars, step-size remapping, streaming updates, logical/time view ranges, data/visible scales, and their derived snapshots |
 | Bar storage | `DataStore` | Sorted immutable points, binary-search lookup, bucketing, merging, and stable data/time snapshots |
 | Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and numeric scale ranges |
 | Series behavior | `ChartController` implementations | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing |
@@ -97,17 +97,22 @@ the current store version and invalidates it on append or merge.
 `FinancialChart.getData()`, scale calculations, and `onData()` callbacks reuse
 the model's mapped snapshot.
 
-Visible points and X-grid coordinates are render-derived caches. Their getters
-return the precomputed arrays directly; they must not copy on each controller or
-indicator read.
+The visible point slice is a `ChartModel` cache rebuilt with the visible scale.
+X-grid coordinates are a renderer cache. Their getters return the precomputed
+arrays directly; they must not copy on each controller or indicator read.
 
 ### View ranges
 
 `ChartModel` owns the configured time range, calculated logical bounds, and the
 current fractional logical window. It performs timestamp/logical-index
 conversion and range clamping. `FinancialChart` supplies viewport capacity and
-controller alignment, then synchronizes scales and publishes a change only when
-the model reports an effective range change.
+controller alignment, then publishes a change only when the model reports an
+effective range change.
+
+The model also owns the full-data and visible `DataScaleModel` instances and
+keeps their time scales synchronized with its current data and logical window.
+The facade mirrors the shared time scale and visible price range into panes after
+model changes; panes continue to own their individual price scales.
 
 ### Options
 

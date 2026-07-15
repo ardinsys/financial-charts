@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ChartModel } from "../src/chart/chart-model";
+import type { ChartData, TimeRange } from "../src/chart/types";
+import { DataScaleModel } from "../src/scales/data-scale-model";
+
+const createSimpleScale = (
+  data: readonly ChartData[],
+  timeRange: TimeRange
+) => new DataScaleModel("simple", data, timeRange);
 
 describe("ChartModel data ownership", () => {
   it("owns stable mapped snapshots independently of caller input", () => {
@@ -156,5 +163,76 @@ describe("ChartModel data ownership", () => {
         end: Number.POSITIVE_INFINITY
       })
     ).toThrow("Visible time range values must be finite.");
+  });
+
+  it("owns scale instances and the cached visible data slice", () => {
+    const model = new ChartModel();
+    model.configureTimeRange("auto", 60, 3);
+    model.configureScales(createSimpleScale, "center");
+    const visibleScale = model.getVisibleScale();
+
+    model.replaceData(
+      [
+        { time: 0, close: 10 },
+        { time: 60, close: 20 },
+        { time: 120, close: 15 }
+      ],
+      60
+    );
+    model.updateAutoTimeRange(60, 3);
+    model.rebuildDataScale();
+    model.refreshIndexBounds({ minimumVisibleSlots: 3, reset: true });
+    const visibleData = model.recalculateVisibleScale([]);
+
+    expect(model.getVisibleScale()).toBe(visibleScale);
+    expect(model.getVisibleDataPoints()).toBe(visibleData);
+    expect(Object.isFrozen(visibleData)).toBe(true);
+    expect(visibleData).toEqual(model.getData());
+    expect(visibleScale.getYMin()).toBeLessThan(10);
+    expect(visibleScale.getYMax()).toBeGreaterThan(20);
+
+    visibleScale.addModifier({
+      actor: "test",
+      enabled: true,
+      yMin: -100
+    });
+    model.recalculateVisibleScale([]);
+    expect(visibleScale.getYMin()).toBeLessThanOrEqual(-100);
+
+    model.replaceData([], 60);
+    model.resetEmptyView();
+    model.clearScaleData();
+
+    expect(model.getVisibleScale()).toBe(visibleScale);
+    expect(model.getVisibleDataPoints()).toEqual([]);
+    expect(visibleScale.getYMin()).toBeGreaterThan(-100);
+  });
+
+  it("keeps owned time scales synchronized with logical range changes", () => {
+    const model = new ChartModel();
+    model.replaceData(
+      [
+        { time: 0, close: 1 },
+        { time: 60, close: 2 },
+        { time: 120, close: 3 }
+      ],
+      60
+    );
+    model.configureTimeRange("auto", 60, 3);
+    model.configureScales(createSimpleScale, "center");
+    model.refreshIndexBounds({ minimumVisibleSlots: 3, reset: true });
+
+    model.setVisibleIndexRange({ from: 0.5, to: 2.5 });
+
+    expect(model.getTimeScale().getRange()).toEqual({
+      from: 0.5,
+      to: 2.5,
+      rightOffset: 0
+    });
+    expect(model.getDataScale().getTimeScale().getRange()).toEqual({
+      from: 0.5,
+      to: 2.5,
+      rightOffset: 0
+    });
   });
 });

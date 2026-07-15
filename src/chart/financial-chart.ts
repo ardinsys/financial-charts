@@ -6,10 +6,7 @@ import {
   type IndicatorInvalidationOptions,
   type IndicatorMutationOptions
 } from "../indicators/indicator";
-import {
-  DataScaleModel,
-  DataScaleTimeOptions
-} from "../scales/data-scale-model";
+import type { ScaleRangeModifier } from "../scales/data-scale-model";
 import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
 import { DefaultFormatter } from "./formatter";
 import {
@@ -132,8 +129,6 @@ export class FinancialChart extends EventEmitter {
   protected options!: MutableResolvedChartOptions;
   private optionsSnapshot!: ChartOptionsSnapshot;
   private readonly defaultControllerConstructors: readonly ControllerConstructor[];
-  protected dataScale!: DataScaleModel;
-  protected visibleScale: DataScaleModel;
   private domAdapter: ChartDOMAdapter;
   private overlay!: ChartDOMOverlay;
   private readonly renderer: ChartRenderer;
@@ -314,11 +309,11 @@ export class FinancialChart extends EventEmitter {
   }
 
   getVisibleScale() {
-    return this.visibleScale;
+    return this.model.getVisibleScale();
   }
 
   getTimeScale() {
-    return this.visibleScale.getTimeScale();
+    return this.model.getTimeScale();
   }
 
   getPriceScale() {
@@ -326,7 +321,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   getVolumeScale() {
-    return this.visibleScale.getVolumeScale();
+    return this.model.getVolumeScale();
   }
 
   /** Returns the precise fractional logical-index window. */
@@ -484,31 +479,18 @@ export class FinancialChart extends EventEmitter {
     return this.model.getData();
   }
 
-  private getTimeScaleOptions(): DataScaleTimeOptions {
-    return {
-      barAlignment: this.controller.getBarAlignment(),
-      indexRange: this.model.getVisibleIndexRange(),
-      timeValues: this.model.getTimes()
-    };
-  }
-
-  private syncTimeScales() {
-    const options = this.getTimeScaleOptions();
-    this.visibleScale.configureTimeScale(options);
-    if (this.dataScale) {
-      this.dataScale.configureTimeScale(options);
-    }
+  private syncPaneTimeScales() {
     const timeAnchorAlignment = this.getTimeAnchorAlignment();
     for (const pane of this.getPanes()) {
-      pane.setTimeScale(this.visibleScale.getTimeScale());
+      pane.setTimeScale(this.model.getTimeScale());
       pane.setTimeAnchorAlignment(timeAnchorAlignment);
     }
   }
 
   private syncMainPanePriceScale() {
     this.getMainPane().setPriceRange(
-      this.visibleScale.getYMin(),
-      this.visibleScale.getYMax()
+      this.model.getVisibleScale().getYMin(),
+      this.model.getVisibleScale().getYMax()
     );
   }
 
@@ -551,7 +533,7 @@ export class FinancialChart extends EventEmitter {
       ...options,
       minimumVisibleSlots: this.getMinimumVisibleIndexSlots()
     });
-    this.syncTimeScales();
+    this.syncPaneTimeScales();
     return changed;
   }
 
@@ -612,7 +594,7 @@ export class FinancialChart extends EventEmitter {
 
   private updateVisibleIndexRange(range: TimeScaleRange): boolean {
     const changed = this.model.setVisibleIndexRange(range);
-    this.syncTimeScales();
+    this.syncPaneTimeScales();
     return changed;
   }
 
@@ -830,7 +812,9 @@ export class FinancialChart extends EventEmitter {
   ): ChartData | undefined {
     if (!this.model.hasData()) return undefined;
     const rawPoint = (
-      scale === "data" ? this.dataScale : this.visibleScale
+      scale === "data"
+        ? this.model.getDataScale()
+        : this.model.getVisibleScale()
     ).pixelToPoint(x, y, this.getContext("main").canvas);
     return this.findClosestDataPoint(rawPoint);
   }
@@ -1042,10 +1026,11 @@ export class FinancialChart extends EventEmitter {
     const ControllerClass = this.getControllerClass(this.options.type);
 
     this.controller = new ControllerClass(this, this.options);
-    this.visibleScale = this.controller.createDataScale([], {
-      start: 0,
-      end: 0
-    });
+    this.model.configureScales(
+      (data, timeRange) =>
+        this.controller.createDataScale(data, timeRange),
+      this.controller.getBarAlignment()
+    );
     this.applyPaneLayout({ resizeCanvases: false, resizeIndicators: false });
     this.renderer = new ChartRenderer(
       this.container,
@@ -1053,11 +1038,11 @@ export class FinancialChart extends EventEmitter {
         getOptions: () => this.options,
         hasData: () => this.model.hasData(),
         getTimes: () => this.model.getTimes(),
-        getVisibleData: () => this.lastVisibleDataPoints,
+        getVisibleData: () => this.model.getVisibleDataPoints(),
         getVisibleIndexRange: () => this.model.getVisibleIndexRange(),
         getTimeRange: () => this.model.getTimeRange(),
         getTimeScale: () => this.getTimeScale(),
-        getVisibleScale: () => this.visibleScale,
+        getVisibleScale: () => this.model.getVisibleScale(),
         getTimeAnchorAlignment: () => this.getTimeAnchorAlignment(),
         getPixelsPerBar: () => this.getPixelsPerBar(),
         getController: () => this.controller,
@@ -1184,11 +1169,7 @@ export class FinancialChart extends EventEmitter {
       this.getMinimumVisibleIndexSlots()
     );
     if (recalculateDataScale) {
-      this.dataScale.recalculate(
-        this.model.getData(),
-        this.model.getTimeRange(),
-        this.getTimeScaleOptions()
-      );
+      this.model.recalculateDataScale();
     }
   }
 
@@ -1206,16 +1187,13 @@ export class FinancialChart extends EventEmitter {
   }
 
   private rebuildScales(resetVisibleRange: boolean) {
-    this.dataScale = this.controller.createDataScale(
-      this.model.getData(),
-      this.model.getTimeRange()
+    this.model.configureScales(
+      (data, timeRange) =>
+        this.controller.createDataScale(data, timeRange),
+      this.controller.getBarAlignment()
     );
-    this.visibleScale = this.controller.createDataScale([], {
-      start: 0,
-      end: 0
-    });
     if (resetVisibleRange) this.resetVisibleIndexRange();
-    this.syncTimeScales();
+    this.syncPaneTimeScales();
     if (this.model.hasData()) this.recalculateVisibleScale();
   }
 
@@ -1498,10 +1476,7 @@ export class FinancialChart extends EventEmitter {
       this.refreshAutoTimeRange();
     }
 
-    this.dataScale = this.controller.createDataScale(
-      this.model.getData(),
-      this.model.getTimeRange()
-    );
+    this.model.rebuildDataScale();
 
     let rangeChanged = this.resetVisibleIndexRange();
     if (this.pendingRestoredVisibleRange) {
@@ -1536,7 +1511,7 @@ export class FinancialChart extends EventEmitter {
     const preserveRightEdge = this.isPinnedToRightEdge();
     const span = this.getVisibleIndexSpan();
     const mappedPoint = this.model.appendData(data, this.options.stepSize);
-    this.dataScale.addDataPoint(mappedPoint);
+    this.model.addDataScalePoint(mappedPoint);
 
     if (this.model.isAutoTimeRange()) {
       this.refreshAutoTimeRange(true);
@@ -1557,19 +1532,9 @@ export class FinancialChart extends EventEmitter {
 
   private resetEmptyDataState(): boolean {
     this.model.resetEmptyView();
-    this.lastVisibleDataPoints = Object.freeze([]);
     this.renderer.resetDerivedState();
-    this.dataScale = this.controller.createDataScale(
-      [],
-      this.model.getTimeRange()
-    );
-    this.visibleScale.clearModifiers();
-    this.visibleScale.recalculate(
-      [],
-      this.model.getTimeRange(),
-      this.getTimeScaleOptions()
-    );
-    this.syncTimeScales();
+    this.model.clearScaleData();
+    this.syncPaneTimeScales();
     this.syncMainPanePriceScale();
     return this.clearCrosshairModel();
   }
@@ -1620,7 +1585,7 @@ export class FinancialChart extends EventEmitter {
           if (paneled) {
             const pane = this.paneLayout.addIndicatorPane(
               indicator,
-              this.visibleScale.getTimeScale()
+              this.model.getTimeScale()
             );
             this.applyPaneLayout({
               resizeCanvases: false,
@@ -1648,7 +1613,7 @@ export class FinancialChart extends EventEmitter {
             );
             this.applyPaneLayout();
           } else {
-            this.visibleScale.removeModifier(indicator);
+            this.model.removeVisibleScaleModifier(indicator);
             if (
               indicator.getLabelContainer().parentElement ===
               this.indicatorLabelContainer
@@ -1758,36 +1723,24 @@ export class FinancialChart extends EventEmitter {
     if (detachError !== undefined) throw detachError;
   }
 
-  private lastVisibleDataPoints: readonly ChartData[] = Object.freeze([]);
-
   recalculateVisibleScale() {
     this.refreshIndexBounds();
     const visibleTimeRange = this.getVisibleTimeRange();
-    const visibleDataPoints = this.model.sliceVisibleData(1);
+    const modifiers: ScaleRangeModifier[] = [];
 
     for (const indicator of this.getIndicators()) {
-      this.visibleScale.removeModifier(indicator);
+      this.model.removeVisibleScaleModifier(indicator);
       const modifier = indicator.getModifier(visibleTimeRange);
-      if (modifier) {
-        this.visibleScale.addModifier(modifier);
-      }
+      if (modifier) modifiers.push(modifier);
     }
 
-    // Do not recalc xMin and xMax to preserve x positions
-    // but we need to adjust yMin and yMax to the visible data points
-    this.visibleScale.recalculate(
-      visibleDataPoints,
-      this.model.getTimeRange(),
-      this.getTimeScaleOptions()
-    );
+    const visibleDataPoints = this.model.recalculateVisibleScale(modifiers);
     this.syncMainPanePriceScale();
-
-    this.lastVisibleDataPoints = Object.freeze(visibleDataPoints);
-    return this.lastVisibleDataPoints;
+    return visibleDataPoints;
   }
 
   getLastVisibleDataPoints(): readonly ChartData[] {
-    return this.lastVisibleDataPoints;
+    return this.model.getVisibleDataPoints();
   }
 
   getLastXGridCoords(): readonly number[] {

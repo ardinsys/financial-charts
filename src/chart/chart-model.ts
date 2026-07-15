@@ -1,4 +1,9 @@
 import { DataStore } from "../data/data-store";
+import {
+  DataScaleModel,
+  type DataScaleTimeOptions,
+  type ScaleRangeModifier
+} from "../scales/data-scale-model";
 import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
 import type { ChartData, TimeRange } from "./types";
 
@@ -11,7 +16,12 @@ interface RefreshIndexBoundsOptions {
   readonly span?: number;
 }
 
-/** Owns chart data and its logical/time view state. */
+type DataScaleFactory = (
+  data: readonly ChartData[],
+  timeRange: TimeRange
+) => DataScaleModel;
+
+/** Owns chart data, logical/time view state, and scale models. */
 export class ChartModel {
   private originalData = new DataStore();
   private mappedData = new DataStore();
@@ -23,6 +33,11 @@ export class ChartModel {
     rightOffset: 0
   });
   private visibleIndexRange = this.indexBounds;
+  private scaleFactory?: DataScaleFactory;
+  private barAlignment: BarAlignment = "center";
+  private dataScale?: DataScaleModel;
+  private visibleScale?: DataScaleModel;
+  private visibleDataPoints: readonly ChartData[] = Object.freeze([]);
 
   get length(): number {
     return this.mappedData.length;
@@ -73,6 +88,97 @@ export class ChartModel {
   getNearestData(time: number): ChartData | undefined {
     const index = this.mappedData.nearestIndex(time);
     return index === -1 ? undefined : this.mappedData.get(index);
+  }
+
+  configureScales(
+    factory: DataScaleFactory,
+    barAlignment: BarAlignment
+  ): void {
+    this.scaleFactory = factory;
+    this.barAlignment = barAlignment;
+    this.dataScale = factory(this.getData(), this.timeRange);
+    this.visibleScale = factory([], { start: 0, end: 0 });
+    this.syncTimeScales();
+  }
+
+  rebuildDataScale(): void {
+    this.dataScale = this.requireScaleFactory()(
+      this.getData(),
+      this.timeRange
+    );
+    this.syncTimeScales();
+  }
+
+  recalculateDataScale(): void {
+    this.getDataScale().recalculate(
+      this.getData(),
+      this.timeRange,
+      this.getTimeScaleOptions()
+    );
+  }
+
+  addDataScalePoint(data: ChartData): void {
+    this.getDataScale().addDataPoint(data);
+  }
+
+  clearScaleData(): void {
+    this.dataScale = this.requireScaleFactory()([], this.timeRange);
+    const visibleScale = this.getVisibleScale();
+    visibleScale.clearModifiers();
+    visibleScale.recalculate(
+      [],
+      this.timeRange,
+      this.getTimeScaleOptions()
+    );
+    this.visibleDataPoints = Object.freeze([]);
+    this.syncTimeScales();
+  }
+
+  recalculateVisibleScale(
+    modifiers: readonly ScaleRangeModifier[]
+  ): readonly ChartData[] {
+    const visibleDataPoints = this.sliceVisibleData(1);
+    const visibleScale = this.getVisibleScale();
+    for (const modifier of modifiers) {
+      visibleScale.addModifier(modifier);
+    }
+    visibleScale.recalculate(
+      visibleDataPoints,
+      this.timeRange,
+      this.getTimeScaleOptions()
+    );
+    this.visibleDataPoints = Object.freeze(visibleDataPoints);
+    return this.visibleDataPoints;
+  }
+
+  getDataScale(): DataScaleModel {
+    if (!this.dataScale) {
+      throw new Error("Chart data scale has not been configured.");
+    }
+    return this.dataScale;
+  }
+
+  getVisibleScale(): DataScaleModel {
+    if (!this.visibleScale) {
+      throw new Error("Chart visible scale has not been configured.");
+    }
+    return this.visibleScale;
+  }
+
+  getTimeScale() {
+    return this.getVisibleScale().getTimeScale();
+  }
+
+  getVolumeScale() {
+    return this.getVisibleScale().getVolumeScale();
+  }
+
+  getVisibleDataPoints(): readonly ChartData[] {
+    return this.visibleDataPoints;
+  }
+
+  removeVisibleScaleModifier(actor: unknown): void {
+    this.getVisibleScale().removeModifier(actor);
   }
 
   getTimeRange(): TimeRange {
@@ -189,6 +295,7 @@ export class ChartModel {
             rightOffset: next.rightOffset
           });
     }
+    this.syncTimeScales();
     return changed;
   }
 
@@ -330,6 +437,28 @@ export class ChartModel {
       return;
     }
     this.timeRange = freezeTimeRange(range);
+  }
+
+  private getTimeScaleOptions(): DataScaleTimeOptions {
+    return {
+      barAlignment: this.barAlignment,
+      indexRange: this.visibleIndexRange,
+      timeValues: this.getTimes()
+    };
+  }
+
+  private syncTimeScales(): void {
+    if (!this.visibleScale) return;
+    const options = this.getTimeScaleOptions();
+    this.visibleScale.configureTimeScale(options);
+    this.dataScale?.configureTimeScale(options);
+  }
+
+  private requireScaleFactory(): DataScaleFactory {
+    if (!this.scaleFactory) {
+      throw new Error("Chart scale factory has not been configured.");
+    }
+    return this.scaleFactory;
   }
 }
 
