@@ -74,6 +74,8 @@ drawn by the ordinary plugin pass.
 | `hostElement`                     | The element passed to the chart constructor, for scoped keyboard or focus handling.                           |
 | `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()`, on failed attachment, and on chart disposal.      |
 | `emit(event, data)`               | Emits a chart event.                                                                                           |
+| `getData()`                       | Returns the chart's current stable mapped-data snapshot.                                                       |
+| `getOptions()`                    | Returns the immutable resolved options snapshot.                                                              |
 | `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`.         |
 | `getLogicalCanvas(layer)`         | Returns logical pixel size for the layer.                                                                      |
 | `getPanes()`                      | Returns a readonly pane snapshot, including the main pane and paneled indicators.                             |

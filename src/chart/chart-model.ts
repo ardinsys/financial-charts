@@ -169,8 +169,8 @@ export class ChartModel {
     return this.getVisibleScale().getTimeScale();
   }
 
-  getVolumeScale() {
-    return this.getVisibleScale().getVolumeScale();
+  getBarAlignment(): BarAlignment {
+    return this.barAlignment;
   }
 
   getVisibleDataPoints(): readonly ChartData[] {

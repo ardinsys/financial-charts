@@ -560,7 +560,7 @@ describe("plugin lifecycle", () => {
   });
 
   it("exposes canvas and event helpers through the plugin context", () => {
-    const { chart } = createChart();
+    const { chart, container, data } = createChart();
     let attachedContext: Parameters<ChartPlugin["attach"]>[0] | undefined;
     const siblingPlugin: ChartPlugin = {
       key: "sibling-probe",
@@ -575,9 +575,13 @@ describe("plugin lifecycle", () => {
     const selectListener = vi.fn();
     const unsubscribe = chart.on("drawing-select", selectListener);
 
+    chart.setData(data);
     chart.addPlugin(siblingPlugin);
     chart.addPlugin(plugin);
 
+    expect(attachedContext?.getData()).toBe(chart.getData());
+    expect(attachedContext?.getOptions()).toBe(chart.getOptions());
+    expect(attachedContext?.hostElement).toBe(container);
     expect(attachedContext?.getCanvasContext("drawings")).toBe(
       chart.getContext("drawings")
     );

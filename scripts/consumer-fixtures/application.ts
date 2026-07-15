@@ -30,6 +30,12 @@ chart.onRenderStage("series", () => {});
 chart.getLogicalCanvas("main");
 // @ts-expect-error The host element is not exposed by the application facade.
 chart.getOutsideContainer();
+// @ts-expect-error Drawing dimensions are extension capabilities.
+chart.getDrawingSize();
+// @ts-expect-error Full canvas dimensions are extension capabilities.
+chart.getFullSize();
+// @ts-expect-error Scale internals are not application APIs.
+chart.getVolumeScale();
 
 unsubscribe();
 chart.clearData();

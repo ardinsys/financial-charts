@@ -1,7 +1,10 @@
 import type {
   FinancialChart
 } from "../chart/financial-chart";
-import type { ChartOptionsChangeEvent } from "../chart/chart-options";
+import type {
+  ChartOptionsChangeEvent,
+  ChartOptionsSnapshot
+} from "../chart/chart-options";
 import type {
   ChartCrosshairOptions,
   ChartCrosshairState
@@ -41,6 +44,8 @@ export interface ChartContext {
   /** Aborted when the owning extension is detached or the chart is disposed. */
   signal: AbortSignal;
   emit<K extends keyof ChartEventMap>(event: K, data: ChartEventMap[K]): void;
+  getData(): readonly ChartData[];
+  getOptions(): ChartOptionsSnapshot;
   getCanvasContext(layer: ChartCanvasLayer): CanvasRenderingContext2D;
   getLogicalCanvas(layer: ChartCanvasLayer): { width: number; height: number };
   getPanes(): readonly Pane[];

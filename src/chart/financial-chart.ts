@@ -25,6 +25,7 @@ import {
   type PaneHeightsInput
 } from "../panes/pane-layout";
 import type { ChartPlugin } from "../plugin/chart-plugin";
+import { ChartExtensionReadModel } from "../plugin/chart-extension-read-model";
 import { ExtensionHost } from "../plugin/extension-host";
 import { InteractionController } from "../interaction/interaction-controller";
 import { CrosshairResolver } from "../interaction/crosshair-resolver";
@@ -187,10 +188,6 @@ export class FinancialChart extends EventEmitter {
     return this.getMainPane().getPriceScale();
   }
 
-  getVolumeScale() {
-    return this.model.getVolumeScale();
-  }
-
   /** Returns the precise fractional logical-index window. */
   getVisibleLogicalRange(): TimeScaleRange {
     return this.model.getVisibleIndexRange();
@@ -243,7 +240,7 @@ export class FinancialChart extends EventEmitter {
 
   private getMinimumVisibleIndexSlots() {
     const proportionalFactor = 1 / 50;
-    const width = Math.max(this.getDrawingSize().width, 1);
+    const width = Math.max(this.renderer.getDrawingSize().width, 1);
     let dynamicStepWidth = width * proportionalFactor;
     dynamicStepWidth = Math.max(15, Math.min(30, dynamicStepWidth));
     return Math.max(1, Math.floor(width / dynamicStepWidth));
@@ -258,7 +255,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private getPixelsPerBar() {
-    return this.getDrawingSize().width / this.getVisibleIndexSpan();
+    return this.renderer.getDrawingSize().width / this.getVisibleIndexSpan();
   }
 
   private isPinnedToRightEdge() {
@@ -358,7 +355,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private zoomInteractionAtPixel(zoomFactor: number, pixel: number): void {
-    const width = Math.max(this.getDrawingSize().width, 1);
+    const width = Math.max(this.renderer.getDrawingSize().width, 1);
     const boundsSpan = this.getIndexBoundsSpan();
     const oldSpan = this.getVisibleIndexSpan();
     const minSpan = Math.max(1, boundsSpan / this.options.maxZoom);
@@ -587,7 +584,12 @@ export class FinancialChart extends EventEmitter {
       this,
       domAdapter,
       this.renderer,
-      container
+      container,
+      new ChartExtensionReadModel(
+        this.model,
+        this.optionsState,
+        this.paneLayout
+      )
     );
     this.changePublisher = new ChartChangePublisher(
       this.extensionHost,
@@ -935,24 +937,6 @@ export class FinancialChart extends EventEmitter {
 
   getContext(type: ChartCanvasLayer): CanvasRenderingContext2D {
     return this.renderer.getContext(type);
-  }
-
-  /**
-   * Gets the true drawing size.
-   *
-   * @returns the logical size of the main canvas
-   */
-  getDrawingSize() {
-    return this.renderer.getDrawingSize();
-  }
-
-  /**
-   * Gets the full drawing size including axis label areas.
-   *
-   * @returns the logical size of the full drawing area
-   */
-  getFullSize() {
-    return this.renderer.getFullSize();
   }
 
   getFormatter() {

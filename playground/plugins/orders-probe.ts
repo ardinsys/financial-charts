@@ -118,7 +118,7 @@ export class OrdersProbePlugin implements ChartPlugin {
             id: order.id,
             paneId: pane.getId(),
             value: order.price,
-            text: context.chart.getFormatter().formatPrice(order.price),
+            text: context.getOptions().formatter.formatPrice(order.price),
             color: palette.line,
             labelColor: palette.label,
             textColor: "#ffffff",

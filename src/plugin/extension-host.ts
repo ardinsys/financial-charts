@@ -10,6 +10,7 @@ import type { Indicator } from "../indicators/indicator";
 import type { PaneledIndicator } from "../indicators/paneled-indicator";
 import type { ChartRenderer } from "../render/chart-renderer";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
+import type { ChartExtensionReadModel } from "./chart-extension-read-model";
 import type {
   ChartContext,
   ChartPlugin,
@@ -48,7 +49,8 @@ export class ExtensionHost {
     private readonly chart: FinancialChart,
     private readonly domAdapter: ChartDOMAdapter,
     private readonly renderer: ChartRenderer,
-    private readonly hostElement: HTMLElement
+    private readonly hostElement: HTMLElement,
+    private readonly readModel: ChartExtensionReadModel
   ) {}
 
   getIndicators(): readonly Indicator<any, any>[] {
@@ -172,8 +174,8 @@ export class ExtensionHost {
     extensions: readonly ChartPlugin[],
     optionsEvent: ChartOptionsChangeEvent = this.createInitialOptionsEvent()
   ): void {
-    const data = this.chart.getData();
-    const visibleRange = this.chart.getVisibleTimeRange();
+    const data = this.readModel.getData();
+    const visibleRange = this.readModel.getVisibleTimeRange();
     for (const extension of extensions) {
       if (!this.isAttached(extension)) continue;
       this.deliverOptions(extension, optionsEvent);
@@ -356,13 +358,15 @@ export class ExtensionHost {
       hostElement: this.hostElement,
       signal,
       emit: (event, data) => this.emitFromExtension(event, data),
+      getData: () => this.readModel.getData(),
+      getOptions: () => this.readModel.getOptions(),
       getCanvasContext: (layer) => this.renderer.getContext(layer),
       getLogicalCanvas: (layer) => this.renderer.getLogicalSize(layer),
-      getPanes: () => this.chart.getPanes(),
+      getPanes: () => this.readModel.getPanes(),
       getPlugin: (key) => this.getPlugin(key),
       getPlugins: () => this.getPlugins(),
-      getVisibleTimeWindow: () => this.chart.getVisibleTimeWindow(),
-      getVisibleTimeRange: () => this.chart.getVisibleTimeRange(),
+      getVisibleTimeWindow: () => this.readModel.getVisibleTimeWindow(),
+      getVisibleTimeRange: () => this.readModel.getVisibleTimeRange(),
       on: (event, listener) => scoped(this.chart.on(event, listener)),
       onRenderStage: (stage, callback) =>
         scoped(this.renderer.onRenderStage(stage, callback)),
@@ -434,7 +438,7 @@ export class ExtensionHost {
   }
 
   private createInitialOptionsEvent(): ChartOptionsChangeEvent {
-    const current = this.chart.getOptions();
+    const current = this.readModel.getOptions();
     return Object.freeze({
       previous: current,
       current,

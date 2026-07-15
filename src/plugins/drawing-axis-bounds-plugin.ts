@@ -1,7 +1,7 @@
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
 import type { PriceAxisAnnotation } from "../annotations/price-axis-annotation";
+import type { ChartOptionsSnapshot } from "../chart/chart-options";
 import type { ChartData } from "../chart/types";
-import type { ChartTheme } from "../chart/themes";
 import type { Drawing, DrawingAnchor } from "../drawings/drawing";
 
 export type DrawingAxisBoundKind = "single" | "start" | "end";
@@ -167,15 +167,16 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
     const timeScale = pane?.getTimeScale();
     if (!pane || !timeScale) return;
 
-    const data = ctx.chart.getData();
-    const locale = ctx.chart.getOptions().locale;
+    const data = ctx.getData();
+    const chartOptions = ctx.getOptions();
+    const locale = chartOptions.locale;
     const labels = this.resolveLabels(locale);
     const drawingCanvas = ctx.getCanvasContext("drawings").canvas;
     const axisBounds = drawing.getAxisBounds({
       pane,
       canvas: drawingCanvas
     });
-    const theme = this.resolveTheme(ctx.chart.getTheme());
+    const theme = this.resolveTheme(chartOptions.theme);
 
     if (this.options.showXAxis ?? defaultOptions.showXAxis) {
       const xAxis = ctx.getCanvasContext("x-label");
@@ -264,8 +265,9 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       return;
     }
 
-    const data = ctx.chart.getData();
-    const locale = ctx.chart.getOptions().locale;
+    const data = ctx.getData();
+    const chartOptions = ctx.getOptions();
+    const locale = chartOptions.locale;
     const labels = this.resolveLabels(locale);
     const drawingCanvas = ctx.getCanvasContext("drawings").canvas;
     const axisBounds = drawing.getAxisBounds({ pane, canvas: drawingCanvas });
@@ -278,7 +280,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       ...mark,
       value: this.formatYValue(mark, locale)
     }));
-    const theme = this.resolveTheme(ctx.chart.getTheme());
+    const theme = this.resolveTheme(chartOptions.theme);
     const showRange = this.options.showRange ?? defaultOptions.showRange;
 
     ctx.setPriceAxisAnnotations(
@@ -326,7 +328,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
   ) {
     const plotWidth = Math.max(
       0,
-      size.width - (this.ctx?.chart.getYLabelWidth() ?? 0)
+      size.width - (this.ctx?.getLogicalCanvas("y-label").width ?? 0)
     );
     if (this.options.showRange ?? defaultOptions.showRange) {
       this.drawXAxisRange(theme, ctx, size, plotWidth, marks);
@@ -422,7 +424,9 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
     return labels[locale] ?? labels[language] ?? labels["*"] ?? labels.default;
   }
 
-  private resolveTheme(chartTheme: ChartTheme): DrawingAxisBoundsTheme {
+  private resolveTheme(
+    chartTheme: ChartOptionsSnapshot["theme"]
+  ): DrawingAxisBoundsTheme {
     return {
       ...defaultTheme,
       ...chartTheme.drawingAxisBounds,
@@ -441,7 +445,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
 
     return mark.chartData?.time == undefined
       ? "-"
-      : this.ctx!.chart.getFormatter().formatTooltipDate(mark.chartData.time);
+      : this.ctx!.getOptions().formatter.formatTooltipDate(mark.chartData.time);
   }
 
   private formatYValue(mark: AxisMark, locale: string): string {
@@ -453,12 +457,12 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       });
     }
 
-    return this.ctx!.chart.getFormatter().formatPrice(mark.anchor.price);
+    return this.ctx!.getOptions().formatter.formatPrice(mark.anchor.price);
   }
 
   private formatText(mark: FormattedAxisMark): string {
     const drawing = this.selectedDrawing!;
-    const locale = this.ctx!.chart.getOptions().locale;
+    const locale = this.ctx!.getOptions().locale;
     if (this.options.formatText) {
       return this.options.formatText({
         ...mark,

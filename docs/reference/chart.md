@@ -378,7 +378,7 @@ Plugins receive a `ChartContext` during `attach(ctx)`, can render via
 should release external resources in `detach()`. Current options, data, and
 visible range are delivered immediately after attachment.
 Use the context's `getCanvasContext(layer)`, `getLogicalCanvas(layer)`,
-`getPanes()`, `setPriceAxisAnnotations(...)`, `emit(...)`, and
+`getData()`, `getOptions()`, `getPanes()`, `setPriceAxisAnnotations(...)`, `emit(...)`, and
 `requestRedraw(...)` helpers for extension-level rendering and events.
 
 Plugin instances and keys must be unique within a chart. The disposer returned

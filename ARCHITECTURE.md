@@ -183,6 +183,9 @@ register -> attach -> receive current state -> receive changes -> detach
 `ExtensionHost` implements the shared plugin and indicator lifecycle.
 `FinancialChart` supplies explicit indicator mount and unmount hooks because
 labels and panes belong to chart layout rather than the base extension contract.
+`ChartExtensionReadModel` composes model, option-state, and pane-layout reads for
+extensions, so `ExtensionHost` does not proxy these queries through the chart
+facade.
 
 `ChartContext` belongs to one attachment. Its `AbortSignal`, public-event
 subscriptions, render hooks, and owned price-axis annotations are released when

@@ -45,7 +45,9 @@ class ExtensionDrawing extends Drawing {
 
 const plugin = {
   key: "extension-fixture",
-  attach() {}
+  attach(ctx) {
+    void [ctx.getData(), ctx.getOptions(), ctx.hostElement];
+  }
 } satisfies ChartPlugin;
 const adapter: ChartDOMAdapter = new DefaultDOMAdapter();
 const annotation: PriceAxisAnnotation = { id: "fixture", value: 1 };

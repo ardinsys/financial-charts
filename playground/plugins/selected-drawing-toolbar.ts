@@ -22,7 +22,7 @@ export class SelectedDrawingToolbarPlugin implements ChartPlugin {
     this.ctx = ctx;
     this.root = document.createElement("div");
     this.root.className = "selected-drawing-toolbar";
-    ctx.chart.getOutsideContainer().appendChild(this.root);
+    ctx.hostElement.appendChild(this.root);
     this.render();
   }
 
