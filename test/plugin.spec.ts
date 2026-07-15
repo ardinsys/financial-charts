@@ -95,7 +95,7 @@ function createChart() {
   );
   charts.push(chart);
 
-  return { chart, data };
+  return { chart, container, data };
 }
 
 describe("plugin lifecycle", () => {
@@ -582,7 +582,14 @@ describe("plugin lifecycle", () => {
       chart.getContext("drawings")
     );
     expect(attachedContext?.getLogicalCanvas("drawings")).toEqual(
-      chart.getLogicalCanvas("drawings")
+      {
+        width: Number.parseFloat(
+          chart.getContext("drawings").canvas.style.width
+        ),
+        height: Number.parseFloat(
+          chart.getContext("drawings").canvas.style.height
+        )
+      }
     );
     expect(attachedContext?.getPlugin("sibling-probe")).toBe(siblingPlugin);
     expect(attachedContext?.getPlugin("context-probe")).toBe(plugin);
@@ -846,9 +853,8 @@ describe("plugin lifecycle", () => {
   });
 
   it("keeps final chart state readable during detach and finishes cleanup after detach throws", () => {
-    const { chart } = createChart();
+    const { chart, container } = createChart();
     const canvas = chart.getContext("crosshair").canvas;
-    const outsideContainer = chart.getOutsideContainer();
     const finalState: Array<{
       canvasConnected: boolean;
       listenerCount: number;
@@ -878,7 +884,7 @@ describe("plugin lifecycle", () => {
     ]);
     expect(chart.listenerCount()).toBe(0);
     expect(canvas.isConnected).toBe(false);
-    expect(outsideContainer.querySelector(".financial-charts")).toBeNull();
+    expect(container.querySelector(".financial-charts")).toBeNull();
     expect(() => chart.dispose()).not.toThrow();
   });
 });

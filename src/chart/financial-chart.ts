@@ -13,11 +13,7 @@ import { EventEmitter } from "./event-emitter";
 import { createPositionedContainer } from "../utils/dom";
 import { disposeInOrder } from "../utils/dispose";
 import type { ChartDOMOverlay } from "../ui/chart-dom-adapter";
-import {
-  type RenderCallback,
-  type RenderLayer,
-  type RenderStage
-} from "../render/render-pipeline";
+import type { RenderLayer } from "../render/render-pipeline";
 import type {
   ChartCanvasLayer,
   ChartRedrawPart
@@ -116,7 +112,6 @@ const ALL_REDRAW_PARTS = [
 export class FinancialChart extends EventEmitter {
   private readonly controllerRegistry: ControllerRegistry;
   private controller: ChartController;
-  protected outsideContainer: HTMLElement;
   protected container: HTMLElement;
   protected indicatorLabelContainer: HTMLElement;
   private readonly model = new ChartModel();
@@ -486,19 +481,8 @@ export class FinancialChart extends EventEmitter {
     }
   }
 
-  public onRenderStage(
-    stage: RenderStage,
-    callback: RenderCallback
-  ): () => void {
-    return this.renderer.onRenderStage(stage, callback);
-  }
-
   public changeType(type: ControllerType) {
     this.updateOptions({ type });
-  }
-
-  getOutsideContainer() {
-    return this.outsideContainer;
   }
 
   constructor(container: HTMLElement, options: ChartOptions) {
@@ -518,20 +502,6 @@ export class FinancialChart extends EventEmitter {
       includeDefaultControllers
     );
     const domAdapter = this.options.domAdapter;
-    this.extensionHost = new ExtensionHost(this, domAdapter);
-    this.changePublisher = new ChartChangePublisher(
-      this.extensionHost,
-      this,
-      (part, immediate) => {
-        if (immediate) {
-          this.requestRedraw(part, true);
-        } else {
-          this.requestRedraw(part);
-        }
-      }
-    );
-
-    this.outsideContainer = container;
     this.container = createPositionedContainer({
       position: "relative",
       overflow: "hidden",
@@ -543,7 +513,7 @@ export class FinancialChart extends EventEmitter {
       "financial-charts",
       `financial-charts-${this.options.theme.key}`
     );
-    this.outsideContainer.appendChild(this.container);
+    container.appendChild(this.container);
     this.paneLayout = new PaneLayout(this.container, domAdapter, {
       mainPaneMinHeight: 80,
       indicatorPaneMinHeight: 50,
@@ -611,6 +581,23 @@ export class FinancialChart extends EventEmitter {
           };
         },
         onResize: () => this.handleRendererResize()
+      }
+    );
+    this.extensionHost = new ExtensionHost(
+      this,
+      domAdapter,
+      this.renderer,
+      container
+    );
+    this.changePublisher = new ChartChangePublisher(
+      this.extensionHost,
+      this,
+      (part, immediate) => {
+        if (immediate) {
+          this.requestRedraw(part, true);
+        } else {
+          this.requestRedraw(part);
+        }
       }
     );
     const ControllerClass = this.getControllerClass(this.options.type);
@@ -756,7 +743,7 @@ export class FinancialChart extends EventEmitter {
   private handleRendererResize(): void {
     this.applyPaneLayout();
     this.indicatorLabelContainer.style.maxHeight =
-      this.getLogicalCanvas("main").height -
+      this.renderer.getLogicalSize("main").height -
       this.options.theme.crosshair.infoLine.fontSize -
       30 +
       "px";
@@ -948,16 +935,6 @@ export class FinancialChart extends EventEmitter {
 
   getContext(type: ChartCanvasLayer): CanvasRenderingContext2D {
     return this.renderer.getContext(type);
-  }
-
-  /**
-   * Get the logical canvas size.
-   *
-   * @param type which canvas you want1
-   * @returns    the logical canvas size
-   */
-  getLogicalCanvas(type: ChartCanvasLayer) {
-    return this.renderer.getLogicalSize(type);
   }
 
   /**

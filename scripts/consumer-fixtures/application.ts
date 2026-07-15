@@ -24,6 +24,13 @@ const unsubscribe = chart.on(
 const options = chart.getOptions();
 const mappedData = chart.getData();
 
+// @ts-expect-error Render hooks are extension capabilities.
+chart.onRenderStage("series", () => {});
+// @ts-expect-error Logical canvas sizes are extension capabilities.
+chart.getLogicalCanvas("main");
+// @ts-expect-error The host element is not exposed by the application facade.
+chart.getOutsideContainer();
+
 unsubscribe();
 chart.clearData();
 chart.dispose();

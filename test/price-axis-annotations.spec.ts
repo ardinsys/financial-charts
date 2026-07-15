@@ -66,7 +66,10 @@ function createChart() {
 }
 
 function getAnnotationContext(chart: FinancialChart) {
-  const canvas = [...chart.getOutsideContainer().querySelectorAll("canvas")]
+  const chartContainer = chart
+    .getContext("main")
+    .canvas.closest(".financial-charts")!;
+  const canvas = [...chartContainer.querySelectorAll("canvas")]
     .find((candidate) => candidate.style.zIndex === "70");
   return canvas!.getContext("2d")!;
 }
@@ -329,7 +332,10 @@ describe("price axis annotations", () => {
   it("keeps its owned canvas between drawings and crosshair", () => {
     const { chart } = createChart();
     const canvases = [
-      ...chart.getOutsideContainer().querySelectorAll("canvas")
+      ...chart
+        .getContext("main")
+        .canvas.closest(".financial-charts")!
+        .querySelectorAll("canvas")
     ];
 
     expect(canvases.some((canvas) => canvas.style.zIndex === "60")).toBe(true);

@@ -395,6 +395,10 @@ before indicators, drawings, annotations, and crosshair. That is the right layer
 comparison-series plugins that should sit above the main controller but below
 everything else.
 
+Canvas access, logical canvas sizes, render-stage hooks, and the constructor's
+host element belong to `ChartContext`; they are not application methods on
+`FinancialChart`.
+
 ### Lifecycle
 
 | Method                             | Description                                                                                                                                                                                      |

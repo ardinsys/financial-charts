@@ -675,7 +675,7 @@ export class DrawingManager implements ChartPlugin {
   }
 
   private bindKeyboard() {
-    const host = this.requireContext().chart.getOutsideContainer();
+    const host = this.requireContext().hostElement;
     this.keyboardHost = host;
     if (!host.hasAttribute("tabindex")) {
       host.tabIndex = 0;

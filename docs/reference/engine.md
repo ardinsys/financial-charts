@@ -144,11 +144,11 @@ and `height` properties use physical backing pixels.
   have it scaled in the same operation.
 - `scaleCanvasContext(context, ratio?)` configures logical drawing coordinates.
 - `pixelRatio()` returns the current device ratio rounded to three decimals.
-- `chart.getLogicalCanvas(layer)` returns logical dimensions for a chart-owned
-  layer.
+- `ChartContext.getLogicalCanvas(layer)` returns logical dimensions for a
+  chart-owned layer to an attached extension.
 
 Do not scale a chart-owned context again. It is already configured when returned
-by `getContext()` or `ChartContext.getCanvasContext()`.
+by `ChartContext.getCanvasContext()`.
 
 ## Palette selection
 

@@ -125,7 +125,9 @@ describe("chart options API", () => {
     });
     expect(Object.isFrozen(events[0].current.theme)).toBe(true);
     expect(
-      chart.getOutsideContainer().querySelector(".financial-charts-custom")
+      chart
+        .getContext("main")
+        .canvas.closest(".financial-charts-custom")
     ).not.toBeNull();
   });
 

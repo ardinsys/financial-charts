@@ -71,6 +71,7 @@ drawn by the ordinary plugin pass.
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | `chart`                           | The `FinancialChart` instance. Prefer context helpers for extension work when available.                       |
 | `domAdapter`                      | Active `ChartDOMAdapter`, useful when plugins need app-owned DOM chrome.                                       |
+| `hostElement`                     | The element passed to the chart constructor, for scoped keyboard or focus handling.                           |
 | `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()`, on failed attachment, and on chart disposal.      |
 | `emit(event, data)`               | Emits a chart event.                                                                                           |
 | `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`.         |
@@ -106,8 +107,8 @@ attach(ctx: ChartContext) {
 The signal is aborted and owned annotations and scoped subscriptions are
 removed before `detach()` runs. `detach()` therefore only needs to release
 resources that are not signal-aware or registered through these helpers.
-Calling `ctx.chart.on()` or `ctx.chart.onRenderStage()` directly is not scoped;
-prefer the context helpers inside extensions.
+Calling `ctx.chart.on()` directly is not scoped; prefer `ctx.on()` inside
+extensions. Render hooks are available only through the scoped context.
 
 ## Render stages and redraw parts
 

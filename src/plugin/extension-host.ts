@@ -8,6 +8,7 @@ import type { ChartEventMap } from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";
 import type { Indicator } from "../indicators/indicator";
 import type { PaneledIndicator } from "../indicators/paneled-indicator";
+import type { ChartRenderer } from "../render/chart-renderer";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
 import type {
   ChartContext,
@@ -45,7 +46,9 @@ export class ExtensionHost {
 
   constructor(
     private readonly chart: FinancialChart,
-    private readonly domAdapter: ChartDOMAdapter
+    private readonly domAdapter: ChartDOMAdapter,
+    private readonly renderer: ChartRenderer,
+    private readonly hostElement: HTMLElement
   ) {}
 
   getIndicators(): readonly Indicator<any, any>[] {
@@ -350,10 +353,11 @@ export class ExtensionHost {
     return {
       chart: this.chart,
       domAdapter: this.domAdapter,
+      hostElement: this.hostElement,
       signal,
       emit: (event, data) => this.emitFromExtension(event, data),
-      getCanvasContext: (layer) => this.chart.getContext(layer),
-      getLogicalCanvas: (layer) => this.chart.getLogicalCanvas(layer),
+      getCanvasContext: (layer) => this.renderer.getContext(layer),
+      getLogicalCanvas: (layer) => this.renderer.getLogicalSize(layer),
       getPanes: () => this.chart.getPanes(),
       getPlugin: (key) => this.getPlugin(key),
       getPlugins: () => this.getPlugins(),
@@ -361,9 +365,9 @@ export class ExtensionHost {
       getVisibleTimeRange: () => this.chart.getVisibleTimeRange(),
       on: (event, listener) => scoped(this.chart.on(event, listener)),
       onRenderStage: (stage, callback) =>
-        scoped(this.chart.onRenderStage(stage, callback)),
+        scoped(this.renderer.onRenderStage(stage, callback)),
       requestRedraw: (part, immediate) =>
-        this.chart.requestRedraw(part, immediate),
+        this.renderer.requestRedraw(part, immediate),
       setPriceAxisAnnotations: (annotations) =>
         this.setPriceAxisAnnotations(extension, annotations),
       clearPriceAxisAnnotations: () =>
@@ -418,7 +422,7 @@ export class ExtensionHost {
     } else {
       this.priceAxisAnnotations.set(extension, snapshot);
     }
-    this.chart.requestRedraw("annotations");
+    this.renderer.requestRedraw("annotations");
   }
 
   private deliverOptions(

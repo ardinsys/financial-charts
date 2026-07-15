@@ -307,7 +307,9 @@ afterDraw
 
 Only requested render layers run. `beforeDraw` and `afterDraw` bracket every
 non-empty render pass. Extensions register attachment-scoped stage hooks through
-`ChartContext.onRenderStage()`.
+`ChartContext.onRenderStage()`. `ExtensionHost` delegates extension canvas,
+logical-size, render-hook, redraw, and annotation invalidation capabilities
+directly to `ChartRenderer`; `FinancialChart` does not proxy those operations.
 
 Canvas backing-store sizes use the device pixel ratio, while chart calculations
 and extension-facing canvas sizes use logical pixels. Resize observers and

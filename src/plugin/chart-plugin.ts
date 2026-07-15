@@ -37,6 +37,7 @@ export interface ChartPointerEvent {
 export interface ChartContext {
   chart: FinancialChart;
   domAdapter: ChartDOMAdapter;
+  readonly hostElement: HTMLElement;
   /** Aborted when the owning extension is detached or the chart is disposed. */
   signal: AbortSignal;
   emit<K extends keyof ChartEventMap>(event: K, data: ChartEventMap[K]): void;

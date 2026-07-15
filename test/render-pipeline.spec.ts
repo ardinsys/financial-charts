@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
+import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
 import { RenderPipeline } from "../src/render/render-pipeline";
 
 const charts: FinancialChart[] = [];
@@ -41,6 +42,18 @@ function createChart(data: ChartData[]) {
   return chart;
 }
 
+function attachRenderContext(chart: FinancialChart): ChartContext {
+  let context: ChartContext | undefined;
+  const plugin: ChartPlugin = {
+    key: `render-probe-${charts.length}`,
+    attach: (ctx) => {
+      context = ctx;
+    }
+  };
+  chart.addPlugin(plugin);
+  return context!;
+}
+
 describe("RenderPipeline", () => {
   it("runs requested stages between before/after hooks in stage order", () => {
     const pipeline = new RenderPipeline();
@@ -74,20 +87,21 @@ describe("RenderPipeline", () => {
       { time: start, close: 10 },
       { time: start + 60_000, close: 11 }
     ]);
+    const context = attachRenderContext(chart);
     const beforeDraw = vi.fn();
     const afterDraw = vi.fn();
 
-    const removeBefore = chart.onRenderStage("beforeDraw", beforeDraw);
-    const removeAfter = chart.onRenderStage("afterDraw", afterDraw);
+    const removeBefore = context.onRenderStage("beforeDraw", beforeDraw);
+    const removeAfter = context.onRenderStage("afterDraw", afterDraw);
 
-    chart.requestRedraw(["grid", "axes", "series"], true);
+    context.requestRedraw(["grid", "axes", "series"], true);
 
     expect(beforeDraw).toHaveBeenCalledTimes(1);
     expect(afterDraw).toHaveBeenCalledTimes(1);
 
     removeBefore();
     removeAfter();
-    chart.requestRedraw(["grid", "axes", "series"], true);
+    context.requestRedraw(["grid", "axes", "series"], true);
 
     expect(beforeDraw).toHaveBeenCalledTimes(1);
     expect(afterDraw).toHaveBeenCalledTimes(1);
@@ -99,19 +113,20 @@ describe("RenderPipeline", () => {
       { time: start, close: 10 },
       { time: start + 60_000, close: 11 }
     ]);
-    chart.requestRedraw(["grid", "axes"], true);
+    const context = attachRenderContext(chart);
+    context.requestRedraw(["grid", "axes"], true);
     const beforeDraw = vi.fn();
     const grid = vi.fn();
     const axes = vi.fn();
     const afterDraw = vi.fn();
-    chart.onRenderStage("beforeDraw", beforeDraw);
-    chart.onRenderStage("grid", grid);
-    chart.onRenderStage("axes", axes);
-    chart.onRenderStage("afterDraw", afterDraw);
+    context.onRenderStage("beforeDraw", beforeDraw);
+    context.onRenderStage("grid", grid);
+    context.onRenderStage("axes", axes);
+    context.onRenderStage("afterDraw", afterDraw);
 
-    chart.requestRedraw("grid");
-    chart.requestRedraw("axes");
-    chart.requestRedraw("grid");
+    context.requestRedraw("grid");
+    context.requestRedraw("axes");
+    context.requestRedraw("grid");
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
     expect(beforeDraw).toHaveBeenCalledOnce();
@@ -126,14 +141,15 @@ describe("RenderPipeline", () => {
       { time: start, close: 10 },
       { time: start + 60_000, close: 11 }
     ]);
-    chart.requestRedraw("grid", true);
+    const context = attachRenderContext(chart);
+    context.requestRedraw("grid", true);
     const beforeDraw = vi.fn();
     const axes = vi.fn();
-    chart.onRenderStage("beforeDraw", beforeDraw);
-    chart.onRenderStage("grid", () => chart.requestRedraw("axes"));
-    chart.onRenderStage("axes", axes);
+    context.onRenderStage("beforeDraw", beforeDraw);
+    context.onRenderStage("grid", () => context.requestRedraw("axes"));
+    context.onRenderStage("axes", axes);
 
-    chart.requestRedraw("grid");
+    context.requestRedraw("grid");
     await new Promise((resolve) => requestAnimationFrame(resolve));
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
@@ -147,11 +163,12 @@ describe("RenderPipeline", () => {
       { time: start, close: 10 },
       { time: start + 60_000, close: 11 }
     ]);
-    chart.requestRedraw("grid", true);
+    const context = attachRenderContext(chart);
+    context.requestRedraw("grid", true);
     const grid = vi.fn();
-    chart.onRenderStage("grid", grid);
+    context.onRenderStage("grid", grid);
 
-    chart.requestRedraw("grid");
+    context.requestRedraw("grid");
     chart.dispose();
     charts.pop();
     await new Promise((resolve) => requestAnimationFrame(resolve));

@@ -73,18 +73,18 @@ function createChart() {
     true
   );
   charts.push(chart);
-  return { chart };
+  return { chart, container };
 }
 
-function getAnnotationContext(chart: FinancialChart) {
-  const canvas = [...chart.getOutsideContainer().querySelectorAll("canvas")]
+function getAnnotationContext(container: HTMLElement) {
+  const canvas = [...container.querySelectorAll("canvas")]
     .find((candidate) => candidate.style.zIndex === "70");
   return canvas!.getContext("2d")!;
 }
 
 describe("DrawingAxisBoundsPlugin", () => {
   it("contributes Y-axis bounds without accessing the shared Y-axis canvas", () => {
-    const { chart } = createChart();
+    const { chart, container } = createChart();
     const bounds = new DrawingAxisBoundsPlugin({
       formatYValue: ({ anchor }) => anchor.price.toFixed(0)
     });
@@ -103,12 +103,10 @@ describe("DrawingAxisBoundsPlugin", () => {
 
     chart.emit("drawing-select", { drawing });
 
-    expect(getContext.mock.calls.map(([layer]) => layer)).toEqual([
-      "drawings"
-    ]);
+    expect(getContext).not.toHaveBeenCalled();
     getContext.mockRestore();
 
-    const context = getAnnotationContext(chart);
+    const context = getAnnotationContext(container);
     vi.mocked(context.fillText).mockClear();
     vi.mocked(context.fillRect).mockClear();
     chart.requestRedraw("annotations", true);

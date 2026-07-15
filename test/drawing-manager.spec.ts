@@ -107,7 +107,7 @@ function createChart({
   chart.setData(data);
   charts.push(chart);
 
-  return { chart, data };
+  return { chart, container, data };
 }
 
 function pointerEvent(
@@ -151,7 +151,7 @@ function drawingContext(chart: FinancialChart): DrawingRenderContext {
 }
 
 function keyDown(
-  chart: FinancialChart,
+  host: HTMLElement,
   key: string,
   options: KeyboardEventInit = {}
 ) {
@@ -161,7 +161,7 @@ function keyDown(
     cancelable: true,
     ...options
   });
-  return chart.getOutsideContainer().dispatchEvent(event);
+  return host.dispatchEvent(event);
 }
 
 function dragChart(
@@ -408,7 +408,7 @@ describe("DrawingManager", () => {
   });
 
   it("supports keyboard undo, redo, and delete", () => {
-    const { chart, data } = createChart();
+    const { chart, container, data } = createChart();
     const manager = createManager(chart);
 
     manager.onPointer(pointerEvent(chart, data[0], "down", { x: 120, y: 120 }));
@@ -416,27 +416,29 @@ describe("DrawingManager", () => {
     manager.onPointer(pointerEvent(chart, data[1], "up", { x: 280, y: 220 }));
 
     const drawing = manager.getDrawings()[0]!;
-    expect(chart.getOutsideContainer().tabIndex).toBe(0);
-    expect(chart.getOutsideContainer().style.outline).toBe("none");
+    expect(container.tabIndex).toBe(0);
+    expect(container.style.outline).toBe("none");
     expect(manager.canUndo()).toBe(true);
     expect(manager.canRedo()).toBe(false);
 
-    expect(keyDown(chart, "z", { ctrlKey: true })).toBe(false);
+    expect(keyDown(container, "z", { ctrlKey: true })).toBe(false);
     expect(manager.getDrawings()).toEqual([]);
     expect(manager.canUndo()).toBe(false);
     expect(manager.canRedo()).toBe(true);
 
-    expect(keyDown(chart, "y", { ctrlKey: true })).toBe(false);
+    expect(keyDown(container, "y", { ctrlKey: true })).toBe(false);
     expect(manager.getDrawings()).toEqual([drawing]);
 
     manager.selectDrawing(drawing);
-    expect(keyDown(chart, "Delete")).toBe(false);
+    expect(keyDown(container, "Delete")).toBe(false);
     expect(manager.getDrawings()).toEqual([]);
 
-    expect(keyDown(chart, "z", { ctrlKey: true })).toBe(false);
+    expect(keyDown(container, "z", { ctrlKey: true })).toBe(false);
     expect(manager.getDrawings()).toEqual([drawing]);
 
-    expect(keyDown(chart, "z", { ctrlKey: true, shiftKey: true })).toBe(false);
+    expect(keyDown(container, "z", { ctrlKey: true, shiftKey: true })).toBe(
+      false
+    );
     expect(manager.getDrawings()).toEqual([]);
   });
 
@@ -698,7 +700,7 @@ describe("DrawingManager", () => {
     const [point] = drawing.projectForTest({ pane, canvas: context.canvas });
     const region = pane.getRegion();
 
-    expect(chart.getLogicalCanvas("drawings").height).toBe(
+    expect(Number.parseFloat(context.canvas.style.height)).toBe(
       region.y + region.height
     );
     expect(point.y).toBeGreaterThanOrEqual(region.y);

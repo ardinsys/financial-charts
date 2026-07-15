@@ -102,7 +102,9 @@ describe("current price tick calculations", () => {
         calculateYAxisLabels({
           yMin: scale.getYMin(),
           yMax: scale.getYMax(),
-          canvasHeight: chart.getLogicalCanvas("y-label").height,
+          canvasHeight: Number.parseFloat(
+            chart.getContext("y-label").canvas.style.height
+          ),
           fontSize: chart.getTheme().yAxis.fontSize,
           labelSpacing: 30
         })
