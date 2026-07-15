@@ -1,6 +1,8 @@
 # Custom indicators
 
-Indicators are chart plugins with a small authoring surface. Use `Indicator` for overlays drawn on the price chart, and `PaneledIndicator` when the indicator needs its own pane, Y axis, and resizable height.
+Indicators are chart extensions with a focused `IndicatorContext`. Use
+`Indicator` for overlays drawn on the price chart, and `PaneledIndicator` when
+the indicator needs its own pane, Y axis, and resizable height.
 
 ## Overlay indicator
 
@@ -48,7 +50,9 @@ class LastPriceIndicator extends Indicator<LastPriceTheme, LastPriceOptions> {
 
   protected getLabelContent(dataTime?: number): IndicatorLabelContent {
     const sourceName =
-      this.chart.getLocaleValues().common.sources[this.options.source];
+      this.indicatorContext.getLocaleValues().common.sources[
+        this.options.source
+      ];
     const value =
       dataTime === undefined ? undefined : this.values.get(dataTime);
 
@@ -59,7 +63,9 @@ class LastPriceIndicator extends Indicator<LastPriceTheme, LastPriceOptions> {
           ? []
           : [
               {
-                text: this.chart.getFormatter().formatPrice(value),
+                text: this.indicatorContext
+                  .getOptions()
+                  .formatter.formatPrice(value),
                 color: this.theme.color
               }
             ]
@@ -144,13 +150,13 @@ class RangePaneIndicator extends PaneledIndicator<
   }
 
   public createScale(): DataScaleModel {
-    this.rangeData = this.toRangeData(this.chart.getData());
+    this.rangeData = this.toRangeData(this.indicatorContext.getData());
     return this.createRangeScale();
   }
 
   public onData(data: readonly ChartData[]): void {
     this.rangeData = this.toRangeData(data);
-    this.recalculateScale(this.chart.getVisibleTimeRange());
+    this.recalculateScale(this.indicatorContext.getVisibleTimeRange());
   }
 
   public onVisibleRangeChanged(range: TimeRange): void {
@@ -194,14 +200,18 @@ class RangePaneIndicator extends PaneledIndicator<
     const point = this.rangeData.find((item) => item.time === time);
     return point?.close == null
       ? ""
-      : this.chart.getFormatter().formatPrice(point.close);
+      : this.indicatorContext.getOptions().formatter.formatPrice(point.close);
   }
 
   private createRangeScale() {
     const data =
       this.rangeData.length > 0 ? this.rangeData : [{ time: 0, close: 0 }];
 
-    return new DataScaleModel("simple", data, this.chart.getVisibleTimeRange());
+    return new DataScaleModel(
+      "simple",
+      data,
+      this.indicatorContext.getVisibleTimeRange()
+    );
   }
 
   private recalculateScale(range: TimeRange): void {
@@ -293,7 +303,7 @@ DOM listener or access an internal chart canvas.
 import type { TimeRange } from "@ardinsys/financial-charts";
 import {
   Indicator,
-  type ChartContext,
+  type IndicatorContext,
   type ChartPointerEvent,
   type DefaultIndicatorOptions,
   type IndicatorLabelContent,
@@ -336,7 +346,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
     super(themes, options);
   }
 
-  override attach(ctx: ChartContext): void {
+  override attach(ctx: IndicatorContext): void {
     super.attach(ctx);
     this.source.subscribe((orders) => this.setOrders(orders), {
       signal: ctx.signal
@@ -414,7 +424,9 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
       segments: hovered
         ? [
             {
-              text: this.chart.getFormatter().formatPrice(hovered.price),
+              text: this.indicatorContext
+                .getOptions()
+                .formatter.formatPrice(hovered.price),
               color: this.getColor(hovered)
             }
           ]
@@ -433,7 +445,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
       this.hoveredId = undefined;
     }
     this.invalidate({ scale: true });
-    if (this.chartContext) this.syncAnnotations();
+    if (this.indicatorContext) this.syncAnnotations();
   }
 
   private getVisibleOrders(range: TimeRange): readonly Order[] {
@@ -451,14 +463,16 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
   }
 
   private syncAnnotations(): void {
-    const range = this.chartContext.getVisibleTimeRange();
-    const paneId = this.chartContext.getPanes()[0]?.getId();
-    this.chartContext.setPriceAxisAnnotations(
+    const range = this.indicatorContext.getVisibleTimeRange();
+    const paneId = this.indicatorContext.getPanes()[0]?.getId();
+    this.indicatorContext.setPriceAxisAnnotations(
       this.getVisibleOrders(range).map((order) => ({
         id: order.id,
         paneId,
         value: order.price,
-        text: this.chart.getFormatter().formatPrice(order.price),
+        text: this.indicatorContext
+          .getOptions()
+          .formatter.formatPrice(order.price),
         color: this.getColor(order),
         emphasized: order.id === this.hoveredId,
         lineDash: [4, 3]

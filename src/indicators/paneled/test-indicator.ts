@@ -15,7 +15,11 @@ export class TestIndicator extends PaneledIndicator<
   static ID = "test";
 
   public createScale(): DataScaleModel {
-    return this.chart.getVisibleScale();
+    return new DataScaleModel(
+      "simple",
+      this.indicatorContext.getData(),
+      this.indicatorContext.getVisibleTimeRange()
+    );
   }
 
   protected getLabelContent(): IndicatorLabelContent {

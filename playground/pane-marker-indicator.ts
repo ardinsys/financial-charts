@@ -4,6 +4,7 @@ import {
   type IndicatorLabelContent,
   type PaneledIndicatorDrawingContext
 } from "@ardinsys/financial-charts/extensions";
+import { DataScaleModel } from "@ardinsys/financial-charts/engine";
 
 export class PaneMarkerIndicator extends PaneledIndicator<
   {},
@@ -12,7 +13,11 @@ export class PaneMarkerIndicator extends PaneledIndicator<
   static readonly ID = "pane-marker";
 
   createScale() {
-    return this.chart.getVisibleScale();
+    return new DataScaleModel(
+      "simple",
+      this.indicatorContext.getData(),
+      this.indicatorContext.getVisibleTimeRange()
+    );
   }
 
   protected getLabelContent(): IndicatorLabelContent {

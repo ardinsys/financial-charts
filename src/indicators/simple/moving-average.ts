@@ -52,7 +52,9 @@ export class MovingAverageIndicator extends Indicator<
     const detail =
       this.options.period +
       " " +
-      this.chart.getLocaleValues().common.sources[this.options.source];
+      this.indicatorContext.getLocaleValues().common.sources[
+        this.options.source
+      ];
 
     if (dataTime == undefined) return { detail };
 
@@ -63,7 +65,7 @@ export class MovingAverageIndicator extends Indicator<
       detail,
       segments: [
         {
-          text: this.chart.getFormatter().formatPrice(sma),
+          text: this.indicatorContext.getOptions().formatter.formatPrice(sma),
           color: this.theme.color
         }
       ]

@@ -1,5 +1,5 @@
 import type { Formatter } from "../chart/formatter";
-import type { ResolvedChartTheme } from "../chart/themes";
+import type { ChartOptionsSnapshot } from "../chart/chart-options";
 import type { DataScaleModel } from "../scales/data-scale-model";
 import { PriceScale } from "../scales/price-scale";
 import {
@@ -24,7 +24,7 @@ export interface PaneYAxisRenderOptions {
   readonly axisContext: CanvasRenderingContext2D;
   readonly gridContext: CanvasRenderingContext2D;
   readonly scale: DataScaleModel;
-  readonly theme: ResolvedChartTheme;
+  readonly theme: ChartOptionsSnapshot["theme"];
   readonly formatter: Formatter;
   readonly pixelRatio: number;
   readonly labelSpacing: number;

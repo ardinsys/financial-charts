@@ -1,7 +1,7 @@
 import type { TimeRange } from "@ardinsys/financial-charts";
 import {
   Indicator,
-  type ChartContext,
+  type IndicatorContext,
   type ChartPointerEvent,
   type DefaultIndicatorOptions,
   type IndicatorLabelContent,
@@ -44,8 +44,10 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
     super(themes, options);
   }
 
-  override attach(ctx: ChartContext): void {
+  override attach(ctx: IndicatorContext): void {
     super.attach(ctx);
+    // @ts-expect-error Indicators cannot issue application commands.
+    ctx.chart;
     this.source.subscribe((orders) => this.setOrders(orders), {
       signal: ctx.signal
     });
@@ -67,6 +69,8 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
 
   draw(): void {
     const context = this.getDrawingContext();
+    // @ts-expect-error Drawing snapshots expose projections, not mutable scales.
+    context.visibleScale;
     if (!context.visible) return;
 
     for (const order of this.getVisibleOrders(context.visibleTimeRange)) {
@@ -122,7 +126,9 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
       segments: hovered
         ? [
             {
-              text: this.chart.getFormatter().formatPrice(hovered.price),
+              text: this.indicatorContext
+                .getOptions()
+                .formatter.formatPrice(hovered.price),
               color: this.getColor(hovered)
             }
           ]
@@ -141,7 +147,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
       this.hoveredId = undefined;
     }
     this.invalidate({ scale: true });
-    if (this.chartContext) this.syncAnnotations();
+    if (this.indicatorContext) this.syncAnnotations();
   }
 
   private getVisibleOrders(range: TimeRange): readonly Order[] {
@@ -159,14 +165,16 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
   }
 
   private syncAnnotations(): void {
-    const range = this.chartContext.getVisibleTimeRange();
-    const paneId = this.chartContext.getPanes()[0]?.getId();
-    this.chartContext.setPriceAxisAnnotations(
+    const range = this.indicatorContext.getVisibleTimeRange();
+    const paneId = this.indicatorContext.getPanes()[0]?.getId();
+    this.indicatorContext.setPriceAxisAnnotations(
       this.getVisibleOrders(range).map((order) => ({
         id: order.id,
         paneId,
         value: order.price,
-        text: this.chart.getFormatter().formatPrice(order.price),
+        text: this.indicatorContext
+          .getOptions()
+          .formatter.formatPrice(order.price),
         color: this.getColor(order),
         emphasized: order.id === this.hoveredId,
         lineDash: [4, 3]

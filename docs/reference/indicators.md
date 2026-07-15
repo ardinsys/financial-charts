@@ -120,7 +120,8 @@ The default adapter renders and wires:
 
 ### Lifecycle hooks
 
-- `attach(ctx)` is inherited from `Indicator`; the base class stores the chart context and creates the adapter-rendered label.
+- `attach(ctx)` is inherited from `Indicator`; the base class stores the focused
+  `IndicatorContext` and creates the adapter-rendered label.
 - Initial state is delivered after attachment in a fixed order:
   `onOptionsChanged(event)`, `onData(data)`, then
   `onVisibleRangeChanged(range)`. The initial options event has identical
@@ -130,7 +131,10 @@ The default adapter renders and wires:
   once per render.
 - `onPointer(event)` receives pointer events in visual stacking order; return `true` to stop delivery to lower extensions and consume the gesture.
 - `onDrawingFinished(event)` receives completed drawing create and move operations.
-- `draw()` runs on each indicator render pass. Call `getDrawingContext()` to access the indicator canvas, data, visible data, visible range, scales, formatter/theme, and `projectTime` / `projectPrice` / `projectPoint` helpers without wiring canvas or scale plumbing yourself.
+- `draw()` runs on each indicator render pass. Call `getDrawingContext()` to
+  access the indicator canvas, data, visible data, visible range,
+  formatter/theme, and `projectTime` / `projectPrice` / `projectPoint` helpers
+  without wiring canvas or scale plumbing yourself.
 - `getLabelContent(dataTime?)` is invoked when the label is created or refreshed,
   including option, visibility, theme, locale, crosshair, and explicit
   invalidation updates. Return label detail text and optional value segments;
@@ -141,8 +145,8 @@ The default adapter renders and wires:
   layers, refreshes the label, and emits `indicator-change` by default. Use this
   method rather than mutating the value returned by `getOptions()`.
 - `clone()` creates another indicator with the same themes, options, and visibility but a new instance ID. `copyFrom()` copies configurable state without changing the target's identity. Override `clone()` if your custom indicator has constructor dependencies beyond the standard `(themes, options)` shape.
-- `chartContext.signal` is aborted before `detach()`. Subscriptions created with
-  `chartContext.on()` and `chartContext.onRenderStage()` are also removed
+- `indicatorContext.signal` is aborted before `detach()`. Subscriptions created
+  with `indicatorContext.on()` and `indicatorContext.onRenderStage()` are also removed
   automatically. Chart-owned annotations and label cleanup always run, so an
   override does not call `super.detach()` merely to preserve base cleanup.
 
@@ -172,7 +176,10 @@ protected getLabelContent(dataTime?: number): IndicatorLabelContent {
   return {
     detail: "20 close",
     segments: dataTime
-      ? [{ text: this.chart.getFormatter().formatPrice(12.34), color: "#2962FF" }]
+      ? [{
+          text: this.indicatorContext.getOptions().formatter.formatPrice(12.34),
+          color: "#2962FF"
+        }]
       : []
   };
 }
@@ -210,7 +217,9 @@ abstract class MyPaneledIndicator extends PaneledIndicator<MyTheme, MyOptions> {
 
 - `init(params)` and `resize(params)` are handled by the chart.
 - `draw()` is implemented by the base class. It clears the panel, paints the background, draws shared grid lines, syncs the pane price scale, draws the Y axis, and then calls `drawPane(context)` when the indicator is visible.
-- `drawPane(context)` receives the pane canvas context, axis context, pane, scale, price scale, dimensions, data, visible data, visible range, formatter/theme, and projection helpers.
+- `drawPane(context)` receives the pane canvas context, axis context, pane,
+  indicator scale, dimensions, data, visible data, visible range,
+  formatter/theme, and projection helpers.
 - Implement `drawPane(context)` rather than overriding `draw()`, so pane
   background, grid, Y-axis, visibility, and scale synchronization remain owned
   by the base class.

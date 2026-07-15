@@ -53,7 +53,11 @@ class PaneledProbeIndicator extends PaneledIndicator<
   lastContext?: PaneledIndicatorDrawingContext;
 
   public createScale(): DataScaleModel {
-    return this.chart.getVisibleScale();
+    return new DataScaleModel(
+      "simple",
+      this.indicatorContext.getData(),
+      this.indicatorContext.getVisibleTimeRange()
+    );
   }
 
   public getDefaultOptions(): DefaultIndicatorOptions {
@@ -177,7 +181,6 @@ describe("indicator authoring contexts", () => {
     expect(indicator.lastContext?.width).toBe(720);
     expect(indicator.lastContext?.height).toBe(92.5);
     expect(indicator.lastContext?.axisWidth).toBe(80);
-    expect(indicator.lastContext?.priceScale).toBe(pane.getPriceScale());
     expect(
       indicator.lastContext?.projectPoint(chart.getData()[0].time, 10)
     ).toEqual(

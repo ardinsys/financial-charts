@@ -1,5 +1,8 @@
 import type { ChartModel } from "../chart/chart-model";
-import type { ChartOptionsSnapshot } from "../chart/chart-options";
+import type {
+  ChartOptionsSnapshot,
+  LocaleValues
+} from "../chart/chart-options";
 import type { ChartOptionsState } from "../chart/chart-options-state";
 import type { ChartData, TimeRange } from "../chart/types";
 import type { Pane } from "../panes/pane";
@@ -18,6 +21,11 @@ export class ChartExtensionReadModel {
 
   getOptions(): ChartOptionsSnapshot {
     return this.options.getSnapshot();
+  }
+
+  getLocaleValues(): LocaleValues {
+    const options = this.options.getSnapshot();
+    return options.localeValues[options.locale] ?? options.localeValues.default;
   }
 
   getPanes(): readonly Pane[] {

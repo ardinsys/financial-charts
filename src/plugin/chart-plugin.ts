@@ -37,8 +37,7 @@ export interface ChartPointerEvent {
   buttons?: number;
 }
 
-export interface ChartContext {
-  chart: FinancialChart;
+export interface ExtensionContext {
   domAdapter: ChartDOMAdapter;
   readonly hostElement: HTMLElement;
   /** Aborted when the owning extension is detached or the chart is disposed. */
@@ -74,9 +73,12 @@ export interface ChartContext {
   clearCrosshair(): void;
 }
 
-export interface ChartPlugin extends Drawable {
+export interface ChartContext extends ExtensionContext {
+  chart: FinancialChart;
+}
+
+export interface ChartExtension extends Drawable {
   readonly key: string;
-  attach(ctx: ChartContext): void;
   onData?(data: readonly ChartData[]): void;
   /** Called once after an effective view change with the whole-bar range. */
   onVisibleRangeChanged?(range: TimeRange): void;
@@ -85,4 +87,8 @@ export interface ChartPlugin extends Drawable {
   onPointer?(event: ChartPointerEvent): boolean | void;
   onDrawingFinished?(event: ChartEventMap["drawing-finished"]): void;
   detach?(): void;
+}
+
+export interface ChartPlugin extends ChartExtension {
+  attach(ctx: ChartContext): void;
 }

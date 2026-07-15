@@ -40,12 +40,10 @@ class LifecycleProbeIndicator extends MovingAverageIndicator {
 }
 
 class RemovingIndicator extends MovingAverageIndicator {
-  target?: MovingAverageIndicator;
+  removeTarget?: () => void;
 
   onData(data: readonly ChartData[]) {
-    if (data.length > 0 && this.target) {
-      this.chart.removeIndicator(this.target);
-    }
+    if (data.length > 0) this.removeTarget?.();
   }
 }
 
@@ -401,7 +399,7 @@ describe("plugin lifecycle", () => {
     const { chart, data } = createChart();
     const remover = new RemovingIndicator();
     const removed = new LifecycleProbeIndicator();
-    remover.target = removed;
+    remover.removeTarget = () => chart.removeIndicator(removed);
 
     chart.addIndicator(remover);
     chart.addIndicator(removed);

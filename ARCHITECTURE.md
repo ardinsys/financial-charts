@@ -64,7 +64,7 @@ price scale and Y-axis region.
 | Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and numeric scale ranges |
 | Series behavior | `ChartController`, `ChartControllerContext` | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing through a projection-only context |
 | Extension lifecycle | `ExtensionHost` | Plugin/indicator registries, attachment scopes, state delivery, pointer order, annotations, and detachment |
-| Extension contract | `ChartPlugin`, `ChartContext` | Attachment-scoped services and optional lifecycle/render callbacks |
+| Extension contract | `ChartPlugin`, `ChartContext`, `IndicatorContext` | Attachment-scoped services and optional lifecycle/render callbacks |
 | Change publication | `ChartChangePublisher` | Ordered extension delivery, public model-change events, and render invalidation after completed mutations |
 | Indicator behavior | `Indicator`, `PaneledIndicator` | Indicator state, labels, drawing, and optional pane-specific scale/container behavior |
 | Pane layout | `PaneLayout`, `Pane` | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales |
@@ -191,6 +191,12 @@ facade.
 subscriptions, render hooks, and owned price-axis annotations are released when
 that attachment ends. Extensions can release an individual subscription early
 through the disposer returned by the context method.
+
+Indicators receive `IndicatorContext`, which contains the shared scoped
+extension services plus drawing snapshots, localization, cached grid positions,
+invalidation, and self-removal. It does not expose `FinancialChart` or mutable
+chart scale models. `ChartIndicatorHost` composes these capabilities from the
+model, renderer, extension read model, and three indicator lifecycle operations.
 
 Initial state is delivered synchronously after attachment in this order:
 

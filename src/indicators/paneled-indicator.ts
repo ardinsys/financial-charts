@@ -4,7 +4,6 @@ import {
   calculateStepSize as calculatePriceStepSize,
   calculateYAxisLabels as calculatePriceYAxisLabels
 } from "../scales/ticks/price-ticks";
-import type { ScaleProjectOptions } from "../scales/scale";
 import type { BarAlignment } from "../scales/time-scale";
 import {
   configurePositionedElement,
@@ -33,8 +32,6 @@ export interface PaneledIndicatorDrawingContext extends Omit<
   IndicatorDrawingContext,
   | "ctx"
   | "canvas"
-  | "priceScale"
-  | "scaleOptions"
   | "projectTime"
   | "projectPrice"
   | "projectPoint"
@@ -45,8 +42,6 @@ export interface PaneledIndicatorDrawingContext extends Omit<
   axisCanvas: HTMLCanvasElement;
   pane?: Pane;
   scale: DataScaleModel;
-  priceScale: ReturnType<Pane["getPriceScale"]>;
-  scaleOptions: ScaleProjectOptions & { barAlignment: BarAlignment };
   width: number;
   height: number;
   axisWidth: number;
@@ -80,9 +75,11 @@ export abstract class PaneledIndicator<
   ) {
     const paneRegion = params.pane?.getRegion();
     const yAxisRegion = params.pane?.getYAxisRegion();
+    const defaultAxisWidth =
+      this.indicatorContext.getLogicalCanvas("y-label").width;
     const mainWidth =
-      paneRegion?.width ?? params.width - this.chart.getYLabelWidth();
-    const axisWidth = yAxisRegion?.width ?? this.chart.getYLabelWidth();
+      paneRegion?.width ?? params.width - defaultAxisWidth;
+    const axisWidth = yAxisRegion?.width ?? defaultAxisWidth;
     const height = paneRegion?.height ?? params.height;
     const context = isMain ? this.context : this.axisContext;
 
@@ -103,7 +100,7 @@ export abstract class PaneledIndicator<
       overflow: "hidden",
       userSelect: "none",
       tapHighlightColor: "transparent",
-      borderTop: `2px solid ${this.chart.getTheme().grid.color}`,
+      borderTop: `2px solid ${this.indicatorContext.getOptions().theme.grid.color}`,
       left: params.x,
       top: params.y,
       width: params.width,
@@ -164,14 +161,15 @@ export abstract class PaneledIndicator<
     this.pane?.setPriceRange(this.scale.getYMin(), this.scale.getYMax());
 
     const ctx = this.context;
+    const theme = this.indicatorContext.getOptions().theme;
     ctx.clearRect(0, 0, this.width(), this.height());
-    ctx.fillStyle = this.chart.getOptions().theme.backgroundColor;
+    ctx.fillStyle = theme.backgroundColor;
     ctx.fillRect(0, 0, this.width(), this.height());
 
-    ctx.lineWidth = this.chart.getOptions().theme.grid.width;
-    ctx.strokeStyle = this.chart.getOptions().theme.grid.color;
+    ctx.lineWidth = theme.grid.width;
+    ctx.strokeStyle = theme.grid.color;
 
-    for (const x of this.chart.getLastXGridCoords()) {
+    for (const x of this.indicatorContext.getLastXGridCoords()) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, this.height());
@@ -186,9 +184,9 @@ export abstract class PaneledIndicator<
     const canvas = this.canvas;
     const paneRegion = this.pane?.getRegion();
     const yAxisRegion = this.pane?.getYAxisRegion();
-    const timeScale = this.chart.getTimeScale();
-    const priceScale = this.pane?.getPriceScale() ?? this.chart.getPriceScale();
-    const timeAnchorAlignment = this.chart.getTimeAnchorAlignment();
+    const timeScale = this.pane?.getTimeScale();
+    const priceScale = this.pane?.getPriceScale();
+    const timeAnchorAlignment = this.pane?.getTimeAnchorAlignment() ?? "center";
     const scaleOptions = {
       canvas,
       barAlignment: timeAnchorAlignment
@@ -202,34 +200,44 @@ export abstract class PaneledIndicator<
       axisCanvas: this.axisCanvas,
       pane: this.pane,
       scale: this.scale,
-      priceScale,
-      scaleOptions,
       width: paneRegion?.width ?? this.width(),
       height: paneRegion?.height ?? this.height(),
       axisWidth: yAxisRegion?.width ?? this.axisCanvas.width / pixelRatio(),
       projectTime: (time, barAlignment = timeAnchorAlignment) =>
-        timeScale.project(time, { canvas, barAlignment }),
-      projectPrice: (value) => priceScale.project(value, scaleOptions),
+        timeScale
+          ? timeScale.project(time, { canvas, barAlignment })
+          : base.projectTime(time, barAlignment),
+      projectPrice: (value) =>
+        priceScale
+          ? priceScale.project(value, scaleOptions)
+          : base.projectPrice(value),
       projectPoint: (time, value, barAlignment = timeAnchorAlignment) => ({
-        x: timeScale.project(time, { canvas, barAlignment }),
-        y: priceScale.project(value, scaleOptions)
+        x: timeScale
+          ? timeScale.project(time, { canvas, barAlignment })
+          : base.projectTime(time, barAlignment),
+        y: priceScale
+          ? priceScale.project(value, scaleOptions)
+          : base.projectPrice(value)
       })
     };
   }
 
   private initYAxis() {
     const ctx = this.axisContext;
-    ctx.fillStyle = this.chart.getTheme().yAxis.backgroundColor;
+    const theme = this.indicatorContext.getOptions().theme;
+    const axisWidth =
+      this.indicatorContext.getLogicalCanvas("y-label").width;
+    ctx.fillStyle = theme.yAxis.backgroundColor;
     ctx.clearRect(
       0,
       0,
-      this.chart.getYLabelWidth() / pixelRatio(),
+      axisWidth,
       this.height()
     );
     ctx.fillRect(
       0,
       0,
-      this.chart.getYLabelWidth() / pixelRatio(),
+      axisWidth,
       this.height()
     );
     this.drawYAxis();
@@ -266,20 +274,21 @@ export abstract class PaneledIndicator<
   }
 
   protected drawYAxis(): void {
+    const options = this.indicatorContext.getOptions();
     if (this.pane) {
       this.pane.drawYAxis({
         axisContext: this.axisContext,
         gridContext: this.context,
         scale: this.scale,
-        theme: this.chart.getTheme(),
-        formatter: this.chart.getFormatter(),
+        theme: options.theme,
+        formatter: options.formatter,
         pixelRatio: pixelRatio(),
         labelSpacing: 30
       });
       return;
     }
 
-    const theme = this.chart.getTheme();
+    const theme = options.theme;
     const yAxisValues = this.calculateYAxisLabels(theme.xAxis.fontSize, 30);
 
     const ctx = this.axisContext;
@@ -296,7 +305,7 @@ export abstract class PaneledIndicator<
       const y = value.position;
       if (y - theme.yAxis.fontSize < 0) continue;
       if (y + theme.yAxis.fontSize > this.axisCanvas.height / ratio) continue;
-      const text = this.chart.getFormatter().formatPrice(value.value);
+      const text = options.formatter.formatPrice(value.value);
       const textWidth = ctx.measureText(text).width;
 
       ctx.fillText(

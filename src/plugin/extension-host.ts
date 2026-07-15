@@ -7,15 +7,19 @@ import type { FinancialChart } from "../chart/financial-chart";
 import type { ChartEventMap } from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";
 import type { Indicator } from "../indicators/indicator";
+import type { ChartIndicatorHost } from "../indicators/chart-indicator-host";
 import type { PaneledIndicator } from "../indicators/paneled-indicator";
 import type { ChartRenderer } from "../render/chart-renderer";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
 import type { ChartExtensionReadModel } from "./chart-extension-read-model";
 import type {
-  ChartContext,
+  ChartExtension,
   ChartPlugin,
-  ChartPointerEvent
+  ChartPointerEvent,
+  ExtensionContext
 } from "./chart-plugin";
+
+type HostedExtension = ChartPlugin | Indicator<any, any>;
 
 export interface IndicatorAttachmentHooks {
   mount(): void;
@@ -29,18 +33,18 @@ export class ExtensionHost {
     Object.freeze([]);
   private plugins: readonly ChartPlugin[] = Object.freeze([]);
   private allIndicators: readonly Indicator<any, any>[] = Object.freeze([]);
-  private lifecycleExtensions: readonly ChartPlugin[] = Object.freeze([]);
-  private pointerExtensions: readonly ChartPlugin[] = Object.freeze([]);
+  private lifecycleExtensions: readonly ChartExtension[] = Object.freeze([]);
+  private pointerExtensions: readonly ChartExtension[] = Object.freeze([]);
   private readonly indicatorHooks = new WeakMap<
     Indicator<any, any>,
     IndicatorAttachmentHooks
   >();
   private readonly attachmentScopes = new WeakMap<
-    ChartPlugin,
+    ChartExtension,
     AbortController
   >();
   private readonly priceAxisAnnotations = new Map<
-    ChartPlugin,
+    ChartExtension,
     readonly PriceAxisAnnotation[]
   >();
   private disposed = false;
@@ -50,7 +54,8 @@ export class ExtensionHost {
     private readonly domAdapter: ChartDOMAdapter,
     private readonly renderer: ChartRenderer,
     private readonly hostElement: HTMLElement,
-    private readonly readModel: ChartExtensionReadModel
+    private readonly readModel: ChartExtensionReadModel,
+    private readonly indicatorHost: ChartIndicatorHost
   ) {}
 
   getIndicators(): readonly Indicator<any, any>[] {
@@ -91,7 +96,7 @@ export class ExtensionHost {
       | undefined;
   }
 
-  isAttached(extension: ChartPlugin): boolean {
+  isAttached(extension: ChartExtension): boolean {
     return this.lifecycleExtensions.includes(extension);
   }
 
@@ -171,7 +176,7 @@ export class ExtensionHost {
   }
 
   deliverCurrentState(
-    extensions: readonly ChartPlugin[],
+    extensions: readonly ChartExtension[],
     optionsEvent: ChartOptionsChangeEvent = this.createInitialOptionsEvent()
   ): void {
     const data = this.readModel.getData();
@@ -272,12 +277,20 @@ export class ExtensionHost {
     if (firstError !== undefined) throw firstError;
   }
 
-  private attach(extension: ChartPlugin, mount?: () => void): boolean {
+  private attach(extension: HostedExtension, mount?: () => void): boolean {
     const abortController = new AbortController();
     this.attachmentScopes.set(extension, abortController);
     let attached = false;
     try {
-      extension.attach(this.createContext(extension, abortController.signal));
+      const context = this.createExtensionContext(
+        extension,
+        abortController.signal
+      );
+      if (this.isIndicator(extension)) {
+        extension.attach(this.indicatorHost.createContext(extension, context));
+      } else {
+        extension.attach({ ...context, chart: this.chart });
+      }
       attached = true;
       if (!this.isAttached(extension)) return false;
       mount?.();
@@ -303,7 +316,7 @@ export class ExtensionHost {
     }
   }
 
-  private discardFailedAttachment(extension: ChartPlugin): void {
+  private discardFailedAttachment(extension: HostedExtension): void {
     const indicator = extension as Indicator<any, any>;
     const hooks = this.indicatorHooks.get(indicator);
     if (hooks) {
@@ -330,7 +343,7 @@ export class ExtensionHost {
     if (hooks) this.indicatorHooks.delete(indicator);
   }
 
-  private detach(extension: ChartPlugin): void {
+  private detach(extension: HostedExtension): void {
     this.disposeAttachmentScope(extension);
     const indicator = extension as Indicator<any, any>;
     const hooks = this.indicatorHooks.get(indicator);
@@ -346,14 +359,13 @@ export class ExtensionHost {
     }
   }
 
-  private createContext(
-    extension: ChartPlugin,
+  private createExtensionContext(
+    extension: ChartExtension,
     signal: AbortSignal
-  ): ChartContext {
+  ): ExtensionContext {
     const scoped = (dispose: () => void) =>
       this.createScopedDisposer(signal, dispose);
     return {
-      chart: this.chart,
       domAdapter: this.domAdapter,
       hostElement: this.hostElement,
       signal,
@@ -407,14 +419,14 @@ export class ExtensionHost {
     return scopedDispose;
   }
 
-  private disposeAttachmentScope(extension: ChartPlugin): void {
+  private disposeAttachmentScope(extension: ChartExtension): void {
     this.attachmentScopes.get(extension)?.abort();
     this.attachmentScopes.delete(extension);
     this.priceAxisAnnotations.delete(extension);
   }
 
   private setPriceAxisAnnotations(
-    extension: ChartPlugin,
+    extension: ChartExtension,
     annotations: readonly PriceAxisAnnotation[]
   ): void {
     const scope = this.attachmentScopes.get(extension);
@@ -430,7 +442,7 @@ export class ExtensionHost {
   }
 
   private deliverOptions(
-    extension: ChartPlugin,
+    extension: ChartExtension,
     event: ChartOptionsChangeEvent
   ): void {
     if (this.isIndicator(extension)) extension.applyChartOptions(event);
@@ -447,7 +459,7 @@ export class ExtensionHost {
   }
 
   private forEachLifecycleExtension(
-    notify: (extension: ChartPlugin) => void
+    notify: (extension: ChartExtension) => void
   ): void {
     const extensions = this.lifecycleExtensions;
     for (const extension of extensions) {
@@ -456,7 +468,7 @@ export class ExtensionHost {
   }
 
   private isIndicator(
-    extension: ChartPlugin
+    extension: ChartExtension
   ): extension is Indicator<any, any> {
     return this.allIndicators.includes(extension as Indicator<any, any>);
   }
@@ -475,7 +487,7 @@ export class ExtensionHost {
       ...this.paneledIndicators,
       ...this.plugins
     ]);
-    const pointerExtensions: ChartPlugin[] = [];
+    const pointerExtensions: ChartExtension[] = [];
     appendReversed(pointerExtensions, this.plugins);
     appendReversed(pointerExtensions, this.paneledIndicators);
     appendReversed(pointerExtensions, this.indicators);

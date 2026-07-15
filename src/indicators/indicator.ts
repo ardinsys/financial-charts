@@ -1,22 +1,22 @@
-import type { ChartOptionsChangeEvent } from "../chart/chart-options";
-import type { FinancialChart } from "../chart/financial-chart";
+import type {
+  ChartOptionsChangeEvent,
+  ChartOptionsSnapshot,
+  LocaleValues
+} from "../chart/chart-options";
 import type { ChartData, TimeRange } from "../chart/types";
 import { mergeObjects } from "../utils/merge";
-import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
+import type {
+  ChartExtension,
+  ExtensionContext
+} from "../plugin/chart-plugin";
 import type {
   IndicatorLabelHandle,
   IndicatorLabelModel,
   IndicatorLabelSegment
 } from "../ui/chart-dom-adapter";
 import type { Formatter } from "../chart/formatter";
-import type { ResolvedChartTheme } from "../chart/themes";
-import type {
-  DataScaleModel,
-  ScaleRangeModifier
-} from "../scales/data-scale-model";
-import type { PriceScale } from "../scales/price-scale";
-import type { ScaleProjectOptions } from "../scales/scale";
-import type { BarAlignment, TimeScale } from "../scales/time-scale";
+import type { ScaleRangeModifier } from "../scales/data-scale-model";
+import type { BarAlignment } from "../scales/time-scale";
 import {
   cloneJSONStateObject,
   isPlainRecord,
@@ -90,7 +90,6 @@ export interface IndicatorPoint {
 }
 
 export interface IndicatorDrawingContext {
-  chart: FinancialChart;
   ctx: CanvasRenderingContext2D;
   canvas: HTMLCanvasElement;
   data: readonly ChartData[];
@@ -98,12 +97,8 @@ export interface IndicatorDrawingContext {
   visibleTimeRange: TimeRange;
   visible: boolean;
   stepSize: number;
-  timeScale: TimeScale;
-  priceScale: PriceScale;
-  visibleScale: DataScaleModel;
-  scaleOptions: ScaleProjectOptions & { barAlignment: BarAlignment };
   formatter: Formatter;
-  theme: ResolvedChartTheme;
+  theme: ChartOptionsSnapshot["theme"];
   projectTime(time: number, barAlignment?: BarAlignment): number;
   projectPrice(value: number): number;
   projectPoint(
@@ -128,14 +123,37 @@ export interface IndicatorInvalidationOptions {
   crosshair?: boolean;
 }
 
+export interface IndicatorContext extends Pick<
+  ExtensionContext,
+  | "domAdapter"
+  | "signal"
+  | "emit"
+  | "getData"
+  | "getOptions"
+  | "getLogicalCanvas"
+  | "getPanes"
+  | "getVisibleTimeWindow"
+  | "getVisibleTimeRange"
+  | "on"
+  | "onRenderStage"
+  | "requestRedraw"
+  | "setPriceAxisAnnotations"
+  | "clearPriceAxisAnnotations"
+> {
+  getLocaleValues(): LocaleValues;
+  getDrawingContext(visible: boolean): IndicatorDrawingContext;
+  getLastXGridCoords(): readonly number[];
+  invalidate(options?: IndicatorInvalidationOptions): void;
+  remove(): void;
+}
+
 export abstract class Indicator<
   TTheme extends object,
   TOptions extends DefaultIndicatorOptions
-> implements ChartPlugin {
+> implements ChartExtension {
   protected themes!: Record<string, TTheme>;
   protected options!: TOptions;
-  protected chart!: FinancialChart;
-  protected chartContext!: ChartContext;
+  protected indicatorContext!: IndicatorContext;
   protected theme!: TTheme;
   protected labelContainer!: HTMLElement;
   protected visible = true;
@@ -168,24 +186,25 @@ export abstract class Indicator<
     return this.instanceId;
   }
 
-  public attach(ctx: ChartContext): void {
-    this.chartContext = ctx;
+  public attach(ctx: IndicatorContext): void {
+    this.indicatorContext = ctx;
     this.labelHandle?.destroy();
-    this.chart = ctx.chart;
-    this.theme = this.resolveTheme(ctx.chart.getOptions().theme.key);
+    this.theme = this.resolveTheme(ctx.getOptions().theme.key);
     this.attached = true;
 
-    this.labelHandle = this.chartContext.domAdapter.createIndicatorLabel(
+    this.labelHandle = this.indicatorContext.domAdapter.createIndicatorLabel(
       this.buildLabelModel(),
       {
         onToggleVisibility: (visible) => {
           this.setVisible(visible);
         },
         onOpenSettings: () => {
-          this.chart.emit("indicator-settings-open", { indicator: this });
+          this.indicatorContext.emit("indicator-settings-open", {
+            indicator: this
+          });
         },
         onRemove: () => {
-          this.chart.removeIndicator(this);
+          this.indicatorContext.remove();
         }
       }
     );
@@ -195,12 +214,13 @@ export abstract class Indicator<
 
   private buildLabelModel(dataTime?: number): IndicatorLabelModel {
     const content = this.getLabelContent(dataTime);
-    const actions = this.chart.getLocaleValues().indicators.actions;
+    const options = this.indicatorContext.getOptions();
+    const actions = this.indicatorContext.getLocaleValues().indicators.actions;
     return {
       instanceId: this.instanceId,
       typeId: this.getIndicatorType(),
       labelKey: this.getLabelKey(),
-      themeKey: this.chart.getOptions().theme.key,
+      themeKey: options.theme.key,
       name: content.name ?? this.resolveName(),
       detail: content.detail,
       segments: content.segments ?? [],
@@ -217,7 +237,7 @@ export abstract class Indicator<
 
   private resolveName(): string {
     return (
-      this.options.names[this.chart.getOptions().locale] ||
+      this.options.names[this.indicatorContext.getOptions().locale] ||
       this.options.names.default ||
       this.getLabelKey()
     );
@@ -254,7 +274,7 @@ export abstract class Indicator<
   /** Invalidates external indicator state without depending on attachment state. */
   protected invalidate(options: IndicatorInvalidationOptions = {}): void {
     if (!this.attached) return;
-    this.chart.invalidateIndicator(this, options);
+    this.indicatorContext.invalidate(options);
   }
 
   public getModifier(_visibleTimeRange: TimeRange): ScaleRangeModifier | null {
@@ -267,39 +287,7 @@ export abstract class Indicator<
   }
 
   protected getDrawingContext(): IndicatorDrawingContext {
-    const ctx = this.chart.getContext("indicator");
-    const canvas = ctx.canvas;
-    const timeScale = this.chart.getTimeScale();
-    const priceScale = this.chart.getPriceScale();
-    const timeAnchorAlignment = this.chart.getTimeAnchorAlignment();
-    const scaleOptions = {
-      canvas,
-      barAlignment: timeAnchorAlignment
-    };
-
-    return {
-      chart: this.chart,
-      ctx,
-      canvas,
-      data: this.chart.getData(),
-      visibleData: this.chart.getLastVisibleDataPoints(),
-      visibleTimeRange: this.chart.getVisibleTimeRange(),
-      visible: this.visible,
-      stepSize: this.chart.getOptions().stepSize,
-      timeScale,
-      priceScale,
-      visibleScale: this.chart.getVisibleScale(),
-      scaleOptions,
-      formatter: this.chart.getFormatter(),
-      theme: this.chart.getTheme(),
-      projectTime: (time, barAlignment = timeAnchorAlignment) =>
-        timeScale.project(time, { canvas, barAlignment }),
-      projectPrice: (value) => priceScale.project(value, scaleOptions),
-      projectPoint: (time, value, barAlignment = timeAnchorAlignment) => ({
-        x: timeScale.project(time, { canvas, barAlignment }),
-        y: priceScale.project(value, scaleOptions)
-      })
-    };
+    return this.indicatorContext.getDrawingContext(this.visible);
   }
 
   public abstract getDefaultOptions(): TOptions;
@@ -332,10 +320,10 @@ export abstract class Indicator<
   ): void {
     this.options = mergeObjects(this.options, options);
     if (!this.attached) return;
-    this.chart.requestRedraw(indicatorStateRedrawParts);
+    this.indicatorContext.requestRedraw(indicatorStateRedrawParts);
     this.refreshLabel();
     if (updateOptions.emit ?? true) {
-      this.chart.emit("indicator-change", { indicator: this });
+      this.indicatorContext.emit("indicator-change", { indicator: this });
     }
   }
 
@@ -348,10 +336,10 @@ export abstract class Indicator<
     this.visible = visible;
     if (!this.attached) return;
 
-    this.chart.requestRedraw(indicatorStateRedrawParts);
+    this.indicatorContext.requestRedraw(indicatorStateRedrawParts);
     this.refreshLabel();
     if (updateOptions.emit ?? true) {
-      this.chart.emit("indicator-visibility-changed", {
+      this.indicatorContext.emit("indicator-visibility-changed", {
         indicator: this,
         visible
       });
@@ -387,14 +375,14 @@ export abstract class Indicator<
 
     if (!this.attached) return;
 
-    this.theme = this.resolveTheme(this.chart.getOptions().theme.key);
-    this.chart.requestRedraw(indicatorStateRedrawParts);
+    this.theme = this.resolveTheme(this.indicatorContext.getOptions().theme.key);
+    this.indicatorContext.requestRedraw(indicatorStateRedrawParts);
     this.refreshLabel();
 
     if (updateOptions.emit ?? true) {
-      this.chart.emit("indicator-change", { indicator: this });
+      this.indicatorContext.emit("indicator-change", { indicator: this });
       if (wasVisible !== this.visible) {
-        this.chart.emit("indicator-visibility-changed", {
+        this.indicatorContext.emit("indicator-visibility-changed", {
           indicator: this,
           visible: this.visible
         });

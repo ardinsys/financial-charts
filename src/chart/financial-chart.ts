@@ -2,9 +2,9 @@ import { ChartController } from "../controllers/controller";
 import { PaneledIndicator } from "../indicators/paneled-indicator";
 import {
   type Indicator,
-  type IndicatorInvalidationOptions,
   type IndicatorMutationOptions
 } from "../indicators/indicator";
+import { ChartIndicatorHost } from "../indicators/chart-indicator-host";
 import type { ScaleRangeModifier } from "../scales/data-scale-model";
 import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
 import type { ChartTheme } from "./themes";
@@ -99,7 +99,6 @@ export type { IndicatorMutationOptions } from "../indicators/indicator";
 
 export type { PaneHeightsInput } from "../panes/pane-layout";
 
-const CONTROLLER_REDRAW_PARTS = ["grid", "axes", "series"] as const;
 const ALL_REDRAW_PARTS = [
   "grid",
   "axes",
@@ -580,16 +579,31 @@ export class FinancialChart extends EventEmitter {
         onResize: () => this.handleRendererResize()
       }
     );
+    const extensionReadModel = new ChartExtensionReadModel(
+      this.model,
+      this.optionsState,
+      this.paneLayout
+    );
+    const indicatorHost = new ChartIndicatorHost(
+      this.model,
+      this.renderer,
+      extensionReadModel,
+      {
+        getCrosshairTime: () =>
+          this.interactionController.getCrosshairTime(),
+        recalculateVisibleScale: () => this.recalculateVisibleScale(),
+        removeIndicator: (indicator) => {
+          this.removeIndicator(indicator);
+        }
+      }
+    );
     this.extensionHost = new ExtensionHost(
       this,
       domAdapter,
       this.renderer,
       container,
-      new ChartExtensionReadModel(
-        this.model,
-        this.optionsState,
-        this.paneLayout
-      )
+      extensionReadModel,
+      indicatorHost
     );
     this.changePublisher = new ChartChangePublisher(
       this.extensionHost,
@@ -1046,32 +1060,6 @@ export class FinancialChart extends EventEmitter {
     this.syncPaneTimeScales();
     this.syncMainPanePriceScale();
     return this.clearCrosshairModel();
-  }
-
-  /** @internal Called by an attached indicator's protected invalidation helper. */
-  public invalidateIndicator(
-    indicator: Indicator<any, any>,
-    options: IndicatorInvalidationOptions = {}
-  ): void {
-    if (!this.extensionHost.isAttached(indicator)) return;
-
-    const redrawParts = new Set<RenderLayer>();
-    if (options.scale && this.model.hasData()) {
-      this.recalculateVisibleScale();
-      for (const layer of CONTROLLER_REDRAW_PARTS) {
-        redrawParts.add(layer);
-      }
-      redrawParts.add("indicators");
-      redrawParts.add("annotations");
-      redrawParts.add("crosshair");
-    }
-    if (options.label ?? true) {
-      indicator.refreshLabel(this.interactionController.getCrosshairTime());
-    }
-    if (options.drawing ?? true) redrawParts.add("indicators");
-    if (options.crosshair ?? true) redrawParts.add("crosshair");
-
-    if (redrawParts.size > 0) this.requestRedraw([...redrawParts]);
   }
 
   /**

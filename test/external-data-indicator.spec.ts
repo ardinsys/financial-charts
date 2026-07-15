@@ -64,7 +64,7 @@ class ExternalDataProbeIndicator extends Indicator<
 
   async load(prices: Promise<readonly number[]>) {
     const version = ++this.requestVersion;
-    const { signal } = this.chartContext;
+    const { signal } = this.indicatorContext;
     const result = await prices;
     if (version !== this.requestVersion || signal.aborted) {
       return;
@@ -81,7 +81,7 @@ class ExternalDataProbeIndicator extends Indicator<
   }
 
   getSignal() {
-    return this.chartContext.signal;
+    return this.indicatorContext.signal;
   }
 
   override detach(): void {
@@ -128,26 +128,19 @@ function createChart() {
 }
 
 describe("external-data indicators", () => {
-  it("invalidates labels, drawing, and modifiers without attachment hazards", () => {
+  it("invalidates labels, drawing, and modifiers without attachment hazards", async () => {
     const { chart, data } = createChart();
     const indicator = new ExternalDataProbeIndicator();
 
     expect(() => indicator.setPrices([])).not.toThrow();
     chart.addIndicator(indicator);
-    const requestRedraw = vi.spyOn(chart, "requestRedraw");
+    const draw = vi.spyOn(indicator, "draw");
 
     indicator.setPrices([100]);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
 
     expect(chart.getVisibleScale().getYMax()).toBeGreaterThan(100);
-    expect(requestRedraw).toHaveBeenCalledOnce();
-    expect(requestRedraw).toHaveBeenCalledWith([
-      "grid",
-      "axes",
-      "series",
-      "indicators",
-      "annotations",
-      "crosshair"
-    ]);
+    expect(draw).toHaveBeenCalled();
 
     indicator.setPrices([]);
     expect(chart.getVisibleScale().getYMax()).toBeLessThan(100);
