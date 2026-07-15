@@ -72,7 +72,7 @@ price scale and Y-axis region.
 | Rendering | `ChartRenderer`, `RenderPipeline`, `chart-render-types.ts` | Canvas/context ownership, public layer contracts, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
 | DOM chrome | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
 | Public events | `EventEmitter` and `ChartEventMap` | Application-facing chart, indicator, drawing, options, and state events |
-| Chart persistence | `chart-state.ts` | Versioned chart-state contracts, serialization, validation, and contributor indexing |
+| Chart persistence | `ChartStateController`, `chart-state.ts` | Serialization, restoration preparation, deferred restored views, versioned state contracts, validation, and contributor indexing |
 | Extension persistence | indicator and drawing state helpers | Versioned JSON-safe indicator and drawing state plus reconstruction contracts |
 
 ## Ownership and snapshot rules
@@ -291,6 +291,11 @@ and extension-facing canvas sizes use logical pixels. Resize observers and
 pending animation frames are canceled when rendering stops during chart disposal.
 
 ## State restoration
+
+`ChartStateController` owns serialization, restoration validation and
+reconstruction, contributor matching, and a restored visible range while it
+waits for data. `FinancialChart` applies the prepared restoration as one visible
+coordination transaction across the model, panes, extensions, and renderer.
 
 Serialized state is an external boundary and is validated before runtime state
 changes. Restoration temporarily suppresses frame scheduling, then:
