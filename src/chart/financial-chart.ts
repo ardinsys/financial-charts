@@ -1,5 +1,4 @@
 import { ChartController } from "../controllers/controller";
-import { DataStore } from "../data/data-store";
 import type { PaneledIndicator } from "../indicators/paneled-indicator";
 import {
   Indicator,
@@ -46,6 +45,7 @@ import type {
   ChartCrosshairState
 } from "../interaction/crosshair";
 import { getDefaultControllerConstructors } from "./internal-default-controllers";
+import { ChartModel } from "./chart-model";
 import {
   assertPositiveOption,
   assertTimeRangeOption,
@@ -129,8 +129,7 @@ export class FinancialChart extends EventEmitter {
   protected outsideContainer: HTMLElement;
   protected container: HTMLElement;
   protected indicatorLabelContainer: HTMLElement;
-  protected dataStore = new DataStore();
-  private originalDataStore = new DataStore();
+  private readonly model = new ChartModel();
   protected options!: MutableResolvedChartOptions;
   private optionsSnapshot!: ChartOptionsSnapshot;
   private readonly defaultControllerConstructors: readonly ControllerConstructor[];
@@ -445,7 +444,7 @@ export class FinancialChart extends EventEmitter {
 
       optionsEvent = this.applyOptionsUpdate(validatedState.core)?.options;
 
-      if (this.dataStore.length > 0) {
+      if (this.model.hasData()) {
         this.updateVisibleIndexRange(
           this.resolveVisibleTimeWindow(validatedState.visibleRange)
         );
@@ -470,7 +469,7 @@ export class FinancialChart extends EventEmitter {
         contributor.fromJSON(validatedState.contributions![contributor.key]);
       }
 
-      if (this.dataStore.length > 0) {
+      if (this.model.hasData()) {
         this.recalculateVisibleScale();
       }
       this.extensionHost.deliverCurrentState(this.getPlugins(), optionsEvent);
@@ -487,14 +486,14 @@ export class FinancialChart extends EventEmitter {
 
   /** Returns the stable frozen snapshot for the current mapped dataset. */
   getData(): readonly ChartData[] {
-    return this.dataStore.snapshot();
+    return this.model.getData();
   }
 
   private getTimeScaleOptions(): DataScaleTimeOptions {
     return {
       barAlignment: this.controller.getBarAlignment(),
       indexRange: this.visibleIndexRange,
-      timeValues: this.dataStore.times()
+      timeValues: this.model.getTimes()
     };
   }
 
@@ -527,24 +526,24 @@ export class FinancialChart extends EventEmitter {
   }
 
   private calculateIndexBounds(): TimeScaleRange {
-    if (this.dataStore.length === 0) {
+    if (!this.model.hasData()) {
       return { from: 0, to: 1, rightOffset: 0 };
     }
 
     if (this.autoTimeRange) {
       const slotCount = Math.max(
-        this.dataStore.length,
+        this.model.length,
         this.getMinimumVisibleIndexSlots()
       );
 
       return {
         from: 0,
         to: slotCount,
-        rightOffset: Math.max(0, slotCount - this.dataStore.length)
+        rightOffset: Math.max(0, slotCount - this.model.length)
       };
     }
 
-    const range = this.dataStore.indexRangeForTimeRange(
+    const range = this.model.getIndexRangeForTimeRange(
       this.timeRange.start,
       this.timeRange.end
     );
@@ -552,7 +551,7 @@ export class FinancialChart extends EventEmitter {
     return {
       from: range.from,
       to: range.to,
-      rightOffset: Math.max(0, range.to - this.dataStore.length)
+      rightOffset: Math.max(0, range.to - this.model.length)
     };
   }
 
@@ -614,7 +613,7 @@ export class FinancialChart extends EventEmitter {
    * @throws {RangeError} when either boundary is not finite
    */
   public setVisibleIndexRange(range: TimeScaleRange): void {
-    if (this.dataStore.length === 0) return;
+    if (!this.model.hasData()) return;
     this.applyVisibleIndexRange(range);
   }
 
@@ -625,11 +624,11 @@ export class FinancialChart extends EventEmitter {
    * @throws {RangeError} when either boundary is not finite
    */
   public setVisibleTimeRange(range: TimeRange): void {
-    if (this.dataStore.length === 0) return;
+    if (!this.model.hasData()) return;
     this.assertFiniteVisibleTimeRange(range);
     const end = Math.max(range.start, range.end - 1);
     this.setVisibleIndexRange(
-      this.dataStore.indexRangeForTimeRange(range.start, end)
+      this.model.getIndexRangeForTimeRange(range.start, end)
     );
   }
 
@@ -640,7 +639,7 @@ export class FinancialChart extends EventEmitter {
    * @throws {RangeError} when either boundary is not finite
    */
   public setVisibleTimeWindow(range: TimeRange): void {
-    if (this.dataStore.length === 0) return;
+    if (!this.model.hasData()) return;
     this.assertFiniteVisibleTimeRange(range);
 
     this.setVisibleIndexRange(this.resolveVisibleTimeWindow(range));
@@ -651,10 +650,10 @@ export class FinancialChart extends EventEmitter {
 
     const alignmentOffset = this.getBarAlignmentOffset();
     const from =
-      this.dataStore.logicalIndexForTime(range.start, this.options.stepSize) +
+      this.model.logicalIndexForTime(range.start, this.options.stepSize) +
       alignmentOffset;
     const to =
-      this.dataStore.logicalIndexForTime(range.end, this.options.stepSize) +
+      this.model.logicalIndexForTime(range.end, this.options.stepSize) +
       alignmentOffset;
 
     return { from, to: Math.max(from + 1, to) };
@@ -716,7 +715,7 @@ export class FinancialChart extends EventEmitter {
     return {
       from,
       to,
-      rightOffset: Math.max(0, to - this.dataStore.length)
+      rightOffset: Math.max(0, to - this.model.length)
     };
   }
 
@@ -930,7 +929,7 @@ export class FinancialChart extends EventEmitter {
     y: number,
     scale: "data" | "visible"
   ): ChartData | undefined {
-    if (this.dataStore.length === 0) return undefined;
+    if (!this.model.hasData()) return undefined;
     const rawPoint = (
       scale === "data" ? this.dataScale : this.visibleScale
     ).pixelToPoint(x, y, this.getContext("main").canvas);
@@ -1055,10 +1054,7 @@ export class FinancialChart extends EventEmitter {
   private resolveCrosshairState(
     options: ChartCrosshairOptions
   ): ChartCrosshairState | undefined {
-    const index = this.dataStore.nearestIndex(options.time);
-    if (index === -1) return undefined;
-
-    const dataPoint = this.dataStore.get(index);
+    const dataPoint = this.model.getNearestData(options.time);
     if (!dataPoint) return undefined;
 
     const x = this.getTimeScale().project(dataPoint.time, {
@@ -1091,8 +1087,7 @@ export class FinancialChart extends EventEmitter {
 
   private findClosestDataPoint(rawPoint: ChartData): ChartData | undefined {
     const time = this.controller.getTimeFromRawDataPoint(rawPoint);
-    const closestIndex = this.dataStore.nearestIndex(time);
-    return closestIndex === -1 ? undefined : this.dataStore.get(closestIndex);
+    return this.model.getNearestData(time);
   }
 
   getOutsideContainer() {
@@ -1161,8 +1156,8 @@ export class FinancialChart extends EventEmitter {
       this.container,
       {
         getOptions: () => this.options,
-        hasData: () => this.dataStore.length > 0,
-        getTimes: () => this.dataStore.times(),
+        hasData: () => this.model.hasData(),
+        getTimes: () => this.model.getTimes(),
         getVisibleData: () => this.lastVisibleDataPoints,
         getVisibleIndexRange: () => this.visibleIndexRange,
         getTimeRange: () => this.timeRange,
@@ -1209,7 +1204,7 @@ export class FinancialChart extends EventEmitter {
     const topCanvas = this.renderer.getCanvas("crosshair");
     this.interactionController = new InteractionController(
       {
-        hasData: () => this.dataStore.length > 0,
+        hasData: () => this.model.hasData(),
         createPointerEvent: (type, x, y, source) =>
           this.createInteractionPointerEvent(type, x, y, source),
         dispatchPointer: (event) => this.dispatchInteractionPointer(event),
@@ -1240,7 +1235,7 @@ export class FinancialChart extends EventEmitter {
       30 +
       "px";
 
-    if (this.dataStore.length === 0) return;
+    if (!this.model.hasData()) return;
     const preserveRightEdge = this.isPinnedToRightEdge();
     const span = this.getVisibleIndexSpan();
     if (this.autoTimeRange) this.updateAutoTimeRange(true);
@@ -1289,8 +1284,8 @@ export class FinancialChart extends EventEmitter {
   }
 
   private updateAutoTimeRange(recalc = false) {
-    const firstPoint = this.dataStore.get(0)!;
-    const lastPoint = this.dataStore.get(this.dataStore.length - 1)!;
+    const firstPoint = this.model.getDataAt(0)!;
+    const lastPoint = this.model.getDataAt(this.model.length - 1)!;
     const stepCount = this.getMinimumVisibleIndexSlots();
     const endTime = Math.max(
       lastPoint.time + this.options.stepSize,
@@ -1302,7 +1297,7 @@ export class FinancialChart extends EventEmitter {
     };
     if (recalc) {
       this.dataScale.recalculate(
-        this.dataStore.snapshot(),
+        this.model.getData(),
         this.timeRange,
         this.getTimeScaleOptions()
       );
@@ -1319,7 +1314,7 @@ export class FinancialChart extends EventEmitter {
     const configuredTimeRange = this.options.timeRange;
     this.autoTimeRange = configuredTimeRange === "auto";
     if (configuredTimeRange === "auto") {
-      if (this.dataStore.length > 0) {
+      if (this.model.hasData()) {
         this.updateAutoTimeRange(false);
       } else {
         this.timeRange = { start: 0, end: 0 };
@@ -1331,7 +1326,7 @@ export class FinancialChart extends EventEmitter {
 
   private rebuildScales(resetVisibleRange: boolean) {
     this.dataScale = this.controller.createDataScale(
-      this.dataStore.snapshot(),
+      this.model.getData(),
       this.timeRange
     );
     this.visibleScale = this.controller.createDataScale([], {
@@ -1340,7 +1335,7 @@ export class FinancialChart extends EventEmitter {
     });
     if (resetVisibleRange) this.resetVisibleIndexRange();
     this.syncTimeScales();
-    if (this.dataStore.length > 0) this.recalculateVisibleScale();
+    if (this.model.hasData()) this.recalculateVisibleScale();
   }
 
   private applyThemeChrome(previousThemeKey: string) {
@@ -1465,12 +1460,7 @@ export class FinancialChart extends EventEmitter {
     if (coreChanged) {
       this.resetViewInteractionState();
       if (stepSizeChanged) {
-        this.dataStore = new DataStore(
-          DataStore.merge(
-            this.originalDataStore.snapshot(),
-            this.options.stepSize
-          )
-        );
+        this.model.remapData(this.options.stepSize);
       }
       this.applyConfiguredTimeRange();
       this.rebuildScales(true);
@@ -1485,7 +1475,7 @@ export class FinancialChart extends EventEmitter {
     const includeRedrawParts = (parts: readonly RenderLayer[]) => {
       for (const part of parts) redrawParts.add(part);
     };
-    if (this.dataStore.length > 0) {
+    if (this.model.hasData()) {
       if (typeChanged || coreChanged || changed.has("theme")) {
         includeRedrawParts(this.allRedrawParts);
       }
@@ -1513,12 +1503,12 @@ export class FinancialChart extends EventEmitter {
       current: this.optionsSnapshot,
       changedKeys: Object.freeze(changedKeys)
     } satisfies ChartOptionsChangeEvent;
-    const hasData = this.dataStore.length > 0;
+    const hasData = this.model.hasData();
     return {
       options: event,
       data:
         hasData && stepSizeChanged
-          ? this.dataStore.snapshot()
+          ? this.model.getData()
           : undefined,
       visibleRange:
         hasData && (coreChanged || typeChanged)
@@ -1587,24 +1577,24 @@ export class FinancialChart extends EventEmitter {
    * @returns the currently visible time range
    */
   public getVisibleTimeRange(): TimeRange {
-    if (this.dataStore.length === 0) return this.timeRange;
+    if (!this.model.hasData()) return this.timeRange;
 
     const startIndex = Math.max(
       0,
       Math.min(
         Math.floor(this.visibleIndexRange.from),
-        this.dataStore.length - 1
+        this.model.length - 1
       )
     );
     const endIndex = Math.max(
       startIndex,
       Math.min(
         Math.ceil(this.visibleIndexRange.to) - 1,
-        this.dataStore.length - 1
+        this.model.length - 1
       )
     );
-    const startPoint = this.dataStore.get(startIndex)!;
-    const endPoint = this.dataStore.get(endIndex)!;
+    const startPoint = this.model.getDataAt(startIndex)!;
+    const endPoint = this.model.getDataAt(endIndex)!;
 
     return {
       start: startPoint.time,
@@ -1617,16 +1607,16 @@ export class FinancialChart extends EventEmitter {
    * Use this representation for lossless pan/zoom replication.
    */
   public getVisibleTimeWindow(): TimeRange {
-    if (this.dataStore.length === 0) return this.timeRange;
+    if (!this.model.hasData()) return this.timeRange;
 
     const alignmentOffset = this.getBarAlignmentOffset();
 
     return {
-      start: this.dataStore.timeAtLogicalIndex(
+      start: this.model.timeAtLogicalIndex(
         this.visibleIndexRange.from - alignmentOffset,
         this.options.stepSize
       ),
-      end: this.dataStore.timeAtLogicalIndex(
+      end: this.model.timeAtLogicalIndex(
         this.visibleIndexRange.to - alignmentOffset,
         this.options.stepSize
       )
@@ -1642,18 +1632,12 @@ export class FinancialChart extends EventEmitter {
    */
   public setData(data: readonly ChartData[]): void {
     this.applyPaneLayout();
-    this.originalDataStore = new DataStore(data);
-    this.dataStore = new DataStore(
-      DataStore.merge(
-        this.originalDataStore.snapshot(),
-        this.options.stepSize
-      )
-    );
+    this.model.replaceData(data, this.options.stepSize);
 
-    if (this.dataStore.length === 0) {
+    if (!this.model.hasData()) {
       const crosshairCleared = this.resetEmptyDataState();
       this.commitChange({
-        data: this.dataStore.snapshot(),
+        data: this.model.getData(),
         crosshairCleared,
         redraw: this.allRedrawParts,
         immediate: true
@@ -1666,7 +1650,7 @@ export class FinancialChart extends EventEmitter {
     }
 
     this.dataScale = this.controller.createDataScale(
-      this.dataStore.snapshot(),
+      this.model.getData(),
       this.timeRange
     );
 
@@ -1681,7 +1665,7 @@ export class FinancialChart extends EventEmitter {
     this.recalculateVisibleScale();
     const crosshairCleared = this.clearCrosshairModel();
     this.commitChange({
-      data: this.dataStore.snapshot(),
+      data: this.model.getData(),
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
       crosshairCleared,
       redraw: this.allRedrawParts
@@ -1695,32 +1679,15 @@ export class FinancialChart extends EventEmitter {
    * @throws {RangeError} when the timestamp is older than the latest point
    */
   public updateData(data: ChartData): void {
-    if (this.dataStore.length === 0) {
+    if (!this.model.hasData()) {
       this.setData([data]);
       return;
     }
 
     const preserveRightEdge = this.isPinnedToRightEdge();
     const span = this.getVisibleIndexSpan();
-    const latestTime = this.originalDataStore.get(
-      this.originalDataStore.length - 1
-    )!.time;
-
-    if (data.time < latestTime) {
-      throw new RangeError(
-        "updateData() requires a timestamp at or after the latest point. Use setData() to apply older corrections."
-      );
-    }
-
-    const originalIndex = this.originalDataStore.append(data);
-    const storedOriginal = this.originalDataStore.get(originalIndex)!;
-    const bucketTime = DataStore.bucketTime(
-      storedOriginal.time,
-      this.options.stepSize
-    );
-    this.dataStore.merge(storedOriginal, this.options.stepSize);
-    const dataIndex = this.dataStore.indexOfTime(bucketTime);
-    this.dataScale.addDataPoint(this.dataStore.get(dataIndex)!);
+    const mappedPoint = this.model.appendData(data, this.options.stepSize);
+    this.dataScale.addDataPoint(mappedPoint);
 
     if (this.autoTimeRange) {
       this.updateAutoTimeRange(true);
@@ -1729,7 +1696,7 @@ export class FinancialChart extends EventEmitter {
     const rangeChanged = this.refreshIndexBounds({ preserveRightEdge, span });
     this.recalculateVisibleScale();
     this.commitChange({
-      data: this.dataStore.snapshot(),
+      data: this.model.getData(),
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
       redraw: this.allRedrawParts
     });
@@ -1768,7 +1735,7 @@ export class FinancialChart extends EventEmitter {
     if (!this.extensionHost.isAttached(indicator)) return;
 
     const redrawParts = new Set<RenderLayer>();
-    if (options.scale && this.dataStore.length > 0) {
+    if (options.scale && this.model.hasData()) {
       this.recalculateVisibleScale();
       for (const layer of this.controllerRedrawParts) {
         redrawParts.add(layer);
@@ -1848,7 +1815,7 @@ export class FinancialChart extends EventEmitter {
         release: () => indicator.releaseAttachment()
       });
     } finally {
-      if (this.dataStore.length > 0) this.recalculateVisibleScale();
+      if (this.model.hasData()) this.recalculateVisibleScale();
       this.requestRedraw(this.allRedrawParts);
     }
 
@@ -1878,7 +1845,7 @@ export class FinancialChart extends EventEmitter {
     try {
       removed = this.extensionHost.removeIndicator(indicator);
     } finally {
-      if (this.dataStore.length > 0) this.recalculateVisibleScale();
+      if (this.model.hasData()) this.recalculateVisibleScale();
       this.requestRedraw(this.allRedrawParts);
     }
     if (!removed) return false;
@@ -1949,7 +1916,7 @@ export class FinancialChart extends EventEmitter {
   recalculateVisibleScale() {
     this.refreshIndexBounds();
     const visibleTimeRange = this.getVisibleTimeRange();
-    const visibleDataPoints = this.dataStore.visibleIndexSlice(
+    const visibleDataPoints = this.model.visibleData(
       this.visibleIndexRange.from - 1,
       this.visibleIndexRange.to + 1
     );

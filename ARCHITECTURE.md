@@ -33,10 +33,10 @@ to the facade.
 `close`; OHLC controllers read `open`, `high`, `low`, and `close`; volume is
 optional for every controller.
 
-The chart keeps two stores:
+`ChartModel` keeps two stores:
 
-- `originalDataStore` owns validated input points at their original timestamps.
-- `dataStore` owns the displayed points after timestamps are bucketed and merged
+- its source store owns validated input points at their original timestamps;
+- its mapped store owns displayed points after timestamps are bucketed and merged
   according to `stepSize`.
 
 Keeping the original data allows a `stepSize` change to remap the dataset without
@@ -57,6 +57,7 @@ price scale and Y-axis region.
 |---|---|---|
 | Public coordination | `FinancialChart` | Validates commands and coordinates model, lifecycle, layout, interaction, and rendering effects |
 | Public option contracts | `chart-options.ts` | Constructor/update options, resolved controller options, locale values, and immutable option snapshots |
+| Chart data ownership | `ChartModel` | Retained source bars, step-size remapping, streaming updates, stable mapped snapshots, and data lookup |
 | Bar storage | `DataStore` | Sorted immutable points, binary-search lookup, bucketing, merging, and stable data/time snapshots |
 | Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and visible bounds |
 | Series behavior | `ChartController` implementations | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing |
@@ -88,10 +89,11 @@ when values cross into or out of the library:
 
 ### Data
 
-`DataStore` copies and freezes each retained point. `snapshot()` lazily creates
-one frozen array for the current store version and invalidates it on append or
-merge. `FinancialChart.getData()`, scale calculations, and `onData()` callbacks
-reuse that array.
+`ChartModel` owns the source and mapped `DataStore` instances. `DataStore` copies
+and freezes each retained point; `snapshot()` lazily creates one frozen array for
+the current store version and invalidates it on append or merge.
+`FinancialChart.getData()`, scale calculations, and `onData()` callbacks reuse
+the model's mapped snapshot.
 
 Visible points and X-grid coordinates are render-derived caches. Their getters
 return the precomputed arrays directly; they must not copy on each controller or
