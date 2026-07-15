@@ -787,6 +787,64 @@ describe("plugin lifecycle", () => {
     );
   });
 
+  it("disposes chart-owned resources in ownership order", () => {
+    const { chart } = createChart();
+    const internals = chart as unknown as {
+      interactionController: { dispose(): void };
+      renderer: { stop(): void; dispose(): void };
+      extensionHost: { dispose(): void };
+      paneLayout: { dispose(): void };
+      overlay: { destroy(): void };
+      container: HTMLElement;
+    };
+    const order: string[] = [];
+    const resources: Array<
+      [Record<string, () => void>, string, string]
+    > = [
+      [internals.interactionController, "dispose", "interaction"],
+      [internals.renderer, "stop", "renderer-stop"],
+      [internals.extensionHost, "dispose", "extensions"],
+      [internals.paneLayout, "dispose", "panes"],
+      [
+        chart as unknown as Record<string, () => void>,
+        "removeAllListeners",
+        "events"
+      ],
+      [internals.renderer, "dispose", "renderer-dispose"],
+      [internals.overlay, "destroy", "overlay"],
+      [
+        internals.container as unknown as Record<string, () => void>,
+        "remove",
+        "container"
+      ]
+    ];
+    for (const [resource, method, name] of resources) {
+      const original = resource[method].bind(resource);
+      let recorded = false;
+      vi.spyOn(resource, method).mockImplementation(() => {
+        if (!recorded) {
+          order.push(name);
+          recorded = true;
+        }
+        original();
+      });
+    }
+
+    chart.dispose();
+    charts.pop();
+
+    expect(order).toEqual([
+      "interaction",
+      "renderer-stop",
+      "extensions",
+      "panes",
+      "events",
+      "renderer-dispose",
+      "overlay",
+      "container"
+    ]);
+  });
+
   it("keeps final chart state readable during detach and finishes cleanup after detach throws", () => {
     const { chart } = createChart();
     const canvas = chart.getContext("crosshair").canvas;

@@ -11,6 +11,7 @@ import type { ChartTheme } from "./themes";
 import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
 import { createPositionedContainer } from "../utils/dom";
+import { disposeInOrder } from "../utils/dispose";
 import type { ChartDOMOverlay, ChartDOMAdapter } from "../ui/chart-dom-adapter";
 import {
   type RenderCallback,
@@ -1290,21 +1291,16 @@ export class FinancialChart extends EventEmitter {
     if (this.disposed) return;
     this.disposed = true;
 
-    this.interactionController.dispose();
-    this.renderer.stop();
-    let detachError: unknown;
-    // Extensions may persist final state while chart-owned model and DOM remain.
-    try {
-      this.extensionHost.dispose();
-    } catch (error) {
-      detachError = error;
-    }
-    this.paneLayout.dispose();
-    this.removeAllListeners();
-    this.renderer.dispose();
-    this.overlay.destroy();
-    this.container.remove();
-    if (detachError !== undefined) throw detachError;
+    disposeInOrder([
+      () => this.interactionController.dispose(),
+      () => this.renderer.stop(),
+      () => this.extensionHost.dispose(),
+      () => this.paneLayout.dispose(),
+      () => this.removeAllListeners(),
+      () => this.renderer.dispose(),
+      () => this.overlay.destroy(),
+      () => this.container.remove()
+    ]);
   }
 
   recalculateVisibleScale() {

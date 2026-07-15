@@ -329,6 +329,9 @@ Disposal is idempotent. The current ownership order is:
 5. Remove public event listeners and dispose renderer canvases and hooks.
 6. Destroy overlay DOM and the chart container.
 
+Every cleanup step is attempted in this order. If more than one step fails, the
+first error is rethrown after the remaining owners have released their resources.
+
 New resources must belong to one of these lifetimes: chart, pane, extension
 attachment, or render frame. A resource without an explicit owner and release
 point should not be added.
