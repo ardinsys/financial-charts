@@ -1,11 +1,28 @@
 import { DataStore } from "../data/data-store";
-import type { TimeScaleRange } from "../scales/time-scale";
-import type { ChartData } from "./types";
+import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
+import type { ChartData, TimeRange } from "./types";
 
-/** Owns retained source bars and the step-sized data consumed by the chart. */
+const logicalRangeEpsilon = 1e-9;
+
+interface RefreshIndexBoundsOptions {
+  readonly minimumVisibleSlots: number;
+  readonly reset?: boolean;
+  readonly preserveRightEdge?: boolean;
+  readonly span?: number;
+}
+
+/** Owns chart data and its logical/time view state. */
 export class ChartModel {
   private originalData = new DataStore();
   private mappedData = new DataStore();
+  private autoTimeRange = false;
+  private timeRange = freezeTimeRange({ start: 0, end: 0 });
+  private indexBounds = freezeIndexRange({
+    from: 0,
+    to: 1,
+    rightOffset: 0
+  });
+  private visibleIndexRange = this.indexBounds;
 
   get length(): number {
     return this.mappedData.length;
@@ -21,10 +38,6 @@ export class ChartModel {
 
   getTimes(): readonly number[] {
     return this.mappedData.times();
-  }
-
-  getDataAt(index: number): ChartData | undefined {
-    return this.mappedData.get(index);
   }
 
   replaceData(data: readonly ChartData[], stepSize: number): void {
@@ -62,19 +75,285 @@ export class ChartModel {
     return index === -1 ? undefined : this.mappedData.get(index);
   }
 
-  getIndexRangeForTimeRange(from: number, to: number): TimeScaleRange {
-    return this.mappedData.indexRangeForTimeRange(from, to);
+  getTimeRange(): TimeRange {
+    return this.timeRange;
   }
 
-  logicalIndexForTime(time: number, stepSize: number): number {
-    return this.mappedData.logicalIndexForTime(time, stepSize);
+  isAutoTimeRange(): boolean {
+    return this.autoTimeRange;
   }
 
-  timeAtLogicalIndex(index: number, stepSize: number): number {
-    return this.mappedData.timeAtLogicalIndex(index, stepSize);
+  configureTimeRange(
+    range: TimeRange | "auto",
+    stepSize: number,
+    minimumVisibleSlots: number
+  ): void {
+    this.autoTimeRange = range === "auto";
+    if (range === "auto") {
+      this.updateAutoTimeRange(stepSize, minimumVisibleSlots);
+    } else {
+      this.updateTimeRange(range);
+    }
   }
 
-  visibleData(from: number, to: number): ChartData[] {
-    return this.mappedData.visibleIndexSlice(from, to);
+  updateAutoTimeRange(stepSize: number, minimumVisibleSlots: number): void {
+    if (!this.autoTimeRange || !this.hasData()) {
+      if (this.autoTimeRange) {
+        this.updateTimeRange({ start: 0, end: 0 });
+      }
+      return;
+    }
+
+    const firstPoint = this.mappedData.get(0)!;
+    const lastPoint = this.mappedData.get(this.mappedData.length - 1)!;
+    this.updateTimeRange({
+      start: firstPoint.time,
+      end: Math.max(
+        lastPoint.time + stepSize,
+        firstPoint.time + minimumVisibleSlots * stepSize
+      )
+    });
   }
+
+  getVisibleIndexRange(): TimeScaleRange {
+    return this.visibleIndexRange;
+  }
+
+  getVisibleIndexSpan(): number {
+    return Math.max(
+      this.visibleIndexRange.to - this.visibleIndexRange.from,
+      1
+    );
+  }
+
+  getIndexBoundsSpan(): number {
+    return Math.max(this.indexBounds.to - this.indexBounds.from, 1);
+  }
+
+  isPinnedToRightEdge(): boolean {
+    return (
+      Math.abs(this.visibleIndexRange.to - this.indexBounds.to) < 1e-6
+    );
+  }
+
+  resetViewInteractionState(): void {
+    this.indexBounds = freezeIndexRange({ from: 0, to: 1 });
+    this.visibleIndexRange = this.indexBounds;
+  }
+
+  resetEmptyView(): void {
+    if (this.autoTimeRange) {
+      this.updateTimeRange({ start: 0, end: 0 });
+    }
+    this.indexBounds = freezeIndexRange({
+      from: 0,
+      to: 1,
+      rightOffset: 0
+    });
+    this.visibleIndexRange = this.indexBounds;
+  }
+
+  refreshIndexBounds(options: RefreshIndexBoundsOptions): boolean {
+    const span = options.span ?? this.getVisibleIndexSpan();
+    const nextBounds = this.calculateIndexBounds(options.minimumVisibleSlots);
+    if (!indexRangesEqual(this.indexBounds, nextBounds)) {
+      this.indexBounds = freezeIndexRange(nextBounds);
+    }
+
+    let range = this.visibleIndexRange;
+    if (options.reset) {
+      range = this.indexBounds;
+    } else if (options.preserveRightEdge) {
+      const clampedSpan = Math.min(span, this.getIndexBoundsSpan());
+      range = {
+        from: this.indexBounds.to - clampedSpan,
+        to: this.indexBounds.to
+      };
+    }
+
+    return this.setVisibleIndexRange(range);
+  }
+
+  setVisibleIndexRange(range: TimeScaleRange): boolean {
+    const previous = this.visibleIndexRange;
+    const next = this.clampVisibleIndexRange(range);
+    const changed =
+      Math.abs(previous.from - next.from) > logicalRangeEpsilon ||
+      Math.abs(previous.to - next.to) > logicalRangeEpsilon;
+
+    if (changed || previous.rightOffset !== next.rightOffset) {
+      this.visibleIndexRange = changed
+        ? freezeIndexRange(next)
+        : freezeIndexRange({
+            ...previous,
+            rightOffset: next.rightOffset
+          });
+    }
+    return changed;
+  }
+
+  logicalRangeForTimeRange(range: TimeRange): TimeScaleRange {
+    assertFiniteTimeRange(range);
+    const end = Math.max(range.start, range.end - 1);
+    return this.mappedData.indexRangeForTimeRange(range.start, end);
+  }
+
+  logicalRangeForTimeWindow(
+    range: TimeRange,
+    stepSize: number,
+    alignment: BarAlignment
+  ): TimeScaleRange {
+    assertFiniteTimeRange(range);
+    const alignmentOffset = alignment === "center" ? 0.5 : 0;
+    const from =
+      this.mappedData.logicalIndexForTime(range.start, stepSize) +
+      alignmentOffset;
+    const to =
+      this.mappedData.logicalIndexForTime(range.end, stepSize) +
+      alignmentOffset;
+
+    return { from, to: Math.max(from + 1, to) };
+  }
+
+  getVisibleTimeRange(stepSize: number): TimeRange {
+    if (!this.hasData()) return this.timeRange;
+
+    const startIndex = Math.max(
+      0,
+      Math.min(
+        Math.floor(this.visibleIndexRange.from),
+        this.mappedData.length - 1
+      )
+    );
+    const endIndex = Math.max(
+      startIndex,
+      Math.min(
+        Math.ceil(this.visibleIndexRange.to) - 1,
+        this.mappedData.length - 1
+      )
+    );
+    const startPoint = this.mappedData.get(startIndex)!;
+    const endPoint = this.mappedData.get(endIndex)!;
+
+    return {
+      start: startPoint.time,
+      end: endPoint.time + stepSize
+    };
+  }
+
+  getVisibleTimeWindow(
+    stepSize: number,
+    alignment: BarAlignment
+  ): TimeRange {
+    if (!this.hasData()) return this.timeRange;
+
+    const alignmentOffset = alignment === "center" ? 0.5 : 0;
+    return {
+      start: this.mappedData.timeAtLogicalIndex(
+        this.visibleIndexRange.from - alignmentOffset,
+        stepSize
+      ),
+      end: this.mappedData.timeAtLogicalIndex(
+        this.visibleIndexRange.to - alignmentOffset,
+        stepSize
+      )
+    };
+  }
+
+  sliceVisibleData(margin = 0): ChartData[] {
+    return this.mappedData.visibleIndexSlice(
+      this.visibleIndexRange.from - margin,
+      this.visibleIndexRange.to + margin
+    );
+  }
+
+  private calculateIndexBounds(
+    minimumVisibleSlots: number
+  ): TimeScaleRange {
+    if (!this.hasData()) {
+      return { from: 0, to: 1, rightOffset: 0 };
+    }
+
+    if (this.autoTimeRange) {
+      const slotCount = Math.max(this.mappedData.length, minimumVisibleSlots);
+      return {
+        from: 0,
+        to: slotCount,
+        rightOffset: Math.max(0, slotCount - this.mappedData.length)
+      };
+    }
+
+    const range = this.mappedData.indexRangeForTimeRange(
+      this.timeRange.start,
+      this.timeRange.end
+    );
+    return {
+      from: range.from,
+      to: range.to,
+      rightOffset: Math.max(0, range.to - this.mappedData.length)
+    };
+  }
+
+  private clampVisibleIndexRange(range: TimeScaleRange): TimeScaleRange {
+    if (!Number.isFinite(range.from) || !Number.isFinite(range.to)) {
+      throw new RangeError("Visible index range values must be finite.");
+    }
+
+    const boundsSpan = this.getIndexBoundsSpan();
+    const requestedSpan = Math.max(range.to - range.from, 1);
+    const span = Math.min(requestedSpan, boundsSpan);
+    let from = range.from;
+    let to = from + span;
+
+    if (to > this.indexBounds.to) {
+      to = this.indexBounds.to;
+      from = to - span;
+    }
+
+    if (from < this.indexBounds.from) {
+      from = this.indexBounds.from;
+      to = from + span;
+    }
+
+    return {
+      from,
+      to,
+      rightOffset: Math.max(0, to - this.mappedData.length)
+    };
+  }
+
+  private updateTimeRange(range: TimeRange): void {
+    if (
+      this.timeRange.start === range.start &&
+      this.timeRange.end === range.end
+    ) {
+      return;
+    }
+    this.timeRange = freezeTimeRange(range);
+  }
+}
+
+function assertFiniteTimeRange(range: TimeRange): void {
+  if (!Number.isFinite(range.start) || !Number.isFinite(range.end)) {
+    throw new RangeError("Visible time range values must be finite.");
+  }
+}
+
+function freezeTimeRange(range: TimeRange): TimeRange {
+  return Object.freeze({ ...range });
+}
+
+function freezeIndexRange(range: TimeScaleRange): TimeScaleRange {
+  return Object.freeze({ ...range });
+}
+
+function indexRangesEqual(
+  left: TimeScaleRange,
+  right: TimeScaleRange
+): boolean {
+  return (
+    left.from === right.from &&
+    left.to === right.to &&
+    left.rightOffset === right.rightOffset
+  );
 }

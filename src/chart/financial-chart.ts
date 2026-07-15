@@ -108,7 +108,6 @@ export type {
 } from "../render/chart-render-types";
 export type { IndicatorMutationOptions } from "../indicators/indicator";
 
-const logicalRangeEpsilon = 1e-9;
 export type { PaneHeightsInput } from "../panes/pane-layout";
 
 interface ChartChange {
@@ -133,10 +132,6 @@ export class FinancialChart extends EventEmitter {
   protected options!: MutableResolvedChartOptions;
   private optionsSnapshot!: ChartOptionsSnapshot;
   private readonly defaultControllerConstructors: readonly ControllerConstructor[];
-  protected visibleIndexRange: TimeScaleRange = { from: 0, to: 1 };
-  private indexBounds: TimeScaleRange = { from: 0, to: 1 };
-  protected timeRange!: TimeRange;
-  protected autoTimeRange = false;
   protected dataScale!: DataScaleModel;
   protected visibleScale: DataScaleModel;
   private domAdapter: ChartDOMAdapter;
@@ -315,7 +310,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   getTimeRange() {
-    return this.timeRange;
+    return this.model.getTimeRange();
   }
 
   getVisibleScale() {
@@ -336,7 +331,7 @@ export class FinancialChart extends EventEmitter {
 
   /** Returns the precise fractional logical-index window. */
   getVisibleLogicalRange(): TimeScaleRange {
-    return { ...this.visibleIndexRange };
+    return this.model.getVisibleIndexRange();
   }
 
   getController() {
@@ -492,7 +487,7 @@ export class FinancialChart extends EventEmitter {
   private getTimeScaleOptions(): DataScaleTimeOptions {
     return {
       barAlignment: this.controller.getBarAlignment(),
-      indexRange: this.visibleIndexRange,
+      indexRange: this.model.getVisibleIndexRange(),
       timeValues: this.model.getTimes()
     };
   }
@@ -525,46 +520,12 @@ export class FinancialChart extends EventEmitter {
     return Math.max(1, Math.floor(width / dynamicStepWidth));
   }
 
-  private calculateIndexBounds(): TimeScaleRange {
-    if (!this.model.hasData()) {
-      return { from: 0, to: 1, rightOffset: 0 };
-    }
-
-    if (this.autoTimeRange) {
-      const slotCount = Math.max(
-        this.model.length,
-        this.getMinimumVisibleIndexSlots()
-      );
-
-      return {
-        from: 0,
-        to: slotCount,
-        rightOffset: Math.max(0, slotCount - this.model.length)
-      };
-    }
-
-    const range = this.model.getIndexRangeForTimeRange(
-      this.timeRange.start,
-      this.timeRange.end
-    );
-
-    return {
-      from: range.from,
-      to: range.to,
-      rightOffset: Math.max(0, range.to - this.model.length)
-    };
-  }
-
   private getIndexBoundsSpan() {
-    return Math.max(this.indexBounds.to - this.indexBounds.from, 1);
+    return this.model.getIndexBoundsSpan();
   }
 
   private getVisibleIndexSpan() {
-    return Math.max(this.visibleIndexRange.to - this.visibleIndexRange.from, 1);
-  }
-
-  private getBarAlignmentOffset() {
-    return this.controller.getBarAlignment() === "center" ? 0.5 : 0;
+    return this.model.getVisibleIndexSpan();
   }
 
   getPixelsPerBar() {
@@ -572,7 +533,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private isPinnedToRightEdge() {
-    return Math.abs(this.visibleIndexRange.to - this.indexBounds.to) < 1e-6;
+    return this.model.isPinnedToRightEdge();
   }
 
   private resetVisibleIndexRange() {
@@ -586,22 +547,12 @@ export class FinancialChart extends EventEmitter {
       span?: number;
     } = {}
   ) {
-    const span = options.span ?? this.getVisibleIndexSpan();
-    this.indexBounds = this.calculateIndexBounds();
-
-    let range = this.visibleIndexRange;
-
-    if (options.reset) {
-      range = { ...this.indexBounds };
-    } else if (options.preserveRightEdge) {
-      const clampedSpan = Math.min(span, this.getIndexBoundsSpan());
-      range = {
-        from: this.indexBounds.to - clampedSpan,
-        to: this.indexBounds.to
-      };
-    }
-
-    return this.updateVisibleIndexRange(range);
+    const changed = this.model.refreshIndexBounds({
+      ...options,
+      minimumVisibleSlots: this.getMinimumVisibleIndexSlots()
+    });
+    this.syncTimeScales();
+    return changed;
   }
 
   /**
@@ -625,11 +576,7 @@ export class FinancialChart extends EventEmitter {
    */
   public setVisibleTimeRange(range: TimeRange): void {
     if (!this.model.hasData()) return;
-    this.assertFiniteVisibleTimeRange(range);
-    const end = Math.max(range.start, range.end - 1);
-    this.setVisibleIndexRange(
-      this.model.getIndexRangeForTimeRange(range.start, end)
-    );
+    this.setVisibleIndexRange(this.model.logicalRangeForTimeRange(range));
   }
 
   /**
@@ -640,29 +587,15 @@ export class FinancialChart extends EventEmitter {
    */
   public setVisibleTimeWindow(range: TimeRange): void {
     if (!this.model.hasData()) return;
-    this.assertFiniteVisibleTimeRange(range);
-
     this.setVisibleIndexRange(this.resolveVisibleTimeWindow(range));
   }
 
   private resolveVisibleTimeWindow(range: TimeRange): TimeScaleRange {
-    this.assertFiniteVisibleTimeRange(range);
-
-    const alignmentOffset = this.getBarAlignmentOffset();
-    const from =
-      this.model.logicalIndexForTime(range.start, this.options.stepSize) +
-      alignmentOffset;
-    const to =
-      this.model.logicalIndexForTime(range.end, this.options.stepSize) +
-      alignmentOffset;
-
-    return { from, to: Math.max(from + 1, to) };
-  }
-
-  private assertFiniteVisibleTimeRange(range: TimeRange): void {
-    if (!Number.isFinite(range.start) || !Number.isFinite(range.end)) {
-      throw new RangeError("Visible time range values must be finite.");
-    }
+    return this.model.logicalRangeForTimeWindow(
+      range,
+      this.options.stepSize,
+      this.controller.getBarAlignment()
+    );
   }
 
   private applyVisibleIndexRange(range: TimeScaleRange): boolean {
@@ -678,45 +611,9 @@ export class FinancialChart extends EventEmitter {
   }
 
   private updateVisibleIndexRange(range: TimeScaleRange): boolean {
-    const previous = this.visibleIndexRange;
-    const next = this.clampVisibleIndexRange(range);
-    const changed =
-      Math.abs(previous.from - next.from) > logicalRangeEpsilon ||
-      Math.abs(previous.to - next.to) > logicalRangeEpsilon;
-
-    this.visibleIndexRange = changed
-      ? next
-      : { ...previous, rightOffset: next.rightOffset };
+    const changed = this.model.setVisibleIndexRange(range);
     this.syncTimeScales();
     return changed;
-  }
-
-  private clampVisibleIndexRange(range: TimeScaleRange): TimeScaleRange {
-    if (!Number.isFinite(range.from) || !Number.isFinite(range.to)) {
-      throw new RangeError("Visible index range values must be finite.");
-    }
-
-    const boundsSpan = this.getIndexBoundsSpan();
-    const requestedSpan = Math.max(range.to - range.from, 1);
-    const span = Math.min(requestedSpan, boundsSpan);
-    let from = range.from;
-    let to = from + span;
-
-    if (to > this.indexBounds.to) {
-      to = this.indexBounds.to;
-      from = to - span;
-    }
-
-    if (from < this.indexBounds.from) {
-      from = this.indexBounds.from;
-      to = from + span;
-    }
-
-    return {
-      from,
-      to,
-      rightOffset: Math.max(0, to - this.model.length)
-    };
   }
 
   private panInteractionByPixels(dx: number): void {
@@ -724,9 +621,10 @@ export class FinancialChart extends EventEmitter {
     if (pixelsPerBar <= 0) return;
 
     const delta = dx / pixelsPerBar;
+    const visibleRange = this.model.getVisibleIndexRange();
     this.setVisibleIndexRange({
-      from: this.visibleIndexRange.from - delta,
-      to: this.visibleIndexRange.to - delta
+      from: visibleRange.from - delta,
+      to: visibleRange.to - delta
     });
   }
 
@@ -740,7 +638,8 @@ export class FinancialChart extends EventEmitter {
       Math.min(boundsSpan, oldSpan / zoomFactor)
     );
     const anchorRatio = Math.max(0, Math.min(1, pixel / width));
-    const anchorIndex = this.visibleIndexRange.from + anchorRatio * oldSpan;
+    const anchorIndex =
+      this.model.getVisibleIndexRange().from + anchorRatio * oldSpan;
     const from = anchorIndex - anchorRatio * newSpan;
 
     this.setVisibleIndexRange({ from, to: from + newSpan });
@@ -1134,15 +1033,11 @@ export class FinancialChart extends EventEmitter {
     });
     this.indicatorLabelContainer = this.overlay.indicatorLabelContainer;
 
-    if (this.options.timeRange === "auto") {
-      this.timeRange = {
-        start: 0,
-        end: 0
-      };
-      this.autoTimeRange = true;
-    } else {
-      this.timeRange = { ...this.options.timeRange };
-    }
+    this.model.configureTimeRange(
+      this.options.timeRange,
+      this.options.stepSize,
+      1
+    );
 
     const ControllerClass = this.getControllerClass(this.options.type);
 
@@ -1159,8 +1054,8 @@ export class FinancialChart extends EventEmitter {
         hasData: () => this.model.hasData(),
         getTimes: () => this.model.getTimes(),
         getVisibleData: () => this.lastVisibleDataPoints,
-        getVisibleIndexRange: () => this.visibleIndexRange,
-        getTimeRange: () => this.timeRange,
+        getVisibleIndexRange: () => this.model.getVisibleIndexRange(),
+        getTimeRange: () => this.model.getTimeRange(),
         getTimeScale: () => this.getTimeScale(),
         getVisibleScale: () => this.visibleScale,
         getTimeAnchorAlignment: () => this.getTimeAnchorAlignment(),
@@ -1238,7 +1133,7 @@ export class FinancialChart extends EventEmitter {
     if (!this.model.hasData()) return;
     const preserveRightEdge = this.isPinnedToRightEdge();
     const span = this.getVisibleIndexSpan();
-    if (this.autoTimeRange) this.updateAutoTimeRange(true);
+    if (this.model.isAutoTimeRange()) this.refreshAutoTimeRange(true);
     const rangeChanged = this.refreshIndexBounds({
       reset: span === this.getIndexBoundsSpan(),
       preserveRightEdge,
@@ -1283,51 +1178,37 @@ export class FinancialChart extends EventEmitter {
     );
   }
 
-  private updateAutoTimeRange(recalc = false) {
-    const firstPoint = this.model.getDataAt(0)!;
-    const lastPoint = this.model.getDataAt(this.model.length - 1)!;
-    const stepCount = this.getMinimumVisibleIndexSlots();
-    const endTime = Math.max(
-      lastPoint.time + this.options.stepSize,
-      firstPoint.time + stepCount * this.options.stepSize
+  private refreshAutoTimeRange(recalculateDataScale = false) {
+    this.model.updateAutoTimeRange(
+      this.options.stepSize,
+      this.getMinimumVisibleIndexSlots()
     );
-    this.timeRange = {
-      start: firstPoint.time,
-      end: endTime
-    };
-    if (recalc) {
+    if (recalculateDataScale) {
       this.dataScale.recalculate(
         this.model.getData(),
-        this.timeRange,
+        this.model.getTimeRange(),
         this.getTimeScaleOptions()
       );
     }
   }
 
   private resetViewInteractionState() {
-    this.visibleIndexRange = { from: 0, to: 1 };
-    this.indexBounds = { from: 0, to: 1 };
+    this.model.resetViewInteractionState();
     this.interactionController.reset();
   }
 
   private applyConfiguredTimeRange() {
-    const configuredTimeRange = this.options.timeRange;
-    this.autoTimeRange = configuredTimeRange === "auto";
-    if (configuredTimeRange === "auto") {
-      if (this.model.hasData()) {
-        this.updateAutoTimeRange(false);
-      } else {
-        this.timeRange = { start: 0, end: 0 };
-      }
-    } else {
-      this.timeRange = { ...configuredTimeRange };
-    }
+    this.model.configureTimeRange(
+      this.options.timeRange,
+      this.options.stepSize,
+      this.getMinimumVisibleIndexSlots()
+    );
   }
 
   private rebuildScales(resetVisibleRange: boolean) {
     this.dataScale = this.controller.createDataScale(
       this.model.getData(),
-      this.timeRange
+      this.model.getTimeRange()
     );
     this.visibleScale = this.controller.createDataScale([], {
       start: 0,
@@ -1577,29 +1458,7 @@ export class FinancialChart extends EventEmitter {
    * @returns the currently visible time range
    */
   public getVisibleTimeRange(): TimeRange {
-    if (!this.model.hasData()) return this.timeRange;
-
-    const startIndex = Math.max(
-      0,
-      Math.min(
-        Math.floor(this.visibleIndexRange.from),
-        this.model.length - 1
-      )
-    );
-    const endIndex = Math.max(
-      startIndex,
-      Math.min(
-        Math.ceil(this.visibleIndexRange.to) - 1,
-        this.model.length - 1
-      )
-    );
-    const startPoint = this.model.getDataAt(startIndex)!;
-    const endPoint = this.model.getDataAt(endIndex)!;
-
-    return {
-      start: startPoint.time,
-      end: endPoint.time + this.options.stepSize
-    };
+    return this.model.getVisibleTimeRange(this.options.stepSize);
   }
 
   /**
@@ -1607,20 +1466,10 @@ export class FinancialChart extends EventEmitter {
    * Use this representation for lossless pan/zoom replication.
    */
   public getVisibleTimeWindow(): TimeRange {
-    if (!this.model.hasData()) return this.timeRange;
-
-    const alignmentOffset = this.getBarAlignmentOffset();
-
-    return {
-      start: this.model.timeAtLogicalIndex(
-        this.visibleIndexRange.from - alignmentOffset,
-        this.options.stepSize
-      ),
-      end: this.model.timeAtLogicalIndex(
-        this.visibleIndexRange.to - alignmentOffset,
-        this.options.stepSize
-      )
-    };
+    return this.model.getVisibleTimeWindow(
+      this.options.stepSize,
+      this.controller.getBarAlignment()
+    );
   }
 
   /**
@@ -1645,13 +1494,13 @@ export class FinancialChart extends EventEmitter {
       return;
     }
 
-    if (this.autoTimeRange) {
-      this.updateAutoTimeRange(false);
+    if (this.model.isAutoTimeRange()) {
+      this.refreshAutoTimeRange();
     }
 
     this.dataScale = this.controller.createDataScale(
       this.model.getData(),
-      this.timeRange
+      this.model.getTimeRange()
     );
 
     let rangeChanged = this.resetVisibleIndexRange();
@@ -1689,8 +1538,8 @@ export class FinancialChart extends EventEmitter {
     const mappedPoint = this.model.appendData(data, this.options.stepSize);
     this.dataScale.addDataPoint(mappedPoint);
 
-    if (this.autoTimeRange) {
-      this.updateAutoTimeRange(true);
+    if (this.model.isAutoTimeRange()) {
+      this.refreshAutoTimeRange(true);
     }
 
     const rangeChanged = this.refreshIndexBounds({ preserveRightEdge, span });
@@ -1707,19 +1556,17 @@ export class FinancialChart extends EventEmitter {
   }
 
   private resetEmptyDataState(): boolean {
-    if (this.autoTimeRange) {
-      this.timeRange = { start: 0, end: 0 };
-    }
-
-    this.indexBounds = { from: 0, to: 1, rightOffset: 0 };
-    this.visibleIndexRange = { ...this.indexBounds };
+    this.model.resetEmptyView();
     this.lastVisibleDataPoints = Object.freeze([]);
     this.renderer.resetDerivedState();
-    this.dataScale = this.controller.createDataScale([], this.timeRange);
+    this.dataScale = this.controller.createDataScale(
+      [],
+      this.model.getTimeRange()
+    );
     this.visibleScale.clearModifiers();
     this.visibleScale.recalculate(
       [],
-      this.timeRange,
+      this.model.getTimeRange(),
       this.getTimeScaleOptions()
     );
     this.syncTimeScales();
@@ -1916,10 +1763,7 @@ export class FinancialChart extends EventEmitter {
   recalculateVisibleScale() {
     this.refreshIndexBounds();
     const visibleTimeRange = this.getVisibleTimeRange();
-    const visibleDataPoints = this.model.visibleData(
-      this.visibleIndexRange.from - 1,
-      this.visibleIndexRange.to + 1
-    );
+    const visibleDataPoints = this.model.sliceVisibleData(1);
 
     for (const indicator of this.getIndicators()) {
       this.visibleScale.removeModifier(indicator);
@@ -1933,7 +1777,7 @@ export class FinancialChart extends EventEmitter {
     // but we need to adjust yMin and yMax to the visible data points
     this.visibleScale.recalculate(
       visibleDataPoints,
-      this.timeRange,
+      this.model.getTimeRange(),
       this.getTimeScaleOptions()
     );
     this.syncMainPanePriceScale();

@@ -57,9 +57,9 @@ price scale and Y-axis region.
 |---|---|---|
 | Public coordination | `FinancialChart` | Validates commands and coordinates model, lifecycle, layout, interaction, and rendering effects |
 | Public option contracts | `chart-options.ts` | Constructor/update options, resolved controller options, locale values, and immutable option snapshots |
-| Chart data ownership | `ChartModel` | Retained source bars, step-size remapping, streaming updates, stable mapped snapshots, and data lookup |
+| Chart model | `ChartModel` | Retained source bars, step-size remapping, streaming updates, stable mapped snapshots, and logical/time view ranges |
 | Bar storage | `DataStore` | Sorted immutable points, binary-search lookup, bucketing, merging, and stable data/time snapshots |
-| Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and visible bounds |
+| Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and numeric scale ranges |
 | Series behavior | `ChartController` implementations | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing |
 | Extension lifecycle | `ExtensionHost` | Plugin/indicator registries, attachment scopes, state delivery, pointer order, annotations, and detachment |
 | Extension contract | `ChartPlugin`, `ChartContext` | Attachment-scoped services and optional lifecycle/render callbacks |
@@ -80,12 +80,14 @@ when values cross into or out of the library:
 1. Retained caller input is validated and copied once.
 2. Every mutable runtime value has one owner.
 3. Full data and collection snapshots are created only when their owner changes.
-4. Repeated reads return the same frozen snapshot until the corresponding state
-   changes.
+4. Repeated reads of cached snapshots return the same frozen value until the
+   corresponding state changes.
 5. Extension callbacks receive the same current snapshots exposed by chart
    getters.
 6. Deep cloning is reserved for foreign input and serialization boundaries, not
    repeated reads.
+7. Small derived value objects may be returned by value; stable identity is not
+   required unless the getter documents a snapshot contract.
 
 ### Data
 
@@ -98,6 +100,14 @@ the model's mapped snapshot.
 Visible points and X-grid coordinates are render-derived caches. Their getters
 return the precomputed arrays directly; they must not copy on each controller or
 indicator read.
+
+### View ranges
+
+`ChartModel` owns the configured time range, calculated logical bounds, and the
+current fractional logical window. It performs timestamp/logical-index
+conversion and range clamping. `FinancialChart` supplies viewport capacity and
+controller alignment, then synchronizes scales and publishes a change only when
+the model reports an effective range change.
 
 ### Options
 
