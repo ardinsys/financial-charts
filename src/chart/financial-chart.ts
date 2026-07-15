@@ -12,7 +12,7 @@ import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
 import { createPositionedContainer } from "../utils/dom";
 import { disposeInOrder } from "../utils/dispose";
-import type { ChartDOMOverlay, ChartDOMAdapter } from "../ui/chart-dom-adapter";
+import type { ChartDOMOverlay } from "../ui/chart-dom-adapter";
 import {
   type RenderCallback,
   type RenderLayer,
@@ -28,7 +28,7 @@ import {
   PaneLayout,
   type PaneHeightsInput
 } from "../panes/pane-layout";
-import type { ChartPlugin, ChartPointerEvent } from "../plugin/chart-plugin";
+import type { ChartPlugin } from "../plugin/chart-plugin";
 import { ExtensionHost } from "../plugin/extension-host";
 import { InteractionController } from "../interaction/interaction-controller";
 import { CrosshairResolver } from "../interaction/crosshair-resolver";
@@ -102,6 +102,17 @@ export type { IndicatorMutationOptions } from "../indicators/indicator";
 
 export type { PaneHeightsInput } from "../panes/pane-layout";
 
+const CONTROLLER_REDRAW_PARTS = ["grid", "axes", "series"] as const;
+const ALL_REDRAW_PARTS = [
+  "grid",
+  "axes",
+  "series",
+  "indicators",
+  "drawings",
+  "annotations",
+  "crosshair"
+] as const;
+
 export class FinancialChart extends EventEmitter {
   private readonly controllerRegistry: ControllerRegistry;
   private controller: ChartController;
@@ -110,7 +121,6 @@ export class FinancialChart extends EventEmitter {
   protected indicatorLabelContainer: HTMLElement;
   private readonly model = new ChartModel();
   private readonly optionsState!: ChartOptionsState;
-  private domAdapter: ChartDOMAdapter;
   private overlay!: ChartDOMOverlay;
   private readonly renderer: ChartRenderer;
   private readonly paneLayout: PaneLayout;
@@ -124,34 +134,10 @@ export class FinancialChart extends EventEmitter {
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
-  private readonly controllerRedrawParts: readonly RenderLayer[] = [
-    "grid",
-    "axes",
-    "series"
-  ];
-  private readonly allRedrawParts: readonly RenderLayer[] = [
-    "grid",
-    "axes",
-    "series",
-    "indicators",
-    "drawings",
-    "annotations",
-    "crosshair"
-  ];
-  private readonly viewRedrawParts: readonly RenderLayer[] = [
-    "grid",
-    "axes",
-    "series",
-    "indicators",
-    "drawings",
-    "annotations",
-    "crosshair"
-  ];
 
   private get options(): MutableResolvedChartOptions {
     return this.optionsState.getResolved();
   }
-
 
   public registerController(controllerClass: ControllerConstructor) {
     if (this.controllerRegistry.register(controllerClass)) {
@@ -357,7 +343,7 @@ export class FinancialChart extends EventEmitter {
     this.recalculateVisibleScale();
     this.changePublisher.commit({
       visibleRange: this.getVisibleTimeRange(),
-      redraw: this.viewRedrawParts
+      redraw: ALL_REDRAW_PARTS
     });
     return true;
   }
@@ -451,7 +437,7 @@ export class FinancialChart extends EventEmitter {
     try {
       this.extensionHost.addPlugin(plugin);
     } finally {
-      this.requestRedraw(this.allRedrawParts);
+      this.requestRedraw(ALL_REDRAW_PARTS);
     }
 
     return () => {
@@ -463,24 +449,8 @@ export class FinancialChart extends EventEmitter {
     try {
       return this.extensionHost.removePlugin(plugin);
     } finally {
-      this.requestRedraw(this.allRedrawParts);
+      this.requestRedraw(ALL_REDRAW_PARTS);
     }
-  }
-
-  private dispatchInteractionPointer(event: ChartPointerEvent): boolean {
-    return this.extensionHost.notifyPointer(event);
-  }
-
-  private beforeDrawPlugins() {
-    this.extensionHost.beforeDrawPlugins();
-  }
-
-  private drawPlugins() {
-    this.extensionHost.drawPlugins();
-  }
-
-  private afterDrawPlugins() {
-    this.extensionHost.afterDrawPlugins();
   }
 
   private getPaneLayoutHeight() {
@@ -508,7 +478,7 @@ export class FinancialChart extends EventEmitter {
 
     if (resizeCanvases && this.renderer) this.renderer.resizeCanvases();
     if (resizeIndicators) this.paneLayout.resizeIndicators();
-    if (redraw) this.requestRedraw(this.allRedrawParts, immediate);
+    if (redraw) this.requestRedraw(ALL_REDRAW_PARTS, immediate);
   }
 
   private refreshIndicatorLabels(dataTime?: number) {
@@ -551,8 +521,8 @@ export class FinancialChart extends EventEmitter {
       this.controllerRegistry.getSnapshot(),
       includeDefaultControllers
     );
-    this.domAdapter = this.options.domAdapter;
-    this.extensionHost = new ExtensionHost(this, this.domAdapter);
+    const domAdapter = this.options.domAdapter;
+    this.extensionHost = new ExtensionHost(this, domAdapter);
     this.changePublisher = new ChartChangePublisher(
       this.extensionHost,
       this,
@@ -578,7 +548,7 @@ export class FinancialChart extends EventEmitter {
       `financial-charts-${this.options.theme.key}`
     );
     this.outsideContainer.appendChild(this.container);
-    this.paneLayout = new PaneLayout(this.container, this.domAdapter, {
+    this.paneLayout = new PaneLayout(this.container, domAdapter, {
       mainPaneMinHeight: 80,
       indicatorPaneMinHeight: 50,
       dividerHeight: 8,
@@ -586,7 +556,7 @@ export class FinancialChart extends EventEmitter {
         this.applyPaneLayout({ redraw: true, immediate: true })
     });
 
-    this.overlay = this.domAdapter.createOverlay(this.container, {
+    this.overlay = domAdapter.createOverlay(this.container, {
       themeKey: this.options.theme.key,
       labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20
     });
@@ -634,9 +604,9 @@ export class FinancialChart extends EventEmitter {
         shouldDrawCrosshair: () =>
           this.interactionController.shouldDrawCrosshair(),
         refreshIndicatorLabels: (time) => this.refreshIndicatorLabels(time),
-        beforeDraw: () => this.beforeDrawPlugins(),
-        drawPlugins: () => this.drawPlugins(),
-        afterDraw: () => this.afterDrawPlugins()
+        beforeDraw: () => this.extensionHost.beforeDrawPlugins(),
+        drawPlugins: () => this.extensionHost.drawPlugins(),
+        afterDraw: () => this.extensionHost.afterDrawPlugins()
       },
       {
         getLayout: () => {
@@ -675,7 +645,7 @@ export class FinancialChart extends EventEmitter {
         hasData: () => this.model.hasData(),
         createPointerEvent: (type, x, y, source) =>
           this.crosshairResolver.createPointerEvent(type, x, y, source),
-        dispatchPointer: (event) => this.dispatchInteractionPointer(event),
+        dispatchPointer: (event) => this.extensionHost.notifyPointer(event),
         resolveDataPoint: (x, y, scale) =>
           this.crosshairResolver.resolveDataPoint(x, y, scale),
         resolveCrosshair: (x, y) =>
@@ -783,7 +753,7 @@ export class FinancialChart extends EventEmitter {
     } finally {
       this.paneLayout.setRestoredPaneIds();
       this.renderer.setPaused(false);
-      this.requestRedraw(this.allRedrawParts);
+      this.requestRedraw(ALL_REDRAW_PARTS);
     }
     return visibleRangeDeferred;
   }
@@ -808,7 +778,7 @@ export class FinancialChart extends EventEmitter {
     if (rangeChanged) this.recalculateVisibleScale();
     this.changePublisher.commit({
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
-      redraw: this.allRedrawParts,
+      redraw: ALL_REDRAW_PARTS,
       immediate: true
     });
   }
@@ -929,7 +899,7 @@ export class FinancialChart extends EventEmitter {
     };
     if (this.model.hasData()) {
       if (typeChanged || coreChanged || changed.has("theme")) {
-        includeRedrawParts(this.allRedrawParts);
+        includeRedrawParts(ALL_REDRAW_PARTS);
       }
       if (changed.has("volume")) {
         includeRedrawParts(["series", "crosshair"]);
@@ -1054,7 +1024,7 @@ export class FinancialChart extends EventEmitter {
       this.changePublisher.commit({
         data: this.model.getData(),
         crosshairCleared,
-        redraw: this.allRedrawParts,
+        redraw: ALL_REDRAW_PARTS,
         immediate: true
       });
       return;
@@ -1075,7 +1045,7 @@ export class FinancialChart extends EventEmitter {
       data: this.model.getData(),
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
       crosshairCleared,
-      redraw: this.allRedrawParts
+      redraw: ALL_REDRAW_PARTS
     });
   }
 
@@ -1105,7 +1075,7 @@ export class FinancialChart extends EventEmitter {
     this.changePublisher.commit({
       data: this.model.getData(),
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
-      redraw: this.allRedrawParts
+      redraw: ALL_REDRAW_PARTS
     });
   }
 
@@ -1132,7 +1102,7 @@ export class FinancialChart extends EventEmitter {
     const redrawParts = new Set<RenderLayer>();
     if (options.scale && this.model.hasData()) {
       this.recalculateVisibleScale();
-      for (const layer of this.controllerRedrawParts) {
+      for (const layer of CONTROLLER_REDRAW_PARTS) {
         redrawParts.add(layer);
       }
       redrawParts.add("indicators");
@@ -1211,7 +1181,7 @@ export class FinancialChart extends EventEmitter {
       });
     } finally {
       if (this.model.hasData()) this.recalculateVisibleScale();
-      this.requestRedraw(this.allRedrawParts);
+      this.requestRedraw(ALL_REDRAW_PARTS);
     }
 
     if (!this.extensionHost.isAttached(indicator)) {
@@ -1241,7 +1211,7 @@ export class FinancialChart extends EventEmitter {
       removed = this.extensionHost.removeIndicator(indicator);
     } finally {
       if (this.model.hasData()) this.recalculateVisibleScale();
-      this.requestRedraw(this.allRedrawParts);
+      this.requestRedraw(ALL_REDRAW_PARTS);
     }
     if (!removed) return false;
 

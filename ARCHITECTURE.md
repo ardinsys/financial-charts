@@ -22,10 +22,10 @@ All derived state must be current before observers run. Rendering is normally
 deferred to the next animation frame, so several commands in the same frame can
 coalesce their invalidated layers.
 
-`FinancialChart` is currently both the public facade and the coordinator for much
-of this pipeline. The surrounding modules own the parts listed below; code should
-move toward these ownership boundaries rather than adding new cross-cutting state
-to the facade.
+`FinancialChart` is the public facade and the coordinator for transitions that
+cross multiple owners. It does not retain subsystem state that belongs to the
+model, options, extensions, panes, interaction, rendering, or persistence
+components listed below.
 
 ## Financial data model
 
@@ -74,6 +74,21 @@ price scale and Y-axis region.
 | Public events | `EventEmitter` and `ChartEventMap` | Application-facing chart, indicator, drawing, options, and state events |
 | Chart persistence | `ChartStateController`, `chart-state.ts` | Serialization, restoration preparation, deferred restored views, versioned state contracts, validation, and contributor indexing |
 | Extension persistence | indicator and drawing state helpers | Versioned JSON-safe indicator and drawing state plus reconstruction contracts |
+
+## Tracing common flows
+
+Use the public method or browser event as the entry point, then follow the owner
+column rather than searching the entire facade:
+
+| Flow | Trace |
+|---|---|
+| Replace or stream data | `FinancialChart.setData()` / `updateData()` → `ChartModel` → scale and pane synchronization → `ChartChangePublisher` → `ChartRenderer` |
+| Pan or zoom | browser event → `InteractionController` → facade view command → `ChartModel` → `ChartChangePublisher` |
+| Resolve a crosshair | browser or public crosshair command → `CrosshairResolver` → `InteractionController` state → `ChartChangePublisher` |
+| Attach an extension | facade add method → `ExtensionHost` attach scope → current options, data, and visible-range delivery |
+| Render a frame | change publication or `requestRedraw()` → `ChartRenderer` layer set → `RenderPipeline` stages |
+| Restore state | `ChartStateController` validation and reconstruction → `FinancialChart.applyChartStateRestoration()` → one extension refresh, redraw, and public completion event |
+| Dispose the chart | `FinancialChart.dispose()` → interaction → renderer stop → extensions → panes → events → renderer → DOM |
 
 ## Ownership and snapshot rules
 
