@@ -8,17 +8,11 @@ import {
 } from "../indicators/indicator";
 import type { ScaleRangeModifier } from "../scales/data-scale-model";
 import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
-import { DefaultFormatter } from "./formatter";
-import {
-  defaultLightTheme,
-  mergeThemes,
-  type ChartTheme
-} from "./themes";
+import type { ChartTheme } from "./themes";
 import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
 import { createPositionedContainer } from "../utils/dom";
 import type { ChartDOMOverlay, ChartDOMAdapter } from "../ui/chart-dom-adapter";
-import { DefaultDOMAdapter } from "../ui/default-dom-adapter";
 import {
   type RenderCallback,
   type RenderLayer,
@@ -43,14 +37,9 @@ import type {
 } from "../interaction/crosshair";
 import { getDefaultControllerConstructors } from "./internal-default-controllers";
 import { ChartModel } from "./chart-model";
+import { ChartOptionsState } from "./chart-options-state";
 import {
-  assertPositiveOption,
-  assertTimeRangeOption,
-  optionValuesEqual,
-  snapshotOptionValue,
-  timeRangeOptionsEqual,
   type ChartLocalizationOptions,
-  type ChartOptionKey,
   type ChartOptions,
   type ChartOptionsChangeEvent,
   type ChartOptionsSnapshot,
@@ -126,8 +115,7 @@ export class FinancialChart extends EventEmitter {
   protected container: HTMLElement;
   protected indicatorLabelContainer: HTMLElement;
   private readonly model = new ChartModel();
-  protected options!: MutableResolvedChartOptions;
-  private optionsSnapshot!: ChartOptionsSnapshot;
+  private readonly optionsState!: ChartOptionsState;
   private readonly defaultControllerConstructors: readonly ControllerConstructor[];
   private domAdapter: ChartDOMAdapter;
   private overlay!: ChartDOMOverlay;
@@ -165,6 +153,10 @@ export class FinancialChart extends EventEmitter {
     "crosshair"
   ];
 
+  private get options(): MutableResolvedChartOptions {
+    return this.optionsState.getResolved();
+  }
+
 
   public registerController(controllerClass: ControllerConstructor) {
     const id = this.getRegistrationId(controllerClass);
@@ -193,17 +185,8 @@ export class FinancialChart extends EventEmitter {
   }
 
   private syncRegisteredControllers() {
-    if (!this.options) return;
-    this.options.controllers = Object.freeze([...this.controllers.values()]);
-    this.refreshOptionsSnapshot();
-  }
-
-  private static resolveRuntimeLocale() {
-    if (typeof navigator !== "undefined" && navigator.language) {
-      return navigator.language;
-    }
-
-    return "en-US";
+    if (!this.optionsState) return;
+    this.optionsState.setControllers([...this.controllers.values()]);
   }
 
   private getRegistrationId(registrationClass: ControllerConstructor) {
@@ -212,82 +195,6 @@ export class FinancialChart extends EventEmitter {
     }
 
     return registrationClass.ID;
-  }
-
-  private resolveOptions(
-    options: ChartOptions,
-    includeDefaultControllers: boolean
-  ): MutableResolvedChartOptions {
-    const type =
-      options.type ??
-      (includeDefaultControllers && this.controllers.has("candle")
-        ? "candle"
-        : this.controllers.keys().next().value);
-    if (!type) {
-      throw new Error(
-        "A chart type or at least one controller must be provided."
-      );
-    }
-
-    const timeRange = options.timeRange ?? "auto";
-    assertTimeRangeOption(timeRange);
-    assertPositiveOption("stepSize", options.stepSize);
-    assertPositiveOption("maxZoom", options.maxZoom ?? 100);
-
-    const locale =
-      options.locale ||
-      options.formatter?.getLocale() ||
-      FinancialChart.resolveRuntimeLocale();
-    const timeZone = options.timeZone ?? options.formatter?.getTimeZone?.();
-    const formatter =
-      options.formatter ||
-      new DefaultFormatter({
-        locale,
-        timeZone
-      });
-
-    formatter.setLocale(locale);
-    formatter.setTimeZone?.(timeZone);
-
-    return {
-      type,
-      timeRange:
-        timeRange === "auto" ? "auto" : Object.freeze({ ...timeRange }),
-      stepSize: options.stepSize,
-      maxZoom: options.maxZoom ?? 100,
-      volume: options.volume ?? true,
-      controllers: Object.freeze([...this.controllers.values()]),
-      includeDefaultControllers,
-      locale,
-      timeZone,
-      formatter,
-      theme: snapshotOptionValue(
-        mergeThemes(defaultLightTheme, options.theme)
-      ),
-      domAdapter: options.domAdapter ?? new DefaultDOMAdapter(),
-      localeValues: snapshotOptionValue({
-        ...this.getDefaultLocaleValues(),
-        ...options.localeValues
-      })
-    };
-  }
-
-  private refreshOptionsSnapshot() {
-    this.optionsSnapshot = Object.freeze({
-      type: this.options.type,
-      timeRange: this.options.timeRange,
-      stepSize: this.options.stepSize,
-      maxZoom: this.options.maxZoom,
-      volume: this.options.volume,
-      controllers: this.options.controllers,
-      includeDefaultControllers: this.options.includeDefaultControllers,
-      locale: this.options.locale,
-      timeZone: this.options.timeZone,
-      formatter: this.options.formatter,
-      theme: this.options.theme,
-      domAdapter: this.options.domAdapter,
-      localeValues: this.options.localeValues
-    });
   }
 
   private getControllerClass(type: ControllerType) {
@@ -338,7 +245,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   getOptions(): ChartOptionsSnapshot {
-    return this.optionsSnapshot;
+    return this.optionsState.getSnapshot();
   }
 
   /** Returns versioned, JSON-safe state without chart data or presentation. */
@@ -985,8 +892,11 @@ export class FinancialChart extends EventEmitter {
       options.includeDefaultControllers ??
       this.defaultControllerConstructors.length > 0;
     this.registerConstructorOptions(options, includeDefaultControllers);
-    this.options = this.resolveOptions(options, includeDefaultControllers);
-    this.refreshOptionsSnapshot();
+    this.optionsState = new ChartOptionsState(
+      options,
+      [...this.controllers.values()],
+      includeDefaultControllers
+    );
     this.domAdapter = this.options.domAdapter;
     this.extensionHost = new ExtensionHost(this, this.domAdapter);
 
@@ -1132,30 +1042,6 @@ export class FinancialChart extends EventEmitter {
     });
   }
 
-  private getDefaultLocaleValues(): LocaleValuesMap {
-    return {
-      default: {
-        indicators: {
-          actions: {
-            show: "Show",
-            hide: "Hide",
-            settings: "Settings",
-            remove: "Remove"
-          }
-        },
-        common: {
-          sources: {
-            open: "open",
-            high: "high",
-            low: "low",
-            close: "close",
-            volume: "volume"
-          }
-        }
-      }
-    };
-  }
-
   public getLocaleValues() {
     return (
       this.options.localeValues[this.options.locale] ||
@@ -1228,62 +1114,15 @@ export class FinancialChart extends EventEmitter {
   private applyOptionsUpdate(
     update: ChartOptionsUpdate
   ): ChartChange | undefined {
-    const has = (key: ChartOptionKey) =>
-      Object.prototype.hasOwnProperty.call(update, key);
+    const event = this.optionsState.applyUpdate(
+      update,
+      (type) => {
+        this.getControllerClass(type);
+      }
+    );
+    if (!event) return;
 
-    const type = update.type ?? this.options.type;
-    const timeRange = update.timeRange ?? this.options.timeRange;
-    const stepSize = update.stepSize ?? this.options.stepSize;
-    const maxZoom = update.maxZoom ?? this.options.maxZoom;
-    const volume = update.volume ?? this.options.volume;
-    const formatter = update.formatter ?? this.options.formatter;
-    const hasFormatter = update.formatter !== undefined;
-    const locale =
-      update.locale ??
-      (hasFormatter ? formatter.getLocale() : this.options.locale);
-    const timeZone = has("timeZone")
-      ? update.timeZone
-      : hasFormatter
-        ? formatter.getTimeZone?.() ?? this.options.timeZone
-        : this.options.timeZone;
-    const theme = has("theme")
-      ? snapshotOptionValue(mergeThemes(this.options.theme, update.theme))
-      : this.options.theme;
-    const localeValues = has("localeValues")
-      ? snapshotOptionValue({
-          ...this.getDefaultLocaleValues(),
-          ...this.options.localeValues,
-          ...(update.localeValues ?? {})
-        })
-      : this.options.localeValues;
-
-    assertTimeRangeOption(timeRange);
-    assertPositiveOption("stepSize", stepSize);
-    assertPositiveOption("maxZoom", maxZoom);
-    if (type !== this.options.type) this.getControllerClass(type);
-
-    const changes: Array<[ChartOptionKey, boolean]> = [
-      ["type", type !== this.options.type],
-      ["timeRange", !timeRangeOptionsEqual(timeRange, this.options.timeRange)],
-      ["stepSize", stepSize !== this.options.stepSize],
-      ["maxZoom", maxZoom !== this.options.maxZoom],
-      ["volume", volume !== this.options.volume],
-      ["theme", !optionValuesEqual(theme, this.options.theme)],
-      ["locale", locale !== this.options.locale],
-      ["timeZone", timeZone !== this.options.timeZone],
-      ["formatter", formatter !== this.options.formatter],
-      [
-        "localeValues",
-        !optionValuesEqual(localeValues, this.options.localeValues)
-      ]
-    ];
-    const changedKeys = changes
-      .filter(([, changed]) => changed)
-      .map(([key]) => key);
-    if (changedKeys.length === 0) return;
-
-    const previous = this.optionsSnapshot;
-    const changed = new Set(changedKeys);
+    const changed = new Set(event.changedKeys);
     const typeChanged = changed.has("type");
     const stepSizeChanged = changed.has("stepSize");
     const coreChanged = stepSizeChanged || changed.has("timeRange");
@@ -1292,27 +1131,10 @@ export class FinancialChart extends EventEmitter {
       changed.has("timeZone") ||
       changed.has("formatter") ||
       changed.has("localeValues");
-    const previousThemeKey = this.options.theme.key;
-
-    if (localizationChanged) {
-      formatter.setLocale(locale);
-      formatter.setTimeZone?.(timeZone);
-    }
-    this.options.type = type;
-    this.options.timeRange =
-      timeRange === "auto" ? "auto" : Object.freeze({ ...timeRange });
-    this.options.stepSize = stepSize;
-    this.options.maxZoom = maxZoom;
-    this.options.volume = volume;
-    this.options.theme = theme;
-    this.options.locale = locale;
-    this.options.timeZone = timeZone;
-    this.options.formatter = formatter;
-    this.options.localeValues = localeValues;
-    this.refreshOptionsSnapshot();
+    const previousThemeKey = event.previous.theme.key;
 
     if (typeChanged) {
-      const ControllerClass = this.getControllerClass(type);
+      const ControllerClass = this.getControllerClass(this.options.type);
       this.controller = new ControllerClass(this, this.options);
     }
 
@@ -1357,11 +1179,6 @@ export class FinancialChart extends EventEmitter {
       redrawParts.add("annotations");
     }
 
-    const event = {
-      previous,
-      current: this.optionsSnapshot,
-      changedKeys: Object.freeze(changedKeys)
-    } satisfies ChartOptionsChangeEvent;
     const hasData = this.model.hasData();
     return {
       options: event,
