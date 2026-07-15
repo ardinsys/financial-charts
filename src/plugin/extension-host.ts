@@ -2,10 +2,8 @@ import {
   snapshotPriceAxisAnnotations,
   type PriceAxisAnnotation
 } from "../annotations/price-axis-annotation";
-import type {
-  ChartOptionsChangeEvent,
-  FinancialChart
-} from "../chart/financial-chart";
+import type { ChartOptionsChangeEvent } from "../chart/chart-options";
+import type { FinancialChart } from "../chart/financial-chart";
 import type { ChartEventMap } from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";
 import type { Indicator } from "../indicators/indicator";

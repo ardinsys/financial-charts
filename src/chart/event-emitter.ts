@@ -2,10 +2,8 @@ import { Indicator } from "../indicators/indicator";
 import type { Drawing, DrawingAnchor, DrawingJSON } from "../drawings/drawing";
 import type { Pane } from "../panes/pane";
 import { ChartData } from "./types";
-import type {
-  ChartOptionsChangeEvent,
-  ChartStateRestoredEvent
-} from "./financial-chart";
+import type { ChartOptionsChangeEvent } from "./chart-options";
+import type { ChartStateRestoredEvent } from "./chart-state";
 
 interface IndicatorEvent {
   indicator: Indicator<any, any>;

@@ -1,8 +1,7 @@
 import {
   FinancialChart as FinancialChartBase,
-  type ChartOptions,
-  type ControllerConstructor,
 } from "./financial-chart";
+import type { ChartOptions, ControllerConstructor } from "./chart-options";
 
 export type CoreChartOptions = Omit<
   ChartOptions,

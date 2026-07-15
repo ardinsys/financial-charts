@@ -1,4 +1,4 @@
-import type { ChartOptions, ControllerConstructor } from "./financial-chart";
+import type { ChartOptions, ControllerConstructor } from "./chart-options";
 
 const defaultControllerConstructorsKey = Symbol(
   "defaultControllerConstructors",

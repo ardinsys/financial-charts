@@ -1,7 +1,5 @@
-import type {
-  FinancialChart,
-  ResolvedChartOptions
-} from "../chart/financial-chart";
+import type { ResolvedChartOptions } from "../chart/chart-options";
+import type { FinancialChart } from "../chart/financial-chart";
 import type { ChartData, ChartDataValueKey, TimeRange } from "../chart/types";
 import { DataScaleModel } from "../scales/data-scale-model";
 import type { BarAlignment } from "../scales/time-scale";

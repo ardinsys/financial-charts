@@ -4,10 +4,7 @@ import type { PaneledIndicator } from "../indicators/paneled-indicator";
 import {
   Indicator,
   restoreIndicator,
-  type IndicatorInvalidationOptions,
-  type IndicatorResolver,
-  type IndicatorState,
-  type IndicatorStateValue
+  type IndicatorInvalidationOptions
 } from "../indicators/indicator";
 import {
   DataScaleModel,
@@ -15,12 +12,11 @@ import {
 } from "../scales/data-scale-model";
 import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
 import { calculateStepSize as calculatePriceStepSize } from "../scales/ticks/price-ticks";
-import { DefaultFormatter, Formatter } from "./formatter";
+import { DefaultFormatter } from "./formatter";
 import {
-  ChartTheme,
   defaultLightTheme,
   mergeThemes,
-  type ResolvedChartTheme
+  type ChartTheme
 } from "./themes";
 import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
@@ -42,189 +38,55 @@ import type { ChartPlugin, ChartPointerEvent } from "../plugin/chart-plugin";
 import { ExtensionHost } from "../plugin/extension-host";
 import { InteractionController } from "../interaction/interaction-controller";
 import { getDefaultControllerConstructors } from "./internal-default-controllers";
-import { cloneJSONStateValue, isPlainRecord } from "../utils/json-state";
+import {
+  type ChartLocalizationOptions,
+  type ChartOptionKey,
+  type ChartOptions,
+  type ChartOptionsChangeEvent,
+  type ChartOptionsSnapshot,
+  type ChartOptionsUpdate,
+  type ControllerConstructor,
+  type ControllerType,
+  type LocaleValuesMap,
+  type MutableResolvedChartOptions
+} from "./chart-options";
+import {
+  createChartState,
+  indexStateContributors,
+  type ChartPaneState,
+  type ChartState,
+  type ChartStateContributor,
+  type ChartStateRestoreOptions,
+  type ChartStateSerializationOptions,
+  validateChartState
+} from "./chart-state";
+
+export type {
+  ChartLocalizationOptions,
+  ChartOptionKey,
+  ChartOptions,
+  ChartOptionsChangeEvent,
+  ChartOptionsSnapshot,
+  ChartOptionsUpdate,
+  ControllerConstructor,
+  ControllerID,
+  ControllerType,
+  LocaleValues,
+  LocaleValuesMap,
+  ResolvedChartOptions
+} from "./chart-options";
+export {
+  CHART_STATE_VERSION,
+  type ChartCoreState,
+  type ChartPaneState,
+  type ChartState,
+  type ChartStateContributor,
+  type ChartStateRestoreOptions,
+  type ChartStateRestoredEvent,
+  type ChartStateSerializationOptions
+} from "./chart-state";
 
 const logicalRangeEpsilon = 1e-9;
-
-type DeepReadonly<T> = T extends Function
-  ? T
-  : T extends object
-    ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
-    : T;
-
-export type ControllerID =
-  | "area"
-  | "line"
-  | "candle"
-  | "bar"
-  | "hollow-candle"
-  | "stepline"
-  | "hlc-area";
-export type ControllerType = ControllerID | (string & {});
-
-export interface LocaleValues {
-  common: {
-    sources: {
-      open: string;
-      high: string;
-      low: string;
-      close: string;
-      volume: string;
-    };
-  };
-  indicators: {
-    actions: {
-      show: string;
-      hide: string;
-      settings: string;
-      remove: string;
-    };
-  };
-}
-
-export type LocaleValuesMap = {
-  [key: string]: LocaleValues;
-};
-
-export interface ChartLocalizationOptions {
-  locale?: string;
-  timeZone?: string;
-  formatter?: Formatter;
-  localeValues?: LocaleValuesMap;
-}
-
-/** Runtime options accepted by `FinancialChart.updateOptions()`. */
-export interface ChartOptionsUpdate extends ChartLocalizationOptions {
-  type?: ControllerType;
-  timeRange?: TimeRange | "auto";
-  stepSize?: number;
-  maxZoom?: number;
-  volume?: boolean;
-  theme?: ChartTheme;
-}
-
-export type ChartOptionKey = keyof ChartOptionsUpdate;
-
-export interface ControllerConstructor {
-  new (
-    chart: FinancialChart,
-    options: ResolvedChartOptions
-  ): ChartController;
-  readonly ID: string;
-}
-
-export interface ChartOptions {
-  type?: ControllerType;
-  timeRange?: TimeRange | "auto";
-  stepSize: number;
-  maxZoom?: number;
-  volume?: boolean;
-  controllers?: readonly ControllerConstructor[];
-  /**
-   * Controls registration of class-provided defaults. Use the core entry to
-   * exclude unused controllers from application bundles.
-   */
-  includeDefaultControllers?: boolean;
-  locale?: string;
-  timeZone?: string;
-  formatter?: Formatter;
-  theme?: ChartTheme;
-  domAdapter?: ChartDOMAdapter;
-  localeValues?: LocaleValuesMap;
-}
-
-/** Fully resolved options supplied to controller instances. */
-export interface ResolvedChartOptions {
-  readonly type: ControllerType;
-  readonly timeRange: TimeRange | "auto";
-  readonly stepSize: number;
-  readonly maxZoom: number;
-  readonly volume: boolean;
-  readonly controllers: readonly ControllerConstructor[];
-  readonly includeDefaultControllers: boolean;
-  readonly locale: string;
-  readonly timeZone?: string;
-  readonly formatter: Formatter;
-  readonly theme: ResolvedChartTheme;
-  readonly domAdapter: ChartDOMAdapter;
-  readonly localeValues: LocaleValuesMap;
-}
-
-/** Immutable public snapshot returned by `FinancialChart.getOptions()`. */
-export interface ChartOptionsSnapshot {
-  readonly type: ControllerType;
-  readonly timeRange: DeepReadonly<TimeRange> | "auto";
-  readonly stepSize: number;
-  readonly maxZoom: number;
-  readonly volume: boolean;
-  readonly controllers: readonly ControllerConstructor[];
-  readonly includeDefaultControllers: boolean;
-  readonly locale: string;
-  readonly timeZone?: string;
-  readonly formatter: Formatter;
-  readonly theme: DeepReadonly<ResolvedChartTheme>;
-  readonly domAdapter: ChartDOMAdapter;
-  readonly localeValues: DeepReadonly<LocaleValuesMap>;
-}
-
-export interface ChartOptionsChangeEvent {
-  readonly previous: ChartOptionsSnapshot;
-  readonly current: ChartOptionsSnapshot;
-  readonly changedKeys: readonly ChartOptionKey[];
-}
-
-export const CHART_STATE_VERSION = 1 as const;
-
-/** Runtime chart options that affect data mapping and the primary series. */
-export interface ChartCoreState {
-  type: ControllerType;
-  timeRange: TimeRange | "auto";
-  stepSize: number;
-  maxZoom: number;
-  volume: boolean;
-}
-
-export interface ChartPaneState {
-  /** Stable pane identity used by drawings and other pane-owned state. */
-  id: number;
-  height: number;
-  /** The paneled indicator that owns this pane; absent for the main pane. */
-  indicatorInstanceId?: string;
-}
-
-/** Versioned, JSON-safe chart configuration and view state. */
-export interface ChartState {
-  version: typeof CHART_STATE_VERSION;
-  core: ChartCoreState;
-  visibleRange: TimeRange;
-  panes: readonly ChartPaneState[];
-  indicators: readonly IndicatorState[];
-  contributions?: Readonly<Record<string, IndicatorStateValue>>;
-}
-
-export interface ChartStateContributor<TState = unknown> {
-  /** Unique persistence key stored under `ChartState.contributions`. */
-  readonly key: string;
-  toJSON(): TState;
-  fromJSON(state: TState): unknown;
-}
-
-export interface ChartStateSerializationOptions {
-  contributors?: readonly ChartStateContributor[];
-}
-
-export interface ChartStateRestoreOptions extends ChartStateSerializationOptions {
-  indicatorResolver?: IndicatorResolver;
-}
-
-export interface ChartStateRestoredEvent {
-  /** Final normalized state after all contributors have been restored. */
-  state: ChartState;
-}
-
-type MutableResolvedChartOptions = {
-  -readonly [P in keyof ResolvedChartOptions]: ResolvedChartOptions[P];
-};
 
 export type ChartCanvasLayer =
   | "main"
@@ -500,46 +362,38 @@ export class FinancialChart extends EventEmitter {
 
   /** Returns versioned, JSON-safe state without chart data or presentation. */
   public toJSON(options: ChartStateSerializationOptions = {}): ChartState {
-    const contributorMap = indexStateContributors(options.contributors ?? []);
-    const contributions: Record<string, IndicatorStateValue> = {};
-    for (const [key, contributor] of contributorMap) {
-      contributions[key] = cloneJSONStateValue(
-        contributor.toJSON(),
-        `Chart state contribution "${key}"`
-      );
-    }
-
     const configuredTimeRange = this.options.timeRange;
-    const state: ChartState = {
-      version: CHART_STATE_VERSION,
-      core: {
-        type: this.options.type,
-        timeRange:
-          configuredTimeRange === "auto" ? "auto" : { ...configuredTimeRange },
-        stepSize: this.options.stepSize,
-        maxZoom: this.options.maxZoom,
-        volume: this.options.volume
+    return createChartState(
+      {
+        core: {
+          type: this.options.type,
+          timeRange:
+            configuredTimeRange === "auto"
+              ? "auto"
+              : { ...configuredTimeRange },
+          stepSize: this.options.stepSize,
+          maxZoom: this.options.maxZoom,
+          volume: this.options.volume
+        },
+        visibleRange: {
+          ...(this.pendingRestoredVisibleRange ?? this.getVisibleTimeWindow())
+        },
+        panes: this.getPanes().map((pane) => {
+          const indicator = this.paneLayout.getIndicatorForPane(pane);
+          return {
+            id: pane.getId(),
+            height: this.paneLayout.getPaneHeight(pane),
+            ...(indicator
+              ? { indicatorInstanceId: indicator.getInstanceId() }
+              : {})
+          };
+        }),
+        indicators: this.getAllIndicators().map((indicator) =>
+          indicator.toJSON()
+        )
       },
-      visibleRange: {
-        ...(this.pendingRestoredVisibleRange ?? this.getVisibleTimeWindow())
-      },
-      panes: this.getPanes().map((pane) => {
-        const indicator = this.paneLayout.getIndicatorForPane(pane);
-        return {
-          id: pane.getId(),
-          height: this.paneLayout.getPaneHeight(pane),
-          ...(indicator
-            ? { indicatorInstanceId: indicator.getInstanceId() }
-            : {})
-        };
-      }),
-      indicators: this.getAllIndicators().map((indicator) => indicator.toJSON())
-    };
-
-    if (Object.keys(contributions).length > 0) {
-      state.contributions = contributions;
-    }
-    return state;
+      options.contributors ?? []
+    );
   }
 
   /** Restores validated state and emits one `state-restored` event. */
@@ -2196,193 +2050,6 @@ function freezeDeep<T>(value: T): T {
 
 function freezeSnapshot<T>(values: T[]): readonly T[] {
   return Object.freeze(values);
-}
-
-function indexStateContributors(
-  contributors: readonly ChartStateContributor[]
-): Map<string, ChartStateContributor> {
-  const indexed = new Map<string, ChartStateContributor>();
-  for (const contributor of contributors) {
-    if (typeof contributor.key !== "string" || contributor.key.length === 0) {
-      throw new Error("Chart state contributors must have a non-empty key.");
-    }
-    if (indexed.has(contributor.key)) {
-      throw new Error(
-        `Duplicate chart state contributor key "${contributor.key}".`
-      );
-    }
-    indexed.set(contributor.key, contributor);
-  }
-  return indexed;
-}
-
-function validateChartState(state: unknown): ChartState {
-  if (!isPlainRecord(state)) {
-    throw new Error("Invalid chart state: expected an object.");
-  }
-  if (!("version" in state) || typeof state.version !== "number") {
-    throw new Error("Invalid chart state: version must be a number.");
-  }
-  if (state.version !== CHART_STATE_VERSION) {
-    throw new Error(
-      `Unsupported chart state version "${state.version}"; expected ${CHART_STATE_VERSION}.`
-    );
-  }
-  if (!isPlainRecord(state.core)) {
-    throw new Error("Invalid chart state: core must be an object.");
-  }
-  if (typeof state.core.type !== "string" || state.core.type.length === 0) {
-    throw new Error("Invalid chart state: core.type must not be empty.");
-  }
-  const timeRange = validateChartStateTimeRange(
-    state.core.timeRange,
-    "core.timeRange",
-    true
-  );
-  if (
-    typeof state.core.stepSize !== "number" ||
-    !Number.isFinite(state.core.stepSize) ||
-    state.core.stepSize <= 0
-  ) {
-    throw new Error("Invalid chart state: core.stepSize must be positive.");
-  }
-  if (
-    typeof state.core.maxZoom !== "number" ||
-    !Number.isFinite(state.core.maxZoom) ||
-    state.core.maxZoom <= 0
-  ) {
-    throw new Error("Invalid chart state: core.maxZoom must be positive.");
-  }
-  if (typeof state.core.volume !== "boolean") {
-    throw new Error("Invalid chart state: core.volume must be a boolean.");
-  }
-
-  const visibleRange = validateChartStateTimeRange(
-    state.visibleRange,
-    "visibleRange",
-    false
-  ) as TimeRange;
-  if (visibleRange.end <= visibleRange.start) {
-    throw new Error(
-      "Invalid chart state: visibleRange.end must be greater than start."
-    );
-  }
-  if (!Array.isArray(state.panes) || state.panes.length === 0) {
-    throw new Error("Invalid chart state: panes must be a non-empty array.");
-  }
-  const paneIds = new Set<number>();
-  const panes = state.panes.map((pane, index): ChartPaneState => {
-    if (!isPlainRecord(pane)) {
-      throw new Error(
-        `Invalid chart state: panes[${index}] must be an object.`
-      );
-    }
-    if (!Number.isInteger(pane.id) || (pane.id as number) < 0) {
-      throw new Error(
-        `Invalid chart state: panes[${index}].id must be a non-negative integer.`
-      );
-    }
-    if (paneIds.has(pane.id as number)) {
-      throw new Error(`Chart state contains duplicate pane id "${pane.id}".`);
-    }
-    paneIds.add(pane.id as number);
-    if (
-      typeof pane.height !== "number" ||
-      !Number.isFinite(pane.height) ||
-      pane.height < 0
-    ) {
-      throw new Error(
-        `Invalid chart state: panes[${index}].height must be non-negative.`
-      );
-    }
-    if (
-      pane.indicatorInstanceId !== undefined &&
-      (typeof pane.indicatorInstanceId !== "string" ||
-        pane.indicatorInstanceId.length === 0)
-    ) {
-      throw new Error(
-        `Invalid chart state: panes[${index}].indicatorInstanceId must not be empty.`
-      );
-    }
-    return {
-      id: pane.id as number,
-      height: pane.height,
-      ...(pane.indicatorInstanceId === undefined
-        ? {}
-        : { indicatorInstanceId: pane.indicatorInstanceId })
-    };
-  });
-
-  if (!Array.isArray(state.indicators)) {
-    throw new Error("Invalid chart state: indicators must be an array.");
-  }
-  const indicators = state.indicators.map(
-    (indicator, index) =>
-      cloneJSONStateValue(
-        indicator,
-        `Chart state indicators[${index}]`
-      ) as unknown as IndicatorState
-  );
-
-  let contributions: Record<string, IndicatorStateValue> | undefined;
-  if (state.contributions !== undefined) {
-    if (!isPlainRecord(state.contributions)) {
-      throw new Error("Invalid chart state: contributions must be an object.");
-    }
-    contributions = {};
-    for (const [key, value] of Object.entries(state.contributions)) {
-      contributions[key] = cloneJSONStateValue(
-        value,
-        `Chart state contribution "${key}"`
-      );
-    }
-  }
-
-  return {
-    version: CHART_STATE_VERSION,
-    core: {
-      type: state.core.type,
-      timeRange,
-      stepSize: state.core.stepSize,
-      maxZoom: state.core.maxZoom,
-      volume: state.core.volume
-    },
-    visibleRange,
-    panes,
-    indicators,
-    ...(contributions ? { contributions } : {})
-  };
-}
-
-function validateChartStateTimeRange(
-  value: unknown,
-  path: string,
-  allowAuto: true
-): TimeRange | "auto";
-function validateChartStateTimeRange(
-  value: unknown,
-  path: string,
-  allowAuto: false
-): TimeRange;
-function validateChartStateTimeRange(
-  value: unknown,
-  path: string,
-  allowAuto: boolean
-): TimeRange | "auto" {
-  if (allowAuto && value === "auto") return value;
-  if (
-    !isPlainRecord(value) ||
-    typeof value.start !== "number" ||
-    !Number.isFinite(value.start) ||
-    typeof value.end !== "number" ||
-    !Number.isFinite(value.end) ||
-    value.end < value.start
-  ) {
-    throw new Error(
-      `Invalid chart state: ${path} must contain finite start and end values.`
-    );
-  }
-  return { start: value.start, end: value.end };
 }
 
 function assertTimeRange(timeRange: TimeRange | "auto") {

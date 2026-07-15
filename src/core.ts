@@ -1,28 +1,32 @@
-export {
-  CHART_STATE_VERSION,
-  type ChartCoreState,
-  type ChartCrosshairOptions,
-  type ChartCrosshairState,
-  type ChartLocalizationOptions,
-  type ChartOptionKey,
-  type ChartOptions,
-  type ChartOptionsChangeEvent,
-  type ChartOptionsSnapshot,
-  type ChartOptionsUpdate,
-  type ChartPaneState,
-  type ChartRedrawPart,
-  type ChartState,
-  type ChartStateContributor,
-  type ChartStateRestoreOptions,
-  type ChartStateRestoredEvent,
-  type ChartStateSerializationOptions,
-  type ControllerConstructor,
-  type ControllerID,
-  type ControllerType,
-  type IndicatorMutationOptions,
-  type LocaleValues,
-  type LocaleValuesMap,
-  type PaneHeightsInput
+export type {
+  ChartCoreState,
+  ChartPaneState,
+  ChartState,
+  ChartStateContributor,
+  ChartStateRestoreOptions,
+  ChartStateRestoredEvent,
+  ChartStateSerializationOptions
+} from "./chart/chart-state";
+export { CHART_STATE_VERSION } from "./chart/chart-state";
+export type {
+  ChartLocalizationOptions,
+  ChartOptionKey,
+  ChartOptions,
+  ChartOptionsChangeEvent,
+  ChartOptionsSnapshot,
+  ChartOptionsUpdate,
+  ControllerConstructor,
+  ControllerID,
+  ControllerType,
+  LocaleValues,
+  LocaleValuesMap
+} from "./chart/chart-options";
+export type {
+  ChartCrosshairOptions,
+  ChartCrosshairState,
+  ChartRedrawPart,
+  IndicatorMutationOptions,
+  PaneHeightsInput
 } from "./chart/financial-chart";
 export { FinancialChart } from "./chart/core-financial-chart";
 export type { CoreChartOptions } from "./chart/core-financial-chart";

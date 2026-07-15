@@ -1,7 +1,7 @@
 import {
   FinancialChart as CoreFinancialChart,
-  type ChartOptions,
 } from "./financial-chart";
+import type { ChartOptions } from "./chart-options";
 import { defaultControllers } from "../controllers/default-controllers";
 import { withDefaultControllerConstructors } from "./internal-default-controllers";
 

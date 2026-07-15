@@ -1,7 +1,5 @@
-import type {
-  ChartOptionsChangeEvent,
-  FinancialChart
-} from "../chart/financial-chart";
+import type { ChartOptionsChangeEvent } from "../chart/chart-options";
+import type { FinancialChart } from "../chart/financial-chart";
 import type { ChartData, TimeRange } from "../chart/types";
 import { mergeObjects } from "../utils/merge";
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";

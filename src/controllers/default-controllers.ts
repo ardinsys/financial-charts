@@ -1,4 +1,4 @@
-import type { ControllerConstructor } from "../chart/financial-chart";
+import type { ControllerConstructor } from "../chart/chart-options";
 import { AreaController } from "./area-controller";
 import { BarController } from "./bar-controller";
 import { CandlestickController } from "./candle-controller";

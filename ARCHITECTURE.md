@@ -56,6 +56,7 @@ price scale and Y-axis region.
 | Area | Current owner | Responsibility |
 |---|---|---|
 | Public coordination | `FinancialChart` | Validates commands and coordinates model, lifecycle, layout, interaction, and rendering effects |
+| Public option contracts | `chart-options.ts` | Constructor/update options, resolved controller options, locale values, and immutable option snapshots |
 | Bar storage | `DataStore` | Sorted immutable points, binary-search lookup, bucketing, merging, and stable data/time snapshots |
 | Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and visible bounds |
 | Series behavior | `ChartController` implementations | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing |
@@ -67,7 +68,8 @@ price scale and Y-axis region.
 | Rendering | `ChartRenderer`, `RenderPipeline` | Canvas/context ownership, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
 | DOM chrome | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
 | Public events | `EventEmitter` and `ChartEventMap` | Application-facing chart, indicator, drawing, options, and state events |
-| Persistence | chart/indicator state helpers | Versioned JSON-safe chart, indicator, drawing, and contributor state |
+| Chart persistence | `chart-state.ts` | Versioned chart-state contracts, serialization, validation, and contributor indexing |
+| Extension persistence | indicator and drawing state helpers | Versioned JSON-safe indicator and drawing state plus reconstruction contracts |
 
 ## Ownership and snapshot rules
 

@@ -3,10 +3,12 @@ export * from "./chart/types";
 
 export type {
   ChartCanvasLayer,
-  ChartRedrawPart,
+  ChartRedrawPart
+} from "./chart/financial-chart";
+export type {
   ControllerConstructor,
   ResolvedChartOptions
-} from "./chart/financial-chart";
+} from "./chart/chart-options";
 export type { Formatter } from "./chart/formatter";
 export type { ResolvedChartTheme } from "./chart/themes";
 export * from "./controllers/controller";
