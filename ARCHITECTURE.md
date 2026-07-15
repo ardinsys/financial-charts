@@ -65,6 +65,7 @@ price scale and Y-axis region.
 | Series behavior | `ChartController` implementations | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing |
 | Extension lifecycle | `ExtensionHost` | Plugin/indicator registries, attachment scopes, state delivery, pointer order, annotations, and detachment |
 | Extension contract | `ChartPlugin`, `ChartContext` | Attachment-scoped services and optional lifecycle/render callbacks |
+| Change publication | `ChartChangePublisher` | Ordered extension delivery, public model-change events, and render invalidation after completed mutations |
 | Indicator behavior | `Indicator`, `PaneledIndicator` | Indicator state, labels, drawing, and optional pane-specific scale/container behavior |
 | Pane layout | `PaneLayout`, `Pane` | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales |
 | Browser interaction | `InteractionController`, `CrosshairResolver`, `interaction/crosshair.ts` | Listener lifetime, gesture state, pointer normalization, shared coordinate resolution, and the public crosshair contract |
@@ -183,24 +184,25 @@ the event and stops dispatch.
 
 ### Current runtime notification order
 
-Data, view, and option notification paths are coordinated by one change commit
-inside `FinancialChart`:
+Data, view, option, and crosshair notification paths are coordinated by
+`ChartChangePublisher`:
 
 | Trigger | Extension callbacks | Public event | Render effect |
 |---|---|---|---|
 | `setData` / `updateData` | Data, then visible range when changed | None | All dependent layers |
 | Visible-range setter or interaction | Visible range | None | View-dependent layers |
 | `updateOptions` | Options, remapped data when changed, then visible range | `options-change` after extension delivery | Layers classified by changed keys |
+| Crosshair movement or command | None | `crosshair-change` or `crosshair-clear` | Crosshair layer |
 | Add indicator | Initial options, data, range | `indicator-add` after initial delivery | Indicator/all layers as required |
 | Remove indicator | Detach and release resources | `indicator-remove` after cleanup | Indicator/all layers as required |
 | Drawing completion | Drawing callback | `drawing-finished` after extension callback | Drawing-dependent layers |
 | State restore | Recreated indicators receive initial state; existing plugins receive one final refresh | `state-restored` after restoration | One final full redraw |
 
-Data, view, and option mutations produce one internal change description. Its
-commit path delivers extension callbacks, emits the public completion event,
-and requests rendering last. State restoration applies the same model mutation
-without committing intermediate effects, then performs its final plugin refresh
-and redraw.
+Ordinary model mutations produce one internal change description. The publisher
+delivers extension callbacks, emits public completion events, and requests
+rendering last. State restoration applies the same model mutation without
+committing intermediate effects, then performs its final plugin refresh and
+redraw.
 
 Public events are application observations. Direct lifecycle callbacks are the
 engine-to-extension contract. New internal state propagation should not be

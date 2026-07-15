@@ -41,6 +41,10 @@ import { ChartModel } from "./chart-model";
 import { ChartOptionsState } from "./chart-options-state";
 import { ControllerRegistry } from "./controller-registry";
 import {
+  ChartChangePublisher,
+  type ChartChange
+} from "./chart-change-publisher";
+import {
   type ChartLocalizationOptions,
   type ChartOptions,
   type ChartOptionsChangeEvent,
@@ -98,15 +102,6 @@ export type { IndicatorMutationOptions } from "../indicators/indicator";
 
 export type { PaneHeightsInput } from "../panes/pane-layout";
 
-interface ChartChange {
-  data?: readonly ChartData[];
-  visibleRange?: TimeRange;
-  options?: ChartOptionsChangeEvent;
-  crosshairCleared?: boolean;
-  redraw?: ChartRedrawPart | ReadonlyArray<ChartRedrawPart>;
-  immediate?: boolean;
-}
-
 export class FinancialChart extends EventEmitter {
   private readonly controllerRegistry: ControllerRegistry;
   private controller: ChartController;
@@ -124,6 +119,7 @@ export class FinancialChart extends EventEmitter {
   private pendingRestoredVisibleRange?: TimeRange;
 
   private readonly extensionHost: ExtensionHost;
+  private readonly changePublisher: ChartChangePublisher;
   private disposed = false;
 
   protected yLabelWidth = 80;
@@ -475,7 +471,7 @@ export class FinancialChart extends EventEmitter {
     if (!changed) return false;
 
     this.recalculateVisibleScale();
-    this.commitChange({
+    this.changePublisher.commit({
       visibleRange: this.getVisibleTimeRange(),
       redraw: this.viewRedrawParts
     });
@@ -584,34 +580,6 @@ export class FinancialChart extends EventEmitter {
       return this.extensionHost.removePlugin(plugin);
     } finally {
       this.requestRedraw(this.allRedrawParts);
-    }
-  }
-
-  private commitChange(change: ChartChange) {
-    if (change.options) {
-      this.extensionHost.notifyOptionsChanged(change.options);
-    }
-    if (change.data) {
-      this.extensionHost.notifyData(change.data);
-    }
-    if (change.visibleRange) {
-      this.extensionHost.notifyVisibleRangeChanged(change.visibleRange);
-    }
-    if (change.options) {
-      super.emit("options-change", change.options);
-    }
-    if (change.crosshairCleared) {
-      super.emit("crosshair-clear", {});
-    }
-    const shouldRedraw = Array.isArray(change.redraw)
-      ? change.redraw.length > 0
-      : change.redraw !== undefined;
-    if (change.redraw && shouldRedraw) {
-      if (change.immediate) {
-        this.requestRedraw(change.redraw, true);
-      } else {
-        this.requestRedraw(change.redraw);
-      }
     }
   }
 
@@ -776,6 +744,17 @@ export class FinancialChart extends EventEmitter {
     );
     this.domAdapter = this.options.domAdapter;
     this.extensionHost = new ExtensionHost(this, this.domAdapter);
+    this.changePublisher = new ChartChangePublisher(
+      this.extensionHost,
+      this,
+      (part, immediate) => {
+        if (immediate) {
+          this.requestRedraw(part, true);
+        } else {
+          this.requestRedraw(part);
+        }
+      }
+    );
 
     this.outsideContainer = container;
     this.container = createPositionedContainer({
@@ -897,8 +876,10 @@ export class FinancialChart extends EventEmitter {
           this.zoomInteractionAtPixel(factor, pixel),
         clearCrosshair: () => this.clearCrosshair(),
         crosshairChanged: (state) => {
-          this.requestRedraw("crosshair");
-          this.emit("crosshair-change", state);
+          this.changePublisher.commit({
+            crosshairChanged: state,
+            redraw: "crosshair"
+          });
         },
         click: (event, point) => this.emit("click", { event, point }),
         touchClick: (event, point) => this.emit("touch-click", { event, point })
@@ -926,7 +907,7 @@ export class FinancialChart extends EventEmitter {
       span
     });
     if (rangeChanged) this.recalculateVisibleScale();
-    this.commitChange({
+    this.changePublisher.commit({
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
       redraw: this.allRedrawParts,
       immediate: true
@@ -999,7 +980,7 @@ export class FinancialChart extends EventEmitter {
   /** Applies an options patch in one reset, remap, and redraw cycle. */
   public updateOptions(update: ChartOptionsUpdate): void {
     const change = this.applyOptionsUpdate(update);
-    if (change) this.commitChange(change);
+    if (change) this.changePublisher.commit(change);
   }
 
   private applyOptionsUpdate(
@@ -1171,7 +1152,7 @@ export class FinancialChart extends EventEmitter {
 
     if (!this.model.hasData()) {
       const crosshairCleared = this.resetEmptyDataState();
-      this.commitChange({
+      this.changePublisher.commit({
         data: this.model.getData(),
         crosshairCleared,
         redraw: this.allRedrawParts,
@@ -1196,7 +1177,7 @@ export class FinancialChart extends EventEmitter {
     }
     this.recalculateVisibleScale();
     const crosshairCleared = this.clearCrosshairModel();
-    this.commitChange({
+    this.changePublisher.commit({
       data: this.model.getData(),
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
       crosshairCleared,
@@ -1227,7 +1208,7 @@ export class FinancialChart extends EventEmitter {
 
     const rangeChanged = this.refreshIndexBounds({ preserveRightEdge, span });
     this.recalculateVisibleScale();
-    this.commitChange({
+    this.changePublisher.commit({
       data: this.model.getData(),
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
       redraw: this.allRedrawParts
@@ -1390,15 +1371,17 @@ export class FinancialChart extends EventEmitter {
     }
 
     this.interactionController.setProgrammaticCrosshair(state);
-    this.requestRedraw("crosshair");
-    this.emit("crosshair-change", state);
+    this.changePublisher.commit({
+      crosshairChanged: state,
+      redraw: "crosshair"
+    });
 
     return state;
   }
 
   public clearCrosshair(): void {
     const crosshairCleared = this.clearCrosshairModel();
-    this.commitChange({
+    this.changePublisher.commit({
       crosshairCleared,
       redraw: "crosshair"
     });
