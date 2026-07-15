@@ -135,3 +135,71 @@ export interface ChartOptionsChangeEvent {
 export type MutableResolvedChartOptions = {
   -readonly [P in keyof ResolvedChartOptions]: ResolvedChartOptions[P];
 };
+
+export function snapshotOptionValue<T>(value: T): T {
+  const clone =
+    typeof structuredClone === "function"
+      ? structuredClone(value)
+      : (JSON.parse(JSON.stringify(value)) as T);
+  return freezeOptionValue(clone);
+}
+
+export function assertTimeRangeOption(timeRange: TimeRange | "auto"): void {
+  if (timeRange === "auto") return;
+  if (
+    !Number.isFinite(timeRange.start) ||
+    !Number.isFinite(timeRange.end) ||
+    timeRange.end < timeRange.start
+  ) {
+    throw new RangeError(
+      "timeRange must contain finite values with end greater than or equal to start."
+    );
+  }
+}
+
+export function assertPositiveOption(
+  name: "stepSize" | "maxZoom",
+  value: number
+): void {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new RangeError(`${name} must be a finite number greater than zero.`);
+  }
+}
+
+export function timeRangeOptionsEqual(
+  left: TimeRange | "auto",
+  right: TimeRange | "auto"
+): boolean {
+  if (left === "auto" || right === "auto") return left === right;
+  return left.start === right.start && left.end === right.end;
+}
+
+export function optionValuesEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== "object" ||
+    typeof right !== "object"
+  ) {
+    return false;
+  }
+
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const leftKeys = Object.keys(leftRecord);
+  const rightKeys = Object.keys(rightRecord);
+  if (leftKeys.length !== rightKeys.length) return false;
+
+  return leftKeys.every(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(rightRecord, key) &&
+      optionValuesEqual(leftRecord[key], rightRecord[key])
+  );
+}
+
+function freezeOptionValue<T>(value: T): T {
+  if (value == null || typeof value !== "object") return value;
+  for (const nested of Object.values(value)) freezeOptionValue(nested);
+  return Object.freeze(value);
+}

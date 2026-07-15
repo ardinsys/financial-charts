@@ -113,7 +113,7 @@ export interface IndicatorDrawingContext {
   ): IndicatorPoint;
 }
 
-export interface IndicatorUpdateOptions {
+export interface IndicatorMutationOptions {
   emit?: boolean;
 }
 
@@ -328,7 +328,7 @@ export abstract class Indicator<
 
   public updateOptions(
     options: Partial<TOptions>,
-    updateOptions: IndicatorUpdateOptions = {}
+    updateOptions: IndicatorMutationOptions = {}
   ): void {
     this.options = mergeObjects(this.options, options);
     if (!this.attached) return;
@@ -341,7 +341,7 @@ export abstract class Indicator<
 
   public setVisible(
     visible: boolean,
-    updateOptions: IndicatorUpdateOptions = {}
+    updateOptions: IndicatorMutationOptions = {}
   ): void {
     if (this.visible === visible) return;
 
@@ -378,7 +378,7 @@ export abstract class Indicator<
 
   public copyFrom(
     source: Indicator<TTheme, TOptions>,
-    updateOptions: IndicatorUpdateOptions = {}
+    updateOptions: IndicatorMutationOptions = {}
   ): void {
     const wasVisible = this.visible;
     this.themes = cloneIndicatorValue(source.themes);

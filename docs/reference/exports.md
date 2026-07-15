@@ -45,7 +45,7 @@ indicator base lifecycle.
 | --- | --- |
 | `CHART_STATE_VERSION`, `ChartState`, `ChartCoreState`, `ChartPaneState` | [State and persistence](/guide/state-and-persistence) |
 | `ChartStateContributor`, `ChartStateSerializationOptions`, `ChartStateRestoreOptions`, `ChartStateRestoredEvent` | [Custom contributors](/guide/state-and-persistence#custom-contributors) |
-| `INDICATOR_STATE_VERSION`, `IndicatorState`, `IndicatorStateOptions`, `IndicatorStateValue`, `IndicatorIdentityOptions`, `IndicatorUpdateOptions`, `IndicatorResolver`, `restoreIndicator` | [Serializable indicator state](/reference/indicators#serializable-state) |
+| `INDICATOR_STATE_VERSION`, `IndicatorState`, `IndicatorStateOptions`, `IndicatorStateValue`, `IndicatorIdentityOptions`, `IndicatorResolver`, `restoreIndicator` | [Serializable indicator state](/reference/indicators#serializable-state) |
 | `MovingAverageIndicator`, `MovingAverageOptions`, `MovingAverageTheme` | [Indicators](/reference/indicators) |
 
 ## Drawings and annotations

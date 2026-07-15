@@ -1,16 +1,12 @@
 import type { PriceAxisAnnotation } from "../annotations/price-axis-annotation";
 import { renderPriceAxisAnnotations } from "../annotations/price-axis-annotation";
-import type {
-  ChartCanvasLayer,
-  ChartCrosshairState,
-  ChartRedrawPart
-} from "../chart/financial-chart";
 import type { ResolvedChartOptions } from "../chart/chart-options";
 import type { ChartData, ChartDataValueKey, TimeRange } from "../chart/types";
 import type { ChartController } from "../controllers/controller";
 import type { Indicator } from "../indicators/indicator";
 import type { PaneledIndicator } from "../indicators/paneled-indicator";
 import type { Pane } from "../panes/pane";
+import type { ChartCrosshairState } from "../interaction/crosshair";
 import type { DataScaleModel } from "../scales/data-scale-model";
 import type {
   BarAlignment,
@@ -34,6 +30,7 @@ import {
   type RenderLayer,
   type RenderStage
 } from "./render-pipeline";
+import type { ChartCanvasLayer, ChartRedrawPart } from "./chart-render-types";
 
 type ChartOwnedCanvasLayer = ChartCanvasLayer | "annotations";
 

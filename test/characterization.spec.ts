@@ -3,18 +3,10 @@ import { DefaultFormatter } from "../src/chart/formatter";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { AxisLabel, ChartData, TimeRange } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
-import { calculateYAxisLabels } from "../src/scales/ticks/price-ticks";
-
-type CharacterizedChart = {
-  calculateStepSize(range: number, maxLabels: number): number;
-  estimatePriceLabelDecimalPlaces(labelSpacing: number): number;
-  getContext: FinancialChart["getContext"];
-  getLogicalCanvas: FinancialChart["getLogicalCanvas"];
-  getLastXGridCoords: FinancialChart["getLastXGridCoords"];
-  getTheme: FinancialChart["getTheme"];
-  getVisibleScale: FinancialChart["getVisibleScale"];
-  requestRedraw: FinancialChart["requestRedraw"];
-};
+import {
+  calculateStepSize,
+  calculateYAxisLabels
+} from "../src/scales/ticks/price-ticks";
 
 const charts: FinancialChart[] = [];
 
@@ -48,7 +40,7 @@ function createChart(
 
   chart.setData(data);
   charts.push(chart);
-  return chart as unknown as CharacterizedChart;
+  return chart;
 }
 
 function roundedLabels(labels: AxisLabel[]) {
@@ -58,7 +50,7 @@ function roundedLabels(labels: AxisLabel[]) {
   }));
 }
 
-function getFillTextLabels(chart: CharacterizedChart) {
+function getFillTextLabels(chart: FinancialChart) {
   const fillText = chart.getContext("x-label").fillText as unknown as {
     mock: { calls: unknown[][]; clear: () => void };
     mockClear: () => void;
@@ -68,21 +60,27 @@ function getFillTextLabels(chart: CharacterizedChart) {
   return fillText.mock.calls.map((call) => call[0]);
 }
 
+function getCrosshairPriceLabel(
+  chart: FinancialChart,
+  time: number,
+  price: number
+) {
+  const fillText = chart.getContext("crosshair").fillText as unknown as {
+    mock: { calls: unknown[][] };
+    mockClear(): void;
+  };
+  fillText.mockClear();
+  chart.setCrosshair({ time, price });
+  chart.requestRedraw("crosshair", true);
+  return fillText.mock.calls[1]?.[0];
+}
+
 describe("current price tick calculations", () => {
   it("keeps the existing nice step-size rounding", () => {
-    const start = Date.UTC(2024, 0, 1, 9);
-    const chart = createChart(
-      [
-        { time: start, close: 10 },
-        { time: start + 60_000, close: 15 }
-      ],
-      { start, end: start + 60_000 }
-    );
-
-    expect(chart.calculateStepSize(8.1, 8)).toBe(1);
-    expect(chart.calculateStepSize(0.12, 5)).toBe(0.02);
-    expect(chart.calculateStepSize(0.008, 8)).toBe(0.001);
-    expect(chart.calculateStepSize(982, 6)).toBe(200);
+    expect(calculateStepSize(8.1, 8)).toBe(1);
+    expect(calculateStepSize(0.12, 5)).toBe(0.02);
+    expect(calculateStepSize(0.008, 8)).toBe(0.001);
+    expect(calculateStepSize(982, 6)).toBe(200);
   });
 
   it("keeps the existing Y-axis label values and positions", () => {
@@ -131,7 +129,7 @@ describe("current price tick calculations", () => {
       ],
       { start, end: start + 60_000 }
     );
-    expect(largeRangeChart.estimatePriceLabelDecimalPlaces(30)).toBe(0);
+    expect(getCrosshairPriceLabel(largeRangeChart, start, 10)).toBe("10");
 
     const mediumRangeChart = createChart(
       [
@@ -140,7 +138,7 @@ describe("current price tick calculations", () => {
       ],
       { start, end: start + 60_000 }
     );
-    expect(mediumRangeChart.estimatePriceLabelDecimalPlaces(30)).toBe(0);
+    expect(getCrosshairPriceLabel(mediumRangeChart, start, 10)).toBe("10");
 
     const tinyRangeChart = createChart(
       [
@@ -149,7 +147,9 @@ describe("current price tick calculations", () => {
       ],
       { start, end: start + 60_000 }
     );
-    expect(tinyRangeChart.estimatePriceLabelDecimalPlaces(30)).toBe(5);
+    expect(getCrosshairPriceLabel(tinyRangeChart, start, 1.00001)).toBe(
+      "1.00001"
+    );
   });
 });
 

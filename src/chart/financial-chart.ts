@@ -4,14 +4,14 @@ import type { PaneledIndicator } from "../indicators/paneled-indicator";
 import {
   Indicator,
   restoreIndicator,
-  type IndicatorInvalidationOptions
+  type IndicatorInvalidationOptions,
+  type IndicatorMutationOptions
 } from "../indicators/indicator";
 import {
   DataScaleModel,
   DataScaleTimeOptions
 } from "../scales/data-scale-model";
 import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
-import { calculateStepSize as calculatePriceStepSize } from "../scales/ticks/price-ticks";
 import { DefaultFormatter } from "./formatter";
 import {
   defaultLightTheme,
@@ -28,6 +28,10 @@ import {
   type RenderLayer,
   type RenderStage
 } from "../render/render-pipeline";
+import type {
+  ChartCanvasLayer,
+  ChartRedrawPart
+} from "../render/chart-render-types";
 import { ChartRenderer } from "../render/chart-renderer";
 import { Pane } from "../panes/pane";
 import {
@@ -37,8 +41,17 @@ import {
 import type { ChartPlugin, ChartPointerEvent } from "../plugin/chart-plugin";
 import { ExtensionHost } from "../plugin/extension-host";
 import { InteractionController } from "../interaction/interaction-controller";
+import type {
+  ChartCrosshairOptions,
+  ChartCrosshairState
+} from "../interaction/crosshair";
 import { getDefaultControllerConstructors } from "./internal-default-controllers";
 import {
+  assertPositiveOption,
+  assertTimeRangeOption,
+  optionValuesEqual,
+  snapshotOptionValue,
+  timeRangeOptionsEqual,
   type ChartLocalizationOptions,
   type ChartOptionKey,
   type ChartOptions,
@@ -85,41 +98,18 @@ export {
   type ChartStateRestoredEvent,
   type ChartStateSerializationOptions
 } from "./chart-state";
+export type {
+  ChartCrosshairOptions,
+  ChartCrosshairState
+} from "../interaction/crosshair";
+export type {
+  ChartCanvasLayer,
+  ChartRedrawPart
+} from "../render/chart-render-types";
+export type { IndicatorMutationOptions } from "../indicators/indicator";
 
 const logicalRangeEpsilon = 1e-9;
-
-export type ChartCanvasLayer =
-  | "main"
-  | "crosshair"
-  | "x-label"
-  | "y-label"
-  | "indicator"
-  | "drawings";
-
-export type ChartRedrawPart = RenderLayer;
 export type { PaneHeightsInput } from "../panes/pane-layout";
-
-export interface ChartCrosshairOptions {
-  /** Timestamp to resolve on the target chart. The nearest data point is used. */
-  time: number;
-  /** Chart-relative logical Y coordinate. */
-  y?: number;
-  /** Price to project inside the target pane when `y` is omitted. */
-  price?: number;
-  /** Target pane id. Defaults to the main pane. */
-  paneId?: number;
-}
-
-export interface ChartCrosshairState {
-  time: number;
-  y: number;
-  pane: Pane;
-  dataPoint: ChartData;
-}
-
-export interface IndicatorMutationOptions {
-  emit?: boolean;
-}
 
 interface ChartChange {
   data?: readonly ChartData[];
@@ -251,7 +241,7 @@ export class FinancialChart extends EventEmitter {
     }
 
     const timeRange = options.timeRange ?? "auto";
-    assertTimeRange(timeRange);
+    assertTimeRangeOption(timeRange);
     assertPositiveOption("stepSize", options.stepSize);
     assertPositiveOption("maxZoom", options.maxZoom ?? 100);
 
@@ -282,9 +272,11 @@ export class FinancialChart extends EventEmitter {
       locale,
       timeZone,
       formatter,
-      theme: cloneAndFreeze(mergeThemes(defaultLightTheme, options.theme)),
+      theme: snapshotOptionValue(
+        mergeThemes(defaultLightTheme, options.theme)
+      ),
       domAdapter: options.domAdapter ?? new DefaultDOMAdapter(),
-      localeValues: cloneAndFreeze({
+      localeValues: snapshotOptionValue({
         ...this.getDefaultLocaleValues(),
         ...options.localeValues
       })
@@ -1214,7 +1206,7 @@ export class FinancialChart extends EventEmitter {
         onResize: () => this.handleRendererResize()
       }
     );
-    const topCanvas = this.getCanvas("crosshair");
+    const topCanvas = this.renderer.getCanvas("crosshair");
     this.interactionController = new InteractionController(
       {
         hasData: () => this.dataStore.length > 0,
@@ -1401,32 +1393,35 @@ export class FinancialChart extends EventEmitter {
         ? formatter.getTimeZone?.() ?? this.options.timeZone
         : this.options.timeZone;
     const theme = has("theme")
-      ? cloneAndFreeze(mergeThemes(this.options.theme, update.theme))
+      ? snapshotOptionValue(mergeThemes(this.options.theme, update.theme))
       : this.options.theme;
     const localeValues = has("localeValues")
-      ? cloneAndFreeze({
+      ? snapshotOptionValue({
           ...this.getDefaultLocaleValues(),
           ...this.options.localeValues,
           ...(update.localeValues ?? {})
         })
       : this.options.localeValues;
 
-    assertTimeRange(timeRange);
+    assertTimeRangeOption(timeRange);
     assertPositiveOption("stepSize", stepSize);
     assertPositiveOption("maxZoom", maxZoom);
     if (type !== this.options.type) this.getControllerClass(type);
 
     const changes: Array<[ChartOptionKey, boolean]> = [
       ["type", type !== this.options.type],
-      ["timeRange", !timeRangesEqual(timeRange, this.options.timeRange)],
+      ["timeRange", !timeRangeOptionsEqual(timeRange, this.options.timeRange)],
       ["stepSize", stepSize !== this.options.stepSize],
       ["maxZoom", maxZoom !== this.options.maxZoom],
       ["volume", volume !== this.options.volume],
-      ["theme", !deepEqual(theme, this.options.theme)],
+      ["theme", !optionValuesEqual(theme, this.options.theme)],
       ["locale", locale !== this.options.locale],
       ["timeZone", timeZone !== this.options.timeZone],
       ["formatter", formatter !== this.options.formatter],
-      ["localeValues", !deepEqual(localeValues, this.options.localeValues)]
+      [
+        "localeValues",
+        !optionValuesEqual(localeValues, this.options.localeValues)
+      ]
     ];
     const changedKeys = changes
       .filter(([, changed]) => changed)
@@ -1471,7 +1466,7 @@ export class FinancialChart extends EventEmitter {
       this.resetViewInteractionState();
       if (stepSizeChanged) {
         this.dataStore = new DataStore(
-          this.mapDataToStepSize(
+          DataStore.merge(
             this.originalDataStore.snapshot(),
             this.options.stepSize
           )
@@ -1547,10 +1542,6 @@ export class FinancialChart extends EventEmitter {
 
   public updateLocale(locale: string, values?: LocaleValuesMap) {
     this.updateLocalization({ locale, localeValues: values });
-  }
-
-  protected getCanvas(type: ChartCanvasLayer): HTMLCanvasElement {
-    return this.renderer.getCanvas(type);
   }
 
   getContext(type: ChartCanvasLayer): CanvasRenderingContext2D {
@@ -1653,7 +1644,7 @@ export class FinancialChart extends EventEmitter {
     this.applyPaneLayout();
     this.originalDataStore = new DataStore(data);
     this.dataStore = new DataStore(
-      this.mapDataToStepSize(
+      DataStore.merge(
         this.originalDataStore.snapshot(),
         this.options.stepSize
       )
@@ -1722,7 +1713,14 @@ export class FinancialChart extends EventEmitter {
     }
 
     const originalIndex = this.originalDataStore.append(data);
-    this.transformNewData(this.originalDataStore.get(originalIndex)!);
+    const storedOriginal = this.originalDataStore.get(originalIndex)!;
+    const bucketTime = DataStore.bucketTime(
+      storedOriginal.time,
+      this.options.stepSize
+    );
+    this.dataStore.merge(storedOriginal, this.options.stepSize);
+    const dataIndex = this.dataStore.indexOfTime(bucketTime);
+    this.dataScale.addDataPoint(this.dataStore.get(dataIndex)!);
 
     if (this.autoTimeRange) {
       this.updateAutoTimeRange(true);
@@ -1925,61 +1923,25 @@ export class FinancialChart extends EventEmitter {
     return hadCrosshair;
   }
 
-  /**
-   * Properly dispose the chart.
-   */
-  public dispose() {
+  public dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
 
     this.interactionController.dispose();
     this.renderer.stop();
-    let extensionError: unknown;
+    let detachError: unknown;
+    // Extensions may persist final state while chart-owned model and DOM remain.
     try {
       this.extensionHost.dispose();
     } catch (error) {
-      extensionError = error;
+      detachError = error;
     }
     this.paneLayout.dispose();
     this.removeAllListeners();
     this.renderer.dispose();
     this.overlay.destroy();
     this.container.remove();
-    if (extensionError !== undefined) throw extensionError;
-  }
-
-  /**
-   * Estimate the number of decimal places needed for the price labels.
-   *
-   * @param priceRange    price range
-   * @param canvasHeight  canvas height
-   * @param labelSpacing  label spacing
-   * @returns             number of decimal places needed
-   */
-  protected estimatePriceLabelDecimalPlaces(labelSpacing: number) {
-    return this.renderer.estimatePriceLabelDecimalPlaces(labelSpacing);
-  }
-
-  protected mapDataToStepSize(
-    data: readonly ChartData[],
-    stepSize: number
-  ): readonly ChartData[] {
-    return DataStore.merge(data, stepSize);
-  }
-
-  protected transformNewData(data: ChartData): boolean {
-    const bucketTime = DataStore.bucketTime(data.time, this.options.stepSize);
-    const isNewData = this.dataStore.merge(data, this.options.stepSize);
-    const dataIndex = this.dataStore.indexOfTime(bucketTime);
-    const storedData = this.dataStore.get(dataIndex)!;
-
-    this.dataScale.addDataPoint(storedData);
-
-    return isNewData;
-  }
-
-  protected calculateStepSize(range: number, maxLabels: number) {
-    return calculatePriceStepSize(range, maxLabels);
+    if (detachError !== undefined) throw detachError;
   }
 
   private lastVisibleDataPoints: readonly ChartData[] = Object.freeze([]);
@@ -2009,7 +1971,7 @@ export class FinancialChart extends EventEmitter {
     );
     this.syncMainPanePriceScale();
 
-    this.lastVisibleDataPoints = freezeSnapshot(visibleDataPoints);
+    this.lastVisibleDataPoints = Object.freeze(visibleDataPoints);
     return this.lastVisibleDataPoints;
   }
 
@@ -2027,78 +1989,4 @@ export class FinancialChart extends EventEmitter {
   ) {
     this.renderer.requestRedraw(part, immediate);
   }
-}
-
-function cloneAndFreeze<T>(value: T): T {
-  const clone =
-    typeof structuredClone === "function"
-      ? structuredClone(value)
-      : (JSON.parse(JSON.stringify(value)) as T);
-  return freezeDeep(clone);
-}
-
-function freezeDeep<T>(value: T): T {
-  if (value == null || typeof value !== "object") {
-    return value;
-  }
-
-  for (const nested of Object.values(value)) {
-    freezeDeep(nested);
-  }
-  return Object.freeze(value);
-}
-
-function freezeSnapshot<T>(values: T[]): readonly T[] {
-  return Object.freeze(values);
-}
-
-function assertTimeRange(timeRange: TimeRange | "auto") {
-  if (timeRange === "auto") return;
-  if (
-    !Number.isFinite(timeRange.start) ||
-    !Number.isFinite(timeRange.end) ||
-    timeRange.end < timeRange.start
-  ) {
-    throw new RangeError(
-      "timeRange must contain finite values with end greater than or equal to start."
-    );
-  }
-}
-
-function assertPositiveOption(name: "stepSize" | "maxZoom", value: number) {
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new RangeError(`${name} must be a finite number greater than zero.`);
-  }
-}
-
-function timeRangesEqual(
-  left: TimeRange | "auto",
-  right: TimeRange | "auto"
-) {
-  if (left === "auto" || right === "auto") return left === right;
-  return left.start === right.start && left.end === right.end;
-}
-
-function deepEqual(left: unknown, right: unknown): boolean {
-  if (Object.is(left, right)) return true;
-  if (
-    left === null ||
-    right === null ||
-    typeof left !== "object" ||
-    typeof right !== "object"
-  ) {
-    return false;
-  }
-
-  const leftRecord = left as Record<string, unknown>;
-  const rightRecord = right as Record<string, unknown>;
-  const leftKeys = Object.keys(leftRecord);
-  const rightKeys = Object.keys(rightRecord);
-  if (leftKeys.length !== rightKeys.length) return false;
-
-  return leftKeys.every(
-    (key) =>
-      Object.prototype.hasOwnProperty.call(rightRecord, key) &&
-      deepEqual(leftRecord[key], rightRecord[key])
-  );
 }

@@ -1,11 +1,15 @@
 import type {
-  ChartCanvasLayer,
-  ChartCrosshairOptions,
-  ChartCrosshairState,
-  ChartRedrawPart,
   FinancialChart
 } from "../chart/financial-chart";
 import type { ChartOptionsChangeEvent } from "../chart/chart-options";
+import type {
+  ChartCrosshairOptions,
+  ChartCrosshairState
+} from "../interaction/crosshair";
+import type {
+  ChartCanvasLayer,
+  ChartRedrawPart
+} from "../render/chart-render-types";
 import type { PriceAxisAnnotation } from "../annotations/price-axis-annotation";
 import type { ChartEventMap } from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";

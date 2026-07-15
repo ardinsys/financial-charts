@@ -4,7 +4,7 @@ export * from "./chart/types";
 export type {
   ChartCanvasLayer,
   ChartRedrawPart
-} from "./chart/financial-chart";
+} from "./render/chart-render-types";
 export type {
   ControllerConstructor,
   ResolvedChartOptions

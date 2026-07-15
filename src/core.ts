@@ -23,11 +23,11 @@ export type {
 } from "./chart/chart-options";
 export type {
   ChartCrosshairOptions,
-  ChartCrosshairState,
-  ChartRedrawPart,
-  IndicatorMutationOptions,
-  PaneHeightsInput
-} from "./chart/financial-chart";
+  ChartCrosshairState
+} from "./interaction/crosshair";
+export type { ChartRedrawPart } from "./render/chart-render-types";
+export type { IndicatorMutationOptions } from "./indicators/indicator";
+export type { PaneHeightsInput } from "./panes/pane-layout";
 export { FinancialChart } from "./chart/core-financial-chart";
 export type { CoreChartOptions } from "./chart/core-financial-chart";
 export * from "./chart/event-emitter";
@@ -77,8 +77,7 @@ export {
   type IndicatorResolver,
   type IndicatorState,
   type IndicatorStateOptions,
-  type IndicatorStateValue,
-  type IndicatorUpdateOptions
+  type IndicatorStateValue
 } from "./indicators/indicator";
 export {
   MovingAverageIndicator,

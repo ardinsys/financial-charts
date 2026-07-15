@@ -786,4 +786,41 @@ describe("plugin lifecycle", () => {
       "Cannot add a plugin to a disposed chart."
     );
   });
+
+  it("keeps final chart state readable during detach and finishes cleanup after detach throws", () => {
+    const { chart } = createChart();
+    const canvas = chart.getContext("crosshair").canvas;
+    const outsideContainer = chart.getOutsideContainer();
+    const finalState: Array<{
+      canvasConnected: boolean;
+      listenerCount: number;
+      pluginCount: number;
+    }> = [];
+    const plugin: ChartPlugin = {
+      key: "throwing-dispose-probe",
+      attach: vi.fn(),
+      detach: () => {
+        finalState.push({
+          canvasConnected: canvas.isConnected,
+          listenerCount: chart.listenerCount("click"),
+          pluginCount: chart.getPlugins().length
+        });
+        throw new Error("dispose detach failed");
+      }
+    };
+
+    chart.addPlugin(plugin);
+    chart.on("click", vi.fn());
+
+    expect(() => chart.dispose()).toThrow("dispose detach failed");
+    charts.pop();
+
+    expect(finalState).toEqual([
+      { canvasConnected: true, listenerCount: 1, pluginCount: 1 }
+    ]);
+    expect(chart.listenerCount()).toBe(0);
+    expect(canvas.isConnected).toBe(false);
+    expect(outsideContainer.querySelector(".financial-charts")).toBeNull();
+    expect(() => chart.dispose()).not.toThrow();
+  });
 });

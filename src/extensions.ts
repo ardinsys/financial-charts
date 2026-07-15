@@ -1,5 +1,4 @@
 export type { ChartStateContributor } from "./chart/chart-state";
-export type { IndicatorMutationOptions } from "./chart/financial-chart";
 export type {
   PriceAxisAnnotation,
   PriceAxisAnnotationOffscreenBehavior

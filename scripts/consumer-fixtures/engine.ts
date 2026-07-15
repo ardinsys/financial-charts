@@ -6,6 +6,7 @@ import {
   TimeTickGenerator,
   calculateYAxisLabels,
   createCanvasLayer,
+  type ChartCanvasLayer,
   type DefaultIndicatorOptions,
   type Formatter,
   type PaneledIndicatorDrawingContext,
@@ -43,6 +44,7 @@ const ticks = new TimeTickGenerator().generate({
   formatter
 });
 const color = paletteColor(["#0af", "#f80"], 3);
+const canvasLayer: ChartCanvasLayer = "main";
 
 void [
   ExtensionPane,
@@ -52,5 +54,6 @@ void [
   calculateYAxisLabels,
   createCanvasLayer,
   ticks,
-  color
+  color,
+  canvasLayer
 ];

@@ -64,8 +64,8 @@ price scale and Y-axis region.
 | Extension contract | `ChartPlugin`, `ChartContext` | Attachment-scoped services and optional lifecycle/render callbacks |
 | Indicator behavior | `Indicator`, `PaneledIndicator` | Indicator state, labels, drawing, and optional pane-specific scale/container behavior |
 | Pane layout | `PaneLayout`, `Pane` | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales |
-| Browser interaction | `InteractionController` | Listener lifetime, gesture state, pointer normalization, and crosshair source/state |
-| Rendering | `ChartRenderer`, `RenderPipeline` | Canvas/context ownership, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
+| Browser interaction | `InteractionController`, `interaction/crosshair.ts` | Listener lifetime, gesture state, pointer normalization, and the public crosshair command/state contract |
+| Rendering | `ChartRenderer`, `RenderPipeline`, `chart-render-types.ts` | Canvas/context ownership, public layer contracts, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
 | DOM chrome | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
 | Public events | `EventEmitter` and `ChartEventMap` | Application-facing chart, indicator, drawing, options, and state events |
 | Chart persistence | `chart-state.ts` | Versioned chart-state contracts, serialization, validation, and contributor indexing |

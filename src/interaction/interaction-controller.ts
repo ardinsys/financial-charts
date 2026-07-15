@@ -1,4 +1,4 @@
-import type { ChartCrosshairState } from "../chart/financial-chart";
+import type { ChartCrosshairState } from "./crosshair";
 import type { ChartPointerEvent } from "../plugin/chart-plugin";
 import { bindEvent } from "../utils/dom";
 import type { Pane } from "../panes/pane";

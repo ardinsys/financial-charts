@@ -5,12 +5,15 @@ import {
   LineController,
   MovingAverageIndicator,
   TrendLine,
+  type ChartCrosshairOptions,
   type ChartData,
   type ChartOptions,
+  type ChartRedrawPart,
   type ChartState,
   type ChartStateContributor,
   type DrawingMutationOptions,
-  type DrawingSelectionOptions
+  type DrawingSelectionOptions,
+  type IndicatorMutationOptions
 } from "@ardinsys/financial-charts";
 
 // @ts-expect-error Indicator authoring contracts use the extensions entry.
@@ -34,6 +37,9 @@ const options: ChartOptions = {
 const state = {} as ChartState;
 const drawingMutation = {} as DrawingMutationOptions;
 const drawingSelection = {} as DrawingSelectionOptions;
+const indicatorMutation = {} as IndicatorMutationOptions;
+const crosshairOptions: ChartCrosshairOptions = { time: 0 };
+const redrawPart: ChartRedrawPart = "axes";
 const chart = null as unknown as FinancialChart;
 const contributor: ChartStateContributor<{ symbol: string }> = {
   key: "symbol",
@@ -63,6 +69,9 @@ void [
   state,
   drawingMutation,
   drawingSelection,
+  indicatorMutation,
+  crosshairOptions,
+  redrawPart,
   contributor,
   serializedState,
   chart
