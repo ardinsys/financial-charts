@@ -207,6 +207,50 @@ function waitForRedraw() {
 }
 
 describe("DrawingManager", () => {
+  it("reuses drawing snapshots until membership changes", () => {
+    const manager = new DrawingManager();
+    const empty = manager.getDrawings();
+    const first = new TrendLine({
+      anchors: [{ index: 0, price: 10 }],
+      id: "first"
+    });
+    const second = new TrendLine({
+      anchors: [{ index: 1, price: 12 }],
+      id: "second"
+    });
+
+    expect(manager.getDrawings()).toBe(empty);
+
+    manager.addDrawing(first);
+    const withFirst = manager.getDrawings();
+    expect(withFirst).toEqual([first]);
+    expect(withFirst).not.toBe(empty);
+    expect(manager.getDrawings()).toBe(withFirst);
+
+    manager.selectDrawing(first);
+    first.moveBy({ index: 1, price: 2 });
+    expect(manager.getDrawings()).toBe(withFirst);
+
+    manager.addDrawing(second);
+    const withBoth = manager.getDrawings();
+    expect(withBoth).toEqual([first, second]);
+    expect(withBoth).not.toBe(withFirst);
+    expect(withFirst).toEqual([first]);
+
+    manager.deleteDrawing(second);
+    const afterDelete = manager.getDrawings();
+    expect(afterDelete).toEqual([first]);
+    expect(afterDelete).not.toBe(withBoth);
+
+    expect(manager.clearDrawings()).toBe(afterDelete);
+    expect(manager.getDrawings()).toEqual([]);
+    expect(manager.getDrawings()).not.toBe(afterDelete);
+
+    const cleared = manager.getDrawings();
+    manager.clearDrawings();
+    expect(manager.getDrawings()).toBe(cleared);
+  });
+
   it("supports state before attachment and preserves it across reattachment", () => {
     const manager = new DrawingManager();
     const drawing = new TrendLine({

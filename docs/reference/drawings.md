@@ -72,7 +72,7 @@ the retained manager selection; reattachment publishes that selection again.
 
 | Method                                      | Result                                                                 |
 | ------------------------------------------- | ---------------------------------------------------------------------- |
-| `getDrawings()`                             | Returns a snapshot of managed drawing objects.                         |
+| `getDrawings()`                             | Returns a stable borrowed readonly snapshot until membership changes. |
 | `getDrawingById(id)`                        | Returns one drawing by its unique ID.                                  |
 | `getSelectedDrawing()`                      | Returns the selected drawing, if any.                                  |
 | `addDrawing(drawing, options?)`             | Adds and selects a programmatic drawing with opt-in create emission.   |

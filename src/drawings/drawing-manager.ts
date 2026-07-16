@@ -103,7 +103,7 @@ export class DrawingManager implements ChartPlugin {
   readonly key = "drawing-manager";
 
   private ctx?: ChartContext;
-  private drawings: Drawing[] = [];
+  private drawings: readonly Drawing[] = [];
   private selectedDrawing?: Drawing;
   private interaction?: Interaction;
   private drawingFactory?: DrawingFactory;
@@ -163,8 +163,8 @@ export class DrawingManager implements ChartPlugin {
     };
   }
 
-  getDrawings() {
-    return [...this.drawings];
+  getDrawings(): readonly Drawing[] {
+    return this.drawings;
   }
 
   /** Returns a managed drawing by its unique identity. */
@@ -183,7 +183,7 @@ export class DrawingManager implements ChartPlugin {
     this.interaction = undefined;
     this.selectedDrawing?.setSelected(false);
     this.selectedDrawing = undefined;
-    this.drawings = [];
+    if (drawings.length > 0) this.drawings = [];
     this.undoStack = [];
     this.redoStack = [];
 
@@ -202,7 +202,7 @@ export class DrawingManager implements ChartPlugin {
   addDrawing(drawing: Drawing, options: DrawingMutationOptions = {}) {
     this.assertDrawingType(drawing.type);
     this.assertUniqueDrawingId(drawing.id);
-    this.drawings.push(drawing);
+    this.drawings = [...this.drawings, drawing];
     if (options.emit) {
       this.ctx?.emit("drawing-create", { drawing });
     }
@@ -220,13 +220,15 @@ export class DrawingManager implements ChartPlugin {
 
     drawing.setSelected(wasSelected);
     if (existingIndex === -1) {
-      this.drawings.push(drawing);
+      this.drawings = [...this.drawings, drawing];
       if (options.emit) {
         this.ctx?.emit("drawing-create", { drawing });
       }
     } else {
       this.drawings[existingIndex].setSelected(false);
-      this.drawings[existingIndex] = drawing;
+      this.drawings = this.drawings.map((item, index) =>
+        index === existingIndex ? drawing : item
+      );
       if (options.emit) {
         this.ctx?.emit("drawing-change", { drawing });
       }
@@ -333,7 +335,9 @@ export class DrawingManager implements ChartPlugin {
     const index = this.drawings.indexOf(drawing);
     if (index === -1) return undefined;
 
-    this.drawings.splice(index, 1);
+    this.drawings = this.drawings.filter(
+      (_candidate, candidateIndex) => candidateIndex !== index
+    );
     if (this.selectedDrawing === drawing) {
       this.selectDrawing(undefined, selectionOptions);
     }
@@ -353,11 +357,12 @@ export class DrawingManager implements ChartPlugin {
     }
 
     drawing.setSelected(false);
-    this.drawings.splice(
-      Math.max(0, Math.min(index, this.drawings.length)),
-      0,
-      drawing
-    );
+    const insertionIndex = Math.max(0, Math.min(index, this.drawings.length));
+    this.drawings = [
+      ...this.drawings.slice(0, insertionIndex),
+      drawing,
+      ...this.drawings.slice(insertionIndex)
+    ];
     this.ctx?.requestRedraw("drawings");
     return true;
   }
@@ -550,7 +555,7 @@ export class DrawingManager implements ChartPlugin {
     });
     this.assertDrawingType(drawing.type);
     this.assertUniqueDrawingId(drawing.id);
-    this.drawings.push(drawing);
+    this.drawings = [...this.drawings, drawing];
     if (this.selectedDrawing) {
       this.selectDrawing(undefined);
     }
