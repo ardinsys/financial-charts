@@ -31,6 +31,8 @@
   `DataScaleModel`) and removed old zoom/pan projection options.
 - Removed the old `draw`, `drawNextPoint`, and `updateCoreOptions` chart methods.
   Use `setData`, `updateData`, and `updateOptions` respectively.
+- Replaced mutable theme-object updates and `mergeThemes()` with constructor-time
+  `themes` registration and runtime selection by theme key.
 
 ### Added
 
@@ -76,6 +78,8 @@
   its convenient built-in set.
 - `getOptions()` returns a stable borrowed readonly configuration snapshot
   instead of the chart's mutable internal options object.
+- Theme definitions resolve independently from their declared light or dark
+  base, so switching themes cannot retain values from the previously active theme.
 - `getData()`, `getPanes()`, `getIndicators()`, and `getPlugins()` return
   borrowed readonly snapshots without per-read copying. Duplicate extension
   registrations are rejected, add methods return idempotent disposers, and

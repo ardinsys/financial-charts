@@ -30,7 +30,7 @@ import {
 import { indicatorCatalog, type IndicatorKind } from "./indicator-catalog";
 import { PaneMarkerIndicator } from "./pane-marker-indicator";
 import {
-  darkTheme,
+  chartThemes,
   formatNumber,
   createSessionData,
   initialData,
@@ -356,7 +356,8 @@ function createChart(root: HTMLElement, slot: ChartSlot): PlaygroundChart {
   const chart = new FinancialChart(root, {
     timeRange: getChartTimeRange(slot.data, slot.stepSize),
     type: selectedChartType.value,
-    theme: darkTheme,
+    theme: "playground",
+    themes: chartThemes,
     locale: "en-US",
     maxZoom: 90,
     stepSize: slot.stepSize,

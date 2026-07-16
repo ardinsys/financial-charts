@@ -60,7 +60,15 @@ function createChart() {
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
+    themes: {
+      annotations: {
+        priceAxisAnnotation: {
+          color: "#123456",
+          textColor: "#fedcba"
+        }
+      }
+    }
   });
   chart.setData(data);
   requestChartRedraw(
@@ -372,15 +380,7 @@ describe("price axis annotations", () => {
     });
     probe.set([{ id: "themed", value: 12 }]);
 
-    chart.updateOptions({
-      theme: {
-        key: "custom",
-        priceAxisAnnotation: {
-          color: "#123456",
-          textColor: "#fedcba"
-        }
-      }
-    });
+    chart.updateOptions({ theme: "annotations" });
     requestChartRedraw(chart, "annotations", true);
 
     expect(strokeColors.at(-1)).toBe("#123456");

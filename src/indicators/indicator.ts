@@ -189,7 +189,7 @@ export abstract class Indicator<
   public attach(ctx: IndicatorContext): void {
     this.indicatorContext = ctx;
     this.labelHandle?.destroy();
-    this.theme = this.resolveTheme(ctx.getOptions().theme.key);
+    this.theme = this.resolveTheme(ctx.getOptions().theme);
     this.attached = true;
 
     this.labelHandle = this.indicatorContext.domAdapter.createIndicatorLabel(
@@ -243,9 +243,10 @@ export abstract class Indicator<
     );
   }
 
-  private resolveTheme(themeKey: string): TTheme {
+  private resolveTheme(chartTheme: ChartOptionsSnapshot["theme"]): TTheme {
     return (
-      this.themes[themeKey] ??
+      this.themes[chartTheme.key] ??
+      this.themes[chartTheme.base] ??
       this.themes.default ??
       this.themes.light ??
       Object.values(this.themes)[0] ??
@@ -267,7 +268,7 @@ export abstract class Indicator<
   /** @internal Synchronizes base indicator state before user lifecycle hooks. */
   public applyChartOptions(event: ChartOptionsChangeEvent): void {
     if (!this.attached || !event.changedKeys.includes("theme")) return;
-    this.theme = this.resolveTheme(event.current.theme.key);
+    this.theme = this.resolveTheme(event.current.theme);
     this.refreshLabel();
   }
 
@@ -375,7 +376,7 @@ export abstract class Indicator<
 
     if (!this.attached) return;
 
-    this.theme = this.resolveTheme(this.indicatorContext.getOptions().theme.key);
+    this.theme = this.resolveTheme(this.indicatorContext.getOptions().theme);
     this.indicatorContext.requestRedraw(indicatorStateRedrawParts);
     this.refreshLabel();
 

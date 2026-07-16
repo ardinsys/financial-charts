@@ -1,5 +1,3 @@
-import { mergeObjects } from "../utils/merge";
-
 type DeepRequired<T> = T extends Function
   ? T
   : T extends object
@@ -8,8 +6,12 @@ type DeepRequired<T> = T extends Function
 
 export type Gradient = Array<[number, string]>;
 
+export type BuiltInChartThemeKey = "light" | "dark";
+export type ChartThemeKey = string;
+
 export interface ChartTheme {
-  key: string;
+  /** Built-in theme whose values complete this definition. Defaults to light. */
+  base?: BuiltInChartThemeKey;
   backgroundColor?: string;
   randomColors?: string[];
   volume?: {
@@ -109,18 +111,16 @@ export interface ChartTheme {
   };
 }
 
-export type ResolvedChartTheme = DeepRequired<ChartTheme>;
+export type ChartThemeMap = Readonly<Record<string, ChartTheme>>;
 
-/** Deeply applies a chart-theme patch without mutating either input. */
-export function mergeThemes(
-  defaultTheme: ResolvedChartTheme,
-  providedTheme?: ChartTheme | null
-): ResolvedChartTheme {
-  return mergeObjects(defaultTheme, providedTheme);
-}
+export type ResolvedChartTheme = DeepRequired<Omit<ChartTheme, "base">> & {
+  readonly key: ChartThemeKey;
+  readonly base: BuiltInChartThemeKey;
+};
 
 export const defaultLightTheme: ResolvedChartTheme = {
   key: "light",
+  base: "light",
   backgroundColor: "#FFFFFF",
   randomColors: [
     "#7841FF",
@@ -234,6 +234,7 @@ export const defaultLightTheme: ResolvedChartTheme = {
 
 export const defaultDarkTheme: ResolvedChartTheme = {
   key: "dark",
+  base: "dark",
   backgroundColor: "#161A25",
   randomColors: [
     "#7841FF",

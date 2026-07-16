@@ -7,16 +7,16 @@ import { LineController } from "../src/controllers/line-controller";
 describe("ChartOptionsState", () => {
   it("owns retained inputs and reuses one public snapshot", () => {
     const timeRange = { start: 100, end: 400 };
-    const theme = {
-      key: "owned",
-      randomColors: ["#123456"]
+    const themes = {
+      owned: { randomColors: ["#123456"] }
     };
     const state = new ChartOptionsState(
       {
         type: "line",
         timeRange,
         stepSize: 60,
-        theme
+        theme: "owned",
+        themes
       },
       [LineController],
       false
@@ -24,7 +24,7 @@ describe("ChartOptionsState", () => {
     const snapshot = state.getSnapshot();
 
     timeRange.start = 0;
-    theme.randomColors[0] = "#000000";
+    themes.owned.randomColors[0] = "#000000";
 
     expect(snapshot.timeRange).toEqual({ start: 100, end: 400 });
     expect(snapshot.theme.randomColors).toEqual(["#123456"]);

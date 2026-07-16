@@ -1,6 +1,7 @@
 import { DefaultDOMAdapter } from "../ui/default-dom-adapter";
 import { DefaultFormatter } from "./formatter";
-import { defaultLightTheme, mergeThemes } from "./themes";
+import { ownThemeRegistry, resolveChartTheme } from "./theme-registry";
+import type { ChartThemeMap } from "./themes";
 import {
   assertPositiveOption,
   assertTimeRangeOption,
@@ -20,6 +21,7 @@ import {
 
 /** Owns resolved runtime options and their stable readonly public snapshot. */
 export class ChartOptionsState {
+  private readonly themes: ChartThemeMap;
   private readonly resolved: MutableResolvedChartOptions;
   private snapshot: ChartOptionsSnapshot;
 
@@ -56,6 +58,8 @@ export class ChartOptionsState {
     formatter.setLocale(locale);
     formatter.setTimeZone?.(timeZone);
 
+    this.themes = ownThemeRegistry(options.themes);
+
     this.resolved = {
       type,
       timeRange: timeRange === "auto" ? "auto" : { ...timeRange },
@@ -67,7 +71,7 @@ export class ChartOptionsState {
       locale,
       timeZone,
       formatter,
-      theme: mergeThemes(defaultLightTheme, options.theme),
+      theme: resolveChartTheme(options.theme ?? "light", this.themes),
       domAdapter: options.domAdapter ?? new DefaultDOMAdapter(),
       localeValues: cloneOptionValue({
         ...getDefaultLocaleValues(),
@@ -112,9 +116,11 @@ export class ChartOptionsState {
       : hasFormatter
         ? formatter.getTimeZone?.() ?? this.resolved.timeZone
         : this.resolved.timeZone;
-    const theme = has("theme")
-      ? mergeThemes(this.resolved.theme, update.theme)
-      : this.resolved.theme;
+    const themeKey = update.theme ?? this.resolved.theme.key;
+    const theme =
+      has("theme") && themeKey !== this.resolved.theme.key
+        ? resolveChartTheme(themeKey, this.themes)
+        : this.resolved.theme;
     const localeValues = has("localeValues")
       ? cloneOptionValue({
           ...getDefaultLocaleValues(),
@@ -137,7 +143,7 @@ export class ChartOptionsState {
       ["stepSize", stepSize !== this.resolved.stepSize],
       ["maxZoom", maxZoom !== this.resolved.maxZoom],
       ["volume", volume !== this.resolved.volume],
-      ["theme", !optionValuesEqual(theme, this.resolved.theme)],
+      ["theme", theme.key !== this.resolved.theme.key],
       ["locale", locale !== this.resolved.locale],
       ["timeZone", timeZone !== this.resolved.timeZone],
       ["formatter", formatter !== this.resolved.formatter],

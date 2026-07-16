@@ -56,7 +56,8 @@ type ChartOptions = {
   volume?: boolean;
   controllers?: readonly ControllerConstructor[];
   includeDefaultControllers?: boolean;
-  theme?: ChartTheme;
+  theme?: ChartThemeKey;
+  themes?: ChartThemeMap;
   domAdapter?: ChartDOMAdapter;
   locale?: string;
   timeZone?: string;
@@ -74,7 +75,8 @@ type ChartOptions = {
 | `volume`                    | Enables a histogram below the price chart. Defaults to `true`.                                                                          |
 | `controllers`               | Additional controller classes registered after the built-ins.                                                                          |
 | `includeDefaultControllers` | Controls class-provided defaults. The root chart defaults to `true`; the controller-neutral core defaults to `false`.                   |
-| `theme`                     | `ChartTheme` object or the result of `mergeThemes`. Defaults to `defaultLightTheme`.                                                    |
+| `theme`                     | Active registered theme key. The built-in `"light"` and `"dark"` keys are always available; defaults to `"light"`.                 |
+| `themes`                    | Theme definitions registered for the chart lifetime. Custom keys inherit from light unless their definition sets `base: "dark"`.     |
 | `domAdapter`                | `ChartDOMAdapter` implementation for DOM chrome: overlay, indicator labels/actions, and pane dividers. Defaults to `DefaultDOMAdapter`. |
 | `locale`                    | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`.                                    |
 | `timeZone`                  | IANA timezone forwarded to formatters that support `setTimeZone()`.                                                                     |
@@ -85,7 +87,7 @@ type ChartOptions = {
 `timeRange` boundaries must be finite with `end >= start`. Invalid constructor
 options throw before chart DOM is created.
 
-`controllers`, `includeDefaultControllers`, and `domAdapter` are
+`controllers`, `includeDefaultControllers`, `themes`, and `domAdapter` are
 constructor-only. Runtime changes use `ChartOptionsUpdate`:
 
 ```ts
@@ -95,7 +97,7 @@ type ChartOptionsUpdate = {
   stepSize?: number;
   maxZoom?: number;
   volume?: boolean;
-  theme?: ChartTheme;
+  theme?: ChartThemeKey;
   locale?: string;
   timeZone?: string;
   formatter?: Formatter;
@@ -122,7 +124,7 @@ const chart = new FinancialChart(root, {
 #### DOM chrome options
 
 - `domAdapter` controls the non-canvas UI seam. Use `DefaultDOMAdapter` plus the built-in `fci-*` classes for CSS restyling, or pass a custom `ChartDOMAdapter` to replace indicator labels/actions and pane dividers with app-owned DOM.
-- Canvas-rendered surfaces such as candles, axes, grid, crosshair labels, and volume remain theme-driven. Use `mergeThemes()` and `updateOptions({ theme })` for those.
+- Canvas-rendered surfaces such as candles, axes, grid, crosshair labels, and volume remain theme-driven. Register definitions with `themes` and switch them with `updateOptions({ theme: key })`.
 - See [Design-system adapter](/guide/design-system-adapter) for the default class list and a custom adapter example.
 
 ## Data contracts
@@ -207,7 +209,7 @@ array or its objects cannot alter chart state.
 ```ts
 chart.updateOptions({
   type: "line",
-  theme: darkTheme,
+  theme: "dark",
   locale: "hu-HU"
 });
 ```
@@ -216,8 +218,8 @@ The complete patch is validated before chart state changes. One effective patch
 emits one `options-change` event and schedules at most one redraw. Unchanged
 effective values do not emit, reset the view, or redraw. Changing `stepSize`
 remaps the original dataset; changing `timeRange` or `stepSize` resets zoom and
-pan. A type change preserves the visible window. Theme patches are deeply
-merged. Changing only `maxZoom` affects subsequent zoom input and does not
+pan. A type change preserves the visible window. A theme change resolves the
+registered key from its declared base. Changing only `maxZoom` affects subsequent zoom input and does not
 redraw immediately.
 
 `setCrosshair({ time, y?, price?, paneId? })` is intended for synchronized

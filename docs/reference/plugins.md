@@ -393,17 +393,14 @@ Colors and sizing default from `theme.drawingAxisBounds`, and can also be
 overridden per plugin instance:
 
 ```ts
-const theme = mergeThemes(defaultDarkTheme, {
-  drawingAxisBounds: {
-    strokeColor: "rgba(234, 179, 8, 0.9)",
-    labelBackgroundColor: "#3A2E0F",
-    rangeBackgroundColor: "rgba(234, 179, 8, 0.18)",
-    textColor: "#FDE68A"
-  }
-});
-
 chart.addPlugin(
   new DrawingAxisBoundsPlugin({
+    theme: {
+      strokeColor: "rgba(234, 179, 8, 0.9)",
+      labelBackgroundColor: "#3A2E0F",
+      rangeBackgroundColor: "rgba(234, 179, 8, 0.18)",
+      textColor: "#FDE68A"
+    },
     blacklist: ["text"],
     showXAxis: true,
     showYAxis: true,

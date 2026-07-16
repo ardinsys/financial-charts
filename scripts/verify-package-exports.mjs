@@ -81,6 +81,7 @@ for (const declarationPath of publicDeclarationPaths) {
     "getZoomLevel",
     "labelRenderer",
     "labelTemplate",
+    "mergeThemes",
     "randomColor",
     "recalculateVisibleExtent",
     "registerIndicator",

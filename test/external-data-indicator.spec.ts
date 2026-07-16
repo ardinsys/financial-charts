@@ -116,7 +116,10 @@ function createChart() {
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
+    themes: {
+      night: { base: "dark" }
+    }
   });
   const start = Date.UTC(2024, 0, 1, 9);
   const data: ChartData[] = [10, 12, 14].map((close, index) => ({
@@ -150,15 +153,13 @@ describe("external-data indicators", () => {
     indicator.setPrices([100]);
 
     const labelReads = indicator.labelReads;
-    chart.updateOptions({ theme: { key: "dark" } });
+    chart.updateOptions({ theme: "night" });
     expect(indicator.getResolvedColor()).toBe("#00ff00");
     expect(indicator.labelReads).toBeGreaterThan(labelReads);
 
-    const sameThemeLabelReads = indicator.labelReads;
-    chart.updateOptions({
-      theme: { key: "dark", backgroundColor: "#101010" }
-    });
-    expect(indicator.labelReads).toBeGreaterThan(sameThemeLabelReads);
+    const lightThemeLabelReads = indicator.labelReads;
+    chart.updateOptions({ theme: "light" });
+    expect(indicator.labelReads).toBeGreaterThan(lightThemeLabelReads);
 
     indicator.onOptionsChanged.mockClear();
     chart.updateOptions({

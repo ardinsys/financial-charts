@@ -31,13 +31,12 @@ reference pages.
 | --- | --- |
 | `EventEmitter`, `ChartEventMap` | [Events](/reference/chart#events) |
 | `Formatter`, `DefaultFormatter`, `DefaultFormatterOptions` | [Formatting](/guide/styling-and-localization#localization-and-formatter-overrides) |
-| `ChartTheme`, `ResolvedChartTheme`, `Gradient`, `defaultLightTheme`, `defaultDarkTheme`, `mergeThemes` | [Styling](/guide/styling-and-localization) |
+| `ChartTheme`, `ChartThemeMap`, `ChartThemeKey`, `BuiltInChartThemeKey`, `ResolvedChartTheme`, `Gradient`, `defaultLightTheme`, `defaultDarkTheme` | [Styling](/guide/styling-and-localization) |
 | `DefaultDOMAdapter` | [DOM adapter](/reference/dom-adapter) |
 
-`mergeThemes(defaultTheme, patch)` accepts a resolved chart theme plus a
-`ChartTheme` patch and returns a fully resolved theme. It is the chart-theme
-helper; indicator implementations merge their own theme/options through the
-indicator base lifecycle.
+`ChartThemeMap` registers partial definitions by key. The chart resolves each
+definition from its declared built-in base and exposes the active complete
+`ResolvedChartTheme` through `getOptions()`.
 
 ## Chart and indicator state
 

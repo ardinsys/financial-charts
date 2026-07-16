@@ -86,11 +86,9 @@ Use `clearData()` or `setData([])` when the active symbol has no observations.
 event when effective values change.
 
 ```ts
-import { defaultDarkTheme } from "@ardinsys/financial-charts";
-
 chart.updateOptions({
   type: "line",
-  theme: defaultDarkTheme,
+  theme: "dark",
   volume: false
 });
 ```

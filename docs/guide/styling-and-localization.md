@@ -8,6 +8,7 @@ Themes, locales, and formatters let you align the chart with your brand and lang
 
 | Key                                        | Description                                                    |
 | ------------------------------------------ | -------------------------------------------------------------- |
+| `base`                                     | Built-in `light` or `dark` values used to complete a definition. |
 | `backgroundColor`                          | Canvas background color.                                       |
 | `grid`                                     | `{ color, width }` controlling horizontal and vertical guides. |
 | `candle`, `bar`, `line`, `area`, `hlcArea` | Style specific controller types.                               |
@@ -18,36 +19,54 @@ Themes, locales, and formatters let you align the chart with your brand and lang
 | `drawingAxisBounds`                        | Selected drawing axis-bound labels and translucent ranges.     |
 | `randomColors`                             | Palette used when multiple indicators request auto colors.     |
 
-Merge your overrides with the shipped themes – missing values are backfilled automatically.
+Register theme definitions when the chart is created. Missing values are
+resolved from a built-in base, and runtime changes select a registered key.
 
 ```ts
-import {
-  defaultLightTheme,
-  defaultDarkTheme,
-  mergeThemes
-} from "@ardinsys/financial-charts";
+import { FinancialChart, type ChartThemeMap } from "@ardinsys/financial-charts";
 
-const baseTheme = mergeThemes(defaultLightTheme, {
-  backgroundColor: "#ffffff",
-  area: {
-    color: "#2d7dff",
-    fill: [
-      [0, "rgba(45, 125, 255, 0.35)"],
-      [1, "rgba(45, 125, 255, 0)"]
-    ]
+const themes = {
+  light: {
+    area: {
+      color: "#2d7dff",
+      fill: [
+        [0, "rgba(45, 125, 255, 0.35)"],
+        [1, "rgba(45, 125, 255, 0)"]
+      ]
+    }
   },
-  crosshair: {
-    color: "#727cf5",
-    tooltip: {
-      backgroundColor: "#0f111b"
+  dark: {
+    backgroundColor: "#0f111b",
+    crosshair: {
+      color: "#727cf5"
     }
   }
+} satisfies ChartThemeMap;
+
+const chart = new FinancialChart(root, {
+  stepSize: 15 * 60 * 1000,
+  theme: "dark",
+  themes
 });
 ```
 
-`mergeThemes()` accepts a resolved theme followed by a `ChartTheme` patch and
-returns a new `ResolvedChartTheme`. Nested plain objects are merged, arrays are
-replaced, and `null`/`undefined` values fall back to the resolved default.
+The built-in `"light"` and `"dark"` keys are always available. Definitions
+registered under those keys inherit from the corresponding built-in theme.
+Other keys inherit from light unless they declare `base: "dark"`:
+
+```ts
+const themes = {
+  "brand-night": {
+    base: "dark",
+    backgroundColor: "#090b10"
+  }
+} satisfies ChartThemeMap;
+```
+
+Definitions are copied when the chart is constructed and remain registered for
+that chart's lifetime. `getOptions().theme` exposes the complete resolved theme,
+including its active `key` and built-in `base`. Indicators use the custom key
+when they define it and otherwise fall back to that base.
 
 The theme's `randomColors` field is an explicit deterministic palette. Custom
 indicators can select from it without coupling a utility to the chart:
@@ -61,10 +80,10 @@ const color = paletteColor(
 );
 ```
 
-Apply themes on creation or at runtime:
+Switch registered themes at runtime by key:
 
 ```ts
-chart.updateOptions({ theme: baseTheme });
+chart.updateOptions({ theme: "light" });
 ```
 
 ## Responding to user preference
@@ -73,12 +92,12 @@ Detect the active color scheme and switch themes live.
 
 ```ts
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-const theme = prefersDark ? defaultDarkTheme : baseTheme;
 
 const chart = new FinancialChart(root, {
   timeRange: "auto",
   type: "hlc-area",
-  theme,
+  theme: prefersDark ? "dark" : "light",
+  themes,
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
   volume: true
@@ -88,7 +107,7 @@ window
   .matchMedia("(prefers-color-scheme: dark)")
   .addEventListener("change", (event) => {
     chart.updateOptions({
-      theme: event.matches ? defaultDarkTheme : baseTheme
+      theme: event.matches ? "dark" : "light"
     });
   });
 ```

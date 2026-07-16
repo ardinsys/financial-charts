@@ -4,7 +4,11 @@ import type {
 } from "../controllers/controller";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
 import type { Formatter } from "./formatter";
-import type { ChartTheme, ResolvedChartTheme } from "./themes";
+import type {
+  ChartThemeKey,
+  ChartThemeMap,
+  ResolvedChartTheme
+} from "./themes";
 import type { TimeRange } from "./types";
 
 type DeepReadonly<T> = T extends Function
@@ -61,7 +65,7 @@ export interface ChartOptionsUpdate extends ChartLocalizationOptions {
   stepSize?: number;
   maxZoom?: number;
   volume?: boolean;
-  theme?: ChartTheme;
+  theme?: ChartThemeKey;
 }
 
 export type ChartOptionKey = keyof ChartOptionsUpdate;
@@ -89,7 +93,10 @@ export interface ChartOptions {
   locale?: string;
   timeZone?: string;
   formatter?: Formatter;
-  theme?: ChartTheme;
+  /** Active theme key. The built-in light and dark themes are always available. */
+  theme?: ChartThemeKey;
+  /** Theme definitions registered for the lifetime of this chart. */
+  themes?: ChartThemeMap;
   domAdapter?: ChartDOMAdapter;
   localeValues?: LocaleValuesMap;
 }

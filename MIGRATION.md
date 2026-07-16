@@ -78,12 +78,41 @@ The chart no longer carries convenience aliases for individual option groups:
 | Removed | Replacement |
 | --- | --- |
 | `changeType(type)` | `updateOptions({ type })` |
-| `updateTheme(theme)` | `updateOptions({ theme })` |
+| `updateTheme(theme)` | Register `themes` at construction, then call `updateOptions({ theme: key })` |
 | `setVolumeDraw(volume)` | `updateOptions({ volume })` |
 | `updateLocalization(options)` | `updateOptions(options)` |
 | `updateLocale(locale, localeValues)` | `updateOptions({ locale, localeValues })` |
 
 One patch validates and publishes related option changes as one transaction.
+
+### Themes are registered once and selected by key
+
+Chart options no longer accept resolved theme objects, and `mergeThemes()` was
+removed. Register partial definitions when constructing the chart, then switch
+the active key at runtime:
+
+```ts
+const chart = new FinancialChart(root, {
+  stepSize,
+  theme: "brand-light",
+  themes: {
+    "brand-light": {
+      base: "light",
+      backgroundColor: "#ffffff"
+    },
+    "brand-dark": {
+      base: "dark",
+      backgroundColor: "#10131a"
+    }
+  }
+});
+
+chart.updateOptions({ theme: "brand-dark" });
+```
+
+The built-in `"light"` and `"dark"` keys need no registration. Custom keys
+default to the light base unless `base: "dark"` is specified. Each definition
+is resolved from that base rather than the previously active theme.
 
 ### Render invalidation uses named layers
 

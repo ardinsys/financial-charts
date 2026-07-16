@@ -189,4 +189,4 @@ the adapter does not need to retain chart objects or inspect indicator
 internals. Geometry uses logical CSS pixels. Removing the chart calls every
 handle's `destroy()` and then destroys the overlay.
 
-Canvas surfaces such as candles, axes, grid, crosshair labels, and volume remain theme-driven. Use `mergeThemes()` and `chart.updateOptions({ theme })` for those.
+Canvas surfaces such as candles, axes, grid, crosshair labels, and volume remain theme-driven. Register definitions with `themes` and switch them with `chart.updateOptions({ theme: key })`.

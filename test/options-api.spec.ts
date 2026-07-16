@@ -28,7 +28,10 @@ function createChart() {
     stepSize: 60_000,
     maxZoom: 10,
     volume: true,
-    locale: "en-US"
+    locale: "en-US",
+    themes: {
+      custom: { backgroundColor: "#123456" }
+    }
   });
   const start = Date.UTC(2024, 0, 1, 9);
   chart.setData(
@@ -97,7 +100,7 @@ describe("chart options API", () => {
 
     chart.updateOptions({
       type: "candle",
-      theme: { key: "custom", backgroundColor: "#123456" },
+      theme: "custom",
       locale: "hu-HU",
       volume: false
     });
@@ -131,10 +134,12 @@ describe("chart options API", () => {
 
   it("owns retained option values without retaining caller mutations", () => {
     const timeRange = { start: 100, end: 400 };
-    const theme = {
-      key: "owned",
-      randomColors: ["#123456"],
-      line: { color: "#abcdef" }
+    const themes = {
+      owned: {
+        randomColors: ["#123456"],
+        line: { color: "#abcdef" }
+      },
+      updated: { randomColors: ["#fedcba"] }
     };
     const localeValues = {
       "en-US": {
@@ -162,15 +167,17 @@ describe("chart options API", () => {
       timeRange,
       stepSize: 60_000,
       locale: "en-US",
-      theme,
+      theme: "owned",
+      themes,
       localeValues
     });
     charts.push(chart);
     const initial = chart.getOptions();
 
     timeRange.start = -100;
-    theme.randomColors[0] = "#000000";
-    theme.line.color = "#000000";
+    themes.owned.randomColors[0] = "#000000";
+    themes.owned.line.color = "#000000";
+    themes.updated.randomColors[0] = "#000000";
     localeValues["en-US"].common.sources.close = "mutated";
 
     expect(initial.timeRange).toEqual({ start: 100, end: 400 });
@@ -178,16 +185,12 @@ describe("chart options API", () => {
     expect(initial.theme.line.color).toBe("#abcdef");
     expect(initial.localeValues["en-US"].common.sources.close).toBe("closing");
 
-    const themeUpdate = { key: "updated", randomColors: ["#fedcba"] };
-    chart.updateOptions({ theme: themeUpdate });
+    chart.updateOptions({ theme: "updated" });
     const updated = chart.getOptions();
-    themeUpdate.randomColors[0] = "#000000";
 
     expect(updated.theme.randomColors).toEqual(["#fedcba"]);
 
-    chart.updateOptions({
-      theme: { key: "updated", randomColors: ["#fedcba"] }
-    });
+    chart.updateOptions({ theme: "updated" });
     expect(chart.getOptions()).toBe(updated);
   });
 
