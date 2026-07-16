@@ -673,10 +673,14 @@ describe("ChartSyncPlugin", () => {
       period: 21,
       source: "close"
     });
+    const serializeFast = vi.spyOn(fast, "toJSON");
+    const serializeSlow = vi.spyOn(slow, "toJSON");
 
     source.chart.addIndicator(fast);
     source.chart.addIndicator(slow);
 
+    expect(serializeFast).toHaveBeenCalledTimes(1);
+    expect(serializeSlow).toHaveBeenCalledTimes(1);
     expect(targetEvents).toEqual(["add:fast-sma", "add:slow-sma"]);
     expect(target.chart.getIndicatorById("fast-sma")).toBeInstanceOf(
       CustomMovingAverageIndicator
@@ -691,8 +695,12 @@ describe("ChartSyncPlugin", () => {
       target.chart.getIndicatorsByType("custom-moving-average")
     ).toHaveLength(2);
 
+    serializeFast.mockClear();
+    serializeSlow.mockClear();
     fast.updateOptions({ period: 12 });
 
+    expect(serializeFast).toHaveBeenCalledTimes(1);
+    expect(serializeSlow).not.toHaveBeenCalled();
     expect(targetEvents.at(-1)).toBe("change:fast-sma");
     expect(target.chart.getIndicatorById("fast-sma")?.getOptions().period).toBe(
       12
@@ -701,8 +709,12 @@ describe("ChartSyncPlugin", () => {
       21
     );
 
+    serializeFast.mockClear();
+    serializeSlow.mockClear();
     slow.setVisible(false);
 
+    expect(serializeFast).not.toHaveBeenCalled();
+    expect(serializeSlow).toHaveBeenCalledTimes(1);
     expect(targetEvents.slice(-2)).toEqual([
       "change:slow-sma",
       "visibility:slow-sma"
@@ -714,11 +726,30 @@ describe("ChartSyncPlugin", () => {
       target.chart.getIndicatorById("fast-sma")?.isIndicatorVisible()
     ).toBe(true);
 
+    serializeFast.mockClear();
+    serializeSlow.mockClear();
     source.chart.removeIndicator(fast);
 
+    expect(serializeFast).not.toHaveBeenCalled();
+    expect(serializeSlow).not.toHaveBeenCalled();
     expect(targetEvents.at(-1)).toBe("remove:fast-sma");
     expect(target.chart.getIndicatorById("fast-sma")).toBeUndefined();
     expect(target.chart.getIndicatorById("slow-sma")).toBeDefined();
+
+    const late = createSyncedChart(group);
+
+    expect(serializeFast).not.toHaveBeenCalled();
+    expect(serializeSlow).not.toHaveBeenCalled();
+    expect(late.chart.getIndicatorById("fast-sma")).toBeUndefined();
+    expect(late.chart.getIndicatorById("slow-sma")).toBeInstanceOf(
+      CustomMovingAverageIndicator
+    );
+    expect(late.chart.getIndicatorById("slow-sma")?.getOptions().period).toBe(
+      21
+    );
+    expect(
+      late.chart.getIndicatorById("slow-sma")?.isIndicatorVisible()
+    ).toBe(false);
   });
 
   it("lets third-party plugins exchange custom messages through context lookup", () => {

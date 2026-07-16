@@ -9,7 +9,6 @@ import {
   type IndicatorState,
 } from "../indicators/indicator";
 import type { ChartCrosshairChangeEvent } from "../chart/event-emitter";
-import { cloneJSONStateValue } from "../utils/json-state";
 
 export type ChartSyncIndicatorSnapshot = IndicatorState;
 
@@ -54,7 +53,7 @@ export interface ChartSyncPluginOptions {
 interface ChartSyncGroupState {
   crosshair?: ChartSyncCrosshairSnapshot;
   drawings?: DrawingManagerJSON;
-  indicators?: ChartSyncIndicatorSnapshot[];
+  indicators?: readonly ChartSyncIndicatorSnapshot[];
   visibleRange?: TimeRange;
 }
 
@@ -245,23 +244,26 @@ export class ChartSyncPlugin implements ChartPlugin {
       unsubscribers.push(
         ctx.on("indicator-add", ({ indicator }) => {
           if (this.applying) return;
-          this.storeIndicatorState();
-          this.broadcastIndicator(indicator);
+          const snapshot = this.createIndicatorSnapshot(indicator);
+          this.storeIndicator(snapshot);
+          this.broadcastIndicator(snapshot);
         }),
         ctx.on("indicator-change", ({ indicator }) => {
           if (this.applying) return;
-          this.storeIndicatorState();
-          this.broadcastIndicator(indicator);
+          const snapshot = this.createIndicatorSnapshot(indicator);
+          this.storeIndicator(snapshot);
+          this.broadcastIndicator(snapshot);
         }),
         ctx.on("indicator-visibility-changed", ({ indicator }) => {
           if (this.applying) return;
-          this.storeIndicatorState();
-          this.broadcastIndicator(indicator);
+          const snapshot = this.createIndicatorSnapshot(indicator);
+          this.storeIndicator(snapshot);
+          this.broadcastIndicator(snapshot);
         }),
         ctx.on("indicator-remove", ({ indicator }) => {
           if (this.applying) return;
-          this.storeIndicatorState();
           const instanceId = indicator.getInstanceId();
+          this.removeStoredIndicator(instanceId);
           this.broadcast((peer) => peer.applyIndicatorRemove(instanceId));
         }),
       );
@@ -460,6 +462,38 @@ export class ChartSyncPlugin implements ChartPlugin {
     this.getGroup().state.indicators = this.createIndicatorState();
   }
 
+  private storeIndicator(snapshot: ChartSyncIndicatorSnapshot) {
+    const group = this.getGroup();
+    const state = group.state.indicators;
+    if (!state) {
+      this.storeIndicatorState();
+      return;
+    }
+
+    const index = state.findIndex(
+      (indicator) => indicator.instanceId === snapshot.instanceId,
+    );
+    group.state.indicators =
+      index === -1
+        ? [...state, snapshot]
+        : state.map((indicator, indicatorIndex) =>
+            indicatorIndex === index ? snapshot : indicator,
+          );
+  }
+
+  private removeStoredIndicator(instanceId: string) {
+    const group = this.getGroup();
+    const state = group.state.indicators;
+    if (!state) {
+      this.storeIndicatorState();
+      return;
+    }
+
+    group.state.indicators = state.filter(
+      (indicator) => indicator.instanceId !== instanceId,
+    );
+  }
+
   private applyInitialState() {
     if (!this.isInitialSyncEnabled()) return;
     if (!this.ctx || this.ctx.getData().length === 0) return;
@@ -581,8 +615,7 @@ export class ChartSyncPlugin implements ChartPlugin {
     this.getDrawingManager()?.fromJSON(state);
   }
 
-  private broadcastIndicator(indicator: Indicator<any, any>) {
-    const snapshot = this.createIndicatorSnapshot(indicator);
+  private broadcastIndicator(snapshot: ChartSyncIndicatorSnapshot) {
     this.broadcast((peer) => peer.applyIndicator(snapshot));
   }
 
@@ -600,7 +633,9 @@ export class ChartSyncPlugin implements ChartPlugin {
     return indicator.toJSON();
   }
 
-  private applyIndicatorState(snapshots: ChartSyncIndicatorSnapshot[]) {
+  private applyIndicatorState(
+    snapshots: readonly ChartSyncIndicatorSnapshot[],
+  ) {
     const instanceIds = new Set(
       snapshots.map((snapshot) => snapshot.instanceId),
     );
@@ -692,7 +727,7 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
     clone.drawings = state.drawings;
   }
   if (state.indicators) {
-    clone.indicators = cloneIndicatorSnapshots(state.indicators);
+    clone.indicators = state.indicators;
   }
   if (Object.prototype.hasOwnProperty.call(state, "crosshair")) {
     clone.crosshair = state.crosshair;
@@ -709,16 +744,6 @@ function createDrawingState(
     drawings,
     ...(selectedDrawingId === undefined ? {} : { selectedDrawingId }),
   };
-}
-
-function cloneIndicatorSnapshots(
-  snapshots: ChartSyncIndicatorSnapshot[],
-): ChartSyncIndicatorSnapshot[] {
-  return cloneSyncJSONValue(snapshots, "Chart sync indicator state");
-}
-
-function cloneSyncJSONValue<T>(value: T, path: string): T {
-  return cloneJSONStateValue(value, path) as unknown as T;
 }
 
 Object.defineProperty(ChartSyncPlugin, "getGroupSizeForTest", {
