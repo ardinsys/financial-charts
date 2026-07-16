@@ -13,6 +13,7 @@ import type {
 import type { PriceAxisAnnotation } from "../annotations/price-axis-annotation";
 import type { ChartEventMap } from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";
+import type { ChartPaneState } from "../chart/chart-state";
 import type { Pane } from "../panes/pane";
 import type { RenderCallback, RenderStage } from "../render/render-pipeline";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
@@ -75,6 +76,10 @@ export interface ExtensionContext {
 
 export interface ChartContext extends ExtensionContext {
   getCrosshairState(): ChartCrosshairState | undefined;
+  /** Returns portable pane ratios keyed by main-pane or indicator identity. */
+  getPaneHeightRatios(): readonly ChartPaneState[];
+  /** Applies portable pane ratios against this chart's available height. */
+  setPaneHeightRatios(panes: readonly ChartPaneState[]): void;
   setVisibleTimeWindow(range: TimeRange): void;
   getIndicators(): readonly Indicator<any, any>[];
   getIndicatorById(instanceId: string): Indicator<any, any> | undefined;
@@ -87,6 +92,8 @@ export interface ChartExtension extends Drawable {
   onData?(data: readonly ChartData[]): void;
   /** Called once after an effective view change with the whole-bar range. */
   onVisibleRangeChanged?(range: TimeRange): void;
+  /** Called after an explicit or interactive pane-height change. */
+  onPaneHeightsChanged?(panes: readonly ChartPaneState[]): void;
   /** An empty `changedKeys` array identifies initial state delivery. */
   onOptionsChanged?(event: ChartOptionsChangeEvent): void;
   onPointer?(event: ChartPointerEvent): boolean | void;

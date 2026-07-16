@@ -40,6 +40,7 @@ import {
   type MutableResolvedChartOptions
 } from "./chart-options";
 import {
+  type ChartPaneState,
   type ChartState,
   type ChartStateRestoreOptions,
   type ChartStateSerializationOptions
@@ -371,6 +372,11 @@ export class FinancialChart {
   }
 
   setPaneHeights(heights: PaneHeightsInput): void {
+    this.applyPaneHeights(heights);
+    this.notifyPaneHeightsChanged();
+  }
+
+  private applyPaneHeights(heights: PaneHeightsInput): void {
     this.paneLayout.setPaneHeights(heights, this.getPaneLayoutHeight());
     this.applyPaneLayout({ redraw: true, immediate: true });
   }
@@ -471,8 +477,10 @@ export class FinancialChart {
       mainPaneMinHeight: 80,
       indicatorPaneMinHeight: 50,
       dividerHeight: 8,
-      onInteractiveResize: () =>
-        this.applyPaneLayout({ redraw: true, immediate: true })
+      onInteractiveResize: () => {
+        this.applyPaneLayout({ redraw: true, immediate: true });
+        this.notifyPaneHeightsChanged();
+      }
     });
 
     this.overlay = domAdapter.createOverlay(this.container, {
@@ -556,8 +564,14 @@ export class FinancialChart {
       this.events,
       {
         getCrosshairState: () => this.interactionController.getCrosshairState(),
+        getPaneHeightRatios: () => this.capturePaneHeightRatios(),
         setCrosshair: (options) => this.setCrosshair(options),
         clearCrosshair: () => this.clearCrosshair(),
+        setPaneHeightRatios: (panes) => {
+          if (this.applyPaneHeightRatios(panes)) {
+            this.notifyPaneHeightsChanged();
+          }
+        },
         setVisibleTimeWindow: (range) => this.setVisibleTimeWindow(range),
         addIndicator: (indicator) => {
           this.addIndicator(indicator);
@@ -650,12 +664,6 @@ export class FinancialChart {
 
   private captureChartState(): ChartStateRuntimeSnapshot {
     const configuredTimeRange = this.options.timeRange;
-    const panes = this.paneLayout.getPanes();
-    const totalPaneHeight = panes.reduce(
-      (sum, pane) => sum + this.paneLayout.getPaneHeight(pane),
-      0
-    );
-    const fallbackPaneRatio = 1 / panes.length;
     return {
       state: {
         core: {
@@ -669,19 +677,7 @@ export class FinancialChart {
           volume: this.options.volume
         },
         visibleRange: this.getVisibleTimeWindow(),
-        panes: panes.map((pane) => {
-          const indicator = this.paneLayout.getIndicatorForPane(pane);
-          return {
-            id: pane.getId(),
-            heightRatio:
-              totalPaneHeight > 0
-                ? this.paneLayout.getPaneHeight(pane) / totalPaneHeight
-                : fallbackPaneRatio,
-            ...(indicator
-              ? { indicatorInstanceId: indicator.getInstanceId() }
-              : {})
-          };
-        }),
+        panes: this.capturePaneHeightRatios(),
         indicators: this.extensionHost
           .getAllIndicators()
           .map((indicator) => indicator.toJSON())
@@ -691,6 +687,60 @@ export class FinancialChart {
         (controller) => controller.ID
       )
     };
+  }
+
+  private capturePaneHeightRatios(): readonly ChartPaneState[] {
+    const panes = this.paneLayout.getPanes();
+    const totalPaneHeight = panes.reduce(
+      (sum, pane) => sum + this.paneLayout.getPaneHeight(pane),
+      0
+    );
+    const fallbackPaneRatio = 1 / panes.length;
+    return panes.map((pane) => {
+      const indicator = this.paneLayout.getIndicatorForPane(pane);
+      return {
+        id: pane.getId(),
+        heightRatio:
+          totalPaneHeight > 0
+            ? this.paneLayout.getPaneHeight(pane) / totalPaneHeight
+            : fallbackPaneRatio,
+        ...(indicator
+          ? { indicatorInstanceId: indicator.getInstanceId() }
+          : {})
+      };
+    });
+  }
+
+  private applyPaneHeightRatios(
+    panes: readonly ChartPaneState[]
+  ): boolean {
+    const localPanes = this.capturePaneHeightRatios();
+    if (panes.length !== localPanes.length) return false;
+    const mainPaneId = localPanes.find(
+      ({ indicatorInstanceId }) => indicatorInstanceId === undefined
+    )?.id;
+    const paneIdByIndicator = new Map(
+      localPanes.flatMap(({ id, indicatorInstanceId }) =>
+        indicatorInstanceId ? [[indicatorInstanceId, id] as const] : []
+      )
+    );
+    const paneLayoutHeight = this.getPaneLayoutHeight();
+    const heights: Partial<Record<number, number>> = {};
+    for (const pane of panes) {
+      const localPaneId = pane.indicatorInstanceId
+        ? paneIdByIndicator.get(pane.indicatorInstanceId)
+        : mainPaneId;
+      if (localPaneId === undefined) return false;
+      heights[localPaneId] = pane.heightRatio * paneLayoutHeight;
+    }
+    this.applyPaneHeights(heights);
+    return true;
+  }
+
+  private notifyPaneHeightsChanged(): void {
+    this.extensionHost.notifyPaneHeightsChanged(
+      this.capturePaneHeightRatios()
+    );
   }
 
   private applyChartStateRestoration({
@@ -721,15 +771,7 @@ export class FinancialChart {
         this.attachIndicator(indicator, false);
       }
 
-      const paneLayoutHeight = this.getPaneLayoutHeight();
-      this.setPaneHeights(
-        Object.fromEntries(
-          state.panes.map(({ id, heightRatio }) => [
-            id,
-            heightRatio * paneLayoutHeight
-          ])
-        )
-      );
+      this.applyPaneHeightRatios(state.panes);
 
       for (const contributor of contributors) {
         contributor.fromJSON(state.contributions![contributor.key]);
@@ -1085,6 +1127,9 @@ export class FinancialChart {
     }
     if (emit) {
       this.events.emit("indicator-add", { indicator });
+      if (indicator instanceof PaneledIndicator) {
+        this.notifyPaneHeightsChanged();
+      }
     }
     return () => {
       this.detachIndicator(indicator, emit);
@@ -1117,6 +1162,9 @@ export class FinancialChart {
 
     if (emit) {
       this.events.emit("indicator-remove", { indicator });
+      if (indicator instanceof PaneledIndicator) {
+        this.notifyPaneHeightsChanged();
+      }
     }
     return true;
   }

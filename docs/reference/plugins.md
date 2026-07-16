@@ -50,6 +50,7 @@ chart.addPlugin(new WatermarkPlugin());
 | `afterDraw()`                  | Optional draw hook after the render pipeline finishes.                                                                             |
 | `onData(data)`                 | Current borrowed readonly data after attach and whenever `setData()`, `updateData()`, clearing, or `stepSize` remapping changes mapped data. |
 | `onVisibleRangeChanged(range)` | Current whole-bar range after attach and once after each effective programmatic, pan, zoom, resize, or core-options view change.  |
+| `onPaneHeightsChanged(panes)`  | Portable pane-height ratios after an explicit `setPaneHeights()` call or interactive divider resize.                            |
 | `onOptionsChanged(event)`      | Optional notification containing previous/current resolved options and changed keys. Empty `changedKeys` means initial delivery.  |
 | `onPointer(event)`             | Optional notification for pointer down/move/up events mapped to data and pane space. Return `true` to consume the pointer gesture. |
 | `onDrawingFinished(event)`     | Optional notification when a drawing create or drag operation completes.                                                           |
@@ -78,11 +79,13 @@ drawn by the ordinary plugin pass.
 | `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`.         |
 | `getLogicalCanvas(layer)`         | Returns logical pixel size for the layer.                                                                      |
 | `getPanes()`                      | Returns a readonly pane snapshot, including the main pane and paneled indicators.                             |
+| `getPaneHeightRatios()`           | Returns portable pane ratios keyed by main-pane or paneled-indicator identity.                                |
 | `getPlugin(key)`                  | Returns the attached plugin with the matching unique `key`, useful for plugin-to-plugin integration.          |
 | `getPlugins()`                    | Returns a readonly snapshot of currently attached plugins.                                                     |
 | `getVisibleTimeWindow()`          | Returns the precise fractional visible timestamp window for pan/zoom replication.                              |
 | `getVisibleTimeRange()`           | Returns the current visible timestamp range.                                                                   |
 | `setVisibleTimeWindow(range)`     | Applies a precise fractional timestamp window.                                                                 |
+| `setPaneHeightRatios(panes)`      | Resolves portable pane ratios against this chart's available height.                                          |
 | `getCrosshairState()`             | Returns the current resolved native crosshair state.                                                           |
 | `on(event, listener)`             | Subscribes for the lifetime of this attachment and returns an early disposer.                                 |
 | `onRenderStage(stage, callback)`  | Registers an attachment-scoped render-pipeline hook and returns an early disposer.                            |
@@ -189,7 +192,7 @@ array does not change rendered annotations.
 ### ChartSyncPlugin
 
 `ChartSyncPlugin` links chart instances by `group` and synchronizes visible time
-range, crosshair, drawings, drawing selection, and indicators. Add one plugin
+range, crosshair, drawings, drawing selection, indicators, and pane heights. Add one plugin
 instance to each chart that should participate:
 
 ```ts
@@ -232,6 +235,7 @@ new ChartSyncPlugin({
   crosshair: true,
   drawings: true,
   indicators: true,
+  paneHeights: true,
   indicatorResolver,
   messages: true
 });
@@ -244,6 +248,9 @@ data spans or tick sizes. Indicator synchronization uses the same JSON-safe
 present; set `indicators: false` when a sync group should not synchronize them.
 The resolver constructs custom indicators with their runtime dependencies,
 while stored sync-group state contains only serializable configuration.
+Pane heights use `ChartPaneState.heightRatio` and match panes by indicator
+instance ID, so each peer resolves the same proportions against its own
+container height.
 Freshly mounted charts also perform their initial sync after their first
 `setData()` if the sync plugin was attached before data was available. The group
 keeps the latest state as detached snapshots, so virtualized rows can all

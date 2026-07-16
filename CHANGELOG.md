@@ -82,6 +82,8 @@
   chart disposal is idempotent.
 - Chart state version 2 stores pane height ratios so layouts restore
   proportionally into differently sized chart containers.
+- `ChartSyncPlugin` synchronizes pane-height ratios across differently sized
+  peers and retained initial state.
 - Full datasets are copied and sorted before bucket merging. Streaming accepts
   equal or newer timestamps and rejects older corrections with guidance to use
   `setData`.

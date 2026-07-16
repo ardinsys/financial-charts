@@ -11,6 +11,7 @@ import {
   type DrawingOptions
 } from "../src/drawings";
 import type { IndicatorResolver } from "../src/indicators/indicator";
+import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
 import {
@@ -88,7 +89,9 @@ class CustomDataDrawing extends Drawing {
 const indicatorResolver: IndicatorResolver = ({ typeId }) =>
   typeId === CustomMovingAverageIndicator.ID
     ? new CustomMovingAverageIndicator()
-    : undefined;
+    : typeId === TestIndicator.ID
+      ? new TestIndicator()
+      : undefined;
 
 interface ProbeSyncPayload {
   value: string;
@@ -161,12 +164,14 @@ function createData(): ChartData[] {
 
 function createSyncedChart(
   group: string,
-  drawingManagerOptions: DrawingManagerOptions = {}
+  drawingManagerOptions: DrawingManagerOptions = {},
+  height = 400,
+  beforeSync?: (chart: FinancialChart) => void
 ) {
   const data = createData();
   const container = document.createElement("div");
   container.style.width = "800px";
-  container.style.height = "400px";
+  container.style.height = `${height}px`;
   document.body.appendChild(container);
 
   const chart = new FinancialChart(container, {
@@ -188,11 +193,12 @@ function createSyncedChart(
     indicatorResolver
   });
   chart.setData(data);
+  beforeSync?.(chart);
   chart.addPlugin(drawingManager);
   chart.addPlugin(syncPlugin);
   charts.push(chart);
 
-  return { chart, data, drawingManager, syncPlugin };
+  return { chart, container, data, drawingManager, syncPlugin };
 }
 
 function createSyncedChartWithDeferredData(group: string) {
@@ -300,6 +306,77 @@ describe("ChartSyncPlugin", () => {
     expect(target.chart.getVisibleTimeRange()).toEqual(
       source.chart.getVisibleTimeRange()
     );
+  });
+
+  it("syncs pane height ratios across different chart sizes", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group, {}, 770, (chart) => {
+      const placeholder = new TestIndicator(null, {
+        instanceId: "consumed-pane-id"
+      });
+      chart.addIndicator(placeholder);
+      chart.removeIndicator(placeholder);
+    });
+    source.chart.addIndicator(
+      new TestIndicator(null, { instanceId: "ratio-pane" })
+    );
+
+    const [mainPane, indicatorPane] = source.chart.getPanes();
+    source.chart.setPaneHeights({
+      [mainPane.id]: 222,
+      [indicatorPane.id]: 148
+    });
+    expect(target.chart.getPanes().map(({ height }) => height)).toEqual([
+      444, 296
+    ]);
+
+    const divider = source.container.querySelector(
+      '[data-id="pane-divider"]'
+    ) as HTMLElement;
+    divider.dispatchEvent(
+      new MouseEvent("pointerdown", {
+        bubbles: true,
+        clientY: 222
+      })
+    );
+    window.dispatchEvent(
+      new MouseEvent("pointermove", {
+        bubbles: true,
+        clientY: 252
+      })
+    );
+    window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+
+    expect(source.chart.getPanes().map(({ height }) => height)).toEqual([
+      252, 118
+    ]);
+    expect(target.chart.getPanes().map(({ height }) => height)).toEqual([
+      504, 236
+    ]);
+    expect(target.chart.getPanes()[1].id).not.toBe(
+      source.chart.getPanes()[1].id
+    );
+    expect(
+      target.chart
+        .toJSON()
+        .panes.map(({ heightRatio, indicatorInstanceId }) => ({
+          heightRatio,
+          indicatorInstanceId
+        }))
+    ).toEqual(
+      source.chart
+        .toJSON()
+        .panes.map(({ heightRatio, indicatorInstanceId }) => ({
+          heightRatio,
+          indicatorInstanceId
+        }))
+    );
+
+    const late = createSyncedChart(group, {}, 770);
+    expect(late.chart.getPanes().map(({ height }) => height)).toEqual([
+      504, 236
+    ]);
   });
 
   it("shares one scalar snapshot between storage and peers", () => {

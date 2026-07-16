@@ -1,4 +1,5 @@
 import type { ChartData, TimeRange } from "../chart/types";
+import type { ChartPaneState } from "../chart/chart-state";
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
 import { DrawingManager, type DrawingManagerJSON } from "../drawings";
 import type { DrawingJSON } from "../drawings";
@@ -47,6 +48,7 @@ export interface ChartSyncPluginOptions {
   indicators?: boolean;
   initialSync?: boolean;
   messages?: boolean;
+  paneHeights?: boolean;
   visibleRange?: boolean;
 }
 
@@ -54,6 +56,7 @@ interface ChartSyncGroupState {
   crosshair?: ChartSyncCrosshairSnapshot;
   drawings?: DrawingManagerJSON;
   indicators?: readonly ChartSyncIndicatorSnapshot[];
+  paneHeights?: readonly ChartPaneState[];
   visibleRange?: TimeRange;
 }
 
@@ -69,6 +72,7 @@ const defaultOptions = {
   indicators: true,
   initialSync: true,
   messages: true,
+  paneHeights: true,
   visibleRange: true,
 } satisfies Required<
   Pick<
@@ -79,6 +83,7 @@ const defaultOptions = {
     | "indicators"
     | "initialSync"
     | "messages"
+    | "paneHeights"
     | "visibleRange"
   >
 >;
@@ -154,6 +159,14 @@ export class ChartSyncPlugin implements ChartPlugin {
       this.applyInitialState();
     }
     this.storeInitialStateIfEmpty();
+  }
+
+  onPaneHeightsChanged(panes: readonly ChartPaneState[]): void {
+    if (!this.isEnabled("paneHeights") || this.applying) return;
+    if (this.hasPendingInitialSync()) return;
+
+    this.storePaneHeights(panes);
+    this.broadcast((peer) => peer.applyPaneHeights(panes));
   }
 
   onMessage<TPayload = unknown>(
@@ -380,6 +393,9 @@ export class ChartSyncPlugin implements ChartPlugin {
     if (this.isEnabled("indicators")) {
       this.storeIndicatorState();
     }
+    if (this.isEnabled("paneHeights")) {
+      this.storePaneHeights(this.createPaneHeightSnapshot());
+    }
     if (this.isEnabled("crosshair")) {
       const state = this.ctx.getCrosshairState();
       this.storeCrosshair(
@@ -462,6 +478,10 @@ export class ChartSyncPlugin implements ChartPlugin {
     this.getGroup().state.indicators = this.createIndicatorState();
   }
 
+  private storePaneHeights(panes: readonly ChartPaneState[]) {
+    this.getGroup().state.paneHeights = panes;
+  }
+
   private storeIndicator(snapshot: ChartSyncIndicatorSnapshot) {
     const group = this.getGroup();
     const state = group.state.indicators;
@@ -523,6 +543,10 @@ export class ChartSyncPlugin implements ChartPlugin {
         this.applyIndicatorState(state.indicators);
       }
 
+      if (this.isEnabled("paneHeights") && state.paneHeights) {
+        this.applyPaneHeights(state.paneHeights);
+      }
+
       if (
         this.isEnabled("crosshair") &&
         Object.prototype.hasOwnProperty.call(state, "crosshair")
@@ -557,6 +581,9 @@ export class ChartSyncPlugin implements ChartPlugin {
     if (this.isEnabled("indicators")) {
       state.indicators = this.createIndicatorState();
     }
+    if (this.ctx && this.isEnabled("paneHeights")) {
+      state.paneHeights = this.createPaneHeightSnapshot();
+    }
     if (this.ctx && this.isEnabled("crosshair")) {
       const crosshairState = this.ctx.getCrosshairState();
       state.crosshair = crosshairState
@@ -569,6 +596,14 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   private applyVisibleRange(range: TimeRange) {
     this.ctx?.setVisibleTimeWindow(range);
+  }
+
+  private createPaneHeightSnapshot(): readonly ChartPaneState[] {
+    return this.ctx?.getPaneHeightRatios() ?? [];
+  }
+
+  private applyPaneHeights(panes: readonly ChartPaneState[]) {
+    this.ctx?.setPaneHeightRatios(panes);
   }
 
   private createCrosshairSnapshot(
@@ -703,7 +738,13 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   private isEnabled(
-    key: "crosshair" | "drawings" | "indicators" | "messages" | "visibleRange",
+    key:
+      | "crosshair"
+      | "drawings"
+      | "indicators"
+      | "messages"
+      | "paneHeights"
+      | "visibleRange",
   ) {
     return this.options[key] ?? defaultOptions[key];
   }
@@ -728,6 +769,9 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
   }
   if (state.indicators) {
     clone.indicators = state.indicators;
+  }
+  if (state.paneHeights) {
+    clone.paneHeights = state.paneHeights;
   }
   if (Object.prototype.hasOwnProperty.call(state, "crosshair")) {
     clone.crosshair = state.crosshair;

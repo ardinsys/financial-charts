@@ -8,6 +8,7 @@ import type {
   EventEmitter
 } from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";
+import type { ChartPaneState } from "../chart/chart-state";
 import type { Indicator } from "../indicators/indicator";
 import type { ChartIndicatorHost } from "../indicators/chart-indicator-host";
 import type { PaneledIndicator } from "../indicators/paneled-indicator";
@@ -29,10 +30,12 @@ type HostedExtension = ChartPlugin | Indicator<any, any>;
 
 export interface ChartExtensionCommands {
   getCrosshairState(): ChartCrosshairState | undefined;
+  getPaneHeightRatios(): readonly ChartPaneState[];
   setCrosshair(
     options: ChartCrosshairOptions
   ): ChartCrosshairState | undefined;
   clearCrosshair(): void;
+  setPaneHeightRatios(panes: readonly ChartPaneState[]): void;
   setVisibleTimeWindow(range: TimeRange): void;
   addIndicator(indicator: Indicator<any, any>): void;
   removeIndicator(indicator: Indicator<any, any>): void;
@@ -221,6 +224,12 @@ export class ExtensionHost {
     });
   }
 
+  notifyPaneHeightsChanged(panes: readonly ChartPaneState[]): void {
+    this.forEachLifecycleExtension((extension) => {
+      extension.onPaneHeightsChanged?.(panes);
+    });
+  }
+
   notifyPointer(event: ChartPointerEvent): boolean {
     for (const extension of this.pointerExtensions) {
       if (!this.isAttached(extension)) continue;
@@ -304,6 +313,9 @@ export class ExtensionHost {
         extension.attach({
           ...context,
           getCrosshairState: () => this.commands.getCrosshairState(),
+          getPaneHeightRatios: () => this.commands.getPaneHeightRatios(),
+          setPaneHeightRatios: (panes) =>
+            this.commands.setPaneHeightRatios(panes),
           setVisibleTimeWindow: (range) =>
             this.commands.setVisibleTimeWindow(range),
           getIndicators: () => this.getAllIndicators(),
