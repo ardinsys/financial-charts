@@ -321,21 +321,17 @@ export function snapshotPriceAxisAnnotations(
       );
     }
 
-    return Object.freeze({
+    return {
       ...annotation,
       labelStyle: annotation.labelStyle
-        ? Object.freeze({ ...annotation.labelStyle })
+        ? { ...annotation.labelStyle }
         : undefined,
-      range: annotation.range
-        ? Object.freeze({ ...annotation.range })
-        : undefined,
-      lineDash: annotation.lineDash
-        ? Object.freeze([...annotation.lineDash])
-        : undefined
-    });
+      range: annotation.range ? { ...annotation.range } : undefined,
+      lineDash: annotation.lineDash ? [...annotation.lineDash] : undefined
+    };
   });
 
-  return Object.freeze(snapshot);
+  return snapshot;
 }
 
 function roundedRect(

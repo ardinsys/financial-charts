@@ -7,6 +7,7 @@ import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
 import {
   getChartContext,
+  getChartRenderer,
   getInternalMainPane,
   getInternalPanes,
   requestChartRedraw
@@ -83,6 +84,53 @@ function getAnnotationContext(chart: FinancialChart) {
 }
 
 describe("price axis annotations", () => {
+  it("owns submitted annotation values before rendering", () => {
+    const { chart } = createChart();
+    const probe = new AnnotationProbe();
+    chart.addPlugin(probe);
+    const context = getAnnotationContext(chart);
+    const redraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
+    const renderedFonts: string[] = [];
+    const rangeColors: string[] = [];
+    vi.mocked(context.fillText).mockImplementation(() => {
+      renderedFonts.push(context.font);
+    });
+    vi.mocked(context.fillRect).mockImplementation(() => {
+      rangeColors.push(String(context.fillStyle));
+    });
+    vi.mocked(context.setLineDash).mockClear();
+    const annotation = {
+      id: "owned",
+      value: 11,
+      text: "owned",
+      lineDash: [2, 4],
+      range: { to: 13, color: "#123456" },
+      labelStyle: { font: "Owned Font", radius: 1 }
+    };
+    const annotations = [annotation];
+
+    probe.set(annotations);
+    annotation.text = "mutated";
+    annotation.lineDash[0] = 99;
+    annotation.range.color = "#654321";
+    annotation.labelStyle.font = "Mutated Font";
+    annotations.length = 0;
+    requestChartRedraw(chart, "annotations", true);
+
+    expect(redraw).toHaveBeenCalledWith("annotations");
+    expect(context.fillText).toHaveBeenCalledWith(
+      "owned",
+      expect.any(Number),
+      expect.any(Number),
+      expect.any(Number)
+    );
+    expect(context.setLineDash).toHaveBeenCalledWith([2, 4]);
+    expect(rangeColors).toContain("#123456");
+    expect(renderedFonts.some((font) => font.includes("Owned Font"))).toBe(
+      true
+    );
+  });
+
   it("adds, updates, clears, and detaches a provider-owned collection", () => {
     const { chart } = createChart();
     const probe = new AnnotationProbe();
