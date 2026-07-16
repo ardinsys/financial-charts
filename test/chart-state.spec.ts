@@ -23,17 +23,19 @@ function createChart({
   maxZoom = 10,
   stepSize = 60_000,
   type = "line",
-  volume = false
+  volume = false,
+  height = 400
 }: {
   data?: readonly ChartData[];
   maxZoom?: number;
   stepSize?: number;
   type?: "candle" | "line";
   volume?: boolean;
+  height?: number;
 } = {}) {
   const container = document.createElement("div");
   container.style.width = "800px";
-  container.style.height = "400px";
+  container.style.height = `${height}px`;
   document.body.appendChild(container);
 
   const allData = createData();
@@ -95,8 +97,8 @@ describe("chart state", () => {
 
     const [mainPane, indicatorPane] = source.getPanes();
     source.setPaneHeights({
-      [mainPane.id]: 230,
-      [indicatorPane.id]: 140
+      [mainPane.id]: 222,
+      [indicatorPane.id]: 148
     });
     sourceDrawings.addDrawing(
       new TrendLine({
@@ -117,7 +119,8 @@ describe("chart state", () => {
       maxZoom: 5,
       stepSize: 120_000,
       type: "candle",
-      volume: true
+      volume: true,
+      height: 770
     });
     const targetDrawings = new DrawingManager();
     target.addPlugin(targetDrawings);
@@ -174,7 +177,7 @@ describe("chart state", () => {
       Object.fromEntries(
         target.getPanes().map(({ id, height }) => [id, height])
       )
-    ).toEqual({ 0: 230, 1: 140 });
+    ).toEqual({ 0: 444, 1: 296 });
     expect(targetDrawings.getDrawings()[0]?.getPaneId()).toBe(1);
 
     expect(onOptionsChange).not.toHaveBeenCalled();
@@ -270,9 +273,15 @@ describe("chart state", () => {
     expect(() => target.restoreState(null)).toThrow(
       "Invalid chart state: expected an object."
     );
-    expect(() => target.restoreState({ ...state, version: 2 })).toThrow(
-      'Unsupported chart state version "2"; expected 1.'
+    expect(() => target.restoreState({ ...state, version: 1 })).toThrow(
+      'Unsupported chart state version "1"; expected 2.'
     );
+    expect(() =>
+      target.restoreState({
+        ...state,
+        panes: state.panes.map((pane) => ({ ...pane, heightRatio: 0.5 }))
+      })
+    ).toThrow("Invalid chart state: pane heightRatio values must sum to 1.");
     expect(() => target.restoreState(state)).toThrow(
       "Chart state contains indicators but no indicatorResolver was provided."
     );
@@ -314,7 +323,7 @@ describe("chart state", () => {
       chart.restoreState(
         {
           ...state,
-          panes: [...state.panes, { ...pane, id: 99 }]
+          panes: [...state.panes, { ...pane, id: 99, heightRatio: 0 }]
         },
         { indicatorResolver }
       )

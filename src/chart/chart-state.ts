@@ -8,7 +8,7 @@ import { cloneJSONStateValue, isPlainRecord } from "../utils/json-state";
 import type { ControllerType } from "./chart-options";
 import type { TimeRange } from "./types";
 
-export const CHART_STATE_VERSION = 1 as const;
+export const CHART_STATE_VERSION = 2 as const;
 
 /** Runtime chart options that affect data mapping and the primary series. */
 export interface ChartCoreState {
@@ -22,7 +22,8 @@ export interface ChartCoreState {
 export interface ChartPaneState {
   /** Stable pane identity used by drawings and other pane-owned state. */
   readonly id: number;
-  readonly height: number;
+  /** Share of the available pane layout height, normalized across all panes. */
+  readonly heightRatio: number;
   /** The paneled indicator that owns this pane; absent for the main pane. */
   readonly indicatorInstanceId?: string;
 }
@@ -168,12 +169,13 @@ export function validateChartState(state: unknown): ChartState {
     }
     paneIds.add(pane.id as number);
     if (
-      typeof pane.height !== "number" ||
-      !Number.isFinite(pane.height) ||
-      pane.height < 0
+      typeof pane.heightRatio !== "number" ||
+      !Number.isFinite(pane.heightRatio) ||
+      pane.heightRatio < 0 ||
+      pane.heightRatio > 1
     ) {
       throw new Error(
-        `Invalid chart state: panes[${index}].height must be non-negative.`
+        `Invalid chart state: panes[${index}].heightRatio must be between 0 and 1.`
       );
     }
     if (
@@ -187,12 +189,21 @@ export function validateChartState(state: unknown): ChartState {
     }
     return {
       id: pane.id as number,
-      height: pane.height,
+      heightRatio: pane.heightRatio,
       ...(pane.indicatorInstanceId === undefined
         ? {}
         : { indicatorInstanceId: pane.indicatorInstanceId })
     };
   });
+  const paneHeightRatioTotal = panes.reduce(
+    (sum, pane) => sum + pane.heightRatio,
+    0
+  );
+  if (Math.abs(paneHeightRatioTotal - 1) > 1e-6) {
+    throw new Error(
+      "Invalid chart state: pane heightRatio values must sum to 1."
+    );
+  }
 
   if (!Array.isArray(state.indicators)) {
     throw new Error("Invalid chart state: indicators must be an array.");

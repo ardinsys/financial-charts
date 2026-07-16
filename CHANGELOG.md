@@ -80,6 +80,8 @@
   borrowed readonly snapshots without per-read copying. Duplicate extension
   registrations are rejected, add methods return idempotent disposers, and
   chart disposal is idempotent.
+- Chart state version 2 stores pane height ratios so layouts restore
+  proportionally into differently sized chart containers.
 - Full datasets are copied and sorted before bucket merging. Streaming accepts
   equal or newer timestamps and rejects older corrections with guidance to use
   `setData`.

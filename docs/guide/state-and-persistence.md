@@ -33,8 +33,8 @@ console.assert(state.version === CHART_STATE_VERSION);
   volume visibility.
 - `visibleRange`: interpolated start/end timestamps that preserve the precise
   fractional pan and zoom window.
-- `panes`: stable pane IDs, logical heights, and the instance ID of each
-  pane-owning indicator.
+- `panes`: stable pane IDs, normalized height ratios, and the instance ID of
+  each pane-owning indicator.
 - `indicators`: one versioned `IndicatorState` per attached indicator.
 - `contributions`: optional JSON-safe values keyed by contributor `key`.
 
@@ -121,7 +121,8 @@ On a successful restore, the chart:
 
 1. removes existing indicators without intermediate public mutation events;
 2. applies core options and the visible window;
-3. reconstructs indicators and their pane IDs, then restores pane heights;
+3. reconstructs indicators and their pane IDs, then resolves pane height ratios
+   against the target chart size;
 4. restores contributor state;
 5. refreshes attached ordinary plugins with options, data, and visible range;
 6. schedules one complete redraw and emits one `state-restored` event.

@@ -195,7 +195,7 @@ chart.restoreState(stored, {
 ```
 
 The state includes core chart options, the precise visible window, pane
-identity and heights, and serialized indicators. `DrawingManager` can be
+identity and height ratios, and serialized indicators. `DrawingManager` can be
 included as a state contributor. Chart data and runtime services remain
 application-owned. Restoration validates dependencies first, suppresses
 intermediate public mutations, redraws once, and emits `state-restored` when

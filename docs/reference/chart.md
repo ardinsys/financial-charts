@@ -340,7 +340,9 @@ if (stored) {
 
 `ChartState` contains the controller type, configured time range, `stepSize`,
 `maxZoom`, volume visibility, the precise fractional visible window, pane IDs
-and heights, and every indicator's `IndicatorState`. Multiple instances of one
+and height ratios, and every indicator's `IndicatorState`. Pane ratios are
+resolved against the target chart's available height, so layouts remain
+proportional across different container sizes. Multiple instances of one
 indicator type retain their distinct instance IDs. Data is deliberately not
 included: load symbol or order data through its normal application service.
 Theme, localization, formatters, DOM adapters, crosshair state, and arbitrary
@@ -376,8 +378,9 @@ calls are no-ops. Adding an already attached instance or a duplicate instance
 ID throws.
 
 Paneled indicator heights can be resized by dragging the pane divider. Use
-`chart.setPaneHeights({ [paneId]: height })` to restore or persist a custom
-layout programmatically; values are clamped to pane minimum heights.
+`chart.setPaneHeights({ [paneId]: height })` for logical-pixel adjustments;
+values are clamped to pane minimum heights. `ChartState` persists the resulting
+layout as ratios rather than absolute pixels.
 
 ### Plugins
 

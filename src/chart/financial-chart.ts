@@ -650,6 +650,12 @@ export class FinancialChart {
 
   private captureChartState(): ChartStateRuntimeSnapshot {
     const configuredTimeRange = this.options.timeRange;
+    const panes = this.paneLayout.getPanes();
+    const totalPaneHeight = panes.reduce(
+      (sum, pane) => sum + this.paneLayout.getPaneHeight(pane),
+      0
+    );
+    const fallbackPaneRatio = 1 / panes.length;
     return {
       state: {
         core: {
@@ -663,11 +669,14 @@ export class FinancialChart {
           volume: this.options.volume
         },
         visibleRange: this.getVisibleTimeWindow(),
-        panes: this.paneLayout.getPanes().map((pane) => {
+        panes: panes.map((pane) => {
           const indicator = this.paneLayout.getIndicatorForPane(pane);
           return {
             id: pane.getId(),
-            height: this.paneLayout.getPaneHeight(pane),
+            heightRatio:
+              totalPaneHeight > 0
+                ? this.paneLayout.getPaneHeight(pane) / totalPaneHeight
+                : fallbackPaneRatio,
             ...(indicator
               ? { indicatorInstanceId: indicator.getInstanceId() }
               : {})
@@ -712,8 +721,14 @@ export class FinancialChart {
         this.attachIndicator(indicator, false);
       }
 
+      const paneLayoutHeight = this.getPaneLayoutHeight();
       this.setPaneHeights(
-        Object.fromEntries(state.panes.map(({ id, height }) => [id, height]))
+        Object.fromEntries(
+          state.panes.map(({ id, heightRatio }) => [
+            id,
+            heightRatio * paneLayoutHeight
+          ])
+        )
       );
 
       for (const contributor of contributors) {
