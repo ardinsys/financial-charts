@@ -7,7 +7,12 @@ import type { Drawing } from "../src/drawings";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
-import { getInternalMainPane } from "./chart-test-harness";
+import {
+  getChartContext,
+  getExtensionHost,
+  getInternalMainPane,
+  requestChartRedraw
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -116,8 +121,7 @@ describe("plugin lifecycle", () => {
 
     expect(sma).toBeInstanceOf(MovingAverageIndicator);
     expect(testIndicator).toBeInstanceOf(TestIndicator);
-    expect(chart.getIndicators()).toEqual([sma]);
-    expect(chart.getPaneledIndicators()).toEqual([testIndicator]);
+    expect(chart.getIndicators()).toEqual([sma, testIndicator]);
     expect(chart.getPanes()).toHaveLength(2);
     expect(
       sma.getLabelContainer().querySelector("[data-id=name]")?.textContent
@@ -158,9 +162,9 @@ describe("plugin lifecycle", () => {
 
     chart.addPlugin(plugin);
     chart.setData(data);
-    chart.requestRedraw("drawings", true);
+    requestChartRedraw(chart, "drawings", true);
 
-    chart.getContext("crosshair").canvas.dispatchEvent(
+    getChartContext(chart, "crosshair").canvas.dispatchEvent(
       new MouseEvent("mousemove", {
         clientX: 360,
         clientY: 120,
@@ -273,7 +277,7 @@ describe("plugin lifecycle", () => {
     expect(pluginHooks.onDrawingFinished).toHaveBeenCalledWith(drawingEvent);
     expect(publicDrawingFinished).toHaveBeenCalledWith(drawingEvent);
 
-    chart.requestRedraw("indicators", true);
+    requestChartRedraw(chart, "indicators", true);
     expect(draw).toHaveBeenCalledOnce();
   });
 
@@ -372,7 +376,7 @@ describe("plugin lifecycle", () => {
       "plugin-2"
     ]);
 
-    const canvas = chart.getContext("crosshair").canvas;
+    const canvas = getChartContext(chart, "crosshair").canvas;
     const pointerDown = () =>
       canvas.dispatchEvent(
         new PointerEvent("pointerdown", {
@@ -431,11 +435,7 @@ describe("plugin lifecycle", () => {
 
     const snapshots: readonly (readonly unknown[])[] = [
       chart.getData(),
-      chart.getLastVisibleDataPoints(),
-      chart.getLastXGridCoords(),
       chart.getIndicators(),
-      chart.getPaneledIndicators(),
-      chart.getAllIndicators(),
       chart.getPanes(),
       chart.getPlugins()
     ];
@@ -445,18 +445,11 @@ describe("plugin lifecycle", () => {
       expect(() => (snapshot as unknown[]).push({})).toThrow(TypeError);
     }
 
-    expect(chart.getLastVisibleDataPoints()).toBe(
-      chart.getLastVisibleDataPoints()
-    );
-    expect(chart.getLastXGridCoords()).toBe(chart.getLastXGridCoords());
     expect(chart.getIndicators()).toBe(chart.getIndicators());
-    expect(chart.getPaneledIndicators()).toBe(chart.getPaneledIndicators());
-    expect(chart.getAllIndicators()).toBe(chart.getAllIndicators());
     expect(chart.getPanes()).toBe(chart.getPanes());
     expect(chart.getPlugins()).toBe(chart.getPlugins());
     expect(chart.getData()).toHaveLength(data.length);
-    expect(chart.getIndicators()).toEqual([overlay]);
-    expect(chart.getPaneledIndicators()).toEqual([paneled]);
+    expect(chart.getIndicators()).toEqual([overlay, paneled]);
     expect(chart.getPlugins()).toEqual([plugin]);
   });
 
@@ -468,47 +461,48 @@ describe("plugin lifecycle", () => {
       key: "snapshot-invalidation-probe",
       attach: vi.fn()
     };
+    const host = getExtensionHost(chart);
+    const initialOverlayIndicators = host.getIndicators();
+    const initialPaneledIndicators = host.getPaneledIndicators();
     const initialIndicators = chart.getIndicators();
-    const initialPaneledIndicators = chart.getPaneledIndicators();
-    const initialAllIndicators = chart.getAllIndicators();
     const initialPanes = chart.getPanes();
     const initialPlugins = chart.getPlugins();
 
     chart.addIndicator(overlay);
     expect(chart.getIndicators()).not.toBe(initialIndicators);
-    expect(chart.getPaneledIndicators()).toBe(initialPaneledIndicators);
-    expect(chart.getAllIndicators()).not.toBe(initialAllIndicators);
+    expect(host.getIndicators()).not.toBe(initialOverlayIndicators);
+    expect(host.getPaneledIndicators()).toBe(initialPaneledIndicators);
     expect(chart.getPanes()).toBe(initialPanes);
     expect(chart.getPlugins()).toBe(initialPlugins);
 
-    const overlaySnapshot = chart.getIndicators();
-    const allWithOverlay = chart.getAllIndicators();
+    const overlaySnapshot = host.getIndicators();
+    const allWithOverlay = chart.getIndicators();
     chart.addIndicator(paneled);
-    expect(chart.getIndicators()).toBe(overlaySnapshot);
-    expect(chart.getPaneledIndicators()).not.toBe(initialPaneledIndicators);
-    expect(chart.getAllIndicators()).not.toBe(allWithOverlay);
+    expect(host.getIndicators()).toBe(overlaySnapshot);
+    expect(host.getPaneledIndicators()).not.toBe(initialPaneledIndicators);
+    expect(chart.getIndicators()).not.toBe(allWithOverlay);
     expect(chart.getPanes()).not.toBe(initialPanes);
     expect(chart.getPlugins()).toBe(initialPlugins);
 
     const panesWithIndicator = chart.getPanes();
     chart.addPlugin(plugin);
-    expect(chart.getIndicators()).toBe(overlaySnapshot);
+    expect(host.getIndicators()).toBe(overlaySnapshot);
     expect(chart.getPanes()).toBe(panesWithIndicator);
     expect(chart.getPlugins()).not.toBe(initialPlugins);
 
     const pluginsWithPlugin = chart.getPlugins();
     chart.removePlugin(plugin);
     expect(chart.getPlugins()).not.toBe(pluginsWithPlugin);
-    expect(chart.getIndicators()).toBe(overlaySnapshot);
+    expect(host.getIndicators()).toBe(overlaySnapshot);
 
-    const paneledSnapshot = chart.getPaneledIndicators();
+    const paneledSnapshot = host.getPaneledIndicators();
     chart.removeIndicator(paneled);
-    expect(chart.getPaneledIndicators()).not.toBe(paneledSnapshot);
+    expect(host.getPaneledIndicators()).not.toBe(paneledSnapshot);
     expect(chart.getPanes()).not.toBe(panesWithIndicator);
-    expect(chart.getIndicators()).toBe(overlaySnapshot);
+    expect(host.getIndicators()).toBe(overlaySnapshot);
 
     chart.removeIndicator(overlay);
-    expect(chart.getIndicators()).not.toBe(overlaySnapshot);
+    expect(host.getIndicators()).not.toBe(overlaySnapshot);
   });
 
   it("rejects duplicate plugin registrations and indicator instances", () => {
@@ -585,12 +579,14 @@ describe("plugin lifecycle", () => {
     expect(attachedContext?.getOptions()).toBe(chart.getOptions());
     expect(attachedContext?.hostElement).toBe(container);
     expect(attachedContext?.getCanvasContext("drawings")).toBe(
-      chart.getContext("drawings")
+      getChartContext(chart, "drawings")
     );
     expect(attachedContext?.getLogicalCanvas("drawings")).toEqual({
-      width: Number.parseFloat(chart.getContext("drawings").canvas.style.width),
+      width: Number.parseFloat(
+        getChartContext(chart, "drawings").canvas.style.width
+      ),
       height: Number.parseFloat(
-        chart.getContext("drawings").canvas.style.height
+        getChartContext(chart, "drawings").canvas.style.height
       )
     });
     expect(attachedContext?.getPlugin("sibling-probe")).toBe(siblingPlugin);
@@ -624,7 +620,7 @@ describe("plugin lifecycle", () => {
     chart.addPlugin(eventSource);
     chart.addPlugin(plugin);
     eventSource.emit("drawing-select", {});
-    chart.requestRedraw("drawings", true);
+    requestChartRedraw(chart, "drawings", true);
 
     expect(eventListener).toHaveBeenCalledOnce();
     expect(renderHook).toHaveBeenCalledOnce();
@@ -634,7 +630,7 @@ describe("plugin lifecycle", () => {
     expect(eventListener).toHaveBeenCalledOnce();
 
     chart.removePlugin(plugin);
-    chart.requestRedraw("drawings", true);
+    requestChartRedraw(chart, "drawings", true);
     expect(renderHook).toHaveBeenCalledOnce();
   });
 
@@ -690,7 +686,7 @@ describe("plugin lifecycle", () => {
     expect(() => chart.addPlugin(plugin)).toThrow("attach failed");
 
     eventSource.emit("drawing-select", {});
-    chart.requestRedraw("drawings", true);
+    requestChartRedraw(chart, "drawings", true);
     expect(eventListener).not.toHaveBeenCalled();
     expect(renderHook).not.toHaveBeenCalled();
   });
@@ -766,7 +762,7 @@ describe("plugin lifecycle", () => {
     chart.addIndicator(indicator);
     chart.addPlugin(plugin);
     chart.on("click", vi.fn());
-    const canvas = chart.getContext("crosshair").canvas;
+    const canvas = getChartContext(chart, "crosshair").canvas;
     canvas.dispatchEvent(
       new MouseEvent("mousemove", {
         clientX: 360,
@@ -861,7 +857,7 @@ describe("plugin lifecycle", () => {
         };
       }
     ).events;
-    const canvas = chart.getContext("crosshair").canvas;
+    const canvas = getChartContext(chart, "crosshair").canvas;
     const finalState: Array<{
       canvasConnected: boolean;
       listenerCount: number;

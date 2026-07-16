@@ -5,7 +5,12 @@ import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
-import { getInternalMainPane, getInternalPanes } from "./chart-test-harness";
+import {
+  getChartContext,
+  getInternalMainPane,
+  getInternalPanes,
+  requestChartRedraw
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -57,7 +62,8 @@ function createChart() {
     locale: "en-US"
   });
   chart.setData(data);
-  chart.requestRedraw(
+  requestChartRedraw(
+    chart,
     ["grid", "axes", "series", "indicators", "annotations"],
     true
   );
@@ -67,9 +73,9 @@ function createChart() {
 }
 
 function getAnnotationContext(chart: FinancialChart) {
-  const chartContainer = chart
-    .getContext("main")
-    .canvas.closest(".financial-charts")!;
+  const chartContainer = getChartContext(chart, "main").canvas.closest(
+    ".financial-charts"
+  )!;
   const canvas = [...chartContainer.querySelectorAll("canvas")].find(
     (candidate) => candidate.style.zIndex === "70"
   );
@@ -82,13 +88,13 @@ describe("price axis annotations", () => {
     const probe = new AnnotationProbe();
     const remove = chart.addPlugin(probe);
     const annotationContext = getAnnotationContext(chart);
-    const yAxisContext = chart.getContext("y-label");
+    const yAxisContext = getChartContext(chart, "y-label");
     vi.mocked(annotationContext.fillText).mockClear();
     vi.mocked(annotationContext.stroke).mockClear();
     vi.mocked(yAxisContext.clearRect).mockClear();
 
     probe.set([{ id: "order", value: 12, text: "initial" }]);
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
 
     expect(annotationContext.fillText).toHaveBeenCalledWith(
       "initial",
@@ -101,7 +107,7 @@ describe("price axis annotations", () => {
 
     vi.mocked(annotationContext.fillText).mockClear();
     probe.set([{ id: "order", value: 12, text: "updated" }]);
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
     expect(annotationContext.fillText).toHaveBeenCalledWith(
       "updated",
       760,
@@ -112,16 +118,16 @@ describe("price axis annotations", () => {
     vi.mocked(annotationContext.fillText).mockClear();
     vi.mocked(annotationContext.stroke).mockClear();
     probe.clear();
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
     expect(annotationContext.clearRect).toHaveBeenCalled();
     expect(annotationContext.fillText).not.toHaveBeenCalled();
     expect(annotationContext.stroke).not.toHaveBeenCalled();
 
     probe.set([{ id: "order", value: 12 }]);
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
     vi.mocked(annotationContext.fillText).mockClear();
     remove();
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
     expect(annotationContext.fillText).not.toHaveBeenCalled();
   });
 
@@ -148,7 +154,7 @@ describe("price axis annotations", () => {
         emphasized: true
       }
     ]);
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
 
     expect(strokeColors).toEqual(["red", "blue"]);
     expect(context.fillText).toHaveBeenCalledTimes(1);
@@ -163,7 +169,7 @@ describe("price axis annotations", () => {
   it("projects and clips annotations independently for each pane", () => {
     const { chart } = createChart();
     chart.addIndicator(new TestIndicator());
-    chart.requestRedraw(["indicators", "annotations"], true);
+    requestChartRedraw(chart, ["indicators", "annotations"], true);
     const panes = getInternalPanes(chart);
     const probe = new AnnotationProbe();
     chart.addPlugin(probe);
@@ -181,7 +187,7 @@ describe("price axis annotations", () => {
       },
       { id: "missing", paneId: 999, value: 12, text: "missing" }
     ]);
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
 
     expect(context.rect).toHaveBeenCalledWith(
       panes[0].getRegion().x,
@@ -216,7 +222,7 @@ describe("price axis annotations", () => {
         offscreen: "clamp"
       }
     ]);
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
 
     expect(context.fillText).toHaveBeenCalledTimes(1);
     expect(context.fillText).toHaveBeenCalledWith(
@@ -240,7 +246,7 @@ describe("price axis annotations", () => {
       { id: "label", value: 11, text: "label", line: false },
       { id: "line", value: 13, text: "line", label: false }
     ]);
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
 
     expect(context.stroke).toHaveBeenCalledTimes(1);
     expect(context.fillText).toHaveBeenCalledTimes(1);
@@ -289,7 +295,7 @@ describe("price axis annotations", () => {
         collision: "allow"
       }
     ]);
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
 
     expect(context.rect).toHaveBeenCalledWith(
       axisRegion.x,
@@ -318,14 +324,16 @@ describe("price axis annotations", () => {
     });
     probe.set([{ id: "themed", value: 12 }]);
 
-    chart.updateTheme({
-      key: "custom",
-      priceAxisAnnotation: {
-        color: "#123456",
-        textColor: "#fedcba"
+    chart.updateOptions({
+      theme: {
+        key: "custom",
+        priceAxisAnnotation: {
+          color: "#123456",
+          textColor: "#fedcba"
+        }
       }
     });
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
 
     expect(strokeColors.at(-1)).toBe("#123456");
     expect(context.fillStyle).toBe("#fedcba");
@@ -334,8 +342,7 @@ describe("price axis annotations", () => {
   it("keeps its owned canvas between drawings and crosshair", () => {
     const { chart } = createChart();
     const canvases = [
-      ...chart
-        .getContext("main")
+      ...getChartContext(chart, "main")
         .canvas.closest(".financial-charts")!
         .querySelectorAll("canvas")
     ];

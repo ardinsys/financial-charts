@@ -170,7 +170,11 @@ describe("chart state", () => {
     expect(target.getIndicatorById("slow-sma")?.isIndicatorVisible()).toBe(
       false
     );
-    expect(target.getPaneHeights()).toEqual({ 0: 230, 1: 140 });
+    expect(
+      Object.fromEntries(
+        target.getPanes().map(({ id, height }) => [id, height])
+      )
+    ).toEqual({ 0: 230, 1: 140 });
     expect(targetDrawings.getDrawings()[0]?.getPaneId()).toBe(1);
 
     expect(onOptionsChange).not.toHaveBeenCalled();
@@ -280,7 +284,7 @@ describe("chart state", () => {
     expect(() => target.restoreState(state, { indicatorResolver })).toThrow(
       'Chart state contribution "drawing-manager" has no matching contributor.'
     );
-    expect(target.getAllIndicators()).toEqual([existing]);
+    expect(target.getIndicators()).toEqual([existing]);
 
     expect(() =>
       target.restoreState(

@@ -20,8 +20,10 @@ import type {
 } from "../src/plugin/chart-plugin";
 import {
   getChartModel,
+  getChartContext,
   getInternalMainPane,
-  getInternalPanes
+  getInternalPanes,
+  requestChartRedraw
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -148,7 +150,7 @@ function distance(a: DrawingPoint, b: DrawingPoint) {
 function drawingContext(chart: FinancialChart): DrawingRenderContext {
   return {
     pane: getInternalMainPane(chart),
-    canvas: chart.getContext("drawings").canvas
+    canvas: getChartContext(chart, "drawings").canvas
   };
 }
 
@@ -172,7 +174,7 @@ function dragChart(
   end: DrawingPoint,
   options: { button?: number } = {}
 ) {
-  const canvas = chart.getContext("crosshair").canvas;
+  const canvas = getChartContext(chart, "crosshair").canvas;
   canvas.dispatchEvent(
     new PointerEvent("pointerdown", {
       clientX: start.x,
@@ -523,7 +525,7 @@ describe("DrawingManager", () => {
     const drawing = manager.getDrawings()[0] as StubDrawing;
     const [anchor] = drawing.getAnchors();
     const [projectedAnchor] = drawing.projectForTest(drawingContext(chart));
-    const canvas = chart.getContext("drawings").canvas;
+    const canvas = getChartContext(chart, "drawings").canvas;
 
     expect(getInternalMainPane(chart).getTimeAnchorAlignment()).toBe("edge");
     expect(projectedAnchor.x).toBeCloseTo(
@@ -680,7 +682,7 @@ describe("DrawingManager", () => {
     manager.onPointer(pointerEvent(chart, data[1], "up", { x: 280, y: 220 }));
 
     const drawing = manager.getDrawings()[0] as StubDrawing;
-    chart.requestRedraw("drawings", true);
+    requestChartRedraw(chart, "drawings", true);
 
     expect(drawing.draw).toHaveBeenCalled();
   });
@@ -698,7 +700,7 @@ describe("DrawingManager", () => {
     });
     manager.addDrawing(drawing);
 
-    const context = chart.getContext("drawings");
+    const context = getChartContext(chart, "drawings");
     const [point] = drawing.projectForTest({ pane, canvas: context.canvas });
     const region = pane.getRegion();
 
@@ -709,7 +711,7 @@ describe("DrawingManager", () => {
     expect(point.y).toBeLessThanOrEqual(region.y + region.height);
 
     vi.mocked(context.rect).mockClear();
-    chart.requestRedraw("drawings", true);
+    requestChartRedraw(chart, "drawings", true);
     expect(context.rect).toHaveBeenCalledWith(
       region.x,
       region.y,

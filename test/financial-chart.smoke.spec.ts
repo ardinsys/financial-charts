@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-import {
-  type ResolvedChartOptions
-} from "../src/chart/financial-chart";
+import { type ResolvedChartOptions } from "../src/chart/financial-chart";
 import type { ChartControllerContext } from "../src/controllers/controller";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import { FinancialChart as CoreFinancialChart } from "../src/chart/core-financial-chart";
 import { LineController } from "../src/controllers/line-controller";
+import { getChartContext } from "./chart-test-harness";
 
 class AlternateLineController extends LineController {
   static override ID = "alternate-line";
@@ -25,19 +24,16 @@ describe("FinancialChart test harness", () => {
     document.body.appendChild(container);
 
     const start = Date.UTC(2024, 0, 1, 9);
-    const chart = new FinancialChart(
-      container,
-      {
-        timeRange: {
-          start,
-          end: start + 2 * 60_000
-        },
-        type: "line",
-        stepSize: 60_000,
-        maxZoom: 10,
-        volume: false
-      }
-    );
+    const chart = new FinancialChart(container, {
+      timeRange: {
+        start,
+        end: start + 2 * 60_000
+      },
+      type: "line",
+      stepSize: 60_000,
+      maxZoom: 10,
+      volume: false
+    });
 
     chart.setData([
       { time: start, close: 10 },
@@ -49,8 +45,8 @@ describe("FinancialChart test harness", () => {
 
     expect(chart.getData()).toHaveLength(3);
     expect(container.querySelectorAll("canvas")).toHaveLength(7);
-    expect(chart.getContext("main").canvas.width).toBeGreaterThan(0);
-    expect(() => chart.changeType("candle")).not.toThrow();
+    expect(getChartContext(chart, "main").canvas.width).toBeGreaterThan(0);
+    expect(() => chart.updateOptions({ type: "candle" })).not.toThrow();
 
     chart.dispose();
   });
@@ -65,46 +61,42 @@ describe("FinancialChart test harness", () => {
       document.body.appendChild(container);
     }
 
-    const lineChart = new FinancialChart(
-      lineContainer,
-      {
-        timeRange: {
-          start,
-          end: start + 60_000
-        },
-        type: "line",
-        controllers: [LineController],
-        includeDefaultControllers: false,
-        stepSize: 60_000,
-        maxZoom: 10,
-        volume: false
-      }
-    );
-    const alternateChart = new FinancialChart(
-      alternateContainer,
-      {
-        timeRange: {
-          start,
-          end: start + 60_000
-        },
-        type: "alternate-line",
-        controllers: [AlternateLineController],
-        includeDefaultControllers: false,
-        stepSize: 60_000,
-        maxZoom: 10,
-        volume: false
-      }
-    );
+    const lineChart = new FinancialChart(lineContainer, {
+      timeRange: {
+        start,
+        end: start + 60_000
+      },
+      type: "line",
+      controllers: [LineController],
+      includeDefaultControllers: false,
+      stepSize: 60_000,
+      maxZoom: 10,
+      volume: false
+    });
+    const alternateChart = new FinancialChart(alternateContainer, {
+      timeRange: {
+        start,
+        end: start + 60_000
+      },
+      type: "alternate-line",
+      controllers: [AlternateLineController],
+      includeDefaultControllers: false,
+      stepSize: 60_000,
+      maxZoom: 10,
+      volume: false
+    });
 
-    expect(() => lineChart.changeType("alternate-line")).toThrow(
+    expect(() => lineChart.updateOptions({ type: "alternate-line" })).toThrow(
       "Controller: alternate-line is not registered!"
     );
-    expect(() => alternateChart.changeType("line")).toThrow(
+    expect(() => alternateChart.updateOptions({ type: "line" })).toThrow(
       "Controller: line is not registered!"
     );
 
     lineChart.registerController(AlternateLineController);
-    expect(() => lineChart.changeType("alternate-line")).not.toThrow();
+    expect(() =>
+      lineChart.updateOptions({ type: "alternate-line" })
+    ).not.toThrow();
 
     lineChart.dispose();
     alternateChart.dispose();
@@ -125,7 +117,7 @@ describe("FinancialChart test harness", () => {
       volume: false
     });
 
-    expect(() => chart.changeType("line")).not.toThrow();
+    expect(() => chart.updateOptions({ type: "line" })).not.toThrow();
     expect(chart.getOptions().includeDefaultControllers).toBe(true);
     expect(chart.getOptions().controllers.map(({ ID }) => ID)).toEqual(
       expect.arrayContaining(["line", "alternate-line"])
@@ -161,7 +153,7 @@ describe("FinancialChart test harness", () => {
     expect(chart.getOptions().controllers.map(({ ID }) => ID)).toEqual([
       "line"
     ]);
-    expect(() => chart.changeType("candle")).toThrow(
+    expect(() => chart.updateOptions({ type: "candle" })).toThrow(
       "Controller: candle is not registered!"
     );
 
@@ -195,7 +187,7 @@ describe("FinancialChart test harness", () => {
     }).toThrow(TypeError);
     expect(chart.getOptions().theme.backgroundColor).not.toBe("red");
 
-    chart.setVolumeDraw(true);
+    chart.updateOptions({ volume: true });
     expect(chart.getOptions()).not.toBe(initial);
     expect(chart.getOptions().volume).toBe(true);
 

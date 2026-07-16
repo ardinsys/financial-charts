@@ -3,6 +3,10 @@ export type {
   PriceAxisAnnotation,
   PriceAxisAnnotationOffscreenBehavior
 } from "./annotations/price-axis-annotation";
+export type {
+  ChartCanvasLayer,
+  ChartRedrawPart
+} from "./render/chart-render-types";
 
 export * from "./plugin/chart-plugin";
 export * from "./plugins";

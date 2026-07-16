@@ -6,7 +6,7 @@ import {
   Indicator,
   type IndicatorLabelContent
 } from "../src/indicators/indicator";
-import { getChartModel } from "./chart-test-harness";
+import { getChartModel, getChartRenderer } from "./chart-test-harness";
 
 interface ExternalIndicatorTheme {
   color: string;
@@ -213,7 +213,7 @@ describe("external-data indicators", () => {
     removeButton.click();
     expect(onIndicatorRemove).not.toHaveBeenCalled();
 
-    const requestRedraw = vi.spyOn(chart, "requestRedraw");
+    const requestRedraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
     expect(() => indicator.setPrices([400])).not.toThrow();
     expect(requestRedraw).not.toHaveBeenCalled();
   });

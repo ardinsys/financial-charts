@@ -14,7 +14,11 @@ import {
   type PaneledIndicatorDrawingContext
 } from "../src/indicators/paneled-indicator";
 import { DataScaleModel } from "../src/scales/data-scale-model";
-import { getInternalPanes } from "./chart-test-harness";
+import {
+  getChartContext,
+  getChartModel,
+  getInternalPanes
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -140,13 +144,15 @@ describe("indicator authoring contexts", () => {
     chart.addIndicator(indicator);
     await waitForRedraw();
 
-    expect(indicator.lastContext?.ctx).toBe(chart.getContext("indicator"));
+    expect(indicator.lastContext?.ctx).toBe(
+      getChartContext(chart, "indicator")
+    );
     expect(indicator.lastContext?.canvas).toBe(
-      chart.getContext("indicator").canvas
+      getChartContext(chart, "indicator").canvas
     );
     expect(indicator.lastContext?.data).toEqual(chart.getData());
     expect(indicator.lastContext?.visibleData).toEqual(
-      chart.getLastVisibleDataPoints()
+      getChartModel(chart).getVisibleDataPoints()
     );
     expect(indicator.lastContext?.visibleTimeRange).toEqual(
       chart.getVisibleTimeRange()

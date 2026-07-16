@@ -1,23 +1,16 @@
 import { ChartController } from "../controllers/controller";
 import { PaneledIndicator } from "../indicators/paneled-indicator";
-import {
-  Indicator,
-  type IndicatorMutationOptions
-} from "../indicators/indicator";
+import { Indicator } from "../indicators/indicator";
 import { ChartIndicatorHost } from "../indicators/chart-indicator-host";
 import type { ScaleRangeModifier } from "../scales/data-scale-model";
 import type { TimeScaleRange } from "../scales/time-scale";
-import type { ChartTheme } from "./themes";
 import { ChartData, TimeRange } from "./types";
 import { EventEmitter, type ChartEventMap } from "./event-emitter";
 import { createPositionedContainer } from "../utils/dom";
 import { disposeInOrder } from "../utils/dispose";
 import type { ChartDOMOverlay } from "../ui/chart-dom-adapter";
 import type { RenderLayer } from "../render/render-pipeline";
-import type {
-  ChartCanvasLayer,
-  ChartRedrawPart
-} from "../render/chart-render-types";
+import type { ChartRedrawPart } from "../render/chart-render-types";
 import { ChartRenderer } from "../render/chart-renderer";
 import { PaneLayout, type PaneHeightsInput } from "../panes/pane-layout";
 import type { ChartPlugin } from "../plugin/chart-plugin";
@@ -38,14 +31,12 @@ import {
   type ChartChange
 } from "./chart-change-publisher";
 import {
-  type ChartLocalizationOptions,
   type ChartOptions,
   type ChartOptionsChangeEvent,
   type ChartOptionsSnapshot,
   type ChartOptionsUpdate,
   type ControllerConstructor,
   type ControllerType,
-  type LocaleValuesMap,
   type MutableResolvedChartOptions
 } from "./chart-options";
 import {
@@ -87,12 +78,6 @@ export type {
   ChartCrosshairOptions,
   ChartCrosshairState
 } from "../interaction/crosshair";
-export type {
-  ChartCanvasLayer,
-  ChartRedrawPart
-} from "../render/chart-render-types";
-export type { IndicatorMutationOptions } from "../indicators/indicator";
-
 export type { ChartPaneSnapshot, PaneHeightsInput } from "../panes/pane-layout";
 
 const ALL_REDRAW_PARTS = [
@@ -364,14 +349,6 @@ export class FinancialChart {
   }
 
   getIndicators(): readonly Indicator<any, any>[] {
-    return this.extensionHost.getIndicators();
-  }
-
-  getPaneledIndicators(): readonly PaneledIndicator<any, any>[] {
-    return this.extensionHost.getPaneledIndicators();
-  }
-
-  getAllIndicators(): readonly Indicator<any, any>[] {
     return this.extensionHost.getAllIndicators();
   }
 
@@ -391,10 +368,6 @@ export class FinancialChart {
 
   getMainPane() {
     return this.paneLayout.getMainSnapshot();
-  }
-
-  getPaneHeights(): Record<number, number> {
-    return this.paneLayout.getPaneHeights();
   }
 
   setPaneHeights(heights: PaneHeightsInput): void {
@@ -458,16 +431,12 @@ export class FinancialChart {
   }
 
   private refreshIndicatorLabels(dataTime?: number) {
-    for (const indicator of this.getPaneledIndicators()) {
+    for (const indicator of this.extensionHost.getPaneledIndicators()) {
       indicator.refreshLabel(dataTime);
     }
-    for (const indicator of this.getIndicators()) {
+    for (const indicator of this.extensionHost.getIndicators()) {
       indicator.refreshLabel(dataTime);
     }
-  }
-
-  public changeType(type: ControllerType) {
-    this.updateOptions({ type });
   }
 
   constructor(container: HTMLElement, options: ChartOptions) {
@@ -532,8 +501,8 @@ export class FinancialChart {
         getTimeAnchorAlignment: () => this.controller.getTimeAnchorAlignment(),
         getPixelsPerBar: () => this.getPixelsPerBar(),
         getController: () => this.controller,
-        getIndicators: () => this.getIndicators(),
-        getPaneledIndicators: () => this.getPaneledIndicators(),
+        getIndicators: () => this.extensionHost.getIndicators(),
+        getPaneledIndicators: () => this.extensionHost.getPaneledIndicators(),
         getPanes: () => this.paneLayout.getPanes(),
         getMainPane: () => this.paneLayout.getMainPane(),
         getPaneById: (paneId) => this.paneLayout.getPaneById(paneId),
@@ -704,9 +673,9 @@ export class FinancialChart {
               : {})
           };
         }),
-        indicators: this.getAllIndicators().map((indicator) =>
-          indicator.toJSON()
-        )
+        indicators: this.extensionHost
+          .getAllIndicators()
+          .map((indicator) => indicator.toJSON())
       },
       mainPaneId: this.paneLayout.getMainPane().getId(),
       controllerTypes: this.options.controllers.map(
@@ -726,8 +695,8 @@ export class FinancialChart {
     this.renderer.setPaused(true);
     this.paneLayout.setRestoredPaneIds(paneIdsByIndicator);
     try {
-      for (const indicator of this.getAllIndicators()) {
-        this.removeIndicator(indicator, { emit: false });
+      for (const indicator of this.extensionHost.getAllIndicators()) {
+        this.detachIndicator(indicator, false);
       }
 
       optionsEvent = this.applyOptionsUpdate(state.core)?.options;
@@ -740,7 +709,7 @@ export class FinancialChart {
       }
 
       for (const indicator of indicators) {
-        this.addIndicator(indicator, { emit: false });
+        this.attachIndicator(indicator, false);
       }
 
       this.setPaneHeights(
@@ -833,10 +802,10 @@ export class FinancialChart {
   }
 
   private refreshLocalizationLabels() {
-    for (const indicator of this.getIndicators()) {
+    for (const indicator of this.extensionHost.getIndicators()) {
       indicator.refreshLabel();
     }
-    for (const indicator of this.getPaneledIndicators()) {
+    for (const indicator of this.extensionHost.getPaneledIndicators()) {
       indicator.refreshLabel();
     }
   }
@@ -917,26 +886,6 @@ export class FinancialChart {
           : undefined,
       redraw: [...redrawParts]
     };
-  }
-
-  public updateTheme(theme: ChartTheme) {
-    this.updateOptions({ theme });
-  }
-
-  public setVolumeDraw(draw: boolean) {
-    this.updateOptions({ volume: draw });
-  }
-
-  public updateLocalization(localization: ChartLocalizationOptions) {
-    this.updateOptions(localization);
-  }
-
-  public updateLocale(locale: string, values?: LocaleValuesMap) {
-    this.updateLocalization({ locale, localeValues: values });
-  }
-
-  getContext(type: ChartCanvasLayer): CanvasRenderingContext2D {
-    return this.renderer.getContext(type);
   }
 
   /**
@@ -1052,11 +1001,14 @@ export class FinancialChart {
    *
    * @param indicator indicator to draw
    */
-  public addIndicator(
+  public addIndicator(indicator: Indicator<any, any>): () => void {
+    return this.attachIndicator(indicator, true);
+  }
+
+  private attachIndicator(
     indicator: Indicator<any, any>,
-    options: IndicatorMutationOptions = {}
+    emit: boolean
   ): () => void {
-    const emit = options.emit ?? true;
     if (this.disposed) {
       throw new Error("Cannot add an indicator to a disposed chart.");
     }
@@ -1120,7 +1072,7 @@ export class FinancialChart {
       this.events.emit("indicator-add", { indicator });
     }
     return () => {
-      this.removeIndicator(indicator, { emit });
+      this.detachIndicator(indicator, emit);
     };
   }
 
@@ -1131,9 +1083,13 @@ export class FinancialChart {
    * @param indicator indicator to remove
    */
 
-  public removeIndicator(
+  public removeIndicator(indicator: Indicator<any, any>): boolean {
+    return this.detachIndicator(indicator, true);
+  }
+
+  private detachIndicator(
     indicator: Indicator<any, any>,
-    options: IndicatorMutationOptions = {}
+    emit: boolean
   ): boolean {
     let removed = false;
     try {
@@ -1144,7 +1100,7 @@ export class FinancialChart {
     }
     if (!removed) return false;
 
-    if (options.emit ?? true) {
+    if (emit) {
       this.events.emit("indicator-remove", { indicator });
     }
     return true;
@@ -1202,12 +1158,12 @@ export class FinancialChart {
     ]);
   }
 
-  recalculateVisibleScale() {
+  private recalculateVisibleScale() {
     this.refreshIndexBounds();
     const visibleTimeRange = this.getVisibleTimeRange();
     const modifiers: ScaleRangeModifier[] = [];
 
-    for (const indicator of this.getIndicators()) {
+    for (const indicator of this.extensionHost.getIndicators()) {
       this.model.removeVisibleScaleModifier(indicator);
       const modifier = indicator.getModifier(visibleTimeRange);
       if (modifier) modifiers.push(modifier);
@@ -1218,15 +1174,7 @@ export class FinancialChart {
     return visibleDataPoints;
   }
 
-  getLastVisibleDataPoints(): readonly ChartData[] {
-    return this.model.getVisibleDataPoints();
-  }
-
-  getLastXGridCoords(): readonly number[] {
-    return this.renderer.getLastXGridCoords();
-  }
-
-  public requestRedraw(
+  private requestRedraw(
     part: ChartRedrawPart | ReadonlyArray<ChartRedrawPart>,
     immediate = false
   ) {

@@ -4,6 +4,7 @@ import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
+import { getChartContext } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -16,7 +17,7 @@ afterEach(() => {
 
 function createChart(
   data: ChartData[],
-  overrides: Partial<ConstructorParameters<typeof FinancialChart>[1]> = {},
+  overrides: Partial<ConstructorParameters<typeof FinancialChart>[1]> = {}
 ) {
   const container = document.createElement("div");
   container.style.width = "800px";
@@ -24,22 +25,19 @@ function createChart(
   document.body.appendChild(container);
 
   const start = data[0].time;
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: {
-        start,
-        end: data.at(-1)!.time + 60_000,
-      },
-      type: "line",
-      controllers: [LineController],
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US",
-      ...overrides,
+  const chart = new FinancialChart(container, {
+    timeRange: {
+      start,
+      end: data.at(-1)!.time + 60_000,
     },
-  );
+    type: "line",
+    controllers: [LineController],
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US",
+    ...overrides,
+  });
   chart.setData(data);
   charts.push(chart);
   return chart;
@@ -62,7 +60,7 @@ describe("MovingAverageIndicator", () => {
         { time: start + 60_000, close: 12 },
         { time: start + 120_000, close: 14 },
       ],
-      { formatter, timeZone: "UTC" },
+      { formatter, timeZone: "UTC" }
     );
     const indicator = new MovingAverageIndicator();
 
@@ -73,10 +71,10 @@ describe("MovingAverageIndicator", () => {
     expect(chart.getOptions().formatter.getTimeZone?.()).toBe("UTC");
     expect(
       indicator.getLabelContainer().querySelector("[data-id=extra]")
-        ?.textContent,
+        ?.textContent
     ).toBe("5 close");
 
-    chart.updateLocalization({
+    chart.updateOptions({
       locale: "hu-HU",
       timeZone: "Europe/Budapest",
       localeValues: {
@@ -110,14 +108,14 @@ describe("MovingAverageIndicator", () => {
     );
     expect(
       indicator.getLabelContainer().querySelector("[data-id=extra]")
-        ?.textContent,
+        ?.textContent
     ).toBe("5 záró");
     expect(
       (
         indicator
           .getLabelContainer()
           .querySelector("[data-id=settings]") as HTMLButtonElement
-      ).title,
+      ).title
     ).toBe("Beállítások");
   });
 
@@ -133,14 +131,14 @@ describe("MovingAverageIndicator", () => {
       timeZone: "Europe/Berlin",
     });
 
-    chart.updateLocalization({ formatter });
+    chart.updateOptions({ formatter });
 
     expect(chart.getOptions().formatter).toBe(formatter);
     expect(chart.getOptions().locale).toBe("de-DE");
     expect(chart.getOptions().timeZone).toBe("Europe/Berlin");
     expect(chart.getOptions().formatter.getLocale()).toBe("de-DE");
 
-    chart.updateLocalization({ timeZone: "Europe/Budapest" });
+    chart.updateOptions({ timeZone: "Europe/Budapest" });
 
     expect(chart.getOptions().formatter.getTimeZone?.()).toBe(
       "Europe/Budapest"
@@ -161,7 +159,7 @@ describe("MovingAverageIndicator", () => {
     chart.addIndicator(indicator);
     await waitForRedraw();
 
-    expect(chart.getContext("indicator").strokeStyle).toBe("#ff00aa");
+    expect(getChartContext(chart, "indicator").strokeStyle).toBe("#ff00aa");
   });
 
   it("clears stale per-time cache entries when chart data is replaced", async () => {

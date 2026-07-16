@@ -7,7 +7,12 @@ import {
   calculateStepSize,
   calculateYAxisLabels
 } from "../src/scales/ticks/price-ticks";
-import { getChartModel } from "./chart-test-harness";
+import {
+  getChartContext,
+  getChartModel,
+  getChartRenderer,
+  requestChartRedraw
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -52,12 +57,12 @@ function roundedLabels(labels: AxisLabel[]) {
 }
 
 function getFillTextLabels(chart: FinancialChart) {
-  const fillText = chart.getContext("x-label").fillText as unknown as {
+  const fillText = getChartContext(chart, "x-label").fillText as unknown as {
     mock: { calls: unknown[][]; clear: () => void };
     mockClear: () => void;
   };
   fillText.mockClear();
-  chart.requestRedraw("axes", true);
+  requestChartRedraw(chart, "axes", true);
   return fillText.mock.calls.map((call) => call[0]);
 }
 
@@ -66,13 +71,13 @@ function getCrosshairPriceLabel(
   time: number,
   price: number
 ) {
-  const fillText = chart.getContext("crosshair").fillText as unknown as {
+  const fillText = getChartContext(chart, "crosshair").fillText as unknown as {
     mock: { calls: unknown[][] };
     mockClear(): void;
   };
   fillText.mockClear();
   chart.setCrosshair({ time, price });
-  chart.requestRedraw("crosshair", true);
+  requestChartRedraw(chart, "crosshair", true);
   return fillText.mock.calls[1]?.[0];
 }
 
@@ -104,7 +109,7 @@ describe("current price tick calculations", () => {
           yMin: scale.getYMin(),
           yMax: scale.getYMax(),
           canvasHeight: Number.parseFloat(
-            chart.getContext("y-label").canvas.style.height
+            getChartContext(chart, "y-label").canvas.style.height
           ),
           fontSize: chart.getOptions().theme.yAxis.fontSize,
           labelSpacing: 30
@@ -170,7 +175,7 @@ describe("current scale coordinate mapping", () => {
       { start, end: start + 240_000 }
     );
     const visibleScale = getChartModel(chart).getVisibleScale();
-    const canvas = chart.getContext("main").canvas;
+    const canvas = getChartContext(chart, "main").canvas;
 
     const pixel = visibleScale.mapToPixel(start + 60_000, 12, canvas);
     expect({
@@ -217,9 +222,11 @@ describe("current X-axis tick rendering", () => {
     );
 
     expect(getFillTextLabels(chart)).toEqual(["2", "11:00 PM", "1:00 AM"]);
-    expect(chart.getLastXGridCoords().map((x) => Math.round(x))).toEqual([
-      360, 120, 600
-    ]);
+    expect(
+      getChartRenderer(chart)
+        .getLastXGridCoords()
+        .map((x) => Math.round(x))
+    ).toEqual([360, 120, 600]);
   });
 
   it("draws long-range ticks prioritized by year, then month, then day", () => {
@@ -236,8 +243,10 @@ describe("current X-axis tick rendering", () => {
     );
 
     expect(getFillTextLabels(chart)).toEqual(["2024", "Feb", "31", "2"]);
-    expect(chart.getLastXGridCoords().map((x) => Math.round(x))).toEqual([
-      270, 450, 90, 630
-    ]);
+    expect(
+      getChartRenderer(chart)
+        .getLastXGridCoords()
+        .map((x) => Math.round(x))
+    ).toEqual([270, 450, 90, 630]);
   });
 });

@@ -15,7 +15,11 @@ import {
   type DrawingRenderContext
 } from "../src/drawings";
 import type { ChartPointerEvent } from "../src/plugin/chart-plugin";
-import { getInternalMainPane } from "./chart-test-harness";
+import {
+  getChartContext,
+  getInternalMainPane,
+  requestChartRedraw
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -103,7 +107,7 @@ function createDrawing(
 function drawingContext(chart: FinancialChart): DrawingRenderContext {
   return {
     pane: getInternalMainPane(chart),
-    canvas: chart.getContext("drawings").canvas
+    canvas: getChartContext(chart, "drawings").canvas
   };
 }
 
@@ -141,8 +145,8 @@ describe("drawing tools", () => {
     );
     expect(anchorsAfterMove[0].price).toBeLessThan(anchorsBeforeMove[0].price);
 
-    chart.requestRedraw("drawings", true);
-    expect(chart.getContext("drawings").stroke).toHaveBeenCalled();
+    requestChartRedraw(chart, "drawings", true);
+    expect(getChartContext(chart, "drawings").stroke).toHaveBeenCalled();
 
     manager.deleteSelected();
 
@@ -181,8 +185,8 @@ describe("drawing tools", () => {
       anchorsBeforeMove.at(-1)!.price
     );
 
-    chart.requestRedraw("drawings", true);
-    expect(chart.getContext("drawings").stroke).toHaveBeenCalled();
+    requestChartRedraw(chart, "drawings", true);
+    expect(getChartContext(chart, "drawings").stroke).toHaveBeenCalled();
 
     manager.deleteSelected();
 
@@ -222,8 +226,8 @@ describe("drawing tools", () => {
     );
     expect(anchorsAfterMove[0].price).toBeLessThan(anchorsBeforeMove[0].price);
 
-    chart.requestRedraw("drawings", true);
-    expect(chart.getContext("drawings").rect).toHaveBeenCalled();
+    requestChartRedraw(chart, "drawings", true);
+    expect(getChartContext(chart, "drawings").rect).toHaveBeenCalled();
 
     manager.deleteSelected();
 
@@ -288,8 +292,8 @@ describe("drawing tools", () => {
     );
     expect(anchorsAfterMove[0].price).toBeLessThan(anchorsBeforeMove[0].price);
 
-    chart.requestRedraw("drawings", true);
-    expect(chart.getContext("drawings").fillText).toHaveBeenCalledWith(
+    requestChartRedraw(chart, "drawings", true);
+    expect(getChartContext(chart, "drawings").fillText).toHaveBeenCalledWith(
       "Guidance",
       expect.any(Number),
       expect.any(Number)
@@ -390,7 +394,7 @@ function drawingHitContext(chart: FinancialChart) {
 
 function projectAnchor(chart: FinancialChart, anchor: DrawingAnchor) {
   const pane = getInternalMainPane(chart);
-  const canvas = chart.getContext("drawings").canvas;
+  const canvas = getChartContext(chart, "drawings").canvas;
 
   return {
     x: pane.getTimeScale()!.projectIndex(anchor.index, {

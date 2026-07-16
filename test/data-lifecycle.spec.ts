@@ -3,7 +3,11 @@ import { FinancialChart } from "../src/chart/default-financial-chart";
 import { LineController } from "../src/controllers/line-controller";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
-import { getChartModel } from "./chart-test-harness";
+import {
+  getChartContext,
+  getChartModel,
+  getChartRenderer
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -67,7 +71,7 @@ describe("chart data lifecycle", () => {
 
     chart.updateData({ time: start + 60_000, close: 100 });
 
-    expect(chart.getLastVisibleDataPoints().at(-1)?.close).toBe(100);
+    expect(getChartModel(chart).getVisibleDataPoints().at(-1)?.close).toBe(100);
     expect(
       getChartModel(chart).getVisibleScale().getYMax()
     ).toBeGreaterThanOrEqual(100);
@@ -102,11 +106,11 @@ describe("chart data lifecycle", () => {
     });
 
     const clearedContexts = [
-      chart.getContext("main"),
-      chart.getContext("x-label"),
-      chart.getContext("y-label"),
-      chart.getContext("indicator"),
-      chart.getContext("crosshair")
+      getChartContext(chart, "main"),
+      getChartContext(chart, "x-label"),
+      getChartContext(chart, "y-label"),
+      getChartContext(chart, "indicator"),
+      getChartContext(chart, "crosshair")
     ];
     for (const context of clearedContexts) {
       vi.mocked(context.clearRect).mockClear();
@@ -115,8 +119,8 @@ describe("chart data lifecycle", () => {
     chart.setData([]);
 
     expect(chart.getData()).toEqual([]);
-    expect(chart.getLastVisibleDataPoints()).toEqual([]);
-    expect(chart.getLastXGridCoords()).toEqual([]);
+    expect(getChartModel(chart).getVisibleDataPoints()).toEqual([]);
+    expect(getChartRenderer(chart).getLastXGridCoords()).toEqual([]);
     expect(chart.getCrosshairState()).toBeUndefined();
     expect(chart.getTimeRange()).toEqual({ start: 0, end: 0 });
     expect(getChartModel(chart).getVisibleScale()).toBe(visibleScale);

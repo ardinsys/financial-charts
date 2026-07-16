@@ -3,7 +3,11 @@ import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
-import { getChartModel } from "./chart-test-harness";
+import {
+  getChartContext,
+  getChartModel,
+  getChartRenderer
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -53,7 +57,7 @@ describe("visible range contracts", () => {
   it("synchronizes scale, notification, and redraw for logical setters", () => {
     const { chart } = createChart();
     const onVisibleRangeChanged = attachRangeProbe(chart);
-    const requestRedraw = vi.spyOn(chart, "requestRedraw");
+    const requestRedraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
     const fullRangeMax = getChartModel(chart).getVisibleScale().getYMax();
 
     chart.setVisibleIndexRange({ from: 0, to: 3 });
@@ -68,15 +72,18 @@ describe("visible range contracts", () => {
     );
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
     expect(requestRedraw).toHaveBeenCalledOnce();
-    expect(requestRedraw).toHaveBeenCalledWith([
-      "grid",
-      "axes",
-      "series",
-      "indicators",
-      "drawings",
-      "annotations",
-      "crosshair"
-    ]);
+    expect(requestRedraw).toHaveBeenCalledWith(
+      [
+        "grid",
+        "axes",
+        "series",
+        "indicators",
+        "drawings",
+        "annotations",
+        "crosshair"
+      ],
+      false
+    );
 
     chart.setVisibleIndexRange({ from: 0, to: 3 });
 
@@ -123,8 +130,8 @@ describe("visible range contracts", () => {
     const { chart } = createChart();
     chart.setVisibleIndexRange({ from: 1, to: 5 });
     const onVisibleRangeChanged = attachRangeProbe(chart);
-    const requestRedraw = vi.spyOn(chart, "requestRedraw");
-    const canvas = chart.getContext("crosshair").canvas;
+    const requestRedraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
+    const canvas = getChartContext(chart, "crosshair").canvas;
 
     canvas.dispatchEvent(
       new PointerEvent("pointerdown", {
@@ -197,7 +204,7 @@ describe("visible range contracts", () => {
   it("makes every view setter a no-op while data is empty", () => {
     const { chart } = createChart(false);
     const onVisibleRangeChanged = attachRangeProbe(chart);
-    const requestRedraw = vi.spyOn(chart, "requestRedraw");
+    const requestRedraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
     const logicalRange = chart.getVisibleLogicalRange();
     const timeRange = chart.getVisibleTimeRange();
     const timeWindow = chart.getVisibleTimeWindow();

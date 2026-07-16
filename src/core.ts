@@ -25,7 +25,6 @@ export type {
   ChartCrosshairOptions,
   ChartCrosshairState
 } from "./interaction/crosshair";
-export type { ChartRedrawPart } from "./render/chart-render-types";
 export type { IndicatorMutationOptions } from "./indicators/indicator";
 export type { ChartPaneSnapshot, PaneHeightsInput } from "./panes/pane-layout";
 export { FinancialChart } from "./chart/core-financial-chart";

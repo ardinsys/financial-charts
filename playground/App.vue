@@ -39,10 +39,7 @@ import {
   stepSize as baseStepSize
 } from "./market-data";
 import { SelectedDrawingToolbarPlugin } from "./plugins/selected-drawing-toolbar";
-import {
-  createProbeOrders,
-  OrdersProbePlugin
-} from "./plugins/orders-probe";
+import { createProbeOrders, OrdersProbePlugin } from "./plugins/orders-probe";
 
 const timeframeOptions = [
   { label: "15m", value: baseStepSize },
@@ -273,7 +270,7 @@ function getChartTimeRange(data: ChartData[], stepSize: number) {
 
 function applyChartType() {
   for (const item of charts) {
-    item.chart.changeType(selectedChartType.value);
+    item.chart.updateOptions({ type: selectedChartType.value });
   }
 }
 
@@ -347,7 +344,7 @@ function removeSelectedIndicator() {
   const indicator = selectedIndicator.value;
   if (indicator) {
     const owner =
-      charts.find((item) => item.chart.getAllIndicators().includes(indicator))
+      charts.find((item) => item.chart.getIndicators().includes(indicator))
         ?.chart ?? getPrimaryChart();
     owner?.removeIndicator(indicator);
   }
@@ -356,18 +353,15 @@ function removeSelectedIndicator() {
 }
 
 function createChart(root: HTMLElement, slot: ChartSlot): PlaygroundChart {
-  const chart = new FinancialChart(
-    root,
-    {
-      timeRange: getChartTimeRange(slot.data, slot.stepSize),
-      type: selectedChartType.value,
-      theme: darkTheme,
-      locale: "en-US",
-      maxZoom: 90,
-      stepSize: slot.stepSize,
-      volume: true
-    }
-  );
+  const chart = new FinancialChart(root, {
+    timeRange: getChartTimeRange(slot.data, slot.stepSize),
+    type: selectedChartType.value,
+    theme: darkTheme,
+    locale: "en-US",
+    maxZoom: 90,
+    stepSize: slot.stepSize,
+    volume: true
+  });
 
   const drawingManager = new DrawingManager();
   const selectedDrawingToolbar = new SelectedDrawingToolbarPlugin(

@@ -5,7 +5,7 @@ import { LineController } from "../src/controllers/line-controller";
 import { DataScaleModel } from "../src/scales/data-scale-model";
 import { PriceScale } from "../src/scales/price-scale";
 import { TimeScale } from "../src/scales/time-scale";
-import { getChartModel } from "./chart-test-harness";
+import { getChartContext, getChartModel } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -92,7 +92,7 @@ describe("index-based time scales", () => {
       { start: friday, end: tuesday },
       { stepSize: day }
     );
-    const canvas = chart.getContext("main").canvas;
+    const canvas = getChartContext(chart, "main").canvas;
     const timeScale = getChartModel(chart).getTimeScale();
 
     expect(timeScale.project(friday, { canvas })).toBeCloseTo(120);
@@ -142,7 +142,7 @@ describe("index-based time scales", () => {
       { start, end }
     );
     const visibleScale = getChartModel(chart).getVisibleScale();
-    const canvas = chart.getContext("main").canvas;
+    const canvas = getChartContext(chart, "main").canvas;
 
     const timeScale = new TimeScale(
       {

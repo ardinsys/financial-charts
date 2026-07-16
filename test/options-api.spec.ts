@@ -4,6 +4,7 @@ import { FinancialChart as CoreFinancialChart } from "../src/chart/core-financia
 import type { ChartOptionsChangeEvent } from "../src/chart/financial-chart";
 import { LineController } from "../src/controllers/line-controller";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
+import { getChartContext, getChartRenderer } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -68,7 +69,7 @@ describe("chart options API", () => {
 
   it("does nothing when a patch has no effective changes", () => {
     const chart = createChart();
-    const redraw = vi.spyOn(chart, "requestRedraw");
+    const redraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
     const listener = vi.fn();
     chart.on("options-change", listener);
     const visibleRange = chart.getVisibleLogicalRange();
@@ -89,7 +90,7 @@ describe("chart options API", () => {
 
   it("applies a multi-option patch with one redraw and one typed event", () => {
     const chart = createChart();
-    const redraw = vi.spyOn(chart, "requestRedraw");
+    const redraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
     const events: ChartOptionsChangeEvent[] = [];
     const previousOptions = chart.getOptions();
     chart.on("options-change", (event) => events.push(event));
@@ -125,9 +126,7 @@ describe("chart options API", () => {
     });
     expect(Object.isFrozen(events[0].current.theme)).toBe(true);
     expect(
-      chart
-        .getContext("main")
-        .canvas.closest(".financial-charts-custom")
+      getChartContext(chart, "main").canvas.closest(".financial-charts-custom")
     ).not.toBeNull();
   });
 
@@ -178,9 +177,7 @@ describe("chart options API", () => {
     expect(initial.timeRange).toEqual({ start: 100, end: 400 });
     expect(initial.theme.randomColors).toEqual(["#123456"]);
     expect(initial.theme.line.color).toBe("#abcdef");
-    expect(initial.localeValues["en-US"].common.sources.close).toBe(
-      "closing"
-    );
+    expect(initial.localeValues["en-US"].common.sources.close).toBe("closing");
 
     const themeUpdate = { key: "updated", randomColors: ["#fedcba"] };
     chart.updateOptions({ theme: themeUpdate });
@@ -222,7 +219,7 @@ describe("chart options API", () => {
     expect(chart.getOptions().stepSize).toBe(120_000);
 
     const visibleRange = chart.getVisibleLogicalRange();
-    const redraw = vi.spyOn(chart, "requestRedraw");
+    const redraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
     onData.mockClear();
     onVisibleRangeChanged.mockClear();
     chart.updateOptions({ maxZoom: 20 });
@@ -246,7 +243,7 @@ describe("chart options API", () => {
     chart.addPlugin(plugin);
     chart.on("options-change", () => order.push("public-options"));
     const redraw = vi
-      .spyOn(chart, "requestRedraw")
+      .spyOn(getChartRenderer(chart), "requestRedraw")
       .mockImplementation(() => order.push("redraw"));
     order.length = 0;
 
@@ -275,7 +272,7 @@ describe("chart options API", () => {
     chart.addPlugin(plugin);
     chart.setVisibleIndexRange({ from: 1, to: 3 });
     const redraw = vi
-      .spyOn(chart, "requestRedraw")
+      .spyOn(getChartRenderer(chart), "requestRedraw")
       .mockImplementation(() => order.push("redraw"));
     order.length = 0;
 
@@ -306,26 +303,5 @@ describe("chart options API", () => {
     ).toThrow("stepSize must be a finite number greater than zero.");
     expect(chart.getOptions()).toBe(initial);
     expect(listener).not.toHaveBeenCalled();
-  });
-
-  it("keeps convenience methods as updateOptions delegates", () => {
-    const chart = createChart();
-    const updateOptions = vi
-      .spyOn(chart, "updateOptions")
-      .mockImplementation(() => undefined);
-
-    chart.changeType("candle");
-    chart.updateTheme({ key: "custom" });
-    chart.setVolumeDraw(false);
-    chart.updateLocalization({ locale: "hu-HU" });
-    chart.updateLocale("de-DE");
-
-    expect(updateOptions.mock.calls).toEqual([
-      [{ type: "candle" }],
-      [{ theme: { key: "custom" } }],
-      [{ volume: false }],
-      [{ locale: "hu-HU" }],
-      [{ locale: "de-DE", localeValues: undefined }]
-    ]);
   });
 });

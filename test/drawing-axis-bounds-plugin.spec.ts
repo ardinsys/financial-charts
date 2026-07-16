@@ -10,7 +10,11 @@ import {
 } from "../src/drawings";
 import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
 import { DrawingAxisBoundsPlugin } from "../src/plugins/drawing-axis-bounds-plugin";
-import { getInternalMainPane } from "./chart-test-harness";
+import {
+  getChartRenderer,
+  getInternalMainPane,
+  requestChartRedraw
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -66,7 +70,8 @@ function createChart() {
     locale: "en-US"
   });
   chart.setData(data);
-  chart.requestRedraw(
+  requestChartRedraw(
+    chart,
     ["grid", "axes", "series", "indicators", "annotations"],
     true
   );
@@ -106,13 +111,13 @@ describe("DrawingAxisBoundsPlugin", () => {
         { index: 2, price: 14 }
       ]
     });
-    const getContext = vi.spyOn(chart, "getContext");
+    const getContext = vi.spyOn(getChartRenderer(chart), "getContext");
     const getData = vi.spyOn(chart, "getData");
     const getOptions = vi.spyOn(chart, "getOptions");
 
     eventContext?.emit("drawing-select", { drawing });
 
-    expect(getContext).not.toHaveBeenCalled();
+    expect(getContext).not.toHaveBeenCalledWith("y-label");
     expect(getData).not.toHaveBeenCalled();
     expect(getOptions).not.toHaveBeenCalled();
     getContext.mockRestore();
@@ -121,7 +126,7 @@ describe("DrawingAxisBoundsPlugin", () => {
     const mainPane = getInternalMainPane(chart);
     vi.mocked(context.fillText).mockClear();
     vi.mocked(context.fillRect).mockClear();
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
 
     const text = vi.mocked(context.fillText).mock.calls.map(([value]) => value);
     expect(text).toEqual(expect.arrayContaining(["S 10", "E 14", "sibling"]));
@@ -134,7 +139,7 @@ describe("DrawingAxisBoundsPlugin", () => {
 
     vi.mocked(context.fillText).mockClear();
     eventContext?.emit("drawing-select", {});
-    chart.requestRedraw("annotations", true);
+    requestChartRedraw(chart, "annotations", true);
 
     expect(
       vi.mocked(context.fillText).mock.calls.map(([value]) => value)

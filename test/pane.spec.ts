@@ -5,11 +5,19 @@ import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { Pane } from "../src/panes/pane";
 import {
   getChartModel,
+  getChartContext,
   getInternalMainPane,
-  getInternalPanes
+  getInternalPanes,
+  requestChartRedraw
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
+
+function getPaneHeights(chart: FinancialChart): Record<number, number> {
+  return Object.fromEntries(
+    chart.getPanes().map(({ id, height }) => [id, height])
+  );
+}
 
 class CrosshairProbeIndicator extends TestIndicator {
   public readonly crosshairCalls: Array<{ time: number; relativeY: number }> =
@@ -156,7 +164,7 @@ describe("Pane", () => {
     const [, indicatorPane] = getInternalPanes(chart);
     const indicatorContainer = indicator.getContainer();
 
-    expect(chart.getPaneledIndicators()).toEqual([indicator]);
+    expect(chart.getIndicators()).toEqual([indicator]);
     expect(chart.getPanes()).toHaveLength(2);
     expect(indicatorPaneSnapshot).toEqual({
       id: indicatorPane.getId(),
@@ -182,14 +190,14 @@ describe("Pane", () => {
     expect(indicatorContainer.style.top).toBe("277.5px");
     expect(indicatorContainer.style.height).toBe("92.5px");
 
-    chart.getContext("crosshair").canvas.dispatchEvent(
+    getChartContext(chart, "crosshair").canvas.dispatchEvent(
       new MouseEvent("mousemove", {
         clientX: 360,
         clientY: 300,
         bubbles: true
       })
     );
-    chart.requestRedraw("crosshair", true);
+    requestChartRedraw(chart, "crosshair", true);
 
     expect(indicator.crosshairCalls).toHaveLength(1);
     expect(indicator.crosshairCalls[0].time).toBe(start + 60_000);
@@ -205,7 +213,7 @@ describe("Pane", () => {
     const initialPanes = chart.getPanes();
     const [mainPane, indicatorPane] = initialPanes;
     const [internalMainPane, internalIndicatorPane] = getInternalPanes(chart);
-    expect(chart.getPaneHeights()).toEqual({
+    expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 277.5,
       [indicatorPane.id]: 92.5
     });
@@ -215,7 +223,7 @@ describe("Pane", () => {
       [indicatorPane.id]: 150
     });
 
-    expect(chart.getPaneHeights()).toEqual({
+    expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 220,
       [indicatorPane.id]: 150
     });
@@ -245,7 +253,7 @@ describe("Pane", () => {
       [indicatorPane.id]: 360
     });
 
-    expect(chart.getPaneHeights()).toEqual({
+    expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 80,
       [indicatorPane.id]: 290
     });
@@ -286,7 +294,7 @@ describe("Pane", () => {
       })
     );
 
-    expect(chart.getPaneHeights()).toEqual({
+    expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 307.5,
       [indicatorPane.id]: 62.5
     });
@@ -304,7 +312,7 @@ describe("Pane", () => {
       })
     );
 
-    expect(chart.getPaneHeights()).toEqual({
+    expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 320,
       [indicatorPane.id]: 50
     });

@@ -8,7 +8,6 @@ import {
   type ChartCrosshairOptions,
   type ChartData,
   type ChartOptions,
-  type ChartRedrawPart,
   type ChartState,
   type ChartStateContributor,
   type DrawingMutationOptions,
@@ -28,6 +27,8 @@ import { TestIndicator } from "@ardinsys/financial-charts";
 import { ICON_SHOW } from "@ardinsys/financial-charts";
 // @ts-expect-error The built-in controller registry is an implementation detail.
 import { defaultControllers } from "@ardinsys/financial-charts";
+// @ts-expect-error Render-layer contracts use the extensions entry.
+import type { ChartRedrawPart } from "@ardinsys/financial-charts";
 
 const data: ChartData[] = [{ time: 0, close: 1 }];
 const options: ChartOptions = {
@@ -39,7 +40,6 @@ const drawingMutation = {} as DrawingMutationOptions;
 const drawingSelection = {} as DrawingSelectionOptions;
 const indicatorMutation = {} as IndicatorMutationOptions;
 const crosshairOptions: ChartCrosshairOptions = { time: 0 };
-const redrawPart: ChartRedrawPart = "axes";
 const chart = null as unknown as FinancialChart;
 const contributor: ChartStateContributor<{ symbol: string }> = {
   key: "symbol",
@@ -54,8 +54,26 @@ chart.draw(data);
 chart.drawNextPoint(data[0]);
 // @ts-expect-error v1 uses updateOptions() for runtime option changes.
 chart.updateCoreOptions("auto", 60_000, 10);
-// @ts-expect-error Redraw requests name concrete render layers.
-chart.requestRedraw("controller");
+// @ts-expect-error Render invalidation belongs to extension contexts.
+chart.requestRedraw("series");
+// @ts-expect-error Canvas access belongs to controller and extension contexts.
+chart.getContext("main");
+// @ts-expect-error Render caches are engine state.
+chart.getLastVisibleDataPoints();
+// @ts-expect-error Render caches are engine state.
+chart.getLastXGridCoords();
+// @ts-expect-error Indicator grouping belongs to extension contexts.
+chart.getPaneledIndicators();
+// @ts-expect-error getIndicators() is the complete public collection.
+chart.getAllIndicators();
+// @ts-expect-error Pane heights are included in getPanes() snapshots.
+chart.getPaneHeights();
+// @ts-expect-error Runtime changes use updateOptions().
+chart.changeType("line");
+// @ts-expect-error Runtime changes use updateOptions().
+chart.setVolumeDraw(false);
+// @ts-expect-error Runtime changes use updateOptions().
+chart.updateLocalization({ locale: "en-US" });
 
 void [
   ChartSyncPlugin,
@@ -71,7 +89,6 @@ void [
   drawingSelection,
   indicatorMutation,
   crosshairOptions,
-  redrawPart,
   contributor,
   serializedState,
   chart
@@ -79,6 +96,7 @@ void [
 void [
   null as unknown as Indicator,
   null as unknown as ChartPlugin,
+  null as unknown as ChartRedrawPart,
   null as unknown as DataScaleModel,
   TestIndicator,
   ICON_SHOW,

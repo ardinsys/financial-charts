@@ -23,6 +23,7 @@ const unsubscribe = chart.on(
 );
 const options = chart.getOptions();
 const mappedData = chart.getData();
+const indicators = chart.getIndicators();
 const panes = chart.getPanes();
 const crosshair = chart.getCrosshairState();
 void [panes[0]?.id, panes[0]?.height, panes[0]?.kind];
@@ -73,4 +74,4 @@ unsubscribe();
 chart.clearData();
 chart.dispose();
 
-void [options, mappedData, panes, crosshair];
+void [options, mappedData, indicators, panes, crosshair];

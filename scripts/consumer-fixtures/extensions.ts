@@ -3,7 +3,9 @@ import {
   Drawing,
   Indicator,
   type ChartDOMAdapter,
+  type ChartCanvasLayer,
   type ChartPlugin,
+  type ChartRedrawPart,
   type DefaultIndicatorOptions,
   type DrawingHitTestContext,
   type DrawingOptions,
@@ -59,5 +61,15 @@ const plugin = {
 } satisfies ChartPlugin;
 const adapter: ChartDOMAdapter = new DefaultDOMAdapter();
 const annotation: PriceAxisAnnotation = { id: "fixture", value: 1 };
+const canvasLayer: ChartCanvasLayer = "main";
+const redrawPart: ChartRedrawPart = "series";
 
-void [ExtensionIndicator, ExtensionDrawing, plugin, adapter, annotation];
+void [
+  ExtensionIndicator,
+  ExtensionDrawing,
+  plugin,
+  adapter,
+  annotation,
+  canvasLayer,
+  redrawPart
+];

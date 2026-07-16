@@ -4,7 +4,11 @@ import type { ControllerType } from "../src/chart/financial-chart";
 import { CandlestickController } from "../src/controllers/candle-controller";
 import { HLCAreaController } from "../src/controllers/hlc-area-controller";
 import { LineController } from "../src/controllers/line-controller";
-import { getChartModel } from "./chart-test-harness";
+import {
+  getChartContext,
+  getChartModel,
+  requestChartRedraw
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -43,9 +47,9 @@ describe("chart data contracts", () => {
       { time: start, close: 0, volume: 0 }
     ]);
 
-    const context = chart.getContext("main");
+    const context = getChartContext(chart, "main");
     vi.mocked(context.moveTo).mockClear();
-    chart.requestRedraw("series", true);
+    requestChartRedraw(chart, "series", true);
 
     expect(chart.getData()).toEqual([
       { time: start, close: 0, volume: 0 },
@@ -72,9 +76,9 @@ describe("chart data contracts", () => {
       { time: start + 60_000, open: null, high: null, low: null, close: null }
     ]);
 
-    const context = chart.getContext("main");
+    const context = getChartContext(chart, "main");
     vi.mocked(context.rect).mockClear();
-    chart.requestRedraw("series", true);
+    requestChartRedraw(chart, "series", true);
 
     expect(context.rect).toHaveBeenCalled();
     expect(
@@ -95,7 +99,7 @@ describe("chart data contracts", () => {
       { time: start + 60_000, close: 1 }
     ]);
 
-    expect(() => chart.requestRedraw("series", true)).not.toThrow();
+    expect(() => requestChartRedraw(chart, "series", true)).not.toThrow();
   });
 
   it("rejects older streaming timestamps without changing data", () => {
