@@ -116,9 +116,9 @@ pixels. `containsY()` accepts a chart-local Y coordinate, while
 `getRelativeY()` converts it to pane-local space.
 
 `setRegion()` and `setYAxisRegion()` snapshot their input. Their getters return
-stable frozen objects until the next update, making repeated layout reads safe
-and allocation-free. `getDrawables()` likewise caches its frozen z-ordered view
-until a drawable is added or removed, so `draw()` does not sort and copy on each
+stable borrowed readonly objects until the next update, making repeated layout
+reads allocation-free. `getDrawables()` likewise caches its z-ordered view until
+a drawable is added or removed, so `draw()` does not sort and copy on each
 render.
 
 ## Render pipeline

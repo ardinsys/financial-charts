@@ -15,11 +15,12 @@ export class PriceScale implements Scale {
   private range: PriceScaleRange;
 
   constructor(range: PriceScaleRange) {
-    this.range = freezeRange(range);
+    this.range = copyRange(range);
   }
 
   setRange(range: PriceScaleRange): void {
-    this.range = freezeRange(range);
+    if (this.range.min === range.min && this.range.max === range.max) return;
+    this.range = copyRange(range);
   }
 
   getRange(): PriceScaleRange {
@@ -65,6 +66,6 @@ export class PriceScale implements Scale {
   }
 }
 
-function freezeRange(range: PriceScaleRange): PriceScaleRange {
-  return Object.freeze({ ...range });
+function copyRange(range: PriceScaleRange): PriceScaleRange {
+  return { ...range };
 }

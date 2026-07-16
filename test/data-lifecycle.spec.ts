@@ -116,11 +116,15 @@ describe("chart data lifecycle", () => {
       vi.mocked(context.clearRect).mockClear();
     }
 
+    const xGridCoords = getChartRenderer(chart).getLastXGridCoords();
+    expect(getChartRenderer(chart).getLastXGridCoords()).toBe(xGridCoords);
+
     chart.setData([]);
 
     expect(chart.getData()).toEqual([]);
     expect(getChartModel(chart).getVisibleDataPoints()).toEqual([]);
     expect(getChartRenderer(chart).getLastXGridCoords()).toEqual([]);
+    expect(getChartRenderer(chart).getLastXGridCoords()).not.toBe(xGridCoords);
     expect(chart.getCrosshairState()).toBeUndefined();
     expect(chart.getTimeRange()).toEqual({ start: 0, end: 0 });
     expect(getChartModel(chart).getVisibleScale()).toBe(visibleScale);

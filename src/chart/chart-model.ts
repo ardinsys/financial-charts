@@ -26,12 +26,12 @@ export class ChartModel {
   private originalData = new DataStore();
   private mappedData = new DataStore();
   private autoTimeRange = false;
-  private timeRange = freezeTimeRange({ start: 0, end: 0 });
-  private indexBounds = freezeIndexRange({
+  private timeRange: TimeRange = { start: 0, end: 0 };
+  private indexBounds: TimeScaleRange = {
     from: 0,
     to: 1,
     rightOffset: 0
-  });
+  };
   private visibleIndexRange = this.indexBounds;
   private scaleFactory?: DataScaleFactory;
   private barAlignment: BarAlignment = "center";
@@ -239,7 +239,7 @@ export class ChartModel {
   }
 
   resetViewInteractionState(): void {
-    this.indexBounds = freezeIndexRange({ from: 0, to: 1 });
+    this.indexBounds = { from: 0, to: 1 };
     this.visibleIndexRange = this.indexBounds;
   }
 
@@ -247,11 +247,11 @@ export class ChartModel {
     if (this.autoTimeRange) {
       this.updateTimeRange({ start: 0, end: 0 });
     }
-    this.indexBounds = freezeIndexRange({
+    this.indexBounds = {
       from: 0,
       to: 1,
       rightOffset: 0
-    });
+    };
     this.visibleIndexRange = this.indexBounds;
   }
 
@@ -259,7 +259,7 @@ export class ChartModel {
     const span = options.span ?? this.getVisibleIndexSpan();
     const nextBounds = this.calculateIndexBounds(options.minimumVisibleSlots);
     if (!indexRangesEqual(this.indexBounds, nextBounds)) {
-      this.indexBounds = freezeIndexRange(nextBounds);
+      this.indexBounds = nextBounds;
     }
 
     let range = this.visibleIndexRange;
@@ -285,11 +285,11 @@ export class ChartModel {
 
     if (changed || previous.rightOffset !== next.rightOffset) {
       this.visibleIndexRange = changed
-        ? freezeIndexRange(next)
-        : freezeIndexRange({
+        ? next
+        : {
             ...previous,
             rightOffset: next.rightOffset
-          });
+          };
     }
     this.syncTimeScales();
     return changed;
@@ -432,7 +432,7 @@ export class ChartModel {
     ) {
       return;
     }
-    this.timeRange = freezeTimeRange(range);
+    this.timeRange = { ...range };
   }
 
   private getTimeScaleOptions(): DataScaleTimeOptions {
@@ -462,14 +462,6 @@ function assertFiniteTimeRange(range: TimeRange): void {
   if (!Number.isFinite(range.start) || !Number.isFinite(range.end)) {
     throw new RangeError("Visible time range values must be finite.");
   }
-}
-
-function freezeTimeRange(range: TimeRange): TimeRange {
-  return Object.freeze({ ...range });
-}
-
-function freezeIndexRange(range: TimeScaleRange): TimeScaleRange {
-  return Object.freeze({ ...range });
 }
 
 function indexRangesEqual(

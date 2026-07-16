@@ -26,9 +26,6 @@ export class DataScaleModel {
   private readonly topOffset = 0.15;
   private readonly bottomOffset = 0.2;
   private modifiers = new Map<unknown, ScaleRangeModifier>();
-  private barAlignment: BarAlignment;
-  private indexRange: TimeScaleRange;
-  private timeValues: readonly number[];
 
   private readonly timeScale: TimeScale;
   private readonly priceScale: PriceScale;
@@ -40,19 +37,18 @@ export class DataScaleModel {
     timeRange: TimeRange,
     timeOptions: DataScaleTimeOptions = {}
   ) {
-    this.barAlignment = timeOptions.barAlignment ?? "center";
-    this.indexRange = timeOptions.indexRange
-      ? { ...timeOptions.indexRange }
-      : this.getDefaultIndexRange(dataset);
-    this.timeValues =
+    const barAlignment = timeOptions.barAlignment ?? "center";
+    const indexRange =
+      timeOptions.indexRange ?? this.getDefaultIndexRange(dataset);
+    const timeValues =
       timeOptions.timeValues ?? dataset.map((data) => data.time);
-    this.timeScale = new TimeScale(this.indexRange, {
-      barAlignment: this.barAlignment,
-      times: this.timeValues
+    this.timeScale = new TimeScale(indexRange, {
+      barAlignment,
+      times: timeValues
     });
     this.priceScale = new PriceScale({ min: 0, max: 1 });
     this.volumeScale = new PriceScale({ min: 0, max: 1 });
-    this.recalculate(dataset, timeRange, timeOptions);
+    this.recalculate(dataset, timeRange);
   }
 
   recalculate(
@@ -105,15 +101,15 @@ export class DataScaleModel {
   }
 
   configureTimeScale(timeOptions: DataScaleTimeOptions) {
-    this.barAlignment = timeOptions.barAlignment ?? this.barAlignment;
     if (timeOptions.indexRange) {
-      this.indexRange = { ...timeOptions.indexRange };
+      this.timeScale.setRange(timeOptions.indexRange);
     }
-    this.timeValues = timeOptions.timeValues ?? this.timeValues;
-
-    this.timeScale.setBarAlignment(this.barAlignment);
-    this.timeScale.setRange(this.indexRange);
-    this.timeScale.setTimes(this.timeValues);
+    if (timeOptions.timeValues) {
+      this.timeScale.setTimes(timeOptions.timeValues);
+    }
+    if (timeOptions.barAlignment) {
+      this.timeScale.setBarAlignment(timeOptions.barAlignment);
+    }
   }
 
   addModifier(modifier: ScaleRangeModifier) {
@@ -217,9 +213,6 @@ export class DataScaleModel {
   }
 
   private syncScales() {
-    this.timeScale.setRange(this.indexRange);
-    this.timeScale.setTimes(this.timeValues);
-    this.timeScale.setBarAlignment(this.barAlignment);
     this.priceScale.setRange({ min: this.yMin, max: this.yMax });
     this.volumeScale.setRange({ min: 0, max: this.volMax });
   }

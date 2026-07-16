@@ -28,13 +28,20 @@ export class TimeScale implements Scale {
     range: TimeScaleRange,
     options: TimeScaleOptions = {}
   ) {
-    this.range = freezeRange(range);
+    this.range = copyRange(range);
     this.times = options.times ?? [];
     this.barAlignment = options.barAlignment ?? "center";
   }
 
   setRange(range: TimeScaleRange): void {
-    this.range = freezeRange(range);
+    if (
+      this.range.from === range.from &&
+      this.range.to === range.to &&
+      this.range.rightOffset === range.rightOffset
+    ) {
+      return;
+    }
+    this.range = copyRange(range);
   }
 
   getRange(): TimeScaleRange {
@@ -139,6 +146,6 @@ export class TimeScale implements Scale {
   }
 }
 
-function freezeRange(range: TimeScaleRange): TimeScaleRange {
-  return Object.freeze({ ...range });
+function copyRange(range: TimeScaleRange): TimeScaleRange {
+  return { ...range };
 }

@@ -62,7 +62,7 @@ afterEach(() => {
 });
 
 describe("Pane", () => {
-  it("owns immutable region snapshots without copying them on reads", () => {
+  it("owns stable region snapshots without copying them on reads", () => {
     const pane = new Pane(3);
     const region = { x: 1, y: 2, width: 300, height: 200 };
 
@@ -71,7 +71,15 @@ describe("Pane", () => {
 
     expect(pane.getRegion()).toEqual({ x: 1, y: 2, width: 300, height: 200 });
     expect(pane.getRegion()).toBe(pane.getRegion());
-    expect(Object.isFrozen(pane.getRegion())).toBe(true);
+
+    const first = pane.getRegion();
+    pane.setRegion({ x: 1, y: 2, width: 300, height: 200 });
+    expect(pane.getRegion()).toBe(first);
+
+    pane.setRegion({ x: 2, y: 3, width: 400, height: 250 });
+
+    expect(pane.getRegion()).not.toBe(first);
+    expect(first).toEqual({ x: 1, y: 2, width: 300, height: 200 });
   });
 
   it("owns layout regions, price scale, and z-ordered drawables", () => {

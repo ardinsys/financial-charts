@@ -116,7 +116,7 @@ export class ChartRenderer {
   private disposed = false;
   private skipObservedResize = false;
   private devicePixelRatio = pixelRatio();
-  private lastXGridCoords: readonly number[] = Object.freeze([]);
+  private lastXGridCoords: readonly number[] = [];
 
   constructor(
     private readonly container: HTMLElement,
@@ -183,7 +183,7 @@ export class ChartRenderer {
   }
 
   resetDerivedState(): void {
-    this.lastXGridCoords = Object.freeze([]);
+    this.lastXGridCoords = [];
   }
 
   resizeCanvases(): void {
@@ -267,7 +267,7 @@ export class ChartRenderer {
     ctx.textBaseline = "middle";
 
     const labels = this.getXAxisLabels(ctx);
-    this.lastXGridCoords = Object.freeze(labels.map((label) => label.x));
+    this.lastXGridCoords = labels.map((label) => label.x);
     for (const label of labels) {
       ctx.fillText(label.label, label.start, size.height - 15);
     }
@@ -360,7 +360,7 @@ export class ChartRenderer {
       main.stroke();
       xGridCoords.push(label.x);
     }
-    this.lastXGridCoords = Object.freeze(xGridCoords);
+    this.lastXGridCoords = xGridCoords;
   }
 
   private drawAxes(): void {

@@ -67,7 +67,6 @@ describe("ChartModel data ownership", () => {
     const timeRange = model.getTimeRange();
 
     expect(timeRange).toEqual({ start: 100, end: 400 });
-    expect(Object.isFrozen(timeRange)).toBe(true);
     expect(model.getTimeRange()).toBe(timeRange);
 
     model.replaceData(
@@ -82,7 +81,6 @@ describe("ChartModel data ownership", () => {
     model.setVisibleIndexRange({ from: 0.25, to: 2.25 });
     const logicalRange = model.getVisibleIndexRange();
 
-    expect(Object.isFrozen(logicalRange)).toBe(true);
     expect(model.setVisibleIndexRange(logicalRange)).toBe(false);
     expect(model.getVisibleIndexRange()).toBe(logicalRange);
   });

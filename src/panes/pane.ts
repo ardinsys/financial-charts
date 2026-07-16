@@ -31,18 +31,18 @@ export interface PaneYAxisRenderOptions {
 }
 
 export class Pane {
-  private region: PaneRegion = freezeRegion({
+  private region: PaneRegion = {
     x: 0,
     y: 0,
     width: 0,
     height: 0
-  });
-  private yAxisRegion: PaneRegion = freezeRegion({
+  };
+  private yAxisRegion: PaneRegion = {
     x: 0,
     y: 0,
     width: 0,
     height: 0
-  });
+  };
   private readonly priceScale = new PriceScale({ min: 0, max: 1 });
   private timeScale?: TimeScale;
   private timeAnchorAlignment: BarAlignment = "center";
@@ -56,7 +56,8 @@ export class Pane {
   }
 
   setRegion(region: PaneRegion): void {
-    this.region = freezeRegion(region);
+    if (regionsEqual(this.region, region)) return;
+    this.region = copyRegion(region);
   }
 
   getRegion(): PaneRegion {
@@ -64,7 +65,8 @@ export class Pane {
   }
 
   setYAxisRegion(region: PaneRegion): void {
-    this.yAxisRegion = freezeRegion(region);
+    if (regionsEqual(this.yAxisRegion, region)) return;
+    this.yAxisRegion = copyRegion(region);
   }
 
   getYAxisRegion(): PaneRegion {
@@ -197,6 +199,15 @@ export class Pane {
   }
 }
 
-function freezeRegion(region: PaneRegion): PaneRegion {
-  return Object.freeze({ ...region });
+function copyRegion(region: PaneRegion): PaneRegion {
+  return { ...region };
+}
+
+function regionsEqual(left: PaneRegion, right: PaneRegion): boolean {
+  return (
+    left.x === right.x &&
+    left.y === right.y &&
+    left.width === right.width &&
+    left.height === right.height
+  );
 }

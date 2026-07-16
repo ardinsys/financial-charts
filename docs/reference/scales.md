@@ -52,8 +52,9 @@ const point = priceScale.project(125.5, {
 | `setBarAlignment(alignment)`     | Sets default `"center"` or `"edge"` bar alignment.                         |
 
 `TimeScaleRange` is `{ from, to, rightOffset? }` in index units. Range setters
-snapshot their input. Range getters return the same frozen snapshot until the
-next setter call, so reading a range during rendering does not allocate.
+own a copy of their input. Range getters return the same borrowed readonly
+snapshot until the next setter call, so reading a range during rendering does
+not allocate.
 
 `times` must be sorted in ascending timestamp order. The scale treats the
 readonly array as a stable lookup table; call `setTimes()` after replacing it.
@@ -69,8 +70,8 @@ readonly array as a stable lookup table; call `setTimes()` after replacing it.
 | `projectVolume(value, options, maxHeightRatio?)` | Maps volume to a column height.               |
 | `setRange({ min, max })` / `getRange()`          | Updates or reads the numeric range.           |
 
-Price range setters and getters use the same immutable, allocation-free read
-contract as `TimeScale`.
+Price range setters and getters use the same borrowed readonly,
+allocation-free read contract as `TimeScale`.
 
 ## DataScaleModel
 

@@ -43,7 +43,7 @@ function createChart(
 }
 
 describe("index-based time scales", () => {
-  it("owns immutable range snapshots without copying them on reads", () => {
+  it("owns stable range snapshots without copying them on reads", () => {
     const timeRange = { from: 0, to: 3 };
     const priceRange = { min: 10, max: 20 };
     const timeScale = new TimeScale(timeRange);
@@ -56,8 +56,28 @@ describe("index-based time scales", () => {
     expect(priceScale.getRange()).toEqual({ min: 10, max: 20 });
     expect(timeScale.getRange()).toBe(timeScale.getRange());
     expect(priceScale.getRange()).toBe(priceScale.getRange());
-    expect(Object.isFrozen(timeScale.getRange())).toBe(true);
-    expect(Object.isFrozen(priceScale.getRange())).toBe(true);
+
+    const firstTimeRange = timeScale.getRange();
+    const firstPriceRange = priceScale.getRange();
+    timeScale.setRange({ from: 0, to: 3 });
+    priceScale.setRange({ min: 10, max: 20 });
+    expect(timeScale.getRange()).toBe(firstTimeRange);
+    expect(priceScale.getRange()).toBe(firstPriceRange);
+
+    const nextTimeRange = { from: 1, to: 4 };
+    const nextPriceRange = { min: 15, max: 25 };
+
+    timeScale.setRange(nextTimeRange);
+    priceScale.setRange(nextPriceRange);
+    nextTimeRange.to = 10;
+    nextPriceRange.max = 50;
+
+    expect(timeScale.getRange()).toEqual({ from: 1, to: 4 });
+    expect(priceScale.getRange()).toEqual({ min: 15, max: 25 });
+    expect(timeScale.getRange()).not.toBe(firstTimeRange);
+    expect(priceScale.getRange()).not.toBe(firstPriceRange);
+    expect(firstTimeRange).toEqual({ from: 0, to: 3 });
+    expect(firstPriceRange).toEqual({ min: 10, max: 20 });
   });
 
   it("snapshots index ranges retained by data scale models", () => {
