@@ -25,14 +25,14 @@ export interface Drawable {
 }
 
 export interface ChartPointerEvent {
-  type: "down" | "move" | "up";
-  x: number;
-  y: number;
-  time: number;
-  pane: Pane;
-  dataPoint: ChartData;
-  button?: number;
-  buttons?: number;
+  readonly type: "down" | "move" | "up";
+  readonly x: number;
+  readonly y: number;
+  readonly time: number;
+  readonly pane: Pane;
+  readonly dataPoint: ChartData;
+  readonly button?: number;
+  readonly buttons?: number;
 }
 
 export interface ExtensionContext {

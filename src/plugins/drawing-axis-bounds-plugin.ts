@@ -7,19 +7,19 @@ import type { Drawing, DrawingAnchor } from "../drawings/drawing";
 export type DrawingAxisBoundKind = "single" | "start" | "end";
 
 export interface DrawingAxisBoundsLabelContext {
-  anchor: DrawingAnchor;
-  chartData?: ChartData;
-  drawing: Drawing;
-  kind: DrawingAxisBoundKind;
+  readonly anchor: DrawingAnchor;
+  readonly chartData?: ChartData;
+  readonly drawing: Drawing;
+  readonly kind: DrawingAxisBoundKind;
 }
 
 export interface DrawingAxisBoundsValueContext extends DrawingAxisBoundsLabelContext {
-  locale: string;
+  readonly locale: string;
 }
 
 export interface DrawingAxisBoundsTextContext extends DrawingAxisBoundsValueContext {
-  label: string;
-  value: string;
+  readonly label: string;
+  readonly value: string;
 }
 
 export interface DrawingAxisBoundsLabels {

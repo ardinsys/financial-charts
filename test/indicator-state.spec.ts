@@ -129,6 +129,8 @@ describe("indicator state", () => {
         ? new RuntimeIndicator(restoredService)
         : undefined
     );
+    const copied = new RuntimeIndicator(restoredService);
+    copied.copyFrom(indicator);
 
     expect(state.options).toEqual({ symbol: "MSFT" });
     expect(serialized).not.toContain("Runtime indicator");
@@ -138,6 +140,8 @@ describe("indicator state", () => {
     expect(restored.getInstanceId()).toBe("runtime-1");
     expect(restored.getOptions().symbol).toBe("MSFT");
     expect(restored.getOptions().transform(2)).toBe(4);
+    expect(copied.getService()).toBe(restoredService);
+    expect(copied.getOptions().transform(2)).toBe(3);
   });
 
   it("rejects non-JSON option values instead of dropping them", () => {
@@ -146,6 +150,20 @@ describe("indicator state", () => {
     expect(() => indicator.toJSON()).toThrow(
       "Indicator state options.transform is not JSON-safe."
     );
+  });
+
+  it("serializes state independently from subsequent mutations", () => {
+    const indicator = new MovingAverageIndicator(null, {
+      instanceId: "independent-sma",
+      period: 9
+    });
+    const state = indicator.toJSON();
+
+    indicator.updateOptions({ period: 12 });
+    expect(state.options.period).toBe(9);
+
+    (state.options as { period: number }).period = 30;
+    expect(indicator.getOptions().period).toBe(12);
   });
 
   it("rejects malformed, unsupported, unknown, and mismatched state", () => {

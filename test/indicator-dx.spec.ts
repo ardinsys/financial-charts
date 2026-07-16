@@ -236,11 +236,13 @@ describe("indicator identity", () => {
     });
 
     target.copyFrom(source);
+    source.updateOptions({ period: 34 });
 
     expect(clone.getInstanceId()).not.toBe(source.getInstanceId());
     expect(clone.getOptions().period).toBe(21);
     expect(target.getInstanceId()).toBe("target-sma");
     expect(target.getOptions().period).toBe(21);
+    expect(source.getOptions().period).toBe(34);
   });
 
   it("provides the indicator instance in indicator events", () => {

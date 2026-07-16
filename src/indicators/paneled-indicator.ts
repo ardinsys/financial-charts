@@ -36,15 +36,15 @@ export interface PaneledIndicatorDrawingContext extends Omit<
   | "projectPrice"
   | "projectPoint"
 > {
-  ctx: CanvasRenderingContext2D;
-  axisCtx: CanvasRenderingContext2D;
-  canvas: HTMLCanvasElement;
-  axisCanvas: HTMLCanvasElement;
-  pane?: Pane;
-  scale: DataScaleModel;
-  width: number;
-  height: number;
-  axisWidth: number;
+  readonly ctx: CanvasRenderingContext2D;
+  readonly axisCtx: CanvasRenderingContext2D;
+  readonly canvas: HTMLCanvasElement;
+  readonly axisCanvas: HTMLCanvasElement;
+  readonly pane?: Pane;
+  readonly scale: DataScaleModel;
+  readonly width: number;
+  readonly height: number;
+  readonly axisWidth: number;
   projectTime(time: number, barAlignment?: BarAlignment): number;
   projectPrice(value: number): number;
   projectPoint(

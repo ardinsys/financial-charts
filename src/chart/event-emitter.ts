@@ -6,37 +6,37 @@ import type { ChartStateRestoredEvent } from "./chart-state";
 import type { ChartCrosshairState } from "../interaction/crosshair";
 
 interface IndicatorEvent {
-  indicator: Indicator<any, any>;
+  readonly indicator: Indicator<any, any>;
 }
 
 interface IndicatorVisibilityChangedEvent extends IndicatorEvent {
-  visible: boolean;
+  readonly visible: boolean;
 }
 
 interface DrawingEvent {
-  drawing: Drawing;
+  readonly drawing: Drawing;
 }
 
 export type ChartCrosshairChangeEvent = ChartCrosshairState;
 
 export interface DrawingSelectionEvent {
-  drawing?: Drawing;
-  id?: string;
-  type?: string;
-  paneId?: number;
-  anchors?: readonly DrawingAnchor[];
-  json?: DrawingJSON;
+  readonly drawing?: Drawing;
+  readonly id?: string;
+  readonly type?: string;
+  readonly paneId?: number;
+  readonly anchors?: readonly DrawingAnchor[];
+  readonly json?: DrawingJSON;
 }
 
 export type DrawingFinishedOperation = "create" | "move";
 
 export interface DrawingFinishedEvent extends DrawingEvent {
-  operation: DrawingFinishedOperation;
-  id: string;
-  type: string;
-  paneId: number;
-  anchors: readonly DrawingAnchor[];
-  json: DrawingJSON;
+  readonly operation: DrawingFinishedOperation;
+  readonly id: string;
+  readonly type: string;
+  readonly paneId: number;
+  readonly anchors: readonly DrawingAnchor[];
+  readonly json: DrawingJSON;
 }
 
 export interface ChartEventMap {
@@ -54,8 +54,8 @@ export interface ChartEventMap {
   "drawing-delete": DrawingEvent;
   "drawing-finished": DrawingFinishedEvent;
   "drawing-select": DrawingSelectionEvent;
-  click: { event: PointerEvent; point: ChartData };
-  "touch-click": { event: TouchEvent; point: ChartData };
+  click: { readonly event: PointerEvent; readonly point: ChartData };
+  "touch-click": { readonly event: TouchEvent; readonly point: ChartData };
 }
 
 type EventListener<TEventMap, K extends keyof TEventMap> = (

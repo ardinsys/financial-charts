@@ -184,6 +184,7 @@ describe("chart state", () => {
     expect(onDrawingDelete).not.toHaveBeenCalled();
     expect(onStateRestored).toHaveBeenCalledOnce();
     expect(onStateRestored).toHaveBeenCalledWith({ state });
+    expect(onStateRestored.mock.calls[0][0].state).not.toBe(state);
     expect(onOptionsChanged).toHaveBeenCalledOnce();
     expect(onData).toHaveBeenCalledOnce();
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
@@ -329,5 +330,44 @@ describe("chart state", () => {
     expect(() => chart.toJSON({ contributors: [unsafeContributor] })).toThrow(
       'Chart state contribution "unsafe".callback is not JSON-safe.'
     );
+  });
+
+  it("owns contributor state at serialization and restoration boundaries", () => {
+    interface ContributionState {
+      nested: { value: string };
+    }
+
+    const source = createChart();
+    const sourceValue: ContributionState = {
+      nested: { value: "serialized" }
+    };
+    const sourceContributor: ChartStateContributor<ContributionState> = {
+      key: "owned-contribution",
+      toJSON: () => sourceValue,
+      fromJSON: () => undefined
+    };
+    const state = source.toJSON({ contributors: [sourceContributor] });
+    const serialized = state.contributions?.[
+      sourceContributor.key
+    ] as unknown as ContributionState;
+
+    sourceValue.nested.value = "source-mutated";
+    expect(serialized.nested.value).toBe("serialized");
+
+    const target = createChart();
+    let restored: ContributionState | undefined;
+    const targetContributor: ChartStateContributor<ContributionState> = {
+      key: sourceContributor.key,
+      toJSON: () => ({ nested: { value: "restored" } }),
+      fromJSON: (value) => {
+        restored = value;
+        value.nested.value = "contributor-mutated";
+      }
+    };
+
+    target.restoreState(state, { contributors: [targetContributor] });
+
+    expect(restored).not.toBe(serialized);
+    expect(serialized.nested.value).toBe("serialized");
   });
 });

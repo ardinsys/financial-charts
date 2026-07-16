@@ -1,7 +1,4 @@
-/**
- * One immutable financial-series observation. All present numbers must be
- * finite.
- */
+/** One readonly financial-series observation. All present numbers must be finite. */
 export interface ChartData {
   /** UNIX timestamp in milliseconds. */
   readonly time: number;
@@ -20,6 +17,6 @@ export interface TimeRange {
 }
 
 export type AxisLabel = {
-  value: number;
-  position: number;
+  readonly value: number;
+  readonly position: number;
 };

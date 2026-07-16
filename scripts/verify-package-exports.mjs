@@ -28,6 +28,21 @@ const publicDeclarationPaths = [
   "dist/extensions.d.ts",
   "dist/engine.d.ts"
 ];
+const internalRuntimeExports = [
+  "restoreValidatedIndicator",
+  "validateIndicatorState"
+];
+
+for (const modulePath of ["dist/extensions.js", "dist/engine.js"]) {
+  const publicModule = await import(
+    new URL(`../${modulePath}`, import.meta.url)
+  );
+  for (const exportName of internalRuntimeExports) {
+    if (exportName in publicModule) {
+      throw new Error(`${exportName} must not be exported from ${modulePath}`);
+    }
+  }
+}
 
 for (const declarationPath of publicDeclarationPaths) {
   const declaration = await readFile(
@@ -42,6 +57,7 @@ for (const declarationPath of publicDeclarationPaths) {
     "ICON_REMOVE",
     "defaultControllers",
     "drawNextPoint",
+    ...internalRuntimeExports,
     "updateCoreOptions"
   ]) {
     if (declaration.includes(forbiddenExport)) {

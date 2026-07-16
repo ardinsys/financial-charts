@@ -57,14 +57,14 @@ export const INDICATOR_STATE_VERSION = 1 as const;
 /** Versioned, JSON-safe state for one indicator instance. */
 export interface IndicatorState {
   /** Indicator state schema version. */
-  version: typeof INDICATOR_STATE_VERSION;
+  readonly version: typeof INDICATOR_STATE_VERSION;
   /** Factory identity returned by `getIndicatorType()`. */
-  typeId: string;
+  readonly typeId: string;
   /** Instance identity returned by `getInstanceId()`. */
-  instanceId: string;
+  readonly instanceId: string;
   /** Indicator-specific configuration without label or runtime metadata. */
-  options: IndicatorStateOptions;
-  visible: boolean;
+  readonly options: IndicatorStateOptions;
+  readonly visible: boolean;
 }
 
 /** Creates a detached indicator for validated state supplied by the caller. */
@@ -85,20 +85,20 @@ export interface IndicatorLabelContent {
 }
 
 export interface IndicatorPoint {
-  x: number;
-  y: number;
+  readonly x: number;
+  readonly y: number;
 }
 
 export interface IndicatorDrawingContext {
-  ctx: CanvasRenderingContext2D;
-  canvas: HTMLCanvasElement;
-  data: readonly ChartData[];
-  visibleData: readonly ChartData[];
-  visibleTimeRange: TimeRange;
-  visible: boolean;
-  stepSize: number;
-  formatter: Formatter;
-  theme: ChartOptionsSnapshot["theme"];
+  readonly ctx: CanvasRenderingContext2D;
+  readonly canvas: HTMLCanvasElement;
+  readonly data: readonly ChartData[];
+  readonly visibleData: readonly ChartData[];
+  readonly visibleTimeRange: TimeRange;
+  readonly visible: boolean;
+  readonly stepSize: number;
+  readonly formatter: Formatter;
+  readonly theme: ChartOptionsSnapshot["theme"];
   projectTime(time: number, barAlignment?: BarAlignment): number;
   projectPrice(value: number): number;
   projectPoint(
@@ -456,20 +456,29 @@ export function restoreIndicator<TIndicator extends Indicator<any, any>>(
   state: unknown,
   resolver: IndicatorResolver<TIndicator>
 ): TIndicator {
-  const validatedState = validateIndicatorState(state);
-  const indicator = resolver(validatedState);
+  return restoreValidatedIndicator(validateIndicatorState(state), resolver);
+}
+
+/** @internal Restores an indicator state owned by a validated container. */
+export function restoreValidatedIndicator<
+  TIndicator extends Indicator<any, any>
+>(
+  state: IndicatorState,
+  resolver: IndicatorResolver<TIndicator>
+): TIndicator {
+  const indicator = resolver(state);
   if (!indicator) {
     throw new Error(
-      `No indicator resolver matched type "${validatedState.typeId}".`
+      `No indicator resolver matched type "${state.typeId}".`
     );
   }
-  if (indicator.getIndicatorType() !== validatedState.typeId) {
+  if (indicator.getIndicatorType() !== state.typeId) {
     throw new Error(
-      `Indicator resolver returned type "${indicator.getIndicatorType()}" for "${validatedState.typeId}".`
+      `Indicator resolver returned type "${indicator.getIndicatorType()}" for "${state.typeId}".`
     );
   }
 
-  indicator.restoreState(validatedState);
+  indicator.restoreState(state);
   return indicator;
 }
 
@@ -497,7 +506,8 @@ function validateTypeId(typeId: unknown): string {
   return typeId;
 }
 
-function validateIndicatorState(state: unknown): IndicatorState {
+/** @internal Validates and owns external indicator state. */
+export function validateIndicatorState(state: unknown): IndicatorState {
   if (!isPlainRecord(state)) {
     throw new Error("Invalid indicator state: expected an object.");
   }
@@ -539,14 +549,6 @@ function validateIndicatorState(state: unknown): IndicatorState {
   };
 }
 
-function cloneIndicatorValue<T>(value: T): T {
-  if (typeof structuredClone === "function") {
-    try {
-      return structuredClone(value);
-    } catch {
-      // Fall through to the JSON clone for simple serializable configs.
-    }
-  }
-
-  return JSON.parse(JSON.stringify(value)) as T;
+function cloneIndicatorValue<T extends object>(value: T): T {
+  return mergeObjects(value);
 }

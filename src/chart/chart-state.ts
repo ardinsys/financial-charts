@@ -1,7 +1,8 @@
-import type {
-  IndicatorResolver,
-  IndicatorState,
-  IndicatorStateValue
+import {
+  validateIndicatorState,
+  type IndicatorResolver,
+  type IndicatorState,
+  type IndicatorStateValue
 } from "../indicators/indicator";
 import { cloneJSONStateValue, isPlainRecord } from "../utils/json-state";
 import type { ControllerType } from "./chart-options";
@@ -11,29 +12,29 @@ export const CHART_STATE_VERSION = 1 as const;
 
 /** Runtime chart options that affect data mapping and the primary series. */
 export interface ChartCoreState {
-  type: ControllerType;
-  timeRange: TimeRange | "auto";
-  stepSize: number;
-  maxZoom: number;
-  volume: boolean;
+  readonly type: ControllerType;
+  readonly timeRange: TimeRange | "auto";
+  readonly stepSize: number;
+  readonly maxZoom: number;
+  readonly volume: boolean;
 }
 
 export interface ChartPaneState {
   /** Stable pane identity used by drawings and other pane-owned state. */
-  id: number;
-  height: number;
+  readonly id: number;
+  readonly height: number;
   /** The paneled indicator that owns this pane; absent for the main pane. */
-  indicatorInstanceId?: string;
+  readonly indicatorInstanceId?: string;
 }
 
 /** Versioned, JSON-safe chart configuration and view state. */
 export interface ChartState {
-  version: typeof CHART_STATE_VERSION;
-  core: ChartCoreState;
-  visibleRange: TimeRange;
-  panes: readonly ChartPaneState[];
-  indicators: readonly IndicatorState[];
-  contributions?: Readonly<Record<string, IndicatorStateValue>>;
+  readonly version: typeof CHART_STATE_VERSION;
+  readonly core: ChartCoreState;
+  readonly visibleRange: TimeRange;
+  readonly panes: readonly ChartPaneState[];
+  readonly indicators: readonly IndicatorState[];
+  readonly contributions?: Readonly<Record<string, IndicatorStateValue>>;
 }
 
 export interface ChartStateContributor<TState = unknown> {
@@ -53,7 +54,7 @@ export interface ChartStateRestoreOptions extends ChartStateSerializationOptions
 
 export interface ChartStateRestoredEvent {
   /** Final normalized state after all contributors have been restored. */
-  state: ChartState;
+  readonly state: ChartState;
 }
 
 type ChartStateSnapshot = Omit<ChartState, "version" | "contributions">;
@@ -196,12 +197,8 @@ export function validateChartState(state: unknown): ChartState {
   if (!Array.isArray(state.indicators)) {
     throw new Error("Invalid chart state: indicators must be an array.");
   }
-  const indicators = state.indicators.map(
-    (indicator, index) =>
-      cloneJSONStateValue(
-        indicator,
-        `Chart state indicators[${index}]`
-      ) as unknown as IndicatorState
+  const indicators = state.indicators.map((indicator) =>
+    validateIndicatorState(indicator)
   );
 
   let contributions: Record<string, IndicatorStateValue> | undefined;

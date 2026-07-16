@@ -13,7 +13,27 @@ export * from "./plugins";
 
 export * from "./drawings";
 
-export * from "./indicators/indicator";
+export {
+  INDICATOR_STATE_VERSION,
+  Indicator,
+  restoreIndicator
+} from "./indicators/indicator";
+export type {
+  DefaultIndicatorOptions,
+  IndicatorContext,
+  IndicatorDrawingContext,
+  IndicatorIdentityOptions,
+  IndicatorInvalidationOptions,
+  IndicatorLabelContent,
+  IndicatorLabelSegment,
+  IndicatorMutationOptions,
+  IndicatorOptionsInput,
+  IndicatorPoint,
+  IndicatorResolver,
+  IndicatorState,
+  IndicatorStateOptions,
+  IndicatorStateValue
+} from "./indicators/indicator";
 export * from "./indicators/paneled-indicator";
 
 export * from "./ui/chart-dom-adapter";

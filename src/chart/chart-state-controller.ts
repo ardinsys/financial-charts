@@ -1,5 +1,5 @@
 import {
-  restoreIndicator,
+  restoreValidatedIndicator,
   type Indicator
 } from "../indicators/indicator";
 import { PaneledIndicator } from "../indicators/paneled-indicator";
@@ -17,16 +17,16 @@ import type { TimeRange } from "./types";
 type ChartStateSnapshot = Omit<ChartState, "version" | "contributions">;
 
 export interface ChartStateRuntimeSnapshot {
-  state: ChartStateSnapshot;
-  mainPaneId: number;
-  controllerTypes: readonly string[];
+  readonly state: ChartStateSnapshot;
+  readonly mainPaneId: number;
+  readonly controllerTypes: readonly string[];
 }
 
 export interface PreparedChartStateRestoration {
-  state: ChartState;
-  indicators: readonly Indicator<any, any>[];
-  paneIdsByIndicator: ReadonlyMap<string, number>;
-  contributors: readonly ChartStateContributor[];
+  readonly state: ChartState;
+  readonly indicators: readonly Indicator<any, any>[];
+  readonly paneIdsByIndicator: ReadonlyMap<string, number>;
+  readonly contributors: readonly ChartStateContributor[];
 }
 
 export class ChartStateController {
@@ -71,7 +71,7 @@ export class ChartStateController {
       );
     }
     const restoredIndicators = validatedState.indicators.map((indicatorState) =>
-      restoreIndicator(indicatorState, options.indicatorResolver!)
+      restoreValidatedIndicator(indicatorState, options.indicatorResolver!)
     );
     this.validateIndicatorIds(restoredIndicators);
 
@@ -92,7 +92,7 @@ export class ChartStateController {
       contributors
     });
     this.pendingVisibleRange = visibleRangeDeferred
-      ? { ...validatedState.visibleRange }
+      ? validatedState.visibleRange
       : undefined;
 
     return this.toJSON({ contributors });

@@ -3,7 +3,7 @@ import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
 import { DrawingManager, type DrawingManagerJSON } from "../drawings";
 import type { DrawingJSON } from "../drawings";
 import {
-  restoreIndicator,
+  restoreValidatedIndicator,
   type Indicator,
   type IndicatorResolver,
   type IndicatorState,
@@ -19,14 +19,14 @@ export interface ChartSyncCrosshairSnapshot {
 }
 
 export interface ChartSyncMessageSource {
-  group: string;
-  plugin: ChartSyncPlugin;
+  readonly group: string;
+  readonly plugin: ChartSyncPlugin;
 }
 
 export interface ChartSyncMessage<TPayload = unknown> {
-  channel: string;
-  payload: TPayload;
-  source: ChartSyncMessageSource;
+  readonly channel: string;
+  readonly payload: TPayload;
+  readonly source: ChartSyncMessageSource;
 }
 
 export type ChartSyncMessageHandler<TPayload = unknown> = (
@@ -659,7 +659,7 @@ export class ChartSyncPlugin implements ChartPlugin {
       );
     }
 
-    const restored = restoreIndicator(snapshot, resolver);
+    const restored = restoreValidatedIndicator(snapshot, resolver);
     const instanceId = restored.getInstanceId();
     let indicator = this.findIndicator(instanceId);
     if (
