@@ -106,7 +106,8 @@ the chart.
 
 `drawingContext.visibleData` is a precomputed, readonly render input. The same
 cached array is returned throughout a render instead of rebuilding or copying
-the visible slice for every controller.
+the visible slice for every controller. Controllers must treat all context
+values as borrowed readonly data.
 
 ## Panes
 
@@ -115,11 +116,11 @@ time scale, and z-ordered drawables. Region coordinates are chart-local logical
 pixels. `containsY()` accepts a chart-local Y coordinate, while
 `getRelativeY()` converts it to pane-local space.
 
-`setRegion()` and `setYAxisRegion()` snapshot their input. Their getters return
-stable borrowed readonly objects until the next update, making repeated layout
-reads allocation-free. `getDrawables()` likewise caches its z-ordered view until
-a drawable is added or removed, so `draw()` does not sort and copy on each
-render.
+`setRegion()` and `setYAxisRegion()` copy retained input once. Their getters
+return stable borrowed readonly objects until the next update, making repeated
+layout reads allocation-free. `getDrawables()` likewise caches its z-ordered
+view until a drawable is added or removed, so `draw()` does not sort and copy
+on each render.
 
 ## Render pipeline
 

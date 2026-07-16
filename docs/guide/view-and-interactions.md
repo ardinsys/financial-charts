@@ -24,7 +24,7 @@ construction; the DOM adapter cannot be replaced.
 
 The complete patch is validated before state changes. One effective patch emits
 one `options-change` event with the previous and current `getOptions()` snapshots
-plus the frozen, ordered `changedKeys`. A patch with no effective change emits
+plus the readonly, ordered `changedKeys`. A patch with no effective change emits
 nothing and does not redraw.
 
 Option effects are deliberately narrow:
@@ -35,8 +35,8 @@ Option effects are deliberately narrow:
 - `theme`, localization, and volume redraw only affected layers.
 - `maxZoom` changes the next zoom clamp; it does not alter the current view.
 
-`getOptions()` returns the current immutable snapshot. A successful option
-change replaces the snapshot rather than mutating the previous one.
+`getOptions()` returns the current borrowed readonly snapshot. A successful
+option change replaces the snapshot rather than mutating the previous one.
 
 ## Set the visible range
 

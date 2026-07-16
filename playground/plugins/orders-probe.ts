@@ -213,7 +213,7 @@ export function createProbeOrders(
 }
 
 function snapshotOrders(orders: readonly ProbeOrder[]) {
-  return Object.freeze(orders.map((order) => Object.freeze({ ...order })));
+  return orders.map((order) => ({ ...order }));
 }
 
 function getOrderPalette(side: ProbeOrder["side"], hovered: boolean) {

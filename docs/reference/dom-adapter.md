@@ -28,9 +28,9 @@ interface ChartDOMAdapter {
 
 Use `DefaultDOMAdapter` when CSS hooks are enough. Pass a custom adapter in `ChartOptions.domAdapter` when your app should render labels or pane dividers through its own DOM primitives.
 
-Adapter models are declarative inputs. Treat them as immutable and render the
-complete current state on every `update()` rather than diffing against chart
-internals. Geometry fields are logical CSS pixels.
+Adapter models are borrowed readonly declarative inputs. Render the complete
+current state on every `update()` rather than diffing against chart internals.
+Geometry fields are logical CSS pixels.
 
 ## Overlay
 

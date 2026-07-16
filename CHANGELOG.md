@@ -74,11 +74,12 @@
 - Added a controller-neutral `core` entry and per-controller entry points so
   bundlers can exclude unused built-in controllers while the root chart retains
   its convenient built-in set.
-- `getOptions()` returns an immutable resolved configuration snapshot instead of
-  the chart's mutable internal options object.
-- Public data, pane, indicator, and plugin collection getters return frozen
-  readonly snapshots. Duplicate extension registrations are rejected, add
-  methods return idempotent disposers, and chart disposal is idempotent.
+- `getOptions()` returns a stable borrowed readonly configuration snapshot
+  instead of the chart's mutable internal options object.
+- `getData()`, `getPanes()`, `getIndicators()`, and `getPlugins()` return
+  borrowed readonly snapshots without per-read copying. Duplicate extension
+  registrations are rejected, add methods return idempotent disposers, and
+  chart disposal is idempotent.
 - Full datasets are copied and sorted before bucket merging. Streaming accepts
   equal or newer timestamps and rejects older corrections with guidance to use
   `setData`.

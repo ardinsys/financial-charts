@@ -74,7 +74,7 @@ drawn by the ordinary plugin pass.
 | `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()`, on failed attachment, and on chart disposal.      |
 | `emit(event, data)`               | Emits a chart event.                                                                                           |
 | `getData()`                       | Returns the chart's current stable mapped-data snapshot.                                                       |
-| `getOptions()`                    | Returns the immutable resolved options snapshot.                                                              |
+| `getOptions()`                    | Returns the stable borrowed readonly options snapshot.                                                        |
 | `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`.         |
 | `getLogicalCanvas(layer)`         | Returns logical pixel size for the layer.                                                                      |
 | `getPanes()`                      | Returns a readonly pane snapshot, including the main pane and paneled indicators.                             |
@@ -117,6 +117,12 @@ removed before `detach()` runs. `detach()` therefore only needs to release
 resources that are not signal-aware or registered through these helpers.
 `ChartContext` does not expose the chart façade, so event and render
 subscriptions cannot bypass attachment scoping.
+
+Data, option, pane, indicator, plugin, crosshair, and lifecycle values exposed
+through the context are borrowed readonly values. The host may reuse their
+identity until the corresponding state changes. Plugins must not mutate them;
+copy a value only when the plugin needs a mutable working copy or an
+independently retained historical record.
 
 ## Render stages and redraw parts
 

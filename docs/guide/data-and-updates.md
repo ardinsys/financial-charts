@@ -115,7 +115,8 @@ notify or redraw. All three setters are no-ops while the chart has no data.
 same array until mapped data changes. Stored points are owned by the chart and
 are not references to mutable caller-owned objects. Use the snapshot to hydrate
 UI lists, run calculations, or persist mapped data without reprocessing the raw
-feed.
+feed. Copy it only when you need a mutable working set or an independent
+historical value.
 
 ## Handling late or out-of-order data
 

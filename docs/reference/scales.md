@@ -71,7 +71,8 @@ readonly array as a stable lookup table; call `setTimes()` after replacing it.
 | `setRange({ min, max })` / `getRange()`          | Updates or reads the numeric range.           |
 
 Price range setters and getters use the same borrowed readonly,
-allocation-free read contract as `TimeScale`.
+allocation-free read contract as `TimeScale`: setters own their range input,
+while getters lend the current range without copying it.
 
 ## DataScaleModel
 

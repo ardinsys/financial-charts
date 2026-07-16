@@ -137,9 +137,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
   }
 
   private setOrders(orders: readonly Order[]): void {
-    this.orders = Object.freeze(
-      orders.map((order) => Object.freeze({ ...order }))
-    );
+    this.orders = orders.map((order) => ({ ...order }));
     if (
       this.hoveredId !== undefined &&
       !this.orders.some(({ id }) => id === this.hoveredId)

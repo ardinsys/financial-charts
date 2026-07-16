@@ -15,6 +15,22 @@ are exposed only through the focused authoring contexts described below.
 - `@ardinsys/financial-charts/engine` contains controller, scale, pane,
   render-pipeline, tick, and low-level DOM/canvas contracts.
 
+## Readonly and ownership
+
+Public inputs that the chart retains, including data points, structured option
+values, ranges, drawing anchors, and annotations, are copied at their
+documented input boundary. Changing the caller-owned value later does not
+change chart state.
+
+Readonly values returned by getters and delivered to extensions are borrowed.
+Repeated reads commonly return the same object or array until its owning state
+changes, avoiding allocation in render and event paths. Extension, controller,
+formatter, and DOM-adapter instances remain live shared service references even
+when they appear inside a readonly collection or snapshot.
+
+Serialization methods such as `toJSON()` are the exception: they create
+independent JSON-safe values intended for storage or transport.
+
 ## Constructor
 
 ```ts
@@ -264,8 +280,8 @@ entry.
 | `getVisibleTimeWindow()`               | Returns interpolated timestamps that preserve the fractional logical window.                             |
 | `setVisibleTimeWindow(range)`          | Restores an interpolated fractional window, primarily for pan/zoom synchronization.                      |
 | `getTimeRange()`                       | Returns the configured base time range before zoom and pan.                                              |
-| `getOptions()`                         | Returns an immutable public snapshot of the resolved chart configuration.                                |
-| `getPanes()` / `getMainPane()`         | Returns immutable descriptors with `id`, `height`, `kind`, and optional `indicatorInstanceId`.          |
+| `getOptions()`                         | Returns the stable borrowed readonly snapshot of the resolved chart configuration.                       |
+| `getPanes()` / `getMainPane()`         | Returns stable borrowed readonly descriptors with `id`, `height`, `kind`, and optional `indicatorInstanceId`. |
 | `getPlugins()`                         | Returns a readonly snapshot of attached plugins.                                                         |
 | `getIndicators()`                      | Returns every attached overlay and paneled indicator as one readonly snapshot.                           |
 | `getIndicatorById(instanceId)`         | Returns the indicator with that unique instance ID, if attached.                                         |
@@ -273,11 +289,11 @@ entry.
 | `getCrosshairState()`                  | Returns the current crosshair state, or `undefined` when hidden.                                         |
 
 `getOptions()` returns the complete resolved configuration. Its time range,
-theme, locale values, and controller collection are immutable owned values and
-cannot mutate the chart. Formatter and DOM adapter values are service
-references, and extensions receive the adapter through `ChartContext`. The same
-snapshot object is returned until an effective option or
-controller-registration change replaces it.
+theme, locale values, and controller collection are chart-owned readonly
+values. Formatter and DOM adapter values are service references, and
+extensions receive the adapter through `ChartContext`. The same snapshot
+object is returned until an effective option or controller-registration change
+replaces it.
 
 View setters enforce a minimum one-bar span and clamp to the chart's current
 index bounds. They synchronously update the visible price scale, notify

@@ -5,7 +5,7 @@
 ## Design goals
 
 - **Fast on real data**: tuned for large intraday feeds, with debounced drawing and sensible defaults for trading UX (crosshair, volume, zoom/pan).
-- **Predictable API**: explicit `stepSize`, index-based bars that collapse calendar gaps, immutable inputs, and clear lifecycle methods (`setData`, `updateData`, events) so you always know when state changes.
+- **Predictable API**: explicit `stepSize`, index-based bars that collapse calendar gaps, clear input ownership, and explicit lifecycle methods (`setData`, `updateData`, events) so you always know when state changes.
 - **Extensible**: register custom controllers, indicators, plugins, and drawing tools without forking the library – expose formatters, themes, and locale labels for branding.
 - **Minimal surface area**: no runtime dependencies, ES module output, and primitive DOM requirements (a single container element).
 

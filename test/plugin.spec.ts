@@ -709,7 +709,6 @@ describe("plugin lifecycle", () => {
     );
     expect(chart.getCrosshairState()).toBe(state);
     expect(onCrosshairChange).toHaveBeenCalledWith(state);
-    expect(Object.isFrozen(state)).toBe(false);
     expect(chart.getCrosshairState()?.y).toBeGreaterThan(0);
 
     attachedContext?.clearCrosshair();

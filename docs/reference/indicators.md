@@ -38,6 +38,13 @@ Every indicator merges its supplied options with these defaults:
 | `labelKey` | Required stable label kind used by adapters and application UI.            |
 | `names`    | Localized display names keyed by locale (`default` is used as a fallback). |
 
+Chart data, visible data, ranges, options, and projection inputs supplied to an
+indicator are borrowed readonly values. They may retain the same identity
+across repeated reads and render calls. Do not mutate them; cache derived state
+in the indicator and replace that state when its source changes. Use `toJSON()`
+or an explicit application copy when an independent historical value is
+required.
+
 ### Type, instance, and label identity
 
 Indicator identity has three separate parts:
@@ -61,10 +68,10 @@ If a custom indicator declares its own constructor, accept
 
 ### Serializable state
 
-`toJSON()` returns a versioned, JSON-safe `IndicatorState` containing the type
-ID, instance ID, configurable options, and visibility. The default option
-serializer excludes `names` and `labelKey`; themes, DOM state, computed data,
-and other instance fields are not part of the snapshot.
+`toJSON()` returns an independent, versioned, JSON-safe `IndicatorState`
+containing the type ID, instance ID, configurable options, and visibility. The
+default option serializer excludes `names` and `labelKey`; themes, DOM state,
+computed data, and other instance fields are not part of the snapshot.
 
 Restore through an application-owned resolver. The resolver supplies the class
 and any runtime dependencies; the library applies options, identity, and

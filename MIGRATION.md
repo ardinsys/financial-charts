@@ -274,8 +274,8 @@ What to update:
   `FinancialChart` from `@ardinsys/financial-charts/core` and each required
   controller from its `@ardinsys/financial-charts/controllers/*` entry point.
   The root entry remains the convenient all-controller setup.
-- Collection getters now return frozen readonly snapshots. Plugin keys and
-  plugin/indicator instances cannot be registered twice on one chart.
+- Collection getters now return stable borrowed readonly snapshots. Plugin keys
+  and plugin/indicator instances cannot be registered twice on one chart.
   `addPlugin()` and `addIndicator()` return idempotent disposers, while their
   remove counterparts return whether an attached extension was removed.
 
@@ -307,7 +307,7 @@ Import `ChartController`, `ChartDataValueKey`, `DataScaleModel`, and related
 scale contracts from `@ardinsys/financial-charts/engine`. Tick generation now
 accepts a sorted public `times: readonly number[]` input instead of the internal
 data store. `TimeScale`, `PriceScale`, and pane range getters return stable
-immutable snapshots rather than caller-owned mutable objects.
+borrowed readonly snapshots rather than caller-owned mutable objects.
 
 The chart-coupled `randomColor(chart, index)` helper was removed. Use
 `paletteColor(colors, index)` from the engine entry and pass the desired palette
