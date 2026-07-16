@@ -1,8 +1,15 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData, TimeRange } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
-import { DrawingManager, TrendLine } from "../src/drawings";
+import {
+  Drawing,
+  DrawingManager,
+  TrendLine,
+  type DrawingJSON,
+  type DrawingManagerOptions,
+  type DrawingOptions
+} from "../src/drawings";
 import type { IndicatorResolver } from "../src/indicators/indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
@@ -23,6 +30,59 @@ const getSyncGroupSize = (
 
 class CustomMovingAverageIndicator extends MovingAverageIndicator {
   static ID = "custom-moving-average";
+}
+
+interface CustomDrawingData {
+  readonly metadata: {
+    readonly label: string;
+    readonly tags: readonly string[];
+  };
+}
+
+class CustomDataDrawing extends Drawing {
+  static readonly type = "custom-data";
+  readonly type = CustomDataDrawing.type;
+
+  private readonly metadata: CustomDrawingData["metadata"];
+
+  constructor(
+    options: DrawingOptions & { metadata: CustomDrawingData["metadata"] }
+  ) {
+    super(options);
+    this.metadata = {
+      label: options.metadata.label,
+      tags: [...options.metadata.tags]
+    };
+  }
+
+  static fromJSON(json: DrawingJSON) {
+    const data = json.data as CustomDrawingData | undefined;
+    if (!data) {
+      throw new Error("Custom drawing metadata is required.");
+    }
+
+    return new CustomDataDrawing({
+      anchors: json.anchors,
+      id: json.id,
+      metadata: data.metadata,
+      paneId: json.paneId
+    });
+  }
+
+  draw() {}
+
+  hitTest() {
+    return false;
+  }
+
+  protected getDataJSON(): CustomDrawingData {
+    return {
+      metadata: {
+        label: this.metadata.label,
+        tags: [...this.metadata.tags]
+      }
+    };
+  }
 }
 
 const indicatorResolver: IndicatorResolver = ({ typeId }) =>
@@ -99,7 +159,10 @@ function createData(): ChartData[] {
   ];
 }
 
-function createSyncedChart(group: string) {
+function createSyncedChart(
+  group: string,
+  drawingManagerOptions: DrawingManagerOptions = {}
+) {
   const data = createData();
   const container = document.createElement("div");
   container.style.width = "800px";
@@ -118,7 +181,7 @@ function createSyncedChart(group: string) {
     volume: false,
     locale: "en-US"
   });
-  const drawingManager = new DrawingManager();
+  const drawingManager = new DrawingManager(drawingManagerOptions);
   const syncPlugin = new ChartSyncPlugin({
     group,
     drawingManager,
@@ -484,6 +547,101 @@ describe("ChartSyncPlugin", () => {
     source.drawingManager.deleteDrawing(drawing);
 
     expect(target.drawingManager.getDrawings()).toEqual([]);
+  });
+
+  it("updates retained drawing state without serializing unrelated drawings", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group);
+    let first = new TrendLine({
+      anchors: [
+        { index: 0, price: 10 },
+        { index: 1, price: 12 }
+      ],
+      id: "incremental-first",
+      paneId: source.chart.getMainPane().id
+    });
+    const second = new TrendLine({
+      anchors: [
+        { index: 2, price: 14 },
+        { index: 3, price: 16 }
+      ],
+      id: "incremental-second",
+      paneId: source.chart.getMainPane().id
+    });
+
+    source.drawingManager.addDrawing(first, { emit: true });
+    source.drawingManager.addDrawing(second, { emit: true });
+
+    const serializeSecond = vi.spyOn(second, "toJSON");
+    first.setAnchors([
+      { index: 0, price: 11 },
+      { index: 2, price: 15 }
+    ]);
+    first = source.drawingManager.upsertDrawing(first.toJSON(), {
+      emit: true
+    }) as TrendLine;
+
+    expect(serializeSecond).not.toHaveBeenCalled();
+    expect(
+      target.drawingManager
+        .getDrawings()
+        .find(({ id }) => id === first.id)
+        ?.getAnchors()
+    ).toEqual(first.getAnchors());
+
+    source.drawingManager.selectDrawing(first);
+    expect(serializeSecond).not.toHaveBeenCalled();
+    serializeSecond.mockRestore();
+
+    const serializeFirst = vi.spyOn(first, "toJSON");
+    source.drawingManager.deleteDrawing(second);
+
+    expect(serializeFirst).not.toHaveBeenCalled();
+    expect(target.drawingManager.getDrawings().map(({ id }) => id)).toEqual([
+      first.id
+    ]);
+
+    const late = createSyncedChart(group);
+    expect(serializeFirst).not.toHaveBeenCalled();
+    expect(late.drawingManager.getDrawings().map(({ id }) => id)).toEqual([
+      first.id
+    ]);
+    expect(late.drawingManager.getDrawings()[0]?.getAnchors()).toEqual(
+      first.getAnchors()
+    );
+    expect(late.drawingManager.getSelectedDrawing()?.id).toBe(first.id);
+  });
+
+  it("preserves custom drawing data for live and late synchronization", () => {
+    const group = createGroup();
+    const drawingManagerOptions: DrawingManagerOptions = {
+      drawingDeserializers: {
+        [CustomDataDrawing.type]: CustomDataDrawing.fromJSON
+      }
+    };
+    const source = createSyncedChart(group, drawingManagerOptions);
+    const target = createSyncedChart(group, drawingManagerOptions);
+    const drawing = new CustomDataDrawing({
+      anchors: [{ index: 1, price: 12 }],
+      id: "custom-data-drawing",
+      metadata: {
+        label: "Earnings",
+        tags: ["event", "quarterly"]
+      },
+      paneId: source.chart.getMainPane().id
+    });
+
+    source.drawingManager.addDrawing(drawing, { emit: true });
+
+    expect(target.drawingManager.getDrawings()[0]?.toJSON().data).toEqual(
+      drawing.toJSON().data
+    );
+
+    const late = createSyncedChart(group, drawingManagerOptions);
+    expect(late.drawingManager.getDrawings()[0]?.toJSON().data).toEqual(
+      drawing.toJSON().data
+    );
   });
 
   it("syncs multiple indicators of the same type by instance ID", () => {

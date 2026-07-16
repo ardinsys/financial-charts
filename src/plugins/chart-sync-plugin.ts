@@ -218,22 +218,24 @@ export class ChartSyncPlugin implements ChartPlugin {
       unsubscribers.push(
         ctx.on("drawing-create", ({ drawing }) => {
           if (this.applying) return;
-          this.storeDrawingState();
-          this.broadcastDrawing(drawing.toJSON());
+          const snapshot = drawing.toJSON();
+          this.storeDrawing(snapshot);
+          this.broadcastDrawing(snapshot);
         }),
         ctx.on("drawing-change", ({ drawing }) => {
           if (this.applying) return;
-          this.storeDrawingState();
-          this.broadcastDrawing(drawing.toJSON());
+          const snapshot = drawing.toJSON();
+          this.storeDrawing(snapshot);
+          this.broadcastDrawing(snapshot);
         }),
         ctx.on("drawing-delete", ({ drawing }) => {
           if (this.applying) return;
-          this.storeDrawingState();
+          this.removeStoredDrawing(drawing.id);
           this.broadcast((peer) => peer.applyDrawingDelete(drawing.id));
         }),
         ctx.on("drawing-select", ({ id }) => {
           if (this.applying) return;
-          this.storeDrawingState();
+          this.storeDrawingSelection(id);
           this.broadcast((peer) => peer.applyDrawingSelection(id));
         }),
       );
@@ -401,11 +403,57 @@ export class ChartSyncPlugin implements ChartPlugin {
   private storeDrawingState() {
     const state = this.getDrawingManager()?.toJSON();
     if (state) {
-      this.getGroup().state.drawings = cloneSyncJSONValue(
-        state,
-        "Chart sync drawing state",
-      );
+      this.getGroup().state.drawings = state;
     }
+  }
+
+  private storeDrawing(snapshot: DrawingJSON) {
+    const group = this.getGroup();
+    const state = group.state.drawings;
+    if (!state) {
+      this.storeDrawingState();
+      return;
+    }
+
+    const index = state.drawings.findIndex(
+      (drawing) => drawing.id === snapshot.id,
+    );
+    const drawings =
+      index === -1
+        ? [...state.drawings, snapshot]
+        : state.drawings.map((drawing, drawingIndex) =>
+            drawingIndex === index ? snapshot : drawing,
+          );
+
+    group.state.drawings = createDrawingState(
+      drawings,
+      state.selectedDrawingId,
+    );
+  }
+
+  private removeStoredDrawing(id: string) {
+    const group = this.getGroup();
+    const state = group.state.drawings;
+    if (!state) {
+      this.storeDrawingState();
+      return;
+    }
+
+    group.state.drawings = createDrawingState(
+      state.drawings.filter((drawing) => drawing.id !== id),
+      state.selectedDrawingId === id ? undefined : state.selectedDrawingId,
+    );
+  }
+
+  private storeDrawingSelection(id?: string) {
+    const group = this.getGroup();
+    const state = group.state.drawings;
+    if (!state) {
+      this.storeDrawingState();
+      return;
+    }
+
+    group.state.drawings = createDrawingState(state.drawings, id);
   }
 
   private storeIndicatorState() {
@@ -469,10 +517,7 @@ export class ChartSyncPlugin implements ChartPlugin {
     if (this.isEnabled("drawings")) {
       const drawingState = this.getDrawingManager()?.toJSON();
       if (drawingState) {
-        state.drawings = cloneSyncJSONValue(
-          drawingState,
-          "Chart sync drawing state",
-        );
+        state.drawings = drawingState;
       }
     }
     if (this.isEnabled("indicators")) {
@@ -644,10 +689,7 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
     clone.visibleRange = state.visibleRange;
   }
   if (state.drawings) {
-    clone.drawings = cloneSyncJSONValue(
-      state.drawings,
-      "Chart sync drawing state",
-    );
+    clone.drawings = state.drawings;
   }
   if (state.indicators) {
     clone.indicators = cloneIndicatorSnapshots(state.indicators);
@@ -657,6 +699,16 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
   }
 
   return clone;
+}
+
+function createDrawingState(
+  drawings: readonly DrawingJSON[],
+  selectedDrawingId?: string,
+): DrawingManagerJSON {
+  return {
+    drawings,
+    ...(selectedDrawingId === undefined ? {} : { selectedDrawingId }),
+  };
 }
 
 function cloneIndicatorSnapshots(

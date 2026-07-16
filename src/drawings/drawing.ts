@@ -152,6 +152,7 @@ export abstract class Drawing {
     };
   }
 
+  /** Returns an owned JSON-safe snapshot of subclass state. */
   protected getDataJSON(): object | undefined {
     return undefined;
   }
