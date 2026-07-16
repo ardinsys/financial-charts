@@ -8,6 +8,7 @@ import {
   createCanvasLayer,
   type ChartCanvasLayer,
   type DefaultIndicatorOptions,
+  type ExtensionThemeDefaults,
   type Formatter,
   type PaneledIndicatorDrawingContext,
   paletteColor
@@ -18,8 +19,8 @@ class ExtensionPane extends PaneledIndicator<{}, DefaultIndicatorOptions> {
     return { labelKey: "pane", names: { default: "Pane" } };
   }
 
-  getDefaultThemes(): Record<string, {}> {
-    return {};
+  getDefaultThemes(): ExtensionThemeDefaults<{}> {
+    return { light: {}, dark: {} };
   }
 
   createScale(): DataScaleModel {

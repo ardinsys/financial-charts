@@ -4,6 +4,8 @@ import {
   type IndicatorContext,
   type ChartPointerEvent,
   type DefaultIndicatorOptions,
+  type ExtensionThemeDefaults,
+  type ExtensionThemeMap,
   type IndicatorLabelContent,
   type IndicatorOptionsInput
 } from "@ardinsys/financial-charts/extensions";
@@ -38,7 +40,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
 
   constructor(
     private readonly source: OrderSource,
-    themes?: Record<string, Partial<OrdersTheme>> | null,
+    themes?: ExtensionThemeMap<OrdersTheme> | null,
     options?: IndicatorOptionsInput<OrdersOptions> | null
   ) {
     super(themes, options);
@@ -60,7 +62,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
     };
   }
 
-  getDefaultThemes(): Record<string, OrdersTheme> {
+  getDefaultThemes(): ExtensionThemeDefaults<OrdersTheme> {
     return {
       light: { buyColor: "#00897b", sellColor: "#d81b60" },
       dark: { buyColor: "#4db6ac", sellColor: "#f06292" }

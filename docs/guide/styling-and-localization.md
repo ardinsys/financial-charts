@@ -16,7 +16,6 @@ Themes, locales, and formatters let you align the chart with your brand and lang
 | `xAxis`, `yAxis`                           | Typography, colors, and separators for labels.                 |
 | `priceAxisAnnotation`                      | Shared price-line and Y-axis annotation styling.               |
 | `crosshair`                                | Line color/dash plus tooltip styling and info-line labels.     |
-| `drawingAxisBounds`                        | Selected drawing axis-bound labels and translucent ranges.     |
 | `randomColors`                             | Palette used when multiple indicators request auto colors.     |
 
 Register theme definitions when the chart is created. Missing values are

@@ -97,18 +97,6 @@ export interface ChartTheme {
       font?: string;
     };
   };
-  drawingAxisBounds?: {
-    strokeColor?: string;
-    labelBackgroundColor?: string;
-    rangeBackgroundColor?: string;
-    textColor?: string;
-    fontSize?: number;
-    font?: string;
-    lineWidth?: number;
-    borderRadius?: number;
-    labelHeight?: number;
-    labelPaddingX?: number;
-  };
 }
 
 export type ChartThemeMap = Readonly<Record<string, ChartTheme>>;
@@ -217,18 +205,6 @@ export const defaultLightTheme: ResolvedChartTheme = {
       fontSize: 12,
       font: "Roboto Mono"
     }
-  },
-  drawingAxisBounds: {
-    strokeColor: "rgba(217, 158, 0, 0.9)",
-    labelBackgroundColor: "#FFF4CC",
-    rangeBackgroundColor: "rgba(217, 158, 0, 0.18)",
-    textColor: "#7C5800",
-    fontSize: 11,
-    font: "Roboto Mono",
-    lineWidth: 1,
-    borderRadius: 5,
-    labelHeight: 22,
-    labelPaddingX: 8
   }
 };
 
@@ -331,17 +307,5 @@ export const defaultDarkTheme: ResolvedChartTheme = {
       fontSize: 12,
       font: "Roboto Mono"
     }
-  },
-  drawingAxisBounds: {
-    strokeColor: "rgba(234, 179, 8, 0.9)",
-    labelBackgroundColor: "#3A2E0F",
-    rangeBackgroundColor: "rgba(234, 179, 8, 0.18)",
-    textColor: "#FDE68A",
-    fontSize: 11,
-    font: "Roboto Mono",
-    lineWidth: 1,
-    borderRadius: 5,
-    labelHeight: 22,
-    labelPaddingX: 8
   }
 };

@@ -9,6 +9,7 @@ import {
 } from "../src/indicators/indicator";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
+import type { ExtensionThemeDefaults } from "../src/plugin/extension-theme";
 
 interface RuntimeIndicatorOptions extends DefaultIndicatorOptions {
   symbol: string;
@@ -38,8 +39,8 @@ class RuntimeIndicator extends Indicator<{}, RuntimeIndicatorOptions> {
     };
   }
 
-  getDefaultThemes(): Record<string, {}> {
-    return {};
+  getDefaultThemes(): ExtensionThemeDefaults<{}> {
+    return { light: {}, dark: {} };
   }
 
   draw(): void {}

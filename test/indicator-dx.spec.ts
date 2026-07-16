@@ -14,6 +14,7 @@ import {
   type PaneledIndicatorDrawingContext
 } from "../src/indicators/paneled-indicator";
 import { DataScaleModel } from "../src/scales/data-scale-model";
+import type { ExtensionThemeDefaults } from "../src/plugin/extension-theme";
 import {
   getChartContext,
   getChartModel,
@@ -33,7 +34,7 @@ class OverlayProbeIndicator extends Indicator<{}, DefaultIndicatorOptions> {
     };
   }
 
-  public getDefaultThemes(): Record<string, {}> {
+  public getDefaultThemes(): ExtensionThemeDefaults<{}> {
     return { light: {}, dark: {} };
   }
 
@@ -72,7 +73,7 @@ class PaneledProbeIndicator extends PaneledIndicator<
     };
   }
 
-  public getDefaultThemes(): Record<string, {}> {
+  public getDefaultThemes(): ExtensionThemeDefaults<{}> {
     return { light: {}, dark: {} };
   }
 

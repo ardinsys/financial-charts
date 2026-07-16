@@ -33,6 +33,7 @@ export * from "./chart/event-emitter";
 export * from "./chart/formatter";
 export * from "./chart/themes";
 export type { ChartData, TimeRange } from "./chart/types";
+export * from "./plugin/extension-theme";
 
 export type {
   PriceAxisAnnotation,

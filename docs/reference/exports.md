@@ -61,6 +61,7 @@ definition from its declared built-in base and exposes the active complete
 
 | Exports | Reference |
 | --- | --- |
+| `ExtensionThemeResolver`, `ExtensionThemeDefaults`, `ExtensionThemeDefinition`, `ExtensionThemeMap` | [Extension themes](/reference/plugins#extension-themes) |
 | `ChartSyncPlugin`, `ChartSyncPluginOptions`, `ChartSyncCrosshairSnapshot`, `ChartSyncIndicatorSnapshot`, `ChartSyncMessage`, `ChartSyncMessageSource`, `ChartSyncMessageHandler`, `ChartSyncPostMessageOptions` | [ChartSyncPlugin](/reference/plugins#chartsyncplugin) |
 | `DrawingAxisBoundsPlugin`, `DrawingAxisBoundsPluginOptions`, `DrawingAxisBoundKind`, `DrawingAxisBoundsLabels`, `DrawingAxisBoundsLabelOptions`, `DrawingAxisBoundsLabelContext`, `DrawingAxisBoundsValueContext`, `DrawingAxisBoundsTextContext`, `DrawingAxisBoundsTheme` | [Drawing axis bounds](/reference/plugins#drawing-axis-bounds-plugin) |
 | `DrawingSelectionPlugin`, `DrawingSelectionPluginOptions`, `DrawingSelectionCallback` | [Drawing selection](/reference/plugins#drawing-selection-plugin) |

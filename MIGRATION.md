@@ -114,6 +114,22 @@ The built-in `"light"` and `"dark"` keys need no registration. Custom keys
 default to the light base unless `base: "dark"` is specified. Each definition
 is resolved from that base rather than the previously active theme.
 
+Extension appearance is no longer stored in `ChartTheme`. Indicators and
+ordinary visual plugins now share `ExtensionThemeResolver` with complete
+light/dark fallbacks, optional extension-provided custom-key defaults, and keyed
+deep-partial overrides. Custom indicators must return at least light and dark
+from `getDefaultThemes()`. `DrawingAxisBoundsPlugin` moved
+from a single `theme` option to a `themes` map:
+
+```ts
+new DrawingAxisBoundsPlugin({
+  themes: {
+    light: { strokeColor: "#B7791F" },
+    dark: { strokeColor: "#F6C344" }
+  }
+});
+```
+
 ### Render invalidation uses named layers
 
 `ChartContext.requestRedraw()` targets render layers and is scoped to the

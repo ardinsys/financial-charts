@@ -73,6 +73,7 @@ for (const declarationPath of publicDeclarationPaths) {
     "createIndicator",
     "createExtent",
     "drawNextPoint",
+    "drawingAxisBounds",
     "getEffectiveCrosshairValues",
     "getKey",
     "getPanOffset",

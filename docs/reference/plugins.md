@@ -66,6 +66,62 @@ reverse attachment order. Returning `true` stops delivery to lower extensions.
 Indicators retain their dedicated indicator render pass; they are not also
 drawn by the ordinary plugin pass.
 
+### Extension themes
+
+Visual extensions own their themes instead of adding extension-specific fields
+to `ChartTheme`. `ExtensionThemeResolver` is shared by indicators and ordinary
+plugins. It requires complete light/dark fallbacks, allows extensions to ship
+additional complete keyed themes, and accepts optional partial definitions
+keyed like chart themes:
+
+```ts
+import {
+  ExtensionThemeResolver,
+  type ExtensionThemeMap
+} from "@ardinsys/financial-charts/extensions";
+
+interface WatermarkTheme {
+  color: string;
+  opacity: number;
+}
+
+const defaults = {
+  light: { color: "#111827", opacity: 0.08 },
+  dark: { color: "#f9fafb", opacity: 0.12 },
+  "brand-night": { color: "#dbeafe", opacity: 0.1 }
+};
+
+class WatermarkPlugin implements ChartPlugin {
+  readonly key = "watermark";
+  private ctx!: ChartContext;
+  private readonly themes: ExtensionThemeResolver<WatermarkTheme>;
+
+  constructor(themes?: ExtensionThemeMap<WatermarkTheme>) {
+    this.themes = new ExtensionThemeResolver<WatermarkTheme>(defaults, themes);
+  }
+
+  attach(ctx: ChartContext): void {
+    this.ctx = ctx;
+  }
+
+  afterDraw(): void {
+    const theme = this.themes.resolve(this.ctx.getOptions().theme);
+    const context = this.ctx.getCanvasContext("crosshair");
+    context.save();
+    context.fillStyle = theme.color;
+    context.globalAlpha = theme.opacity;
+    context.fillText("AAPL", 20, 30);
+    context.restore();
+  }
+}
+```
+
+For a custom chart theme key, resolution starts with the extension's matching
+light/dark default, applies that base key's partial definition, then merges an
+extension-provided exact default and its partial override when present. The resolver owns its input and
+returns the same resolved object while the chart theme key and base are
+unchanged.
+
 ## ChartContext
 
 | Helper                            | Description                                                                                                    |
@@ -389,17 +445,24 @@ chart.addPlugin(
 );
 ```
 
-Colors and sizing default from `theme.drawingAxisBounds`, and can also be
-overridden per plugin instance:
+The plugin ships separate light and dark themes. Override either base or a
+custom chart theme key with partial definitions in `themes`:
 
 ```ts
 chart.addPlugin(
   new DrawingAxisBoundsPlugin({
-    theme: {
-      strokeColor: "rgba(234, 179, 8, 0.9)",
-      labelBackgroundColor: "#3A2E0F",
-      rangeBackgroundColor: "rgba(234, 179, 8, 0.18)",
-      textColor: "#FDE68A"
+    themes: {
+      light: {
+        strokeColor: "#B7791F"
+      },
+      dark: {
+        strokeColor: "#F6C344",
+        labelBackgroundColor: "#3A2E0F",
+        textColor: "#FDE68A"
+      },
+      "brand-night": {
+        rangeBackgroundColor: "rgba(246, 195, 68, 0.22)"
+      }
     },
     blacklist: ["text"],
     showXAxis: true,

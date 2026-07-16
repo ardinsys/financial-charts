@@ -12,6 +12,7 @@ Overlay indicators draw on the shared indicator canvas. The base class handles a
 import {
   Indicator,
   type DefaultIndicatorOptions,
+  type ExtensionThemeDefaults,
   type IndicatorDrawingContext,
   type IndicatorLabelContent
 } from "@ardinsys/financial-charts/extensions";
@@ -41,7 +42,7 @@ class LastPriceIndicator extends Indicator<LastPriceTheme, LastPriceOptions> {
     };
   }
 
-  public getDefaultThemes(): Record<string, LastPriceTheme> {
+  public getDefaultThemes(): ExtensionThemeDefaults<LastPriceTheme> {
     return {
       light: { color: "#2563eb", lineWidth: 2 },
       dark: { color: "#93c5fd", lineWidth: 2 }
@@ -107,6 +108,11 @@ class LastPriceIndicator extends Indicator<LastPriceTheme, LastPriceOptions> {
 chart.addIndicator(new LastPriceIndicator());
 ```
 
+Indicators use the same `ExtensionThemeResolver` as other visual extensions.
+`getDefaultThemes()` supplies complete light and dark fallbacks and may include
+additional complete custom-key definitions. Constructor theme maps are deep
+partial overrides for base or custom chart theme keys.
+
 `getDrawingContext()` gives you the canvas context, mapped data, visible data, formatter, theme, visible range, and helpers such as `projectTime`, `projectPrice`, and `projectPoint`. Use those helpers instead of reading canvas dimensions and scales directly.
 
 ## Paneled indicator
@@ -117,6 +123,7 @@ Paneled indicators get their own pane under the main chart. The chart handles pa
 import {
   PaneledIndicator,
   type DefaultIndicatorOptions,
+  type ExtensionThemeDefaults,
   type IndicatorLabelContent,
   type PaneledIndicatorDrawingContext
 } from "@ardinsys/financial-charts/extensions";
@@ -142,7 +149,7 @@ class RangePaneIndicator extends PaneledIndicator<
     };
   }
 
-  public getDefaultThemes(): Record<string, RangePaneTheme> {
+  public getDefaultThemes(): ExtensionThemeDefaults<RangePaneTheme> {
     return {
       light: { color: "#7c3aed" },
       dark: { color: "#c4b5fd" }
@@ -306,6 +313,8 @@ import {
   type IndicatorContext,
   type ChartPointerEvent,
   type DefaultIndicatorOptions,
+  type ExtensionThemeDefaults,
+  type ExtensionThemeMap,
   type IndicatorLabelContent,
   type IndicatorOptionsInput
 } from "@ardinsys/financial-charts/extensions";
@@ -340,7 +349,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
 
   constructor(
     private readonly source: OrderSource,
-    themes?: Record<string, Partial<OrdersTheme>> | null,
+    themes?: ExtensionThemeMap<OrdersTheme> | null,
     options?: IndicatorOptionsInput<OrdersOptions> | null
   ) {
     super(themes, options);
@@ -360,7 +369,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
     };
   }
 
-  getDefaultThemes(): Record<string, OrdersTheme> {
+  getDefaultThemes(): ExtensionThemeDefaults<OrdersTheme> {
     return {
       light: { buyColor: "#00897b", sellColor: "#d81b60" },
       dark: { buyColor: "#4db6ac", sellColor: "#f06292" }

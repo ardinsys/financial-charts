@@ -67,7 +67,10 @@ function createChart() {
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
+    themes: {
+      night: { base: "dark" }
+    }
   });
   chart.setData(data);
   requestChartRedraw(
@@ -144,5 +147,49 @@ describe("DrawingAxisBoundsPlugin", () => {
     expect(
       vi.mocked(context.fillText).mock.calls.map(([value]) => value)
     ).toEqual(["sibling"]);
+  });
+
+  it("resolves plugin themes from chart theme keys and bases", () => {
+    const { chart, container } = createChart();
+    const bounds = new DrawingAxisBoundsPlugin({
+      themes: {
+        night: { strokeColor: "#333333" }
+      }
+    });
+    let eventContext: ChartContext | undefined;
+    chart.addPlugin(bounds);
+    chart.addPlugin({
+      key: "theme-event-source",
+      attach: (context) => {
+        eventContext = context;
+      }
+    });
+    eventContext?.emit("drawing-select", {
+      drawing: new BoundsDrawing({
+        anchors: [
+          { index: 0, price: 10 },
+          { index: 2, price: 14 }
+        ]
+      })
+    });
+
+    const context = getAnnotationContext(container);
+    const strokeColors: string[] = [];
+    vi.mocked(context.stroke).mockImplementation(() => {
+      strokeColors.push(String(context.strokeStyle));
+    });
+
+    requestChartRedraw(chart, "annotations", true);
+    expect(strokeColors).toContain("rgba(217, 158, 0, 0.9)");
+
+    strokeColors.length = 0;
+    chart.updateOptions({ theme: "dark" });
+    requestChartRedraw(chart, "annotations", true);
+    expect(strokeColors).toContain("rgba(234, 179, 8, 0.9)");
+
+    strokeColors.length = 0;
+    chart.updateOptions({ theme: "night" });
+    requestChartRedraw(chart, "annotations", true);
+    expect(strokeColors).toContain("#333333");
   });
 });

@@ -7,9 +7,11 @@ import {
   type IndicatorLabelContent
 } from "../src/indicators/indicator";
 import { getChartModel, getChartRenderer } from "./chart-test-harness";
+import type { ExtensionThemeDefaults } from "../src/plugin/extension-theme";
 
 interface ExternalIndicatorTheme {
   color: string;
+  strokeWidth: number;
 }
 
 class ExternalDataProbeIndicator extends Indicator<
@@ -31,10 +33,11 @@ class ExternalDataProbeIndicator extends Indicator<
     };
   }
 
-  getDefaultThemes(): Record<string, ExternalIndicatorTheme> {
+  getDefaultThemes(): ExtensionThemeDefaults<ExternalIndicatorTheme> {
     return {
-      light: { color: "#ff0000" },
-      dark: { color: "#00ff00" }
+      light: { color: "#ff0000", strokeWidth: 1 },
+      dark: { color: "#00ff00", strokeWidth: 2 },
+      night: { color: "#8080ff", strokeWidth: 4 }
     };
   }
 
@@ -81,6 +84,10 @@ class ExternalDataProbeIndicator extends Indicator<
     return this.theme.color;
   }
 
+  getResolvedTheme() {
+    return this.theme;
+  }
+
   getSignal() {
     return this.indicatorContext.signal;
   }
@@ -118,7 +125,8 @@ function createChart() {
     volume: false,
     locale: "en-US",
     themes: {
-      night: { base: "dark" }
+      night: { base: "dark" },
+      evening: { base: "dark" }
     }
   });
   const start = Date.UTC(2024, 0, 1, 9);
@@ -132,6 +140,21 @@ function createChart() {
 }
 
 describe("external-data indicators", () => {
+  it("uses the shared extension theme resolution for partial custom keys", () => {
+    const { chart } = createChart();
+    const indicator = new ExternalDataProbeIndicator({
+      night: { color: "#ffaa00" }
+    });
+    chart.addIndicator(indicator);
+
+    chart.updateOptions({ theme: "night" });
+
+    expect(indicator.getResolvedTheme()).toEqual({
+      color: "#ffaa00",
+      strokeWidth: 4
+    });
+  });
+
   it("invalidates labels, drawing, and modifiers without attachment hazards", async () => {
     const { chart, data } = createChart();
     const indicator = new ExternalDataProbeIndicator();
@@ -153,7 +176,7 @@ describe("external-data indicators", () => {
     indicator.setPrices([100]);
 
     const labelReads = indicator.labelReads;
-    chart.updateOptions({ theme: "night" });
+    chart.updateOptions({ theme: "evening" });
     expect(indicator.getResolvedColor()).toBe("#00ff00");
     expect(indicator.labelReads).toBeGreaterThan(labelReads);
 

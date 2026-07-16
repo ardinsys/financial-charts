@@ -9,6 +9,7 @@ export type {
 } from "./render/chart-render-types";
 
 export * from "./plugin/chart-plugin";
+export * from "./plugin/extension-theme";
 export * from "./plugins";
 
 export * from "./drawings";

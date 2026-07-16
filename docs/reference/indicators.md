@@ -157,8 +157,10 @@ The default adapter renders and wires:
   automatically. Chart-owned annotations and label cleanup always run, so an
   override does not call `super.detach()` merely to preserve base cleanup.
 
-The base re-resolves `this.theme` and rebuilds the label before delivering a
-theme change to `onOptionsChanged`. Changes to `timeRange` and `stepSize` are
+The base uses `ExtensionThemeResolver`, shared with ordinary visual plugins, to
+deep-merge base and exact-key definitions. It re-resolves `this.theme` and
+rebuilds the label before delivering a theme change to `onOptionsChanged`.
+Changes to `timeRange` and `stepSize` are
 included in that hook's `changedKeys`, allowing external-data indicators to
 refetch against the current timeframe.
 

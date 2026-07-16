@@ -9,6 +9,11 @@ import type {
   ChartExtension,
   ExtensionContext
 } from "../plugin/chart-plugin";
+import {
+  ExtensionThemeResolver,
+  type ExtensionThemeDefaults,
+  type ExtensionThemeMap
+} from "../plugin/extension-theme";
 import type {
   IndicatorLabelHandle,
   IndicatorLabelModel,
@@ -151,7 +156,7 @@ export abstract class Indicator<
   TTheme extends object,
   TOptions extends DefaultIndicatorOptions
 > implements ChartExtension {
-  protected themes!: Record<string, TTheme>;
+  protected themes!: ExtensionThemeMap<TTheme>;
   protected options!: TOptions;
   protected indicatorContext!: IndicatorContext;
   protected theme!: TTheme;
@@ -159,18 +164,23 @@ export abstract class Indicator<
   protected visible = true;
   private labelHandle?: IndicatorLabelHandle;
   private attached = false;
+  private themeResolver!: ExtensionThemeResolver<TTheme>;
   private readonly typeId: string;
   private instanceId: string;
 
   constructor(
-    themes?: Record<string, Partial<TTheme>> | undefined | null,
+    themes?: ExtensionThemeMap<TTheme> | undefined | null,
     options?: IndicatorOptionsInput<TOptions> | undefined | null
   ) {
     const optionOverrides = { ...(options ?? {}) };
     const configuredInstanceId = optionOverrides.instanceId;
     delete optionOverrides.instanceId;
 
-    this.themes = mergeObjects(this.getDefaultThemes(), themes);
+    this.themeResolver = new ExtensionThemeResolver<TTheme>(
+      this.getDefaultThemes(),
+      themes ?? undefined
+    );
+    this.themes = this.themeResolver.getThemes();
     this.options = mergeObjects(
       this.getDefaultOptions(),
       optionOverrides as Partial<TOptions>
@@ -189,7 +199,7 @@ export abstract class Indicator<
   public attach(ctx: IndicatorContext): void {
     this.indicatorContext = ctx;
     this.labelHandle?.destroy();
-    this.theme = this.resolveTheme(ctx.getOptions().theme);
+    this.theme = this.themeResolver.resolve(ctx.getOptions().theme);
     this.attached = true;
 
     this.labelHandle = this.indicatorContext.domAdapter.createIndicatorLabel(
@@ -243,17 +253,6 @@ export abstract class Indicator<
     );
   }
 
-  private resolveTheme(chartTheme: ChartOptionsSnapshot["theme"]): TTheme {
-    return (
-      this.themes[chartTheme.key] ??
-      this.themes[chartTheme.base] ??
-      this.themes.default ??
-      this.themes.light ??
-      Object.values(this.themes)[0] ??
-      ({} as TTheme)
-    );
-  }
-
   public detach(): void {
     this.releaseAttachment();
   }
@@ -268,7 +267,7 @@ export abstract class Indicator<
   /** @internal Synchronizes base indicator state before user lifecycle hooks. */
   public applyChartOptions(event: ChartOptionsChangeEvent): void {
     if (!this.attached || !event.changedKeys.includes("theme")) return;
-    this.theme = this.resolveTheme(event.current.theme);
+    this.theme = this.themeResolver.resolve(event.current.theme);
     this.refreshLabel();
   }
 
@@ -292,7 +291,7 @@ export abstract class Indicator<
   }
 
   public abstract getDefaultOptions(): TOptions;
-  public abstract getDefaultThemes(): Record<string, TTheme>;
+  public abstract getDefaultThemes(): ExtensionThemeDefaults<TTheme>;
   public abstract draw(): void;
 
   /** Returns the configurable, JSON-safe option values stored in state. */
@@ -353,7 +352,7 @@ export abstract class Indicator<
 
   public clone(): Indicator<TTheme, TOptions> {
     const Constructor = this.constructor as new (
-      themes?: Record<string, Partial<TTheme>> | undefined | null,
+      themes?: ExtensionThemeMap<TTheme> | undefined | null,
       options?: IndicatorOptionsInput<TOptions> | undefined | null
     ) => Indicator<TTheme, TOptions>;
     const clonedOptions = cloneIndicatorValue(this.options);
@@ -370,13 +369,19 @@ export abstract class Indicator<
     updateOptions: IndicatorMutationOptions = {}
   ): void {
     const wasVisible = this.visible;
-    this.themes = cloneIndicatorValue(source.themes);
+    this.themeResolver = new ExtensionThemeResolver<TTheme>(
+      this.getDefaultThemes(),
+      source.themes
+    );
+    this.themes = this.themeResolver.getThemes();
     this.options = cloneIndicatorValue(source.options);
     this.visible = source.visible;
 
     if (!this.attached) return;
 
-    this.theme = this.resolveTheme(this.indicatorContext.getOptions().theme);
+    this.theme = this.themeResolver.resolve(
+      this.indicatorContext.getOptions().theme
+    );
     this.indicatorContext.requestRedraw(indicatorStateRedrawParts);
     this.refreshLabel();
 

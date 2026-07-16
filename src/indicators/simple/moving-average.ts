@@ -5,6 +5,7 @@ import {
   type IndicatorLabelContent
 } from "../indicator";
 import type { ChartData, TimeRange } from "../../chart/types";
+import type { ExtensionThemeDefaults } from "../../plugin/extension-theme";
 
 export interface MovingAverageTheme {
   color: string;
@@ -35,7 +36,7 @@ export class MovingAverageIndicator extends Indicator<
     };
   }
 
-  public getDefaultThemes(): Record<string, MovingAverageTheme> {
+  public getDefaultThemes(): ExtensionThemeDefaults<MovingAverageTheme> {
     return {
       light: {
         color: "#2962FF",

@@ -1,8 +1,12 @@
 import type { ChartContext, ChartPlugin } from "../plugin/chart-plugin";
 import type { PriceAxisAnnotation } from "../annotations/price-axis-annotation";
-import type { ChartOptionsSnapshot } from "../chart/chart-options";
 import type { ChartData } from "../chart/types";
 import type { Drawing, DrawingAnchor } from "../drawings/drawing";
+import {
+  ExtensionThemeResolver,
+  type ExtensionThemeDefaults,
+  type ExtensionThemeMap
+} from "../plugin/extension-theme";
 
 export type DrawingAxisBoundKind = "single" | "start" | "end";
 
@@ -51,7 +55,7 @@ export interface DrawingAxisBoundsPluginOptions {
   showRange?: boolean;
   blacklist?: readonly string[];
   labels?: DrawingAxisBoundsLabelOptions;
-  theme?: Partial<DrawingAxisBoundsTheme>;
+  themes?: ExtensionThemeMap<DrawingAxisBoundsTheme>;
   formatXValue?: (context: DrawingAxisBoundsValueContext) => string;
   formatYValue?: (context: DrawingAxisBoundsValueContext) => string;
   formatText?: (context: DrawingAxisBoundsTextContext) => string;
@@ -90,27 +94,47 @@ const defaultLabels: DrawingAxisBoundsLabels = {
   single: ""
 };
 
-const defaultTheme: DrawingAxisBoundsTheme = {
-  strokeColor: "rgba(234, 179, 8, 0.9)",
-  labelBackgroundColor: "#3A2E0F",
-  rangeBackgroundColor: "rgba(234, 179, 8, 0.18)",
-  textColor: "#FDE68A",
-  fontSize: 11,
-  font: "Roboto Mono",
-  lineWidth: 1,
-  borderRadius: 5,
-  labelHeight: 22,
-  labelPaddingX: 8
-};
+const defaultThemes = {
+  light: {
+    strokeColor: "rgba(217, 158, 0, 0.9)",
+    labelBackgroundColor: "#FFF4CC",
+    rangeBackgroundColor: "rgba(217, 158, 0, 0.18)",
+    textColor: "#7C5800",
+    fontSize: 11,
+    font: "Roboto Mono",
+    lineWidth: 1,
+    borderRadius: 5,
+    labelHeight: 22,
+    labelPaddingX: 8
+  },
+  dark: {
+    strokeColor: "rgba(234, 179, 8, 0.9)",
+    labelBackgroundColor: "#3A2E0F",
+    rangeBackgroundColor: "rgba(234, 179, 8, 0.18)",
+    textColor: "#FDE68A",
+    fontSize: 11,
+    font: "Roboto Mono",
+    lineWidth: 1,
+    borderRadius: 5,
+    labelHeight: 22,
+    labelPaddingX: 8
+  }
+} satisfies ExtensionThemeDefaults<DrawingAxisBoundsTheme>;
 
 export class DrawingAxisBoundsPlugin implements ChartPlugin {
   readonly key = "drawing-axis-bounds";
 
   private ctx?: ChartContext;
   private selectedDrawing?: Drawing;
+  private readonly themeResolver: ExtensionThemeResolver<DrawingAxisBoundsTheme>;
   private unsubscribers: Array<() => void> = [];
 
-  constructor(private readonly options: DrawingAxisBoundsPluginOptions = {}) {}
+  constructor(private readonly options: DrawingAxisBoundsPluginOptions = {}) {
+    this.themeResolver = new ExtensionThemeResolver<DrawingAxisBoundsTheme>(
+      defaultThemes,
+      options.themes
+    );
+  }
 
   attach(ctx: ChartContext): void {
     this.ctx = ctx;
@@ -176,7 +200,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       pane,
       canvas: drawingCanvas
     });
-    const theme = this.resolveTheme(chartOptions.theme);
+    const theme = this.themeResolver.resolve(chartOptions.theme);
 
     if (this.options.showXAxis ?? defaultOptions.showXAxis) {
       const xAxis = ctx.getCanvasContext("x-label");
@@ -280,7 +304,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       ...mark,
       value: this.formatYValue(mark, locale)
     }));
-    const theme = this.resolveTheme(chartOptions.theme);
+    const theme = this.themeResolver.resolve(chartOptions.theme);
     const showRange = this.options.showRange ?? defaultOptions.showRange;
 
     ctx.setPriceAxisAnnotations(
@@ -422,16 +446,6 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
 
     const language = locale.split("-")[0];
     return labels[locale] ?? labels[language] ?? labels["*"] ?? labels.default;
-  }
-
-  private resolveTheme(
-    chartTheme: ChartOptionsSnapshot["theme"]
-  ): DrawingAxisBoundsTheme {
-    return {
-      ...defaultTheme,
-      ...chartTheme.drawingAxisBounds,
-      ...this.options.theme
-    };
   }
 
   private formatXValue(mark: AxisMark, locale: string): string {

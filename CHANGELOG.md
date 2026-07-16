@@ -33,6 +33,8 @@
   Use `setData`, `updateData`, and `updateOptions` respectively.
 - Replaced mutable theme-object updates and `mergeThemes()` with constructor-time
   `themes` registration and runtime selection by theme key.
+- Removed plugin-specific `drawingAxisBounds` values from `ChartTheme`.
+  `DrawingAxisBoundsPlugin` now accepts keyed `themes` instead of one `theme` patch.
 
 ### Added
 
@@ -46,6 +48,8 @@
   draggable pane dividers.
 - Extension exports: `ChartPlugin`, `ChartContext`, `ChartPointerEvent`,
   `Drawable`, indicators, drawings, annotations, and DOM-adapter contracts.
+- `ExtensionThemeResolver` provides cached light/dark and custom-key theme
+  resolution shared by indicators and ordinary visual plugins.
 - Root event exports: `ChartEventMap` and generic `EventEmitter`.
 - Drawing tools: `DrawingManager`, `Drawing`, `TrendLine`, `HorizontalLine`,
   `RectangleDrawing`, and `TextDrawing`.

@@ -7,6 +7,7 @@ import {
   PaneledIndicator,
   type PaneledIndicatorDrawingContext
 } from "../paneled-indicator";
+import type { ExtensionThemeDefaults } from "../../plugin/extension-theme";
 
 export class TestIndicator extends PaneledIndicator<
   {},
@@ -49,7 +50,7 @@ export class TestIndicator extends PaneledIndicator<
     };
   }
 
-  public getDefaultThemes(): Record<string, {}> {
-    return {};
+  public getDefaultThemes(): ExtensionThemeDefaults<{}> {
+    return { light: {}, dark: {} };
   }
 }

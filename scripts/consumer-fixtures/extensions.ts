@@ -11,6 +11,7 @@ import {
   type DrawingOptions,
   type DrawingPoint,
   type DrawingRenderContext,
+  type ExtensionThemeDefaults,
   type IndicatorLabelContent,
   type PriceAxisAnnotation
 } from "@ardinsys/financial-charts/extensions";
@@ -20,8 +21,8 @@ class ExtensionIndicator extends Indicator<{}, DefaultIndicatorOptions> {
     return { labelKey: "extension", names: { default: "Extension" } };
   }
 
-  getDefaultThemes(): Record<string, {}> {
-    return {};
+  getDefaultThemes(): ExtensionThemeDefaults<{}> {
+    return { light: {}, dark: {} };
   }
 
   protected getLabelContent(): IndicatorLabelContent {
