@@ -3,6 +3,7 @@ import { FinancialChart } from "../src/chart/default-financial-chart";
 import { LineController } from "../src/controllers/line-controller";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
+import { getChartModel } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -24,7 +25,7 @@ function createChart() {
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US",
+    locale: "en-US"
   });
   charts.push(chart);
   return chart;
@@ -37,7 +38,7 @@ describe("chart data lifecycle", () => {
     const plugin: ChartPlugin = {
       key: "data-probe",
       attach: vi.fn(),
-      onData,
+      onData
     };
     const start = Date.UTC(2024, 0, 1, 9);
 
@@ -52,7 +53,7 @@ describe("chart data lifecycle", () => {
 
     expect(chart.getData()).toEqual([{ time: start + 60_000, close: 11 }]);
     expect(onData).toHaveBeenLastCalledWith([
-      { time: start + 60_000, close: 11 },
+      { time: start + 60_000, close: 11 }
     ]);
   });
 
@@ -61,13 +62,15 @@ describe("chart data lifecycle", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     chart.setData([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 12 },
+      { time: start + 60_000, close: 12 }
     ]);
 
     chart.updateData({ time: start + 60_000, close: 100 });
 
     expect(chart.getLastVisibleDataPoints().at(-1)?.close).toBe(100);
-    expect(chart.getVisibleScale().getYMax()).toBeGreaterThanOrEqual(100);
+    expect(
+      getChartModel(chart).getVisibleScale().getYMax()
+    ).toBeGreaterThanOrEqual(100);
   });
 
   it("clears data-dependent state and rendered chart layers immediately", () => {
@@ -75,13 +78,13 @@ describe("chart data lifecycle", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const data = [
       { time: start, close: 10 },
-      { time: start + 60_000, close: 12 },
+      { time: start + 60_000, close: 12 }
     ] as const;
     const onData = vi.fn();
     const plugin: ChartPlugin = {
       key: "clear-probe",
       attach: vi.fn(),
-      onData,
+      onData
     };
     const paneledIndicator = new TestIndicator();
 
@@ -90,12 +93,12 @@ describe("chart data lifecycle", () => {
     chart.setData(data);
     chart.setCrosshair({ time: start, price: 10 });
 
-    const visibleScale = chart.getVisibleScale();
+    const visibleScale = getChartModel(chart).getVisibleScale();
     visibleScale.addModifier({
       actor: "clear-probe",
       enabled: true,
       yMin: -100,
-      yMax: 100,
+      yMax: 100
     });
 
     const clearedContexts = [
@@ -103,7 +106,7 @@ describe("chart data lifecycle", () => {
       chart.getContext("x-label"),
       chart.getContext("y-label"),
       chart.getContext("indicator"),
-      chart.getContext("crosshair"),
+      chart.getContext("crosshair")
     ];
     for (const context of clearedContexts) {
       vi.mocked(context.clearRect).mockClear();
@@ -116,7 +119,7 @@ describe("chart data lifecycle", () => {
     expect(chart.getLastXGridCoords()).toEqual([]);
     expect(chart.getCrosshairState()).toBeUndefined();
     expect(chart.getTimeRange()).toEqual({ start: 0, end: 0 });
-    expect(chart.getVisibleScale()).toBe(visibleScale);
+    expect(getChartModel(chart).getVisibleScale()).toBe(visibleScale);
     expect(visibleScale.getYMin()).toBeGreaterThan(-100);
     expect(Number.isFinite(visibleScale.getYMin())).toBe(true);
     expect(Number.isFinite(visibleScale.getYMax())).toBe(true);

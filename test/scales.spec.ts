@@ -5,6 +5,7 @@ import { LineController } from "../src/controllers/line-controller";
 import { DataScaleModel } from "../src/scales/data-scale-model";
 import { PriceScale } from "../src/scales/price-scale";
 import { TimeScale } from "../src/scales/time-scale";
+import { getChartModel } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -62,9 +63,14 @@ describe("index-based time scales", () => {
   it("snapshots index ranges retained by data scale models", () => {
     const data = [{ time: 100, close: 10 }];
     const indexRange = { from: 0, to: 1 };
-    const scale = new DataScaleModel("simple", data, { start: 100, end: 100 }, {
-      indexRange
-    });
+    const scale = new DataScaleModel(
+      "simple",
+      data,
+      { start: 100, end: 100 },
+      {
+        indexRange
+      }
+    );
 
     indexRange.to = 5;
     scale.recalculate(data, { start: 100, end: 100 });
@@ -87,7 +93,7 @@ describe("index-based time scales", () => {
       { stepSize: day }
     );
     const canvas = chart.getContext("main").canvas;
-    const timeScale = chart.getTimeScale();
+    const timeScale = getChartModel(chart).getTimeScale();
 
     expect(timeScale.project(friday, { canvas })).toBeCloseTo(120);
     expect(timeScale.project(monday, { canvas })).toBeCloseTo(360);
@@ -135,7 +141,7 @@ describe("index-based time scales", () => {
       ],
       { start, end }
     );
-    const visibleScale = chart.getVisibleScale();
+    const visibleScale = getChartModel(chart).getVisibleScale();
     const canvas = chart.getContext("main").canvas;
 
     const timeScale = new TimeScale(

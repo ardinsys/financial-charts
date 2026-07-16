@@ -4,10 +4,7 @@ import type { Pane } from "../panes/pane";
 import type { PaneLayout } from "../panes/pane-layout";
 import type { ChartPointerEvent } from "../plugin/chart-plugin";
 import type { BarAlignment } from "../scales/time-scale";
-import type {
-  ChartCrosshairOptions,
-  ChartCrosshairState
-} from "./crosshair";
+import type { ChartCrosshairOptions, ChartCrosshairState } from "./crosshair";
 
 interface CrosshairResolverHost {
   normalizeTime(point: ChartData): number;
@@ -39,7 +36,7 @@ export class CrosshairResolver {
       x,
       y: state.y,
       time: state.time,
-      pane: state.pane,
+      pane: this.paneLayout.getPaneById(state.paneId),
       dataPoint: state.dataPoint,
       button: source?.button,
       buttons: source?.buttons
@@ -65,12 +62,13 @@ export class CrosshairResolver {
     const dataPoint = this.resolveDataPoint(x, pointerY, "visible");
     if (!dataPoint) return undefined;
 
+    const pane =
+      this.paneLayout.getPaneAtY(pointerY) ?? this.paneLayout.getMainPane();
     return {
       time: dataPoint.time,
       y: pointerY,
-      pane:
-        this.paneLayout.getPaneAtY(pointerY) ??
-        this.paneLayout.getMainPane(),
+      paneId: pane.getId(),
+      price: this.resolvePrice(pane, pointerY),
       dataPoint
     };
   }
@@ -88,12 +86,21 @@ export class CrosshairResolver {
     if (x < 0 || x > this.host.getDrawingWidth()) return undefined;
 
     const pane = this.paneLayout.getPaneById(options.paneId);
+    const y = this.resolveY(options, pane, dataPoint);
     return {
       time: dataPoint.time,
-      y: this.resolveY(options, pane, dataPoint),
-      pane,
+      y,
+      paneId: pane.getId(),
+      price: this.resolvePrice(pane, y),
       dataPoint
     };
+  }
+
+  private resolvePrice(pane: Pane, y: number): number {
+    const region = pane.getRegion();
+    return pane.getPriceScale().unproject(pane.getRelativeY(y), {
+      canvas: { width: region.width, height: region.height }
+    });
   }
 
   private resolveY(

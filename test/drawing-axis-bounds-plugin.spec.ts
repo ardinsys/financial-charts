@@ -10,6 +10,7 @@ import {
 } from "../src/drawings";
 import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
 import { DrawingAxisBoundsPlugin } from "../src/plugins/drawing-axis-bounds-plugin";
+import { getInternalMainPane } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -18,10 +19,7 @@ class BoundsDrawing extends Drawing {
 
   draw(_context: CanvasRenderingContext2D, _drawing: DrawingRenderContext) {}
 
-  hitTest(
-    _point: DrawingPoint,
-    _context: DrawingHitTestContext
-  ): boolean {
+  hitTest(_point: DrawingPoint, _context: DrawingHitTestContext): boolean {
     return false;
   }
 }
@@ -77,8 +75,9 @@ function createChart() {
 }
 
 function getAnnotationContext(container: HTMLElement) {
-  const canvas = [...container.querySelectorAll("canvas")]
-    .find((candidate) => candidate.style.zIndex === "70");
+  const canvas = [...container.querySelectorAll("canvas")].find(
+    (candidate) => candidate.style.zIndex === "70"
+  );
   return canvas!.getContext("2d")!;
 }
 
@@ -119,6 +118,7 @@ describe("DrawingAxisBoundsPlugin", () => {
     getContext.mockRestore();
 
     const context = getAnnotationContext(container);
+    const mainPane = getInternalMainPane(chart);
     vi.mocked(context.fillText).mockClear();
     vi.mocked(context.fillRect).mockClear();
     chart.requestRedraw("annotations", true);
@@ -126,9 +126,9 @@ describe("DrawingAxisBoundsPlugin", () => {
     const text = vi.mocked(context.fillText).mock.calls.map(([value]) => value);
     expect(text).toEqual(expect.arrayContaining(["S 10", "E 14", "sibling"]));
     expect(context.fillRect).toHaveBeenCalledWith(
-      chart.getMainPane().getYAxisRegion().x + 5,
+      mainPane.getYAxisRegion().x + 5,
       expect.any(Number),
-      chart.getMainPane().getYAxisRegion().width - 10,
+      mainPane.getYAxisRegion().width - 10,
       expect.any(Number)
     );
 

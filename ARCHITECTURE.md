@@ -160,8 +160,9 @@ extension, event, persistence, or lifecycle commands.
 `ExtensionHost` owns the plugin, overlay-indicator, and paneled-indicator frozen
 arrays used as their own public snapshots. Add and remove operations replace the
 affected array. The host rebuilds combined lifecycle and reverse pointer-order
-snapshots when extension membership changes. `PaneLayout` owns the pane snapshot
-and replaces it when indicator panes are added or removed.
+snapshots when extension membership changes. `PaneLayout` owns immutable public
+pane descriptors and replaces their snapshot when pane membership or effective
+heights change. Raw `Pane` objects remain internal and on authoring contexts.
 
 This also defines dispatch behavior: a callback loop retains the membership
 snapshot from the start of the dispatch, checks that each extension is still
@@ -290,7 +291,10 @@ notifies extensions, and invalidates view layers.
 Interactive crosshair state is derived from the closest stored data point and the
 pane under the pointer. Its source is explicit: mouse, touch, or programmatic.
 Programmatic crosshair methods write the same model and use the same projection
-and rendering state, while remaining independent of active gesture state.
+and rendering state, while remaining independent of active gesture state. One
+owned `{ time, y, paneId, price, dataPoint }` object is created per effective
+crosshair update and reused by getters, public events, and synchronization;
+the hot pointer path does not copy or freeze it.
 
 ## Rendering
 

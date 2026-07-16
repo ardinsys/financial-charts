@@ -17,6 +17,13 @@ export type PaneHeightsInput =
   | Partial<Record<number, number>>
   | readonly number[];
 
+export interface ChartPaneSnapshot {
+  readonly id: number;
+  readonly height: number;
+  readonly kind: "main" | "indicator";
+  readonly indicatorInstanceId?: string;
+}
+
 interface PaneLayoutGeometry {
   width: number;
   height: number;
@@ -43,6 +50,7 @@ type PaneResizeDrag = {
 export class PaneLayout {
   private readonly mainPane = new Pane(0);
   private panes: readonly Pane[] = Object.freeze([this.mainPane]);
+  private paneSnapshot?: readonly ChartPaneSnapshot[];
   private nextPaneId = 1;
   private readonly paneByIndicator = new Map<
     PaneledIndicator<any, any>,
@@ -72,15 +80,32 @@ export class PaneLayout {
     return this.mainPane;
   }
 
-  getPaneForIndicator(
-    indicator: PaneledIndicator<any, any>
-  ): Pane | undefined {
+  getSnapshot(): readonly ChartPaneSnapshot[] {
+    this.paneSnapshot ??= freezeSnapshot(
+      this.panes.map((pane) => {
+        const indicator = this.indicatorByPane.get(pane);
+        return Object.freeze({
+          id: pane.getId(),
+          height: this.getPaneHeight(pane),
+          kind: pane === this.mainPane ? "main" : "indicator",
+          ...(indicator
+            ? { indicatorInstanceId: indicator.getInstanceId() }
+            : {})
+        });
+      })
+    );
+    return this.paneSnapshot;
+  }
+
+  getMainSnapshot(): ChartPaneSnapshot {
+    return this.getSnapshot()[0];
+  }
+
+  getPaneForIndicator(indicator: PaneledIndicator<any, any>): Pane | undefined {
     return this.paneByIndicator.get(indicator);
   }
 
-  getIndicatorForPane(
-    pane: Pane
-  ): PaneledIndicator<any, any> | undefined {
+  getIndicatorForPane(pane: Pane): PaneledIndicator<any, any> | undefined {
     return this.indicatorByPane.get(pane);
   }
 
@@ -111,22 +136,19 @@ export class PaneLayout {
     indicator: PaneledIndicator<any, any>,
     timeScale: TimeScale
   ): Pane {
-    const restoredPaneId = this.restoredPaneIds?.get(
-      indicator.getInstanceId()
-    );
+    const restoredPaneId = this.restoredPaneIds?.get(indicator.getInstanceId());
     const paneId = restoredPaneId ?? this.nextPaneId;
     this.nextPaneId = Math.max(this.nextPaneId, paneId + 1);
     const pane = new Pane(paneId);
     pane.setTimeScale(timeScale);
     this.panes = freezeSnapshot([...this.panes, pane]);
+    this.paneSnapshot = undefined;
     this.paneByIndicator.set(indicator, pane);
     this.indicatorByPane.set(pane, indicator);
     return pane;
   }
 
-  removeIndicatorPane(
-    indicator: PaneledIndicator<any, any>
-  ): Pane | undefined {
+  removeIndicatorPane(indicator: PaneledIndicator<any, any>): Pane | undefined {
     const pane = this.paneByIndicator.get(indicator);
     if (!pane) return undefined;
 
@@ -134,6 +156,7 @@ export class PaneLayout {
     this.indicatorByPane.delete(pane);
     this.paneHeights.delete(pane);
     this.panes = freezeSnapshot(this.panes.filter((item) => item !== pane));
+    this.paneSnapshot = undefined;
     return pane;
   }
 
@@ -204,6 +227,7 @@ export class PaneLayout {
     this.indicatorByPane.clear();
     this.paneHeights.clear();
     this.panes = Object.freeze([this.mainPane]);
+    this.paneSnapshot = undefined;
     this.restoredPaneIds = undefined;
   }
 
@@ -301,10 +325,14 @@ export class PaneLayout {
       }
     }
 
+    const heightsChanged = this.panes.some(
+      (pane) => this.paneHeights.get(pane) !== next.get(pane)
+    );
     this.paneHeights.clear();
     for (const pane of this.panes) {
       this.paneHeights.set(pane, next.get(pane) ?? 0);
     }
+    if (heightsChanged) this.paneSnapshot = undefined;
   }
 
   private renderPaneDividers(themeKey: string, containerWidth: number): void {
@@ -324,9 +352,7 @@ export class PaneLayout {
         afterPaneId: afterPane.getId(),
         x: 0,
         y:
-          beforeRegion.y +
-          beforeRegion.height -
-          this.options.dividerHeight / 2,
+          beforeRegion.y + beforeRegion.height - this.options.dividerHeight / 2,
         width: containerWidth,
         height: this.options.dividerHeight
       };
@@ -387,10 +413,7 @@ export class PaneLayout {
     const dy = event.clientY - drag.startClientY;
     const clampedDy = Math.max(
       this.getPaneMinHeight(beforePane) - drag.beforeStartHeight,
-      Math.min(
-        dy,
-        drag.afterStartHeight - this.getPaneMinHeight(afterPane)
-      )
+      Math.min(dy, drag.afterStartHeight - this.getPaneMinHeight(afterPane))
     );
     const desired = new Map(this.paneHeights);
     desired.set(beforePane, drag.beforeStartHeight + clampedDy);

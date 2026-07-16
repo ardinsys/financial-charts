@@ -3,6 +3,11 @@ import { FinancialChart } from "../src/chart/default-financial-chart";
 import { LineController } from "../src/controllers/line-controller";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { Pane } from "../src/panes/pane";
+import {
+  getChartModel,
+  getInternalMainPane,
+  getInternalPanes
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -22,18 +27,15 @@ function createPaneChart() {
   container.style.height = "400px";
   document.body.appendChild(container);
   const start = Date.UTC(2024, 0, 1, 9);
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: { start, end: start + 60_000 },
-      type: "line",
-      controllers: [LineController],
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US"
-    }
-  );
+  const chart = new FinancialChart(container, {
+    timeRange: { start, end: start + 60_000 },
+    type: "line",
+    controllers: [LineController],
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US"
+  });
 
   chart.setData([
     { time: start, close: 10 },
@@ -99,18 +101,15 @@ describe("Pane", () => {
     container.style.height = "400px";
     document.body.appendChild(container);
     const start = Date.UTC(2024, 0, 1, 9);
-    const chart = new FinancialChart(
-      container,
-      {
-        timeRange: { start, end: start + 60_000 },
-        type: "line",
-        controllers: [LineController],
-        stepSize: 60_000,
-        maxZoom: 10,
-        volume: false,
-        locale: "en-US"
-      }
-    );
+    const chart = new FinancialChart(container, {
+      timeRange: { start, end: start + 60_000 },
+      type: "line",
+      controllers: [LineController],
+      stepSize: 60_000,
+      maxZoom: 10,
+      volume: false,
+      locale: "en-US"
+    });
 
     chart.setData([
       { time: start, close: 10 },
@@ -118,10 +117,16 @@ describe("Pane", () => {
     ]);
     charts.push(chart);
 
-    const [mainPane] = chart.getPanes();
+    const [mainPaneSnapshot] = chart.getPanes();
+    const mainPane = getInternalMainPane(chart);
 
     expect(chart.getPanes()).toHaveLength(1);
-    expect(mainPane.getId()).toBe(0);
+    expect(mainPaneSnapshot).toEqual({
+      id: 0,
+      height: 370,
+      kind: "main"
+    });
+    expect(chart.getMainPane()).toBe(mainPaneSnapshot);
     expect(mainPane.getRegion()).toEqual({
       x: 0,
       y: 0,
@@ -134,10 +139,10 @@ describe("Pane", () => {
       width: 80,
       height: 370
     });
-    expect(mainPane.getTimeScale()).toBe(chart.getTimeScale());
+    expect(mainPane.getTimeScale()).toBe(getChartModel(chart).getTimeScale());
     expect(mainPane.getPriceScale().getRange()).toEqual({
-      min: chart.getVisibleScale().getYMin(),
-      max: chart.getVisibleScale().getYMax()
+      min: getChartModel(chart).getVisibleScale().getYMin(),
+      max: getChartModel(chart).getVisibleScale().getYMax()
     });
   });
 
@@ -147,11 +152,18 @@ describe("Pane", () => {
 
     chart.addIndicator(indicator);
 
-    const [, indicatorPane] = chart.getPanes();
+    const [, indicatorPaneSnapshot] = chart.getPanes();
+    const [, indicatorPane] = getInternalPanes(chart);
     const indicatorContainer = indicator.getContainer();
 
     expect(chart.getPaneledIndicators()).toEqual([indicator]);
     expect(chart.getPanes()).toHaveLength(2);
+    expect(indicatorPaneSnapshot).toEqual({
+      id: indicatorPane.getId(),
+      height: 92.5,
+      kind: "indicator",
+      indicatorInstanceId: indicator.getInstanceId()
+    });
     expect(indicatorPane.getRegion()).toEqual({
       x: 0,
       y: 277.5,
@@ -164,7 +176,9 @@ describe("Pane", () => {
       width: 80,
       height: 92.5
     });
-    expect(indicatorPane.getTimeScale()).toBe(chart.getTimeScale());
+    expect(indicatorPane.getTimeScale()).toBe(
+      getChartModel(chart).getTimeScale()
+    );
     expect(indicatorContainer.style.top).toBe("277.5px");
     expect(indicatorContainer.style.height).toBe("92.5px");
 
@@ -188,23 +202,27 @@ describe("Pane", () => {
 
     chart.addIndicator(indicator);
 
-    const [mainPane, indicatorPane] = chart.getPanes();
+    const initialPanes = chart.getPanes();
+    const [mainPane, indicatorPane] = initialPanes;
+    const [internalMainPane, internalIndicatorPane] = getInternalPanes(chart);
     expect(chart.getPaneHeights()).toEqual({
-      [mainPane.getId()]: 277.5,
-      [indicatorPane.getId()]: 92.5
+      [mainPane.id]: 277.5,
+      [indicatorPane.id]: 92.5
     });
 
     chart.setPaneHeights({
-      [mainPane.getId()]: 220,
-      [indicatorPane.getId()]: 150
+      [mainPane.id]: 220,
+      [indicatorPane.id]: 150
     });
 
     expect(chart.getPaneHeights()).toEqual({
-      [mainPane.getId()]: 220,
-      [indicatorPane.getId()]: 150
+      [mainPane.id]: 220,
+      [indicatorPane.id]: 150
     });
-    expect(mainPane.getRegion().height).toBe(220);
-    expect(indicatorPane.getRegion()).toEqual({
+    expect(chart.getPanes()).not.toBe(initialPanes);
+    expect(chart.getPanes().map((pane) => pane.height)).toEqual([220, 150]);
+    expect(internalMainPane.getRegion().height).toBe(220);
+    expect(internalIndicatorPane.getRegion()).toEqual({
       x: 0,
       y: 220,
       width: 720,
@@ -221,17 +239,18 @@ describe("Pane", () => {
     chart.addIndicator(indicator);
 
     const [mainPane, indicatorPane] = chart.getPanes();
+    const [internalMainPane, internalIndicatorPane] = getInternalPanes(chart);
     chart.setPaneHeights({
-      [mainPane.getId()]: 10,
-      [indicatorPane.getId()]: 360
+      [mainPane.id]: 10,
+      [indicatorPane.id]: 360
     });
 
     expect(chart.getPaneHeights()).toEqual({
-      [mainPane.getId()]: 80,
-      [indicatorPane.getId()]: 290
+      [mainPane.id]: 80,
+      [indicatorPane.id]: 290
     });
-    expect(mainPane.getRegion().height).toBe(80);
-    expect(indicatorPane.getRegion()).toEqual({
+    expect(internalMainPane.getRegion().height).toBe(80);
+    expect(internalIndicatorPane.getRegion()).toEqual({
       x: 0,
       y: 80,
       width: 720,
@@ -251,8 +270,8 @@ describe("Pane", () => {
     ) as HTMLElement;
 
     expect(divider).toBeTruthy();
-    expect(divider.dataset.beforePaneId).toBe(String(mainPane.getId()));
-    expect(divider.dataset.afterPaneId).toBe(String(indicatorPane.getId()));
+    expect(divider.dataset.beforePaneId).toBe(String(mainPane.id));
+    expect(divider.dataset.afterPaneId).toBe(String(indicatorPane.id));
 
     divider.dispatchEvent(
       new MouseEvent("pointerdown", {
@@ -268,8 +287,8 @@ describe("Pane", () => {
     );
 
     expect(chart.getPaneHeights()).toEqual({
-      [mainPane.getId()]: 307.5,
-      [indicatorPane.getId()]: 62.5
+      [mainPane.id]: 307.5,
+      [indicatorPane.id]: 62.5
     });
 
     window.dispatchEvent(
@@ -286,8 +305,8 @@ describe("Pane", () => {
     );
 
     expect(chart.getPaneHeights()).toEqual({
-      [mainPane.getId()]: 320,
-      [indicatorPane.getId()]: 50
+      [mainPane.id]: 320,
+      [indicatorPane.id]: 50
     });
     expect(indicator.getContainer().style.top).toBe("320px");
     expect(indicator.getContainer().style.height).toBe("50px");

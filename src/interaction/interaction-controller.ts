@@ -26,6 +26,7 @@ interface InteractionHost {
     scale: "data" | "visible"
   ): ChartData | undefined;
   resolveCrosshair(x: number, y: number): ChartCrosshairState | undefined;
+  getPaneById(paneId: number): Pane;
   panByPixels(dx: number): void;
   zoomAtPixel(zoomFactor: number, pixel: number): void;
   clearCrosshair(): void;
@@ -89,10 +90,18 @@ export class InteractionController {
   }
 
   replacePane(removed: Pane | undefined, replacement: Pane): void {
-    if (!removed || this.crosshair?.state.pane !== removed) return;
+    if (!removed || this.crosshair?.state.paneId !== removed.getId()) return;
+    const region = replacement.getRegion();
     this.crosshair = {
       ...this.crosshair,
-      state: { ...this.crosshair.state, pane: replacement }
+      state: {
+        ...this.crosshair.state,
+        paneId: replacement.getId(),
+        price: replacement.getPriceScale().unproject(
+          replacement.getRelativeY(this.crosshair.state.y),
+          { canvas: { width: region.width, height: region.height } }
+        )
+      }
     };
   }
 
@@ -248,7 +257,7 @@ export class InteractionController {
       x,
       y: state.y,
       time: state.time,
-      pane: state.pane,
+      pane: this.host.getPaneById(state.paneId),
       dataPoint: state.dataPoint
     };
     this.host.dispatchPointer(pointerEvent);

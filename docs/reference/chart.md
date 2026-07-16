@@ -211,7 +211,9 @@ charts and other external pointer controllers. It resolves `time` against the
 target chart's own data, so charts can have different tick sizes. Pass `y` for a
 chart-relative logical Y coordinate, or pass `price`/`paneId` to project a pane
 price on the target chart. It returns the resolved crosshair state, or
-`undefined` when the requested time is not visible on the target chart.
+`undefined` when the requested time is not visible on the target chart. The
+state contains `{ time, y, paneId, price, dataPoint }` and is reused until the
+crosshair changes.
 
 ### Extension registration
 
@@ -265,7 +267,7 @@ entry.
 | `setVisibleTimeWindow(range)`                                       | Restores an interpolated fractional window, primarily for pan/zoom synchronization.          |
 | `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
 | `getOptions()`                                                      | Returns an immutable public snapshot of the resolved chart configuration.                  |
-| `getPanes()` / `getMainPane()`                                      | Returns a readonly pane snapshot or the main price pane.                                    |
+| `getPanes()` / `getMainPane()`                                      | Returns immutable pane descriptors with `id`, `height`, `kind`, and optional `indicatorInstanceId`. |
 | `getPaneHeights()`                                                  | Returns current logical pixel heights keyed by pane id.                                     |
 | `getPlugins()`                                                      | Returns a readonly snapshot of attached plugins.                                            |
 | `getIndicators()` / `getPaneledIndicators()` / `getAllIndicators()` | Returns readonly snapshots of overlay, paneled, or all indicators.                          |
@@ -417,7 +419,7 @@ Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 | ------------------------------ | --------------------------------------------------------- | --------------------------------------------- |
 | `click`                        | `{ event: PointerEvent, point: ChartData }`               | User clicks the chart on desktop.             |
 | `touch-click`                  | `{ event: TouchEvent, point: ChartData }`                 | User taps the chart on touch devices.         |
-| `crosshair-change`             | `{ time, y, pane, dataPoint }`                            | Native or programmatic crosshair moves.       |
+| `crosshair-change`             | `{ time, y, paneId, price, dataPoint }`                   | Native or programmatic crosshair moves.       |
 | `crosshair-clear`              | `{}`                                                      | Native or programmatic crosshair clears.      |
 | `options-change`               | `{ previous, current, changedKeys }`                      | Effective runtime options change.             |
 | `state-restored`               | `{ state }`                                               | Complete chart state has been restored.       |

@@ -98,21 +98,18 @@ function createSyncedChart(group: string) {
   container.style.height = "400px";
   document.body.appendChild(container);
 
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: {
-        start: data[0].time,
-        end: data.at(-1)!.time + 60_000
-      },
-      type: "line",
-      controllers: [LineController],
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US"
-    }
-  );
+  const chart = new FinancialChart(container, {
+    timeRange: {
+      start: data[0].time,
+      end: data.at(-1)!.time + 60_000
+    },
+    type: "line",
+    controllers: [LineController],
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US"
+  });
   const drawingManager = new DrawingManager();
   const syncPlugin = new ChartSyncPlugin({
     group,
@@ -134,21 +131,18 @@ function createSyncedChartWithDeferredData(group: string) {
   container.style.height = "400px";
   document.body.appendChild(container);
 
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: {
-        start: data[0].time,
-        end: data.at(-1)!.time + 60_000
-      },
-      type: "line",
-      controllers: [LineController],
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US"
-    }
-  );
+  const chart = new FinancialChart(container, {
+    timeRange: {
+      start: data[0].time,
+      end: data.at(-1)!.time + 60_000
+    },
+    type: "line",
+    controllers: [LineController],
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US"
+  });
   const drawingManager = new DrawingManager();
   const syncPlugin = new ChartSyncPlugin({
     group,
@@ -172,21 +166,18 @@ function createDeferredChartWithSync(
   container.style.height = "400px";
   document.body.appendChild(container);
 
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: {
-        start: data[0].time,
-        end: data.at(-1)!.time + 60_000
-      },
-      type: "line",
-      controllers: [LineController],
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US"
-    }
-  );
+  const chart = new FinancialChart(container, {
+    timeRange: {
+      start: data[0].time,
+      end: data.at(-1)!.time + 60_000
+    },
+    type: "line",
+    controllers: [LineController],
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US"
+  });
   const drawingManager = new DrawingManager();
   const syncPlugin = new ChartSyncPlugin({
     indicatorResolver,
@@ -271,7 +262,7 @@ describe("ChartSyncPlugin", () => {
         { index: 2, price: 14 }
       ],
       id: "deferred-data-trend",
-      paneId: source.chart.getMainPane().getId()
+      paneId: source.chart.getMainPane().id
     });
     const sourceIndicator = new CustomMovingAverageIndicator(null, {
       instanceId: "deferred-data-sma",
@@ -320,7 +311,7 @@ describe("ChartSyncPlugin", () => {
         { index: 2, price: 14 }
       ],
       id: "retained-trend",
-      paneId: source.chart.getMainPane().getId()
+      paneId: source.chart.getMainPane().id
     });
     const sourceIndicator = new CustomMovingAverageIndicator(null, {
       instanceId: "retained-sma",
@@ -407,7 +398,7 @@ describe("ChartSyncPlugin", () => {
         { index: 2, price: 14 }
       ],
       id: "trend-sync",
-      paneId: source.chart.getMainPane().getId()
+      paneId: source.chart.getMainPane().id
     });
 
     source.drawingManager.addDrawing(drawing, { emit: true });

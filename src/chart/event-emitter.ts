@@ -1,9 +1,9 @@
 import { Indicator } from "../indicators/indicator";
 import type { Drawing, DrawingAnchor, DrawingJSON } from "../drawings/drawing";
-import type { Pane } from "../panes/pane";
 import { ChartData } from "./types";
 import type { ChartOptionsChangeEvent } from "./chart-options";
 import type { ChartStateRestoredEvent } from "./chart-state";
+import type { ChartCrosshairState } from "../interaction/crosshair";
 
 interface IndicatorEvent {
   indicator: Indicator<any, any>;
@@ -17,12 +17,7 @@ interface DrawingEvent {
   drawing: Drawing;
 }
 
-export interface ChartCrosshairChangeEvent {
-  dataPoint: ChartData;
-  pane: Pane;
-  time: number;
-  y: number;
-}
+export type ChartCrosshairChangeEvent = ChartCrosshairState;
 
 export interface DrawingSelectionEvent {
   drawing?: Drawing;

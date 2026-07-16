@@ -14,6 +14,7 @@ import {
   type PaneledIndicatorDrawingContext
 } from "../src/indicators/paneled-indicator";
 import { DataScaleModel } from "../src/scales/data-scale-model";
+import { getInternalPanes } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -101,21 +102,18 @@ function createChart(data: ChartData[]) {
   container.style.height = "400px";
   document.body.appendChild(container);
 
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: {
-        start: data[0].time,
-        end: data.at(-1)!.time + 60_000
-      },
-      type: "line",
-      controllers: [LineController],
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US"
-    }
-  );
+  const chart = new FinancialChart(container, {
+    timeRange: {
+      start: data[0].time,
+      end: data.at(-1)!.time + 60_000
+    },
+    type: "line",
+    controllers: [LineController],
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US"
+  });
   chart.setData(data);
   charts.push(chart);
   return chart;
@@ -170,7 +168,7 @@ describe("indicator authoring contexts", () => {
     chart.addIndicator(indicator);
     await waitForRedraw();
 
-    const [, pane] = chart.getPanes();
+    const [, pane] = getInternalPanes(chart);
     expect(indicator.lastContext?.pane).toBe(pane);
     expect(indicator.lastContext?.ctx.canvas.parentElement).toBe(
       indicator.getContainer()

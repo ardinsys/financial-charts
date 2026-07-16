@@ -1,5 +1,4 @@
 import type { ChartData } from "../chart/types";
-import type { Pane } from "../panes/pane";
 
 export interface ChartCrosshairOptions {
   /** Timestamp to resolve on the target chart. The nearest data point is used. */
@@ -13,8 +12,9 @@ export interface ChartCrosshairOptions {
 }
 
 export interface ChartCrosshairState {
-  time: number;
-  y: number;
-  pane: Pane;
-  dataPoint: ChartData;
+  readonly time: number;
+  readonly y: number;
+  readonly paneId: number;
+  readonly price: number;
+  readonly dataPoint: ChartData;
 }

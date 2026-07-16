@@ -7,6 +7,7 @@ import {
   calculateStepSize,
   calculateYAxisLabels
 } from "../src/scales/ticks/price-ticks";
+import { getChartModel } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -96,7 +97,7 @@ describe("current price tick calculations", () => {
       { start, end: start + 240_000 }
     );
 
-    const scale = chart.getVisibleScale();
+    const scale = getChartModel(chart).getVisibleScale();
     expect(
       roundedLabels(
         calculateYAxisLabels({
@@ -168,7 +169,7 @@ describe("current scale coordinate mapping", () => {
       ],
       { start, end: start + 240_000 }
     );
-    const visibleScale = chart.getVisibleScale();
+    const visibleScale = getChartModel(chart).getVisibleScale();
     const canvas = chart.getContext("main").canvas;
 
     const pixel = visibleScale.mapToPixel(start + 60_000, 12, canvas);

@@ -16,9 +16,7 @@ import type {
   TimeScale,
   TimeScaleRange
 } from "../scales/time-scale";
-import {
-  calculateYAxisLabels as calculatePriceYAxisLabels
-} from "../scales/ticks/price-ticks";
+import { calculateYAxisLabels as calculatePriceYAxisLabels } from "../scales/ticks/price-ticks";
 import { TimeTickGenerator } from "../scales/ticks/time-ticks";
 import {
   bindEvent,
@@ -64,6 +62,7 @@ interface ChartRenderModel {
   getPaneledIndicators(): readonly PaneledIndicator<any, any>[];
   getPanes(): readonly Pane[];
   getMainPane(): Pane;
+  getPaneById(paneId: number): Pane;
   getPaneIndicator(pane: Pane): PaneledIndicator<any, any> | undefined;
   getPriceAxisAnnotations(): Iterable<PriceAxisAnnotation>;
   getCrosshairState(): ChartCrosshairState | undefined;
@@ -499,13 +498,14 @@ export class ChartRenderer {
       .getVisibleScale()
       .pixelToPoint(0, state.y, this.getContext("main").canvas).price;
     const decimals = this.estimatePriceLabelDecimalPlaces(30);
-    const paneIndicator = this.model.getPaneIndicator(state.pane);
+    const pane = this.model.getPaneById(state.paneId);
+    const paneIndicator = this.model.getPaneIndicator(pane);
     const priceText =
-      state.pane === this.model.getMainPane() || !paneIndicator
+      pane === this.model.getMainPane() || !paneIndicator
         ? options.formatter.formatTooltipPrice(price, decimals)
         : paneIndicator.getCrosshairValue(
             state.time,
-            state.pane.getRelativeY(state.y)
+            pane.getRelativeY(state.y)
           );
     const priceRectWidth = this.getLogicalSize("y-label").width;
     const priceRectX = this.toLogical(context.canvas.width) - priceRectWidth;
@@ -520,11 +520,7 @@ export class ChartRenderer {
 
     context.font = `${options.theme.crosshair.tooltip.fontSize}px ${options.theme.crosshair.tooltip.font}, monospace`;
     context.fillStyle = options.theme.crosshair.tooltip.color;
-    context.fillText(
-      text,
-      textX,
-      layout.paneLayoutHeight + textPadding * 2
-    );
+    context.fillText(text, textX, layout.paneLayoutHeight + textPadding * 2);
     context.fillText(
       priceText,
       priceTextX,
@@ -597,7 +593,8 @@ export class ChartRenderer {
       const textWidth = ctx.measureText(label.label).width;
       const bounds = { start: x - textWidth / 2, end: x + textWidth / 2 };
       const overlaps = occupied.some(
-        (drawn) => bounds.start < drawn.end + 20 && bounds.end > drawn.start - 20
+        (drawn) =>
+          bounds.start < drawn.end + 20 && bounds.end > drawn.start - 20
       );
       if (!overlaps && bounds.end < logicalCanvasWidth) {
         if (bounds.start >= 0) {

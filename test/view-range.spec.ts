@@ -3,6 +3,7 @@ import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
+import { getChartModel } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -13,9 +14,10 @@ afterEach(() => {
 
 function createChart(withData = true) {
   const start = Date.UTC(2024, 0, 1, 9);
-  const data: ChartData[] = [10, 12, 14, 16, 18, 1_000].map(
-    (close, index) => ({ time: start + index * 60_000, close })
-  );
+  const data: ChartData[] = [10, 12, 14, 16, 18, 1_000].map((close, index) => ({
+    time: start + index * 60_000,
+    close
+  }));
   const container = document.createElement("div");
   container.style.width = "800px";
   container.style.height = "400px";
@@ -52,7 +54,7 @@ describe("visible range contracts", () => {
     const { chart } = createChart();
     const onVisibleRangeChanged = attachRangeProbe(chart);
     const requestRedraw = vi.spyOn(chart, "requestRedraw");
-    const fullRangeMax = chart.getVisibleScale().getYMax();
+    const fullRangeMax = getChartModel(chart).getVisibleScale().getYMax();
 
     chart.setVisibleIndexRange({ from: 0, to: 3 });
 
@@ -61,7 +63,9 @@ describe("visible range contracts", () => {
       to: 3,
       rightOffset: 0
     });
-    expect(chart.getVisibleScale().getYMax()).toBeLessThan(fullRangeMax);
+    expect(getChartModel(chart).getVisibleScale().getYMax()).toBeLessThan(
+      fullRangeMax
+    );
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
     expect(requestRedraw).toHaveBeenCalledOnce();
     expect(requestRedraw).toHaveBeenCalledWith([

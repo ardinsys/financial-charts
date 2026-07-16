@@ -19,11 +19,7 @@ import type {
   ChartRedrawPart
 } from "../render/chart-render-types";
 import { ChartRenderer } from "../render/chart-renderer";
-import { Pane } from "../panes/pane";
-import {
-  PaneLayout,
-  type PaneHeightsInput
-} from "../panes/pane-layout";
+import { PaneLayout, type PaneHeightsInput } from "../panes/pane-layout";
 import type { ChartPlugin } from "../plugin/chart-plugin";
 import { ChartExtensionReadModel } from "../plugin/chart-extension-read-model";
 import { ExtensionHost } from "../plugin/extension-host";
@@ -97,7 +93,7 @@ export type {
 } from "../render/chart-render-types";
 export type { IndicatorMutationOptions } from "../indicators/indicator";
 
-export type { PaneHeightsInput } from "../panes/pane-layout";
+export type { ChartPaneSnapshot, PaneHeightsInput } from "../panes/pane-layout";
 
 const ALL_REDRAW_PARTS = [
   "grid",
@@ -186,14 +182,6 @@ export class FinancialChart {
     return this.model.getTimeRange();
   }
 
-  getVisibleScale() {
-    return this.model.getVisibleScale();
-  }
-
-  getTimeScale() {
-    return this.model.getTimeScale();
-  }
-
   /** Returns the precise fractional logical-index window. */
   getVisibleLogicalRange(): TimeScaleRange {
     return this.model.getVisibleIndexRange();
@@ -227,17 +215,19 @@ export class FinancialChart {
 
   private syncPaneTimeScales() {
     const timeAnchorAlignment = this.controller.getTimeAnchorAlignment();
-    for (const pane of this.getPanes()) {
+    for (const pane of this.paneLayout.getPanes()) {
       pane.setTimeScale(this.model.getTimeScale());
       pane.setTimeAnchorAlignment(timeAnchorAlignment);
     }
   }
 
   private syncMainPanePriceScale() {
-    this.getMainPane().setPriceRange(
-      this.model.getVisibleScale().getYMin(),
-      this.model.getVisibleScale().getYMax()
-    );
+    this.paneLayout
+      .getMainPane()
+      .setPriceRange(
+        this.model.getVisibleScale().getYMin(),
+        this.model.getVisibleScale().getYMax()
+      );
   }
 
   private getMinimumVisibleIndexSlots() {
@@ -395,12 +385,12 @@ export class FinancialChart {
     return this.extensionHost.getIndicatorsByType(typeId);
   }
 
-  getPanes(): readonly Pane[] {
-    return this.paneLayout.getPanes();
+  getPanes() {
+    return this.paneLayout.getSnapshot();
   }
 
   getMainPane() {
-    return this.paneLayout.getMainPane();
+    return this.paneLayout.getMainSnapshot();
   }
 
   getPaneHeights(): Record<number, number> {
@@ -539,20 +529,18 @@ export class FinancialChart {
         getTimeRange: () => this.model.getTimeRange(),
         getTimeScale: () => this.model.getTimeScale(),
         getVisibleScale: () => this.model.getVisibleScale(),
-        getTimeAnchorAlignment: () =>
-          this.controller.getTimeAnchorAlignment(),
+        getTimeAnchorAlignment: () => this.controller.getTimeAnchorAlignment(),
         getPixelsPerBar: () => this.getPixelsPerBar(),
         getController: () => this.controller,
         getIndicators: () => this.getIndicators(),
         getPaneledIndicators: () => this.getPaneledIndicators(),
-        getPanes: () => this.getPanes(),
-        getMainPane: () => this.getMainPane(),
-        getPaneIndicator: (pane) =>
-          this.paneLayout.getIndicatorForPane(pane),
+        getPanes: () => this.paneLayout.getPanes(),
+        getMainPane: () => this.paneLayout.getMainPane(),
+        getPaneById: (paneId) => this.paneLayout.getPaneById(paneId),
+        getPaneIndicator: (pane) => this.paneLayout.getIndicatorForPane(pane),
         getPriceAxisAnnotations: () =>
           this.extensionHost.getPriceAxisAnnotations(),
-        getCrosshairState: () =>
-          this.interactionController.getCrosshairState(),
+        getCrosshairState: () => this.interactionController.getCrosshairState(),
         shouldDrawCrosshair: () =>
           this.interactionController.shouldDrawCrosshair(),
         refreshIndicatorLabels: (time) => this.refreshIndicatorLabels(time),
@@ -562,8 +550,8 @@ export class FinancialChart {
       },
       {
         getLayout: () => {
-          const region = this.getMainPane().getRegion();
-          const yAxisRegion = this.getMainPane().getYAxisRegion();
+          const region = this.paneLayout.getMainPane().getRegion();
+          const yAxisRegion = this.paneLayout.getMainPane().getYAxisRegion();
           return {
             plotWidth: region.width,
             plotHeight: region.height,
@@ -588,8 +576,7 @@ export class FinancialChart {
       this.renderer,
       extensionReadModel,
       {
-        getCrosshairTime: () =>
-          this.interactionController.getCrosshairTime(),
+        getCrosshairTime: () => this.interactionController.getCrosshairTime(),
         recalculateVisibleScale: () => this.recalculateVisibleScale(),
         removeIndicator: (indicator) => {
           this.removeIndicator(indicator);
@@ -599,12 +586,10 @@ export class FinancialChart {
     this.extensionHost = new ExtensionHost(
       this.events,
       {
-        getCrosshairState: () =>
-          this.interactionController.getCrosshairState(),
+        getCrosshairState: () => this.interactionController.getCrosshairState(),
         setCrosshair: (options) => this.setCrosshair(options),
         clearCrosshair: () => this.clearCrosshair(),
-        setVisibleTimeWindow: (range) =>
-          this.setVisibleTimeWindow(range),
+        setVisibleTimeWindow: (range) => this.setVisibleTimeWindow(range),
         addIndicator: (indicator) => {
           this.addIndicator(indicator);
         },
@@ -639,11 +624,13 @@ export class FinancialChart {
     const ControllerClass = this.getControllerClass(this.options.type);
     this.controller = new ControllerClass(this.renderer, this.options);
     this.model.configureScales(
-      (data, timeRange) =>
-        this.controller.createDataScale(data, timeRange),
+      (data, timeRange) => this.controller.createDataScale(data, timeRange),
       this.controller.getBarAlignment()
     );
-    this.applyPaneLayout({ resizeCanvases: false, resizeIndicators: false });
+    this.applyPaneLayout({
+      resizeCanvases: false,
+      resizeIndicators: false
+    });
     this.crosshairResolver = new CrosshairResolver(
       this.model,
       this.paneLayout,
@@ -652,10 +639,8 @@ export class FinancialChart {
           this.controller.getTimeFromRawDataPoint(point),
         getMainCanvas: () => this.renderer.getCanvas("main"),
         getDrawingWidth: () => this.renderer.getDrawingSize().width,
-        getPlotHeight: () =>
-          this.container.offsetHeight - this.xLabelHeight,
-        getTimeAnchorAlignment: () =>
-          this.controller.getTimeAnchorAlignment()
+        getPlotHeight: () => this.container.offsetHeight - this.xLabelHeight,
+        getTimeAnchorAlignment: () => this.controller.getTimeAnchorAlignment()
       }
     );
     const topCanvas = this.renderer.getCanvas("crosshair");
@@ -667,8 +652,8 @@ export class FinancialChart {
         dispatchPointer: (event) => this.extensionHost.notifyPointer(event),
         resolveDataPoint: (x, y, scale) =>
           this.crosshairResolver.resolveDataPoint(x, y, scale),
-        resolveCrosshair: (x, y) =>
-          this.crosshairResolver.resolvePointer(x, y),
+        resolveCrosshair: (x, y) => this.crosshairResolver.resolvePointer(x, y),
+        getPaneById: (paneId) => this.paneLayout.getPaneById(paneId),
         panByPixels: (dx) => this.panInteractionByPixels(dx),
         zoomAtPixel: (factor, pixel) =>
           this.zoomInteractionAtPixel(factor, pixel),
@@ -679,8 +664,7 @@ export class FinancialChart {
             redraw: "crosshair"
           });
         },
-        click: (event, point) =>
-          this.events.emit("click", { event, point }),
+        click: (event, point) => this.events.emit("click", { event, point }),
         touchClick: (event, point) =>
           this.events.emit("touch-click", { event, point })
       },
@@ -710,7 +694,7 @@ export class FinancialChart {
           volume: this.options.volume
         },
         visibleRange: this.getVisibleTimeWindow(),
-        panes: this.getPanes().map((pane) => {
+        panes: this.paneLayout.getPanes().map((pane) => {
           const indicator = this.paneLayout.getIndicatorForPane(pane);
           return {
             id: pane.getId(),
@@ -724,9 +708,9 @@ export class FinancialChart {
           indicator.toJSON()
         )
       },
-      mainPaneId: this.getMainPane().getId(),
-      controllerTypes: this.options.controllers.map((controller) =>
-        controller.ID
+      mainPaneId: this.paneLayout.getMainPane().getId(),
+      controllerTypes: this.options.controllers.map(
+        (controller) => controller.ID
       )
     };
   }
@@ -829,8 +813,7 @@ export class FinancialChart {
 
   private rebuildScales(resetVisibleRange: boolean) {
     this.model.configureScales(
-      (data, timeRange) =>
-        this.controller.createDataScale(data, timeRange),
+      (data, timeRange) => this.controller.createDataScale(data, timeRange),
       this.controller.getBarAlignment()
     );
     if (resetVisibleRange) this.resetVisibleIndexRange();
@@ -840,9 +823,7 @@ export class FinancialChart {
 
   private applyThemeChrome(previousThemeKey: string) {
     this.container.classList.remove(`financial-charts-${previousThemeKey}`);
-    this.container.classList.add(
-      `financial-charts-${this.options.theme.key}`
-    );
+    this.container.classList.add(`financial-charts-${this.options.theme.key}`);
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     this.overlay.update({
       themeKey: this.options.theme.key,
@@ -869,12 +850,9 @@ export class FinancialChart {
   private applyOptionsUpdate(
     update: ChartOptionsUpdate
   ): ChartChange | undefined {
-    const event = this.optionsState.applyUpdate(
-      update,
-      (type) => {
-        this.getControllerClass(type);
-      }
-    );
+    const event = this.optionsState.applyUpdate(update, (type) => {
+      this.getControllerClass(type);
+    });
     if (!event) return;
 
     const changed = new Set(event.changedKeys);
@@ -919,12 +897,7 @@ export class FinancialChart {
         includeRedrawParts(["series", "crosshair"]);
       }
       if (localizationChanged) {
-        includeRedrawParts([
-          "axes",
-          "indicators",
-          "annotations",
-          "crosshair"
-        ]);
+        includeRedrawParts(["axes", "indicators", "annotations", "crosshair"]);
       }
     }
     if (
@@ -937,10 +910,7 @@ export class FinancialChart {
     const hasData = this.model.hasData();
     return {
       options: event,
-      data:
-        hasData && stepSizeChanged
-          ? this.model.getData()
-          : undefined,
+      data: hasData && stepSizeChanged ? this.model.getData() : undefined,
       visibleRange:
         hasData && (coreChanged || typeChanged)
           ? this.getVisibleTimeRange()
@@ -1052,7 +1022,10 @@ export class FinancialChart {
       this.refreshAutoTimeRange(true);
     }
 
-    const rangeChanged = this.refreshIndexBounds({ preserveRightEdge, span });
+    const rangeChanged = this.refreshIndexBounds({
+      preserveRightEdge,
+      span
+    });
     this.recalculateVisibleScale();
     this.changePublisher.commit({
       data: this.model.getData(),
@@ -1118,7 +1091,7 @@ export class FinancialChart {
             const removedPane = this.paneLayout.removeIndicatorPane(indicator);
             this.interactionController.replacePane(
               removedPane,
-              this.getMainPane()
+              this.paneLayout.getMainPane()
             );
             this.applyPaneLayout();
           } else {

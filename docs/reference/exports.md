@@ -21,7 +21,7 @@ reference pages.
 | `ChartOptions`, `ChartOptionsUpdate`, `ChartOptionsSnapshot`, `ChartOptionsChangeEvent`, `ChartOptionKey`, `ChartLocalizationOptions` | [Options](/reference/chart#chartoptions) |
 | `LocaleValues`, `LocaleValuesMap` | [i18n](/guide/i18n) |
 | `ControllerID`, `ControllerType`, `ControllerConstructor` | [Controllers](/reference/engine#custom-controllers) |
-| `ChartRedrawPart`, `PaneHeightsInput` | [Lifecycle and panes](/reference/chart#lifecycle) |
+| `ChartRedrawPart`, `ChartPaneSnapshot`, `PaneHeightsInput` | [Lifecycle and panes](/reference/chart#lifecycle) |
 | `ChartCrosshairOptions`, `ChartCrosshairState`, `ChartCrosshairChangeEvent` | [View and interactions](/guide/view-and-interactions) |
 | `IndicatorMutationOptions` | [Indicator management](/reference/chart#indicator-management) |
 

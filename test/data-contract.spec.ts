@@ -4,6 +4,7 @@ import type { ControllerType } from "../src/chart/financial-chart";
 import { CandlestickController } from "../src/controllers/candle-controller";
 import { HLCAreaController } from "../src/controllers/hlc-area-controller";
 import { LineController } from "../src/controllers/line-controller";
+import { getChartModel } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -54,8 +55,12 @@ describe("chart data contracts", () => {
     expect(
       vi.mocked(context.moveTo).mock.calls.flat().every(Number.isFinite)
     ).toBe(true);
-    expect(Number.isFinite(chart.getVisibleScale().getYMin())).toBe(true);
-    expect(Number.isFinite(chart.getVisibleScale().getYMax())).toBe(true);
+    expect(
+      Number.isFinite(getChartModel(chart).getVisibleScale().getYMin())
+    ).toBe(true);
+    expect(
+      Number.isFinite(getChartModel(chart).getVisibleScale().getYMax())
+    ).toBe(true);
   });
 
   it("renders finite OHLC and volume coordinates when every value is zero", () => {
@@ -76,7 +81,9 @@ describe("chart data contracts", () => {
       vi.mocked(context.rect).mock.calls.flat().every(Number.isFinite)
     ).toBe(true);
     expect(
-      chart.getVisibleScale().mapVolToPixel(start, 0, context.canvas).y
+      getChartModel(chart)
+        .getVisibleScale()
+        .mapVolToPixel(start, 0, context.canvas).y
     ).toBe(0);
   });
 
@@ -113,9 +120,7 @@ describe("chart data contracts", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     chart.setData([{ time: start + 59_000, close: 1 }]);
 
-    expect(() =>
-      chart.updateData({ time: start + 30_000, close: 2 })
-    ).toThrow(
+    expect(() => chart.updateData({ time: start + 30_000, close: 2 })).toThrow(
       "updateData() requires a timestamp at or after the latest point. Use setData() to apply older corrections."
     );
     expect(chart.getData()).toEqual([{ time: start, close: 1 }]);

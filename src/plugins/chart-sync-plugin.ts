@@ -495,15 +495,9 @@ export class ChartSyncPlugin implements ChartPlugin {
   private createCrosshairSnapshot(
     event: ChartCrosshairChangeEvent,
   ): ChartSyncCrosshairSnapshot {
-    const region = event.pane.getRegion();
-    const relativeY = event.pane.getRelativeY(event.y);
-    const price = event.pane.getPriceScale().unproject(relativeY, {
-      canvas: { width: region.width, height: region.height },
-    });
-
     return {
-      paneId: event.pane.getId(),
-      price,
+      paneId: event.paneId,
+      price: event.price,
       time: event.time,
     };
   }

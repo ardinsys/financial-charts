@@ -27,7 +27,7 @@ export type {
 } from "./interaction/crosshair";
 export type { ChartRedrawPart } from "./render/chart-render-types";
 export type { IndicatorMutationOptions } from "./indicators/indicator";
-export type { PaneHeightsInput } from "./panes/pane-layout";
+export type { ChartPaneSnapshot, PaneHeightsInput } from "./panes/pane-layout";
 export { FinancialChart } from "./chart/core-financial-chart";
 export type { CoreChartOptions } from "./chart/core-financial-chart";
 export * from "./chart/event-emitter";

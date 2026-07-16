@@ -18,6 +18,11 @@ import type {
   ChartPlugin,
   ChartPointerEvent
 } from "../src/plugin/chart-plugin";
+import {
+  getChartModel,
+  getInternalMainPane,
+  getInternalPanes
+} from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -89,21 +94,18 @@ function createChart({
   container.style.height = "400px";
   document.body.appendChild(container);
 
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: {
-        start: data[0].time,
-        end: data.at(-1)!.time + 60_000
-      },
-      type,
-      controllers,
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US"
-    }
-  );
+  const chart = new FinancialChart(container, {
+    timeRange: {
+      start: data[0].time,
+      end: data.at(-1)!.time + 60_000
+    },
+    type,
+    controllers,
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US"
+  });
   chart.setData(data);
   charts.push(chart);
 
@@ -121,7 +123,7 @@ function pointerEvent(
     type,
     ...point,
     time: dataPoint.time,
-    pane: chart.getMainPane(),
+    pane: getInternalMainPane(chart),
     dataPoint,
     ...options
   };
@@ -145,7 +147,7 @@ function distance(a: DrawingPoint, b: DrawingPoint) {
 
 function drawingContext(chart: FinancialChart): DrawingRenderContext {
   return {
-    pane: chart.getMainPane(),
+    pane: getInternalMainPane(chart),
     canvas: chart.getContext("drawings").canvas
   };
 }
@@ -250,9 +252,9 @@ describe("DrawingManager", () => {
     ).toThrow('Drawing id "trend" is already registered.');
 
     const json = drawing.toJSON();
-    expect(() =>
-      manager.fromJSON({ drawings: [json, json] })
-    ).toThrow('Drawing id "trend" is duplicated.');
+    expect(() => manager.fromJSON({ drawings: [json, json] })).toThrow(
+      'Drawing id "trend" is duplicated.'
+    );
     expect(() =>
       manager.fromJSON({
         drawings: [json],
@@ -308,12 +310,12 @@ describe("DrawingManager", () => {
     expect(
       () => new StubDrawing({ anchors: [{ index: NaN, price: 10 }] })
     ).toThrow("Drawing anchors must contain finite index and price values.");
-    expect(
-      () => new StubDrawing({ anchors: [], id: " " })
-    ).toThrow("Drawing id must be a non-empty string.");
-    expect(
-      () => new StubDrawing({ anchors: [], paneId: -1 })
-    ).toThrow("Drawing paneId must be a non-negative integer.");
+    expect(() => new StubDrawing({ anchors: [], id: " " })).toThrow(
+      "Drawing id must be a non-empty string."
+    );
+    expect(() => new StubDrawing({ anchors: [], paneId: -1 })).toThrow(
+      "Drawing paneId must be a non-negative integer."
+    );
   });
 
   it("creates, selects, moves, and deletes a stub drawing", () => {
@@ -523,15 +525,15 @@ describe("DrawingManager", () => {
     const [projectedAnchor] = drawing.projectForTest(drawingContext(chart));
     const canvas = chart.getContext("drawings").canvas;
 
-    expect(chart.getMainPane().getTimeAnchorAlignment()).toBe("edge");
+    expect(getInternalMainPane(chart).getTimeAnchorAlignment()).toBe("edge");
     expect(projectedAnchor.x).toBeCloseTo(
-      chart.getTimeScale().projectIndex(anchor.index, {
+      getChartModel(chart).getTimeScale().projectIndex(anchor.index, {
         canvas,
         barAlignment: "edge"
       })
     );
     expect(projectedAnchor.x).not.toBeCloseTo(
-      chart.getTimeScale().projectIndex(anchor.index, {
+      getChartModel(chart).getTimeScale().projectIndex(anchor.index, {
         canvas,
         barAlignment: "center"
       })
@@ -687,7 +689,7 @@ describe("DrawingManager", () => {
     const { chart } = createChart();
     const indicator = new TestIndicator();
     chart.addIndicator(indicator);
-    const pane = chart.getPanes()[1];
+    const pane = getInternalPanes(chart)[1];
     const manager = createManager(chart);
     const priceRange = pane.getPriceScale().getRange();
     const drawing = new StubDrawing({

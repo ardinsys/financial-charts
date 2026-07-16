@@ -15,6 +15,7 @@ import {
   type DrawingRenderContext
 } from "../src/drawings";
 import type { ChartPointerEvent } from "../src/plugin/chart-plugin";
+import { getInternalMainPane } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -43,21 +44,18 @@ function createChart() {
   container.style.height = "400px";
   document.body.appendChild(container);
 
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: {
-        start: data[0].time,
-        end: data.at(-1)!.time + 60_000
-      },
-      type: "line",
-      controllers: [LineController],
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US"
-    }
-  );
+  const chart = new FinancialChart(container, {
+    timeRange: {
+      start: data[0].time,
+      end: data.at(-1)!.time + 60_000
+    },
+    type: "line",
+    controllers: [LineController],
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US"
+  });
   chart.setData(data);
   charts.push(chart);
 
@@ -74,7 +72,7 @@ function pointerEvent(
     type,
     ...point,
     time: dataPoint.time,
-    pane: chart.getMainPane(),
+    pane: getInternalMainPane(chart),
     dataPoint
   };
 }
@@ -104,7 +102,7 @@ function createDrawing(
 
 function drawingContext(chart: FinancialChart): DrawingRenderContext {
   return {
-    pane: chart.getMainPane(),
+    pane: getInternalMainPane(chart),
     canvas: chart.getContext("drawings").canvas
   };
 }
@@ -126,9 +124,9 @@ describe("drawing tools", () => {
     ) as TrendLine;
     const anchorsBeforeMove = drawing.getAnchors();
 
-    expect(manager.hitTest({ x: 240, y: 200 }, chart.getMainPane())).toBe(
-      drawing
-    );
+    expect(
+      manager.hitTest({ x: 240, y: 200 }, getInternalMainPane(chart))
+    ).toBe(drawing);
     expect(drawing.hitTest({ x: 240, y: 260 }, drawingHitContext(chart))).toBe(
       false
     );
@@ -167,7 +165,7 @@ describe("drawing tools", () => {
     ) as HorizontalLine;
     const anchorsBeforeMove = drawing.getAnchors();
 
-    expect(manager.hitTest({ x: 20, y: 240 }, chart.getMainPane())).toBe(
+    expect(manager.hitTest({ x: 20, y: 240 }, getInternalMainPane(chart))).toBe(
       drawing
     );
     expect(drawing.hitTest({ x: 20, y: 270 }, drawingHitContext(chart))).toBe(
@@ -207,9 +205,9 @@ describe("drawing tools", () => {
     ) as RectangleDrawing;
     const anchorsBeforeMove = drawing.getAnchors();
 
-    expect(manager.hitTest({ x: 240, y: 160 }, chart.getMainPane())).toBe(
-      drawing
-    );
+    expect(
+      manager.hitTest({ x: 240, y: 160 }, getInternalMainPane(chart))
+    ).toBe(drawing);
     expect(drawing.hitTest({ x: 240, y: 200 }, drawingHitContext(chart))).toBe(
       false
     );
@@ -254,7 +252,7 @@ describe("drawing tools", () => {
     expect(
       manager.hitTest(
         { x: textAnchorPoint.x + 8, y: textAnchorPoint.y + 8 },
-        chart.getMainPane()
+        getInternalMainPane(chart)
       )
     ).toBe(drawing);
     expect(drawing.hitTest({ x: 320, y: 260 }, drawingHitContext(chart))).toBe(
@@ -307,7 +305,7 @@ describe("drawing tools", () => {
     const manager = createManager(chart, ({ anchors, paneId }) => {
       return new TrendLine({ anchors, paneId });
     });
-    const paneId = chart.getMainPane().getId();
+    const paneId = getInternalMainPane(chart).getId();
     const originalAnchors: DrawingAnchor[] = [
       { index: 0.25, price: 10.5 },
       { index: 2.5, price: 14.25 }
@@ -391,7 +389,7 @@ function drawingHitContext(chart: FinancialChart) {
 }
 
 function projectAnchor(chart: FinancialChart, anchor: DrawingAnchor) {
-  const pane = chart.getMainPane();
+  const pane = getInternalMainPane(chart);
   const canvas = chart.getContext("drawings").canvas;
 
   return {

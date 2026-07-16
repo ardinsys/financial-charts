@@ -5,6 +5,7 @@ import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
+import { getInternalMainPane, getInternalPanes } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -69,8 +70,9 @@ function getAnnotationContext(chart: FinancialChart) {
   const chartContainer = chart
     .getContext("main")
     .canvas.closest(".financial-charts")!;
-  const canvas = [...chartContainer.querySelectorAll("canvas")]
-    .find((candidate) => candidate.style.zIndex === "70");
+  const canvas = [...chartContainer.querySelectorAll("canvas")].find(
+    (candidate) => candidate.style.zIndex === "70"
+  );
   return canvas!.getContext("2d")!;
 }
 
@@ -162,7 +164,7 @@ describe("price axis annotations", () => {
     const { chart } = createChart();
     chart.addIndicator(new TestIndicator());
     chart.requestRedraw(["indicators", "annotations"], true);
-    const panes = chart.getPanes();
+    const panes = getInternalPanes(chart);
     const probe = new AnnotationProbe();
     chart.addPlugin(probe);
     const context = getAnnotationContext(chart);
@@ -220,7 +222,7 @@ describe("price axis annotations", () => {
     expect(context.fillText).toHaveBeenCalledWith(
       "clamped",
       expect.any(Number),
-      chart.getMainPane().getRegion().y + 9,
+      getInternalMainPane(chart).getRegion().y + 9,
       expect.any(Number)
     );
   });
@@ -255,7 +257,7 @@ describe("price axis annotations", () => {
     const probe = new AnnotationProbe();
     chart.addPlugin(probe);
     const context = getAnnotationContext(chart);
-    const axisRegion = chart.getMainPane().getYAxisRegion();
+    const axisRegion = getInternalMainPane(chart).getYAxisRegion();
     vi.mocked(context.rect).mockClear();
     vi.mocked(context.fillRect).mockClear();
     vi.mocked(context.fillText).mockClear();

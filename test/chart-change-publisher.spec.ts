@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { ChartChangePublisher } from "../src/chart/chart-change-publisher";
 import type { ChartOptionsChangeEvent } from "../src/chart/chart-options";
 import { EventEmitter } from "../src/chart/event-emitter";
-import { Pane } from "../src/panes/pane";
 import type { ExtensionHost } from "../src/plugin/extension-host";
 
 describe("ChartChangePublisher", () => {
@@ -29,7 +28,8 @@ describe("ChartChangePublisher", () => {
       crosshairChanged: {
         time: 0,
         y: 10,
-        pane: new Pane(0),
+        paneId: 0,
+        price: 1,
         dataPoint: data[0]
       },
       crosshairCleared: true,

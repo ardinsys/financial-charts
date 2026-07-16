@@ -23,6 +23,16 @@ const unsubscribe = chart.on(
 );
 const options = chart.getOptions();
 const mappedData = chart.getData();
+const panes = chart.getPanes();
+const crosshair = chart.getCrosshairState();
+void [panes[0]?.id, panes[0]?.height, panes[0]?.kind];
+
+// @ts-expect-error Application pane descriptors do not expose engine geometry.
+panes[0]?.getRegion();
+// @ts-expect-error Application pane descriptors do not expose price scales.
+chart.getMainPane().getPriceScale();
+// @ts-expect-error Public crosshair state identifies panes without exposing them.
+crosshair?.pane;
 
 // @ts-expect-error Applications subscribe to chart events but cannot publish them.
 chart.emit("options-change", {});
@@ -42,6 +52,10 @@ chart.getDrawingSize();
 chart.getFullSize();
 // @ts-expect-error Scale internals are not application APIs.
 chart.getVolumeScale();
+// @ts-expect-error Data scales are engine internals.
+chart.getVisibleScale();
+// @ts-expect-error Time scales are engine internals.
+chart.getTimeScale();
 // @ts-expect-error Theme data is part of the options snapshot.
 chart.getTheme();
 // @ts-expect-error Formatter access is part of the options snapshot.
@@ -59,4 +73,4 @@ unsubscribe();
 chart.clearData();
 chart.dispose();
 
-void [options, mappedData];
+void [options, mappedData, panes, crosshair];

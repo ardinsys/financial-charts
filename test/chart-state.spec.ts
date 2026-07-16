@@ -95,8 +95,8 @@ describe("chart state", () => {
 
     const [mainPane, indicatorPane] = source.getPanes();
     source.setPaneHeights({
-      [mainPane.getId()]: 230,
-      [indicatorPane.getId()]: 140
+      [mainPane.id]: 230,
+      [indicatorPane.id]: 140
     });
     sourceDrawings.addDrawing(
       new TrendLine({
@@ -105,7 +105,7 @@ describe("chart state", () => {
           { index: 4, price: 18 }
         ],
         id: "pane-trend",
-        paneId: indicatorPane.getId()
+        paneId: indicatorPane.id
       })
     );
 

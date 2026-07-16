@@ -6,6 +6,7 @@ import {
   Indicator,
   type IndicatorLabelContent
 } from "../src/indicators/indicator";
+import { getChartModel } from "./chart-test-harness";
 
 interface ExternalIndicatorTheme {
   color: string;
@@ -139,11 +140,13 @@ describe("external-data indicators", () => {
     indicator.setPrices([100]);
     await new Promise((resolve) => requestAnimationFrame(resolve));
 
-    expect(chart.getVisibleScale().getYMax()).toBeGreaterThan(100);
+    expect(getChartModel(chart).getVisibleScale().getYMax()).toBeGreaterThan(
+      100
+    );
     expect(draw).toHaveBeenCalled();
 
     indicator.setPrices([]);
-    expect(chart.getVisibleScale().getYMax()).toBeLessThan(100);
+    expect(getChartModel(chart).getVisibleScale().getYMax()).toBeLessThan(100);
     indicator.setPrices([100]);
 
     const labelReads = indicator.labelReads;
@@ -167,7 +170,9 @@ describe("external-data indicators", () => {
         changedKeys: ["timeRange", "stepSize"]
       })
     );
-    expect(chart.getVisibleScale().getYMax()).toBeGreaterThan(100);
+    expect(getChartModel(chart).getVisibleScale().getYMax()).toBeGreaterThan(
+      100
+    );
   });
 
   it("rejects stale async results and aborts attachment work on detach", async () => {

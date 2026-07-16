@@ -6,10 +6,8 @@ import { LineController } from "../src/controllers/line-controller";
 import type { Drawing } from "../src/drawings";
 import { TestIndicator } from "../src/indicators/paneled/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
-import type {
-  ChartContext,
-  ChartPlugin
-} from "../src/plugin/chart-plugin";
+import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
+import { getInternalMainPane } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -60,10 +58,7 @@ class EventSourcePlugin implements ChartPlugin {
     this.context = context;
   }
 
-  emit<K extends keyof ChartEventMap>(
-    event: K,
-    data: ChartEventMap[K]
-  ): void {
+  emit<K extends keyof ChartEventMap>(event: K, data: ChartEventMap[K]): void {
     this.context?.emit(event, data);
   }
 }
@@ -92,21 +87,18 @@ function createChart() {
   container.style.height = "400px";
   document.body.appendChild(container);
 
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: {
-        start: data[0].time,
-        end: data.at(-1)!.time + 60_000
-      },
-      type: "line",
-      controllers: [LineController],
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US"
-    }
-  );
+  const chart = new FinancialChart(container, {
+    timeRange: {
+      start: data[0].time,
+      end: data.at(-1)!.time + 60_000
+    },
+    type: "line",
+    controllers: [LineController],
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US"
+  });
   charts.push(chart);
 
   return { chart, container, data };
@@ -186,7 +178,7 @@ describe("plugin lifecycle", () => {
       expect.objectContaining({
         x: 360,
         y: 120,
-        pane: chart.getMainPane()
+        pane: getInternalMainPane(chart)
       })
     );
 
@@ -595,16 +587,12 @@ describe("plugin lifecycle", () => {
     expect(attachedContext?.getCanvasContext("drawings")).toBe(
       chart.getContext("drawings")
     );
-    expect(attachedContext?.getLogicalCanvas("drawings")).toEqual(
-      {
-        width: Number.parseFloat(
-          chart.getContext("drawings").canvas.style.width
-        ),
-        height: Number.parseFloat(
-          chart.getContext("drawings").canvas.style.height
-        )
-      }
-    );
+    expect(attachedContext?.getLogicalCanvas("drawings")).toEqual({
+      width: Number.parseFloat(chart.getContext("drawings").canvas.style.width),
+      height: Number.parseFloat(
+        chart.getContext("drawings").canvas.style.height
+      )
+    });
     expect(attachedContext?.getPlugin("sibling-probe")).toBe(siblingPlugin);
     expect(attachedContext?.getPlugin("context-probe")).toBe(plugin);
     expect(attachedContext?.getPlugin("missing-probe")).toBeUndefined();
@@ -718,6 +706,8 @@ describe("plugin lifecycle", () => {
     };
     chart.setData(data);
     chart.addPlugin(plugin);
+    const onCrosshairChange = vi.fn();
+    chart.on("crosshair-change", onCrosshairChange);
 
     const state = attachedContext?.setCrosshair({
       time: data[1].time + 10_000
@@ -727,10 +717,12 @@ describe("plugin lifecycle", () => {
       expect.objectContaining({
         time: data[1].time,
         dataPoint: data[1],
-        pane: chart.getMainPane()
+        paneId: chart.getMainPane().id
       })
     );
-    expect(chart.getCrosshairState()).toEqual(state);
+    expect(chart.getCrosshairState()).toBe(state);
+    expect(onCrosshairChange).toHaveBeenCalledWith(state);
+    expect(Object.isFrozen(state)).toBe(false);
     expect(chart.getCrosshairState()?.y).toBeGreaterThan(0);
 
     attachedContext?.clearCrosshair();
@@ -819,9 +811,7 @@ describe("plugin lifecycle", () => {
       container: HTMLElement;
     };
     const order: string[] = [];
-    const resources: Array<
-      [Record<string, () => void>, string, string]
-    > = [
+    const resources: Array<[Record<string, () => void>, string, string]> = [
       [internals.interactionController, "dispose", "interaction"],
       [internals.renderer, "stop", "renderer-stop"],
       [internals.extensionHost, "dispose", "extensions"],
