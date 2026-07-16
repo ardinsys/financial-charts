@@ -13,7 +13,7 @@ export class ControllerRegistry {
   private snapshot?: readonly ControllerConstructor[];
 
   constructor(defaultConstructors: readonly ControllerConstructor[]) {
-    this.defaultConstructors = Object.freeze([...defaultConstructors]);
+    this.defaultConstructors = [...defaultConstructors];
   }
 
   register(controller: ControllerConstructor): boolean {
@@ -42,7 +42,7 @@ export class ControllerRegistry {
 
   getSnapshot(): readonly ControllerConstructor[] {
     if (!this.snapshot) {
-      this.snapshot = Object.freeze([...this.constructors.values()]);
+      this.snapshot = [...this.constructors.values()];
     }
     return this.snapshot;
   }

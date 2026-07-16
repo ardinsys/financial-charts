@@ -105,7 +105,6 @@ describe("Pane", () => {
     expect(pane.getPriceScale().getRange()).toEqual({ min: 10, max: 20 });
     expect(pane.getDrawables()).toEqual([second, first]);
     expect(pane.getDrawables()).toBe(pane.getDrawables());
-    expect(Object.isFrozen(pane.getDrawables())).toBe(true);
     expect(second.draw.mock.invocationCallOrder[0]).toBeLessThan(
       first.draw.mock.invocationCallOrder[0]
     );

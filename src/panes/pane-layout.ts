@@ -49,7 +49,7 @@ type PaneResizeDrag = {
 
 export class PaneLayout {
   private readonly mainPane = new Pane(0);
-  private panes: readonly Pane[] = Object.freeze([this.mainPane]);
+  private panes: readonly Pane[] = [this.mainPane];
   private paneSnapshot?: readonly ChartPaneSnapshot[];
   private nextPaneId = 1;
   private readonly paneByIndicator = new Map<
@@ -81,19 +81,17 @@ export class PaneLayout {
   }
 
   getSnapshot(): readonly ChartPaneSnapshot[] {
-    this.paneSnapshot ??= freezeSnapshot(
-      this.panes.map((pane) => {
-        const indicator = this.indicatorByPane.get(pane);
-        return Object.freeze({
-          id: pane.getId(),
-          height: this.getPaneHeight(pane),
-          kind: pane === this.mainPane ? "main" : "indicator",
-          ...(indicator
-            ? { indicatorInstanceId: indicator.getInstanceId() }
-            : {})
-        });
-      })
-    );
+    this.paneSnapshot ??= this.panes.map((pane) => {
+      const indicator = this.indicatorByPane.get(pane);
+      return {
+        id: pane.getId(),
+        height: this.getPaneHeight(pane),
+        kind: pane === this.mainPane ? "main" : "indicator",
+        ...(indicator
+          ? { indicatorInstanceId: indicator.getInstanceId() }
+          : {})
+      };
+    });
     return this.paneSnapshot;
   }
 
@@ -141,7 +139,7 @@ export class PaneLayout {
     this.nextPaneId = Math.max(this.nextPaneId, paneId + 1);
     const pane = new Pane(paneId);
     pane.setTimeScale(timeScale);
-    this.panes = freezeSnapshot([...this.panes, pane]);
+    this.panes = [...this.panes, pane];
     this.paneSnapshot = undefined;
     this.paneByIndicator.set(indicator, pane);
     this.indicatorByPane.set(pane, indicator);
@@ -155,7 +153,7 @@ export class PaneLayout {
     this.paneByIndicator.delete(indicator);
     this.indicatorByPane.delete(pane);
     this.paneHeights.delete(pane);
-    this.panes = freezeSnapshot(this.panes.filter((item) => item !== pane));
+    this.panes = this.panes.filter((item) => item !== pane);
     this.paneSnapshot = undefined;
     return pane;
   }
@@ -226,7 +224,7 @@ export class PaneLayout {
     this.paneByIndicator.clear();
     this.indicatorByPane.clear();
     this.paneHeights.clear();
-    this.panes = Object.freeze([this.mainPane]);
+    this.panes = [this.mainPane];
     this.paneSnapshot = undefined;
     this.restoredPaneIds = undefined;
   }
@@ -435,8 +433,4 @@ export class PaneLayout {
     for (const dispose of this.resizeDrag.disposers.splice(0)) dispose();
     this.resizeDrag = undefined;
   }
-}
-
-function freezeSnapshot<T>(values: T[]): readonly T[] {
-  return Object.freeze(values);
 }

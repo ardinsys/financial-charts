@@ -7,13 +7,12 @@ import { HollowCandleController } from "./hollow-candle-controller";
 import { LineController } from "./line-controller";
 import { SteplineController } from "./step-line-controller";
 
-export const defaultControllers: readonly ControllerConstructor[] =
-  Object.freeze([
-    AreaController,
-    LineController,
-    CandlestickController,
-    BarController,
-    HollowCandleController,
-    SteplineController,
-    HLCAreaController,
-  ]);
+export const defaultControllers: readonly ControllerConstructor[] = [
+  AreaController,
+  LineController,
+  CandlestickController,
+  BarController,
+  HollowCandleController,
+  SteplineController,
+  HLCAreaController,
+];

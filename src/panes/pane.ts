@@ -124,11 +124,9 @@ export class Pane {
 
   getDrawables(): readonly PaneDrawable[] {
     if (!this.orderedDrawables) {
-      this.orderedDrawables = Object.freeze(
-        [...this.drawables].sort((a, b) => {
-          return (a.zIndex ?? 0) - (b.zIndex ?? 0);
-        })
-      );
+      this.orderedDrawables = [...this.drawables].sort((a, b) => {
+        return (a.zIndex ?? 0) - (b.zIndex ?? 0);
+      });
     }
     return this.orderedDrawables;
   }

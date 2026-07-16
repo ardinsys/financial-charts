@@ -5,13 +5,12 @@ import { CandlestickController } from "../src/controllers/candle-controller";
 import { LineController } from "../src/controllers/line-controller";
 
 describe("ControllerRegistry", () => {
-  it("reuses its frozen snapshot until registration changes", () => {
+  it("reuses its snapshot until registration changes", () => {
     const registry = new ControllerRegistry([]);
     registry.register(LineController);
     const snapshot = registry.getSnapshot();
 
     expect(registry.getSnapshot()).toBe(snapshot);
-    expect(Object.isFrozen(snapshot)).toBe(true);
     expect(registry.register(LineController)).toBe(false);
     expect(registry.getSnapshot()).toBe(snapshot);
 
@@ -24,10 +23,12 @@ describe("ControllerRegistry", () => {
   });
 
   it("restores chart-class defaults without duplicating registrations", () => {
-    const registry = new ControllerRegistry([
+    const defaults: ControllerConstructor[] = [
       LineController,
       CandlestickController
-    ]);
+    ];
+    const registry = new ControllerRegistry(defaults);
+    defaults.length = 0;
 
     expect(registry.registerDefaults()).toBe(true);
     const snapshot = registry.getSnapshot();

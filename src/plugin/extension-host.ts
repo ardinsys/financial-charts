@@ -46,13 +46,12 @@ export interface IndicatorAttachmentHooks {
 }
 
 export class ExtensionHost {
-  private indicators: readonly Indicator<any, any>[] = Object.freeze([]);
-  private paneledIndicators: readonly PaneledIndicator<any, any>[] =
-    Object.freeze([]);
-  private plugins: readonly ChartPlugin[] = Object.freeze([]);
-  private allIndicators: readonly Indicator<any, any>[] = Object.freeze([]);
-  private lifecycleExtensions: readonly ChartExtension[] = Object.freeze([]);
-  private pointerExtensions: readonly ChartExtension[] = Object.freeze([]);
+  private indicators: readonly Indicator<any, any>[] = [];
+  private paneledIndicators: readonly PaneledIndicator<any, any>[] = [];
+  private plugins: readonly ChartPlugin[] = [];
+  private allIndicators: readonly Indicator<any, any>[] = [];
+  private lifecycleExtensions: readonly ChartExtension[] = [];
+  private pointerExtensions: readonly ChartExtension[] = [];
   private readonly indicatorHooks = new WeakMap<
     Indicator<any, any>,
     IndicatorAttachmentHooks
@@ -96,10 +95,8 @@ export class ExtensionHost {
   }
 
   getIndicatorsByType(typeId: string): readonly Indicator<any, any>[] {
-    return freezeSnapshot(
-      this.allIndicators.filter(
-        (indicator) => indicator.getIndicatorType() === typeId
-      )
+    return this.allIndicators.filter(
+      (indicator) => indicator.getIndicatorType() === typeId
     );
   }
 
@@ -130,7 +127,7 @@ export class ExtensionHost {
       );
     }
 
-    this.plugins = freezeSnapshot([...this.plugins, plugin]);
+    this.plugins = [...this.plugins, plugin];
     this.refreshOrderSnapshots();
     return this.attach(plugin);
   }
@@ -138,9 +135,7 @@ export class ExtensionHost {
   removePlugin(plugin: ChartPlugin): boolean {
     if (!this.plugins.includes(plugin)) return false;
 
-    this.plugins = freezeSnapshot(
-      this.plugins.filter((item) => item !== plugin)
-    );
+    this.plugins = this.plugins.filter((item) => item !== plugin);
     this.refreshOrderSnapshots();
     this.detach(plugin);
     return true;
@@ -163,12 +158,12 @@ export class ExtensionHost {
 
     this.indicatorHooks.set(indicator, hooks);
     if (paneled) {
-      this.paneledIndicators = freezeSnapshot([
+      this.paneledIndicators = [
         ...this.paneledIndicators,
         indicator as PaneledIndicator<any, any>
-      ]);
+      ];
     } else {
-      this.indicators = freezeSnapshot([...this.indicators, indicator]);
+      this.indicators = [...this.indicators, indicator];
     }
     this.refreshIndicatorSnapshots();
     return this.attach(indicator, hooks.mount);
@@ -181,13 +176,11 @@ export class ExtensionHost {
     if (!paneled && !this.indicators.includes(indicator)) return false;
 
     if (paneled) {
-      this.paneledIndicators = freezeSnapshot(
-        this.paneledIndicators.filter((item) => item !== indicator)
+      this.paneledIndicators = this.paneledIndicators.filter(
+        (item) => item !== indicator
       );
     } else {
-      this.indicators = freezeSnapshot(
-        this.indicators.filter((item) => item !== indicator)
-      );
+      this.indicators = this.indicators.filter((item) => item !== indicator);
     }
     this.refreshIndicatorSnapshots();
     this.detach(indicator);
@@ -288,9 +281,9 @@ export class ExtensionHost {
         firstError ??= error;
       }
     }
-    this.indicators = Object.freeze([]);
-    this.paneledIndicators = Object.freeze([]);
-    this.plugins = Object.freeze([]);
+    this.indicators = [];
+    this.paneledIndicators = [];
+    this.plugins = [];
     this.refreshIndicatorSnapshots();
     this.priceAxisAnnotations.clear();
     if (firstError !== undefined) throw firstError;
@@ -353,19 +346,17 @@ export class ExtensionHost {
       if (
         this.paneledIndicators.includes(indicator as PaneledIndicator<any, any>)
       ) {
-        this.paneledIndicators = freezeSnapshot(
-          this.paneledIndicators.filter((item) => item !== indicator)
+        this.paneledIndicators = this.paneledIndicators.filter(
+          (item) => item !== indicator
         );
       } else {
-        this.indicators = freezeSnapshot(
-          this.indicators.filter((item) => item !== indicator)
+        this.indicators = this.indicators.filter(
+          (item) => item !== indicator
         );
       }
       this.refreshIndicatorSnapshots();
     } else {
-      this.plugins = freezeSnapshot(
-        this.plugins.filter((plugin) => plugin !== extension)
-      );
+      this.plugins = this.plugins.filter((plugin) => plugin !== extension);
       this.refreshOrderSnapshots();
     }
     this.disposeAttachmentScope(extension);
@@ -507,24 +498,24 @@ export class ExtensionHost {
   }
 
   private refreshIndicatorSnapshots(): void {
-    this.allIndicators = freezeSnapshot([
+    this.allIndicators = [
       ...this.indicators,
       ...this.paneledIndicators
-    ]);
+    ];
     this.refreshOrderSnapshots();
   }
 
   private refreshOrderSnapshots(): void {
-    this.lifecycleExtensions = freezeSnapshot([
+    this.lifecycleExtensions = [
       ...this.indicators,
       ...this.paneledIndicators,
       ...this.plugins
-    ]);
+    ];
     const pointerExtensions: ChartExtension[] = [];
     appendReversed(pointerExtensions, this.plugins);
     appendReversed(pointerExtensions, this.paneledIndicators);
     appendReversed(pointerExtensions, this.indicators);
-    this.pointerExtensions = freezeSnapshot(pointerExtensions);
+    this.pointerExtensions = pointerExtensions;
   }
 
   private assertActive(kind: "indicator" | "plugin"): void {
@@ -532,10 +523,6 @@ export class ExtensionHost {
       throw new Error(`Cannot add a ${kind} to a disposed chart.`);
     }
   }
-}
-
-function freezeSnapshot<T>(values: T[]): readonly T[] {
-  return Object.freeze(values);
 }
 
 function appendReversed<T>(target: T[], values: readonly T[]): void {

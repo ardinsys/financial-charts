@@ -436,6 +436,9 @@ describe("plugin lifecycle", () => {
     expect(chart.getIndicators()).toBe(chart.getIndicators());
     expect(chart.getPanes()).toBe(chart.getPanes());
     expect(chart.getPlugins()).toBe(chart.getPlugins());
+    expect(chart.getIndicatorsByType("moving-average")).not.toBe(
+      chart.getIndicatorsByType("moving-average")
+    );
     expect(chart.getData()).toHaveLength(data.length);
     expect(chart.getIndicators()).toEqual([overlay, paneled]);
     expect(chart.getPlugins()).toEqual([plugin]);
