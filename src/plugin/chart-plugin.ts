@@ -1,7 +1,4 @@
 import type {
-  FinancialChart
-} from "../chart/financial-chart";
-import type {
   ChartOptionsChangeEvent,
   ChartOptionsSnapshot
 } from "../chart/chart-options";
@@ -19,6 +16,7 @@ import type { ChartData, TimeRange } from "../chart/types";
 import type { Pane } from "../panes/pane";
 import type { RenderCallback, RenderStage } from "../render/render-pipeline";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
+import type { Indicator } from "../indicators/indicator";
 
 export interface Drawable {
   beforeDraw?(): void;
@@ -71,10 +69,17 @@ export interface ExtensionContext {
   clearPriceAxisAnnotations(): void;
   setCrosshair(options: ChartCrosshairOptions): ChartCrosshairState | undefined;
   clearCrosshair(): void;
+  /** Detaches the owning extension with normal chart removal semantics. */
+  remove(): void;
 }
 
 export interface ChartContext extends ExtensionContext {
-  chart: FinancialChart;
+  getCrosshairState(): ChartCrosshairState | undefined;
+  setVisibleTimeWindow(range: TimeRange): void;
+  getIndicators(): readonly Indicator<any, any>[];
+  getIndicatorById(instanceId: string): Indicator<any, any> | undefined;
+  addIndicator(indicator: Indicator<any, any>): void;
+  removeIndicator(indicator: Indicator<any, any>): void;
 }
 
 export interface ChartExtension extends Drawable {

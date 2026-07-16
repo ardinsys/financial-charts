@@ -135,7 +135,6 @@ describe("Pane", () => {
       height: 370
     });
     expect(mainPane.getTimeScale()).toBe(chart.getTimeScale());
-    expect(chart.getPriceScale()).toBe(mainPane.getPriceScale());
     expect(mainPane.getPriceScale().getRange()).toEqual({
       min: chart.getVisibleScale().getYMin(),
       max: chart.getVisibleScale().getYMax()

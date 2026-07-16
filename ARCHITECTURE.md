@@ -190,7 +190,11 @@ facade.
 `ChartContext` belongs to one attachment. Its `AbortSignal`, public-event
 subscriptions, render hooks, and owned price-axis annotations are released when
 that attachment ends. Extensions can release an individual subscription early
-through the disposer returned by the context method.
+through the disposer returned by the context method. It does not expose
+`FinancialChart`; view, crosshair, plugin, and indicator operations are generic
+extension capabilities rather than services reserved for a built-in plugin.
+`ExtensionHost` receives a typed event channel and focused command object rather
+than retaining the chart façade.
 
 Indicators receive `IndicatorContext`, which contains the shared scoped
 extension services plus drawing snapshots, localization, cached grid positions,

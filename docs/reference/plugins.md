@@ -69,7 +69,6 @@ drawn by the ordinary plugin pass.
 
 | Helper                            | Description                                                                                                    |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `chart`                           | The `FinancialChart` instance. Prefer context helpers for extension work when available.                       |
 | `domAdapter`                      | Active `ChartDOMAdapter`, useful when plugins need app-owned DOM chrome.                                       |
 | `hostElement`                     | The element passed to the chart constructor, for scoped keyboard or focus handling.                           |
 | `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()`, on failed attachment, and on chart disposal.      |
@@ -83,6 +82,8 @@ drawn by the ordinary plugin pass.
 | `getPlugins()`                    | Returns a readonly snapshot of currently attached plugins.                                                     |
 | `getVisibleTimeWindow()`          | Returns the precise fractional visible timestamp window for pan/zoom replication.                              |
 | `getVisibleTimeRange()`           | Returns the current visible timestamp range.                                                                   |
+| `setVisibleTimeWindow(range)`     | Applies a precise fractional timestamp window.                                                                 |
+| `getCrosshairState()`             | Returns the current resolved native crosshair state.                                                           |
 | `on(event, listener)`             | Subscribes for the lifetime of this attachment and returns an early disposer.                                 |
 | `onRenderStage(stage, callback)`  | Registers an attachment-scoped render-pipeline hook and returns an early disposer.                            |
 | `requestRedraw(part, immediate?)` | Schedules one or more redraw parts.                                                                            |
@@ -90,6 +91,11 @@ drawn by the ordinary plugin pass.
 | `clearPriceAxisAnnotations()`     | Removes this extension's price-axis annotations.                                                               |
 | `setCrosshair(options)`           | Sets the native crosshair from plugin code and returns the resolved state.                                     |
 | `clearCrosshair()`                | Clears the native crosshair and pointer-aware indicator labels.                                                |
+| `getIndicators()`                 | Returns every attached indicator as a readonly snapshot.                                                       |
+| `getIndicatorById(instanceId)`    | Returns an attached indicator by its unique instance identity.                                                 |
+| `addIndicator(indicator)`         | Attaches an indicator with normal chart lifecycle and event semantics.                                         |
+| `removeIndicator(indicator)`      | Detaches an indicator with normal chart lifecycle and event semantics.                                         |
+| `remove()`                        | Detaches the owning extension with normal chart removal semantics.                                             |
 
 ### Attachment-scoped cleanup
 
@@ -109,8 +115,8 @@ attach(ctx: ChartContext) {
 The signal is aborted and owned annotations and scoped subscriptions are
 removed before `detach()` runs. `detach()` therefore only needs to release
 resources that are not signal-aware or registered through these helpers.
-Calling `ctx.chart.on()` directly is not scoped; prefer `ctx.on()` inside
-extensions. Render hooks are available only through the scoped context.
+`ChartContext` does not expose the chart façade, so event and render
+subscriptions cannot bypass attachment scoping.
 
 ## Render stages and redraw parts
 
@@ -237,6 +243,8 @@ Freshly mounted charts also perform their initial sync after their first
 keeps the latest state as detached snapshots, so virtualized rows can all
 unmount briefly and the next mounted chart can still rehydrate without holding
 old chart or DOM instances alive.
+Received indicator mutations publish the same chart events as local mutations;
+the plugin's application guard prevents those events from being rebroadcast.
 
 Third-party plugins can also use the sync group as a small message bus. Add the
 sync plugin before plugins that read it from `attach()`, then use
@@ -284,7 +292,9 @@ Messages are delivered to peer charts in the same group. Pass
 `{ includeSelf: true }` to also invoke local handlers. Handlers invoked from a
 synced message are guarded against accidental rebroadcast, so a plugin does not
 create an echo loop by calling `postMessage()` from inside its receive handler.
-Custom messages are runtime-only and are not part of `initialSync`.
+`message.source.plugin` identifies the sending `ChartSyncPlugin`, and
+`message.source.group` identifies its group. Custom messages are runtime-only
+and are not part of `initialSync`.
 
 ### DrawingSelectionPlugin
 

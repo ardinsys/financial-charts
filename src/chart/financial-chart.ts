@@ -1,12 +1,12 @@
 import { ChartController } from "../controllers/controller";
 import { PaneledIndicator } from "../indicators/paneled-indicator";
 import {
-  type Indicator,
+  Indicator,
   type IndicatorMutationOptions
 } from "../indicators/indicator";
 import { ChartIndicatorHost } from "../indicators/chart-indicator-host";
 import type { ScaleRangeModifier } from "../scales/data-scale-model";
-import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
+import type { TimeScaleRange } from "../scales/time-scale";
 import type { ChartTheme } from "./themes";
 import { ChartData, TimeRange } from "./types";
 import { EventEmitter } from "./event-emitter";
@@ -167,10 +167,6 @@ export class FinancialChart extends EventEmitter {
     return this.controllerRegistry.get(type);
   }
 
-  getYLabelWidth() {
-    return this.yLabelWidth;
-  }
-
   getTimeRange() {
     return this.model.getTimeRange();
   }
@@ -183,17 +179,9 @@ export class FinancialChart extends EventEmitter {
     return this.model.getTimeScale();
   }
 
-  getPriceScale() {
-    return this.getMainPane().getPriceScale();
-  }
-
   /** Returns the precise fractional logical-index window. */
   getVisibleLogicalRange(): TimeScaleRange {
     return this.model.getVisibleIndexRange();
-  }
-
-  getTimeAnchorAlignment(): BarAlignment {
-    return this.controller.getTimeAnchorAlignment();
   }
 
   getOptions(): ChartOptionsSnapshot {
@@ -223,7 +211,7 @@ export class FinancialChart extends EventEmitter {
   }
 
   private syncPaneTimeScales() {
-    const timeAnchorAlignment = this.getTimeAnchorAlignment();
+    const timeAnchorAlignment = this.controller.getTimeAnchorAlignment();
     for (const pane of this.getPanes()) {
       pane.setTimeScale(this.model.getTimeScale());
       pane.setTimeAnchorAlignment(timeAnchorAlignment);
@@ -368,10 +356,6 @@ export class FinancialChart extends EventEmitter {
     const from = anchorIndex - anchorRatio * newSpan;
 
     this.setVisibleIndexRange({ from, to: from + newSpan });
-  }
-
-  getTheme() {
-    return this.options.theme;
   }
 
   getIndicators(): readonly Indicator<any, any>[] {
@@ -539,9 +523,10 @@ export class FinancialChart extends EventEmitter {
         getVisibleData: () => this.model.getVisibleDataPoints(),
         getVisibleIndexRange: () => this.model.getVisibleIndexRange(),
         getTimeRange: () => this.model.getTimeRange(),
-        getTimeScale: () => this.getTimeScale(),
+        getTimeScale: () => this.model.getTimeScale(),
         getVisibleScale: () => this.model.getVisibleScale(),
-        getTimeAnchorAlignment: () => this.getTimeAnchorAlignment(),
+        getTimeAnchorAlignment: () =>
+          this.controller.getTimeAnchorAlignment(),
         getPixelsPerBar: () => this.getPixelsPerBar(),
         getController: () => this.controller,
         getIndicators: () => this.getIndicators(),
@@ -599,6 +584,27 @@ export class FinancialChart extends EventEmitter {
     );
     this.extensionHost = new ExtensionHost(
       this,
+      {
+        getCrosshairState: () =>
+          this.interactionController.getCrosshairState(),
+        setCrosshair: (options) => this.setCrosshair(options),
+        clearCrosshair: () => this.clearCrosshair(),
+        setVisibleTimeWindow: (range) =>
+          this.setVisibleTimeWindow(range),
+        addIndicator: (indicator) => {
+          this.addIndicator(indicator);
+        },
+        removeIndicator: (indicator) => {
+          this.removeIndicator(indicator);
+        },
+        removeExtension: (extension) => {
+          if (extension instanceof Indicator) {
+            this.removeIndicator(extension);
+          } else {
+            this.removePlugin(extension as ChartPlugin);
+          }
+        }
+      },
       domAdapter,
       this.renderer,
       container,
@@ -634,7 +640,8 @@ export class FinancialChart extends EventEmitter {
         getDrawingWidth: () => this.renderer.getDrawingSize().width,
         getPlotHeight: () =>
           this.container.offsetHeight - this.xLabelHeight,
-        getTimeAnchorAlignment: () => this.getTimeAnchorAlignment()
+        getTimeAnchorAlignment: () =>
+          this.controller.getTimeAnchorAlignment()
       }
     );
     const topCanvas = this.renderer.getCanvas("crosshair");
@@ -779,13 +786,6 @@ export class FinancialChart extends EventEmitter {
       redraw: ALL_REDRAW_PARTS,
       immediate: true
     });
-  }
-
-  public getLocaleValues() {
-    return (
-      this.options.localeValues[this.options.locale] ||
-      this.options.localeValues.default
-    );
   }
 
   private refreshAutoTimeRange(recalculateDataScale = false) {
@@ -951,10 +951,6 @@ export class FinancialChart extends EventEmitter {
 
   getContext(type: ChartCanvasLayer): CanvasRenderingContext2D {
     return this.renderer.getContext(type);
-  }
-
-  getFormatter() {
-    return this.options.formatter;
   }
 
   /**

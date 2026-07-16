@@ -111,7 +111,7 @@ describe("chart options API", () => {
     ]);
     expect(events[0].previous).toBe(previousOptions);
     expect(events[0].current).toBe(chart.getOptions());
-    expect(events[0].current.formatter).toBe(chart.getFormatter());
+    expect(events[0].current.formatter).toBe(chart.getOptions().formatter);
     expect(events[0].previous).toMatchObject({
       type: "line",
       volume: true,

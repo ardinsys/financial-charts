@@ -105,7 +105,7 @@ describe("current price tick calculations", () => {
           canvasHeight: Number.parseFloat(
             chart.getContext("y-label").canvas.style.height
           ),
-          fontSize: chart.getTheme().yAxis.fontSize,
+          fontSize: chart.getOptions().theme.yAxis.fontSize,
           labelSpacing: 30
         })
       )

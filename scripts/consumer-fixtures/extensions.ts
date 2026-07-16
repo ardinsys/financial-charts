@@ -46,7 +46,15 @@ class ExtensionDrawing extends Drawing {
 const plugin = {
   key: "extension-fixture",
   attach(ctx) {
-    void [ctx.getData(), ctx.getOptions(), ctx.hostElement];
+    // @ts-expect-error Plugin contexts do not expose the application facade.
+    ctx.chart;
+    void [
+      ctx.getData(),
+      ctx.getOptions(),
+      ctx.hostElement,
+      ctx.getCrosshairState(),
+      ctx.getIndicators()
+    ];
   }
 } satisfies ChartPlugin;
 const adapter: ChartDOMAdapter = new DefaultDOMAdapter();

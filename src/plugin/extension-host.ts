@@ -3,13 +3,19 @@ import {
   type PriceAxisAnnotation
 } from "../annotations/price-axis-annotation";
 import type { ChartOptionsChangeEvent } from "../chart/chart-options";
-import type { FinancialChart } from "../chart/financial-chart";
-import type { ChartEventMap } from "../chart/event-emitter";
+import type {
+  ChartEventMap,
+  EventEmitter
+} from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";
 import type { Indicator } from "../indicators/indicator";
 import type { ChartIndicatorHost } from "../indicators/chart-indicator-host";
 import type { PaneledIndicator } from "../indicators/paneled-indicator";
 import type { ChartRenderer } from "../render/chart-renderer";
+import type {
+  ChartCrosshairOptions,
+  ChartCrosshairState
+} from "../interaction/crosshair";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
 import type { ChartExtensionReadModel } from "./chart-extension-read-model";
 import type {
@@ -20,6 +26,18 @@ import type {
 } from "./chart-plugin";
 
 type HostedExtension = ChartPlugin | Indicator<any, any>;
+
+export interface ChartExtensionCommands {
+  getCrosshairState(): ChartCrosshairState | undefined;
+  setCrosshair(
+    options: ChartCrosshairOptions
+  ): ChartCrosshairState | undefined;
+  clearCrosshair(): void;
+  setVisibleTimeWindow(range: TimeRange): void;
+  addIndicator(indicator: Indicator<any, any>): void;
+  removeIndicator(indicator: Indicator<any, any>): void;
+  removeExtension(extension: ChartExtension): void;
+}
 
 export interface IndicatorAttachmentHooks {
   mount(): void;
@@ -50,7 +68,8 @@ export class ExtensionHost {
   private disposed = false;
 
   constructor(
-    private readonly chart: FinancialChart,
+    private readonly events: EventEmitter<ChartEventMap>,
+    private readonly commands: ChartExtensionCommands,
     private readonly domAdapter: ChartDOMAdapter,
     private readonly renderer: ChartRenderer,
     private readonly hostElement: HTMLElement,
@@ -289,7 +308,18 @@ export class ExtensionHost {
       if (this.isIndicator(extension)) {
         extension.attach(this.indicatorHost.createContext(extension, context));
       } else {
-        extension.attach({ ...context, chart: this.chart });
+        extension.attach({
+          ...context,
+          getCrosshairState: () => this.commands.getCrosshairState(),
+          setVisibleTimeWindow: (range) =>
+            this.commands.setVisibleTimeWindow(range),
+          getIndicators: () => this.getAllIndicators(),
+          getIndicatorById: (instanceId) =>
+            this.getIndicatorById(instanceId),
+          addIndicator: (indicator) => this.commands.addIndicator(indicator),
+          removeIndicator: (indicator) =>
+            this.commands.removeIndicator(indicator)
+        });
       }
       attached = true;
       if (!this.isAttached(extension)) return false;
@@ -379,7 +409,7 @@ export class ExtensionHost {
       getPlugins: () => this.getPlugins(),
       getVisibleTimeWindow: () => this.readModel.getVisibleTimeWindow(),
       getVisibleTimeRange: () => this.readModel.getVisibleTimeRange(),
-      on: (event, listener) => scoped(this.chart.on(event, listener)),
+      on: (event, listener) => scoped(this.events.on(event, listener)),
       onRenderStage: (stage, callback) =>
         scoped(this.renderer.onRenderStage(stage, callback)),
       requestRedraw: (part, immediate) =>
@@ -388,8 +418,11 @@ export class ExtensionHost {
         this.setPriceAxisAnnotations(extension, annotations),
       clearPriceAxisAnnotations: () =>
         this.setPriceAxisAnnotations(extension, []),
-      setCrosshair: (options) => this.chart.setCrosshair(options),
-      clearCrosshair: () => this.chart.clearCrosshair()
+      setCrosshair: (options) => this.commands.setCrosshair(options),
+      clearCrosshair: () => this.commands.clearCrosshair(),
+      remove: () => {
+        if (!signal.aborted) this.commands.removeExtension(extension);
+      }
     };
   }
 
@@ -400,7 +433,7 @@ export class ExtensionHost {
     if (event === "drawing-finished") {
       this.notifyDrawingFinished(data as ChartEventMap["drawing-finished"]);
     }
-    this.chart.emit(event, data);
+    this.events.emit(event, data);
   }
 
   private createScopedDisposer(

@@ -37,7 +37,7 @@ class SyncMessageProbePlugin implements ChartPlugin {
   readonly received: Array<{
     group: string;
     payload: ProbeSyncPayload;
-    sourceChart: FinancialChart;
+    sourcePlugin: ChartSyncPlugin;
   }> = [];
 
   private sync?: ChartSyncPlugin;
@@ -58,7 +58,7 @@ class SyncMessageProbePlugin implements ChartPlugin {
         this.received.push({
           group: message.source.group,
           payload: message.payload,
-          sourceChart: message.source.chart
+          sourcePlugin: message.source.plugin
         });
       }
     );
@@ -440,6 +440,19 @@ describe("ChartSyncPlugin", () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const target = createSyncedChart(group);
+    const targetEvents: string[] = [];
+    target.chart.on("indicator-add", ({ indicator }) => {
+      targetEvents.push(`add:${indicator.getInstanceId()}`);
+    });
+    target.chart.on("indicator-change", ({ indicator }) => {
+      targetEvents.push(`change:${indicator.getInstanceId()}`);
+    });
+    target.chart.on("indicator-visibility-changed", ({ indicator }) => {
+      targetEvents.push(`visibility:${indicator.getInstanceId()}`);
+    });
+    target.chart.on("indicator-remove", ({ indicator }) => {
+      targetEvents.push(`remove:${indicator.getInstanceId()}`);
+    });
     const fast = new CustomMovingAverageIndicator(null, {
       instanceId: "fast-sma",
       names: { default: "Fast SMA" },
@@ -456,6 +469,7 @@ describe("ChartSyncPlugin", () => {
     source.chart.addIndicator(fast);
     source.chart.addIndicator(slow);
 
+    expect(targetEvents).toEqual(["add:fast-sma", "add:slow-sma"]);
     expect(target.chart.getIndicatorById("fast-sma")).toBeInstanceOf(
       CustomMovingAverageIndicator
     );
@@ -471,6 +485,7 @@ describe("ChartSyncPlugin", () => {
 
     fast.updateOptions({ period: 12 });
 
+    expect(targetEvents.at(-1)).toBe("change:fast-sma");
     expect(target.chart.getIndicatorById("fast-sma")?.getOptions().period).toBe(
       12
     );
@@ -480,6 +495,10 @@ describe("ChartSyncPlugin", () => {
 
     slow.setVisible(false);
 
+    expect(targetEvents.slice(-2)).toEqual([
+      "change:slow-sma",
+      "visibility:slow-sma"
+    ]);
     expect(
       target.chart.getIndicatorById("slow-sma")?.isIndicatorVisible()
     ).toBe(false);
@@ -489,6 +508,7 @@ describe("ChartSyncPlugin", () => {
 
     source.chart.removeIndicator(fast);
 
+    expect(targetEvents.at(-1)).toBe("remove:fast-sma");
     expect(target.chart.getIndicatorById("fast-sma")).toBeUndefined();
     expect(target.chart.getIndicatorById("slow-sma")).toBeDefined();
   });
@@ -513,7 +533,7 @@ describe("ChartSyncPlugin", () => {
       {
         group,
         payload: { value: "compare-series:MSFT" },
-        sourceChart: source.chart
+        sourcePlugin: source.syncPlugin
       }
     ]);
     expect(otherProbe.received).toEqual([]);
@@ -524,19 +544,19 @@ describe("ChartSyncPlugin", () => {
       {
         group,
         payload: { value: "ack" },
-        sourceChart: target.chart
+        sourcePlugin: target.syncPlugin
       }
     ]);
     expect(targetProbe.received).toEqual([
       {
         group,
         payload: { value: "compare-series:MSFT" },
-        sourceChart: source.chart
+        sourcePlugin: source.syncPlugin
       },
       {
         group,
         payload: { value: "ack" },
-        sourceChart: target.chart
+        sourcePlugin: target.syncPlugin
       }
     ]);
     expect(otherProbe.received).toEqual([]);

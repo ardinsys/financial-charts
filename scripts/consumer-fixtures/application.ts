@@ -36,6 +36,18 @@ chart.getDrawingSize();
 chart.getFullSize();
 // @ts-expect-error Scale internals are not application APIs.
 chart.getVolumeScale();
+// @ts-expect-error Theme data is part of the options snapshot.
+chart.getTheme();
+// @ts-expect-error Formatter access is part of the options snapshot.
+chart.getFormatter();
+// @ts-expect-error Resolved locale values are an indicator capability.
+chart.getLocaleValues();
+// @ts-expect-error Price scales are engine internals.
+chart.getPriceScale();
+// @ts-expect-error Time anchoring belongs to controllers and panes.
+chart.getTimeAnchorAlignment();
+// @ts-expect-error Axis dimensions are extension rendering data.
+chart.getYLabelWidth();
 
 unsubscribe();
 chart.clearData();

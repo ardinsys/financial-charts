@@ -70,7 +70,7 @@ describe("MovingAverageIndicator", () => {
     await waitForRedraw();
 
     expect(chart.getOptions().timeZone).toBe("UTC");
-    expect(chart.getFormatter().getTimeZone?.()).toBe("UTC");
+    expect(chart.getOptions().formatter.getTimeZone?.()).toBe("UTC");
     expect(
       indicator.getLabelContainer().querySelector("[data-id=extra]")
         ?.textContent,
@@ -104,8 +104,10 @@ describe("MovingAverageIndicator", () => {
 
     expect(chart.getOptions().locale).toBe("hu-HU");
     expect(chart.getOptions().timeZone).toBe("Europe/Budapest");
-    expect(chart.getFormatter().getLocale()).toBe("hu-HU");
-    expect(chart.getFormatter().getTimeZone?.()).toBe("Europe/Budapest");
+    expect(chart.getOptions().formatter.getLocale()).toBe("hu-HU");
+    expect(chart.getOptions().formatter.getTimeZone?.()).toBe(
+      "Europe/Budapest"
+    );
     expect(
       indicator.getLabelContainer().querySelector("[data-id=extra]")
         ?.textContent,
@@ -133,14 +135,16 @@ describe("MovingAverageIndicator", () => {
 
     chart.updateLocalization({ formatter });
 
-    expect(chart.getFormatter()).toBe(formatter);
+    expect(chart.getOptions().formatter).toBe(formatter);
     expect(chart.getOptions().locale).toBe("de-DE");
     expect(chart.getOptions().timeZone).toBe("Europe/Berlin");
-    expect(chart.getFormatter().getLocale()).toBe("de-DE");
+    expect(chart.getOptions().formatter.getLocale()).toBe("de-DE");
 
     chart.updateLocalization({ timeZone: "Europe/Budapest" });
 
-    expect(chart.getFormatter().getTimeZone?.()).toBe("Europe/Budapest");
+    expect(chart.getOptions().formatter.getTimeZone?.()).toBe(
+      "Europe/Budapest"
+    );
   });
 
   it("uses its configured theme color for the line stroke", async () => {

@@ -193,7 +193,7 @@ describe("FinancialChart test harness", () => {
     expect(() => {
       (initial.theme as { backgroundColor: string }).backgroundColor = "red";
     }).toThrow(TypeError);
-    expect(chart.getTheme().backgroundColor).not.toBe("red");
+    expect(chart.getOptions().theme.backgroundColor).not.toBe("red");
 
     chart.setVolumeDraw(true);
     expect(chart.getOptions()).not.toBe(initial);

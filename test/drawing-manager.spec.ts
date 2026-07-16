@@ -523,7 +523,7 @@ describe("DrawingManager", () => {
     const [projectedAnchor] = drawing.projectForTest(drawingContext(chart));
     const canvas = chart.getContext("drawings").canvas;
 
-    expect(chart.getTimeAnchorAlignment()).toBe("edge");
+    expect(chart.getMainPane().getTimeAnchorAlignment()).toBe("edge");
     expect(projectedAnchor.x).toBeCloseTo(
       chart.getTimeScale().projectIndex(anchor.index, {
         canvas,

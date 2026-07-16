@@ -6,10 +6,9 @@ import {
   restoreIndicator,
   type Indicator,
   type IndicatorResolver,
-  type IndicatorState
+  type IndicatorState,
 } from "../indicators/indicator";
 import type { ChartCrosshairChangeEvent } from "../chart/event-emitter";
-import type { FinancialChart } from "../chart/financial-chart";
 import { cloneJSONStateValue } from "../utils/json-state";
 
 export type ChartSyncIndicatorSnapshot = IndicatorState;
@@ -21,8 +20,8 @@ export interface ChartSyncCrosshairSnapshot {
 }
 
 export interface ChartSyncMessageSource {
-  chart: FinancialChart;
   group: string;
+  plugin: ChartSyncPlugin;
 }
 
 export interface ChartSyncMessage<TPayload = unknown> {
@@ -32,7 +31,7 @@ export interface ChartSyncMessage<TPayload = unknown> {
 }
 
 export type ChartSyncMessageHandler<TPayload = unknown> = (
-  message: ChartSyncMessage<TPayload>
+  message: ChartSyncMessage<TPayload>,
 ) => void;
 
 export interface ChartSyncPostMessageOptions {
@@ -71,7 +70,7 @@ const defaultOptions = {
   indicators: true,
   initialSync: true,
   messages: true,
-  visibleRange: true
+  visibleRange: true,
 } satisfies Required<
   Pick<
     ChartSyncPluginOptions,
@@ -160,7 +159,7 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   onMessage<TPayload = unknown>(
     channel: string,
-    handler: ChartSyncMessageHandler<TPayload>
+    handler: ChartSyncMessageHandler<TPayload>,
   ) {
     const normalizedChannel = this.normalizeMessageChannel(channel);
     const handlers =
@@ -181,7 +180,7 @@ export class ChartSyncPlugin implements ChartPlugin {
   postMessage<TPayload = unknown>(
     channel: string,
     payload: TPayload,
-    options: ChartSyncPostMessageOptions = {}
+    options: ChartSyncPostMessageOptions = {},
   ) {
     if (!this.isEnabled("messages")) return;
     if (this.applying || this.deliveringMessage) return;
@@ -211,7 +210,7 @@ export class ChartSyncPlugin implements ChartPlugin {
           if (this.applying) return;
           this.storeCrosshair(undefined);
           this.broadcast((peer) => peer.applyCrosshair(undefined));
-        })
+        }),
       );
     }
 
@@ -236,7 +235,7 @@ export class ChartSyncPlugin implements ChartPlugin {
           if (this.applying) return;
           this.storeDrawingState();
           this.broadcast((peer) => peer.applyDrawingSelection(id));
-        })
+        }),
       );
     }
 
@@ -262,7 +261,7 @@ export class ChartSyncPlugin implements ChartPlugin {
           this.storeIndicatorState();
           const instanceId = indicator.getInstanceId();
           this.broadcast((peer) => peer.applyIndicatorRemove(instanceId));
-        })
+        }),
       );
     }
 
@@ -274,7 +273,7 @@ export class ChartSyncPlugin implements ChartPlugin {
       chartSyncGroups.get(this.group) ??
       ({
         members: new Set<ChartSyncPlugin>(),
-        state: {}
+        state: {},
       } satisfies ChartSyncGroup);
     group.members.add(this);
     chartSyncGroups.set(this.group, group);
@@ -282,7 +281,7 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   private getPeers() {
     return [...(chartSyncGroups.get(this.group)?.members ?? [])].filter(
-      (plugin) => plugin !== this && plugin.ctx
+      (plugin) => plugin !== this && plugin.ctx,
     );
   }
 
@@ -303,7 +302,7 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   private createMessage<TPayload>(
     channel: string,
-    payload: TPayload
+    payload: TPayload,
   ): ChartSyncMessage<TPayload> | undefined {
     if (!this.ctx) return undefined;
 
@@ -311,9 +310,9 @@ export class ChartSyncPlugin implements ChartPlugin {
       channel: this.normalizeMessageChannel(channel),
       payload,
       source: {
-        chart: this.ctx.chart,
-        group: this.group
-      }
+        group: this.group,
+        plugin: this,
+      },
     };
   }
 
@@ -348,7 +347,7 @@ export class ChartSyncPlugin implements ChartPlugin {
       chartSyncGroups.get(this.group) ??
       ({
         members: new Set<ChartSyncPlugin>(),
-        state: {}
+        state: {},
       } satisfies ChartSyncGroup);
     chartSyncGroups.set(this.group, group);
     return group;
@@ -365,7 +364,7 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   private storeCurrentState() {
-    if (!this.ctx || this.ctx.chart.getData().length === 0) return;
+    if (!this.ctx || this.ctx.getData().length === 0) return;
 
     if (this.isEnabled("visibleRange")) {
       const range = this.createVisibleRangeSnapshot();
@@ -378,9 +377,9 @@ export class ChartSyncPlugin implements ChartPlugin {
       this.storeIndicatorState();
     }
     if (this.isEnabled("crosshair")) {
-      const state = this.ctx.chart.getCrosshairState();
+      const state = this.ctx.getCrosshairState();
       this.storeCrosshair(
-        state ? this.createCrosshairSnapshot(state) : undefined
+        state ? this.createCrosshairSnapshot(state) : undefined,
       );
     }
   }
@@ -390,7 +389,7 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   private createVisibleRangeSnapshot(): TimeRange | undefined {
-    if (!this.ctx || this.ctx.chart.getData().length === 0) return undefined;
+    if (!this.ctx || this.ctx.getData().length === 0) return undefined;
 
     return { ...this.ctx.getVisibleTimeWindow() };
   }
@@ -404,7 +403,7 @@ export class ChartSyncPlugin implements ChartPlugin {
     if (state) {
       this.getGroup().state.drawings = cloneSyncJSONValue(
         state,
-        "Chart sync drawing state"
+        "Chart sync drawing state",
       );
     }
   }
@@ -415,7 +414,7 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   private applyInitialState() {
     if (!this.isInitialSyncEnabled()) return;
-    if (!this.ctx || this.ctx.chart.getData().length === 0) return;
+    if (!this.ctx || this.ctx.getData().length === 0) return;
 
     if (this.initialSyncApplied) return;
 
@@ -472,7 +471,7 @@ export class ChartSyncPlugin implements ChartPlugin {
       if (drawingState) {
         state.drawings = cloneSyncJSONValue(
           drawingState,
-          "Chart sync drawing state"
+          "Chart sync drawing state",
         );
       }
     }
@@ -480,7 +479,7 @@ export class ChartSyncPlugin implements ChartPlugin {
       state.indicators = this.createIndicatorState();
     }
     if (this.ctx && this.isEnabled("crosshair")) {
-      const crosshairState = this.ctx.chart.getCrosshairState();
+      const crosshairState = this.ctx.getCrosshairState();
       state.crosshair = crosshairState
         ? this.createCrosshairSnapshot(crosshairState)
         : undefined;
@@ -490,22 +489,22 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   private applyVisibleRange(range: TimeRange) {
-    this.ctx?.chart.setVisibleTimeWindow(range);
+    this.ctx?.setVisibleTimeWindow(range);
   }
 
   private createCrosshairSnapshot(
-    event: ChartCrosshairChangeEvent
+    event: ChartCrosshairChangeEvent,
   ): ChartSyncCrosshairSnapshot {
     const region = event.pane.getRegion();
     const relativeY = event.pane.getRelativeY(event.y);
     const price = event.pane.getPriceScale().unproject(relativeY, {
-      canvas: { width: region.width, height: region.height }
+      canvas: { width: region.width, height: region.height },
     });
 
     return {
       paneId: event.pane.getId(),
       price,
-      time: event.time
+      time: event.time,
     };
   }
 
@@ -527,7 +526,7 @@ export class ChartSyncPlugin implements ChartPlugin {
   private applyDrawing(json: DrawingJSON) {
     this.getDrawingManager()?.upsertDrawing(json, {
       emit: true,
-      emitSelection: true
+      emitSelection: true,
     });
   }
 
@@ -550,25 +549,25 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   private createIndicatorState() {
     return (
-      this.ctx?.chart
-        .getAllIndicators()
+      this.ctx
+        ?.getIndicators()
         .map((indicator) => this.createIndicatorSnapshot(indicator)) ?? []
     );
   }
 
   private createIndicatorSnapshot(
-    indicator: Indicator<any, any>
+    indicator: Indicator<any, any>,
   ): ChartSyncIndicatorSnapshot {
     return indicator.toJSON();
   }
 
   private applyIndicatorState(snapshots: ChartSyncIndicatorSnapshot[]) {
     const instanceIds = new Set(
-      snapshots.map((snapshot) => snapshot.instanceId)
+      snapshots.map((snapshot) => snapshot.instanceId),
     );
-    for (const indicator of this.ctx?.chart.getAllIndicators() ?? []) {
+    for (const indicator of this.ctx?.getIndicators() ?? []) {
       if (!instanceIds.has(indicator.getInstanceId())) {
-        this.ctx?.chart.removeIndicator(indicator, { emit: false });
+        this.ctx?.removeIndicator(indicator);
       }
     }
 
@@ -582,7 +581,7 @@ export class ChartSyncPlugin implements ChartPlugin {
     const resolver = this.options.indicatorResolver;
     if (!resolver) {
       throw new Error(
-        "ChartSyncPlugin requires indicatorResolver to synchronize indicators."
+        "ChartSyncPlugin requires indicatorResolver to synchronize indicators.",
       );
     }
 
@@ -593,43 +592,44 @@ export class ChartSyncPlugin implements ChartPlugin {
       indicator &&
       indicator.getIndicatorType() !== restored.getIndicatorType()
     ) {
-      this.ctx.chart.removeIndicator(indicator, { emit: false });
+      this.ctx.removeIndicator(indicator);
       indicator = undefined;
     }
 
     if (!indicator) {
-      this.ctx.chart.addIndicator(restored, { emit: false });
+      this.ctx.addIndicator(restored);
       return;
     }
 
-    indicator.copyFrom(restored, { emit: false });
+    indicator.copyFrom(restored);
   }
 
   private applyIndicatorRemove(instanceId: string) {
     const indicator = this.findIndicator(instanceId);
     if (indicator) {
-      this.ctx?.chart.removeIndicator(indicator, { emit: false });
+      this.ctx?.removeIndicator(indicator);
     }
   }
 
   private findIndicator(instanceId: string) {
-    return this.ctx?.chart.getIndicatorById(instanceId);
+    return this.ctx?.getIndicatorById(instanceId);
   }
 
   private getDrawingManager() {
     return (
       this.options.drawingManager ??
-      this.ctx?.chart
-        .getPlugins()
+      this.ctx
+        ?.getPlugins()
         .find(
-          (plugin): plugin is DrawingManager => plugin instanceof DrawingManager
+          (plugin): plugin is DrawingManager =>
+            plugin instanceof DrawingManager,
         ) ??
       undefined
     );
   }
 
   private isEnabled(
-    key: "crosshair" | "drawings" | "indicators" | "messages" | "visibleRange"
+    key: "crosshair" | "drawings" | "indicators" | "messages" | "visibleRange",
   ) {
     return this.options[key] ?? defaultOptions[key];
   }
@@ -652,7 +652,7 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
   if (state.drawings) {
     clone.drawings = cloneSyncJSONValue(
       state.drawings,
-      "Chart sync drawing state"
+      "Chart sync drawing state",
     );
   }
   if (state.indicators) {
@@ -666,7 +666,7 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
 }
 
 function cloneIndicatorSnapshots(
-  snapshots: ChartSyncIndicatorSnapshot[]
+  snapshots: ChartSyncIndicatorSnapshot[],
 ): ChartSyncIndicatorSnapshot[] {
   return cloneSyncJSONValue(snapshots, "Chart sync indicator state");
 }
@@ -676,5 +676,5 @@ function cloneSyncJSONValue<T>(value: T, path: string): T {
 }
 
 Object.defineProperty(ChartSyncPlugin, "getGroupSizeForTest", {
-  value: (group: string) => chartSyncGroups.get(group)?.members.size ?? 0
+  value: (group: string) => chartSyncGroups.get(group)?.members.size ?? 0,
 });

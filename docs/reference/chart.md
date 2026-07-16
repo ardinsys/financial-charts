@@ -265,7 +265,6 @@ entry.
 | `setVisibleTimeWindow(range)`                                       | Restores an interpolated fractional window, primarily for pan/zoom synchronization.          |
 | `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
 | `getOptions()`                                                      | Returns an immutable public snapshot of the resolved chart configuration.                  |
-| `getTheme()`                                                        | Returns the active `ChartTheme`.                                                            |
 | `getPanes()` / `getMainPane()`                                      | Returns a readonly pane snapshot or the main price pane.                                    |
 | `getPaneHeights()`                                                  | Returns current logical pixel heights keyed by pane id.                                     |
 | `getPlugins()`                                                      | Returns a readonly snapshot of attached plugins.                                            |
@@ -276,10 +275,10 @@ entry.
 
 `getOptions()` returns the complete resolved configuration. Its time range,
 theme, locale values, and controller collection are immutable owned values and
-cannot mutate the chart. Formatter and DOM adapter values are service references;
-the formatter is also available through `getFormatter()`, while extensions
-receive the adapter through `ChartContext`. The same snapshot object is returned
-until an effective option or controller-registration change replaces it.
+cannot mutate the chart. Formatter and DOM adapter values are service
+references, and extensions receive the adapter through `ChartContext`. The same
+snapshot object is returned until an effective option or
+controller-registration change replaces it.
 
 View setters enforce a minimum one-bar span and clamp to the chart's current
 index bounds. They synchronously update the visible price scale, notify
@@ -443,6 +442,10 @@ Controllers are registered per chart instance. The library ships with the follow
 - `SteplineController`
 - `HLCAreaController`
 
-Custom controllers can extend the base types to add renderers tailored to your application. Controllers receive access to the chart instance, canvas contexts, visible data, and active scales. Override `getTimeAnchorAlignment()` when drawings, crosshair, axis labels, and indicator helpers should snap to a different point inside each time slot than the default center.
+Custom controllers can extend the base types to add renderers tailored to your
+application. Controllers receive a focused drawing context with the canvas,
+visible data, and projection helpers. Override `getTimeAnchorAlignment()` when
+drawings, crosshair, axis labels, and indicator helpers should snap to a
+different point inside each time slot than the default center.
 Import controller base classes and their scale/render dependencies from
 `@ardinsys/financial-charts/engine`.

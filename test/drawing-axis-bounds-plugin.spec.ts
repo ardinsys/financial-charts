@@ -102,18 +102,12 @@ describe("DrawingAxisBoundsPlugin", () => {
     const getContext = vi.spyOn(chart, "getContext");
     const getData = vi.spyOn(chart, "getData");
     const getOptions = vi.spyOn(chart, "getOptions");
-    const getTheme = vi.spyOn(chart, "getTheme");
-    const getFormatter = vi.spyOn(chart, "getFormatter");
-    const getYLabelWidth = vi.spyOn(chart, "getYLabelWidth");
 
     chart.emit("drawing-select", { drawing });
 
     expect(getContext).not.toHaveBeenCalled();
     expect(getData).not.toHaveBeenCalled();
     expect(getOptions).not.toHaveBeenCalled();
-    expect(getTheme).not.toHaveBeenCalled();
-    expect(getFormatter).not.toHaveBeenCalled();
-    expect(getYLabelWidth).not.toHaveBeenCalled();
     getContext.mockRestore();
 
     const context = getAnnotationContext(container);

@@ -55,7 +55,10 @@ indicators can select from it without coupling a utility to the chart:
 ```ts
 import { paletteColor } from "@ardinsys/financial-charts/engine";
 
-const color = paletteColor(chart.getTheme().randomColors, seriesIndex);
+const color = paletteColor(
+  chart.getOptions().theme.randomColors,
+  seriesIndex
+);
 ```
 
 Apply themes on creation or at runtime:

@@ -281,10 +281,13 @@ describe("plugin lifecycle", () => {
     const onData = vi.fn();
     const onVisibleRangeChanged = vi.fn();
     const detach = vi.fn();
+    let removeSelf = () => {};
     const plugin: ChartPlugin = {
       key: "self-removing-probe",
-      attach: vi.fn(),
-      onOptionsChanged: () => chart.removePlugin(plugin),
+      attach: vi.fn((ctx) => {
+        removeSelf = ctx.remove;
+      }),
+      onOptionsChanged: () => removeSelf(),
       onData,
       onVisibleRangeChanged,
       detach
