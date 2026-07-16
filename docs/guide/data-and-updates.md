@@ -110,11 +110,12 @@ notify or redraw. All three setters are no-ops while the chart has no data.
 
 ## Reading mapped data
 
-`chart.getData()` returns a stable frozen snapshot of the dataset **after** it
-has been mapped to the active `stepSize`. Repeated reads return the same array
-until mapped data changes. Stored points are also frozen and are not references
-to mutable caller-owned objects. Use the snapshot to hydrate UI lists, run
-calculations, or persist mapped data without reprocessing the raw feed.
+`chart.getData()` returns a stable borrowed readonly snapshot of the dataset
+**after** it has been mapped to the active `stepSize`. Repeated reads return the
+same array until mapped data changes. Stored points are owned by the chart and
+are not references to mutable caller-owned objects. Use the snapshot to hydrate
+UI lists, run calculations, or persist mapped data without reprocessing the raw
+feed.
 
 ## Handling late or out-of-order data
 

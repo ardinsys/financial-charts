@@ -64,7 +64,6 @@ describe("DataStore", () => {
 
     expect(store.times()).toEqual([100, 500, 900, 1_300]);
     expect(store.times()).toBe(store.times());
-    expect(Object.isFrozen(store.times())).toBe(true);
     expect(store.indexRangeForTimeRange(500, 900)).toEqual({ from: 1, to: 3 });
     expect(store.visibleIndexSlice(0.5, 2.1)).toEqual([
       { time: 100, close: 10 },
@@ -73,22 +72,24 @@ describe("DataStore", () => {
     ]);
   });
 
-  it("reuses immutable snapshots until stored data changes", () => {
+  it("reuses stable snapshots until stored data changes", () => {
     const store = new DataStore([{ time: 60, close: 10 }]);
     const initial = store.snapshot();
 
     expect(store.snapshot()).toBe(initial);
-    expect(Object.isFrozen(initial)).toBe(true);
 
     store.append({ time: 120, close: 11 });
     const afterAppend = store.snapshot();
     expect(afterAppend).not.toBe(initial);
     expect(store.snapshot()).toBe(afterAppend);
-    expect(Object.isFrozen(afterAppend)).toBe(true);
 
     store.merge({ time: 125, close: 12 }, 60);
     const afterReplacement = store.snapshot();
     expect(afterReplacement).not.toBe(afterAppend);
+    expect(afterAppend).toEqual([
+      { time: 60, close: 10 },
+      { time: 120, close: 11 }
+    ]);
     expect(afterReplacement).toEqual([
       { time: 60, close: 10 },
       { time: 120, close: 12 }
@@ -155,6 +156,19 @@ describe("DataStore", () => {
     ]);
   });
 
+  it("reuses owned points when mapping does not change them", () => {
+    const source = new DataStore([{ time: 60, close: 10 }]);
+    const mapped = source.createMappedStore(60);
+
+    expect(mapped.get(0)).toBe(source.get(0));
+
+    const rebucketedSource = new DataStore([{ time: 65, close: 10 }]);
+    const rebucketed = rebucketedSource.createMappedStore(60);
+
+    expect(rebucketed.get(0)).not.toBe(rebucketedSource.get(0));
+    expect(rebucketed.get(0)).toEqual({ time: 60, close: 10 });
+  });
+
   it("sorts full datasets and merges partial or zero-valued buckets", () => {
     const input = [
       { time: 119, high: null, close: 0, volume: null },
@@ -181,14 +195,13 @@ describe("DataStore", () => {
     ).toEqual([{ time: 60, open: 0, close: 0 }]);
   });
 
-  it("copies and freezes stored points", () => {
+  it("owns stored points independently of caller input", () => {
     const point = { time: 65, close: 0 };
     const result = DataStore.merge([point], 60);
 
     point.close = 10;
 
     expect(result).toEqual([{ time: 60, close: 0 }]);
-    expect(Object.isFrozen(result[0])).toBe(true);
   });
 
   it("rejects non-finite values and invalid bucket sizes", () => {

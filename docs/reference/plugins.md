@@ -48,7 +48,7 @@ chart.addPlugin(new WatermarkPlugin());
 | `beforeDraw()`                 | Optional draw hook before the render pipeline starts.                                                                              |
 | `draw()`                       | Optional draw hook on the plugin draw pass.                                                                                        |
 | `afterDraw()`                  | Optional draw hook after the render pipeline finishes.                                                                             |
-| `onData(data)`                 | Current frozen data after attach and whenever `setData()`, `updateData()`, clearing, or `stepSize` remapping changes mapped data.  |
+| `onData(data)`                 | Current borrowed readonly data after attach and whenever `setData()`, `updateData()`, clearing, or `stepSize` remapping changes mapped data. |
 | `onVisibleRangeChanged(range)` | Current whole-bar range after attach and once after each effective programmatic, pan, zoom, resize, or core-options view change.  |
 | `onOptionsChanged(event)`      | Optional notification containing previous/current resolved options and changed keys. Empty `changedKeys` means initial delivery.  |
 | `onPointer(event)`             | Optional notification for pointer down/move/up events mapped to data and pane space. Return `true` to consume the pointer gesture. |

@@ -25,14 +25,14 @@ export class DataStore {
 
   snapshot(): readonly ChartData[] {
     if (!this.dataSnapshot) {
-      this.dataSnapshot = Object.freeze([...this.data]);
+      this.dataSnapshot = [...this.data];
     }
     return this.dataSnapshot;
   }
 
   times(): readonly number[] {
     if (!this.timeValues) {
-      this.timeValues = Object.freeze(this.data.map((point) => point.time));
+      this.timeValues = this.data.map((point) => point.time);
     }
     return this.timeValues;
   }
@@ -58,16 +58,24 @@ export class DataStore {
   }
 
   append(point: ChartData): number {
-    const storedPoint = DataStore.copyPoint(point);
-    const index = this.upperBound(storedPoint.time);
-    this.data.splice(index, 0, storedPoint);
+    return this.insertStored(DataStore.copyPoint(point));
+  }
+
+  private insertStored(point: ChartData): number {
+    const index = this.upperBound(point.time);
+    this.data.splice(index, 0, point);
     this.dataSnapshot = undefined;
     this.timeValues = undefined;
     return index;
   }
 
   merge(point: ChartData, stepSize: number): boolean {
-    const bucketedPoint = DataStore.bucketPoint(point, stepSize);
+    return this.mergeStored(DataStore.copyPoint(point), stepSize);
+  }
+
+  /** Merges a validated point already owned by another data store. */
+  mergeStored(point: ChartData, stepSize: number): boolean {
+    const bucketedPoint = DataStore.bucketStoredPoint(point, stepSize);
     const existingIndex = this.indexOfTime(bucketedPoint.time);
 
     if (existingIndex !== -1) {
@@ -79,8 +87,16 @@ export class DataStore {
       return false;
     }
 
-    this.append(bucketedPoint);
+    this.insertStored(bucketedPoint);
     return true;
+  }
+
+  createMappedStore(stepSize: number): DataStore {
+    const store = new DataStore();
+    for (const point of this.data) {
+      store.mergeStored(point, stepSize);
+    }
+    return store;
   }
 
   visibleSlice(from: number, to: number): ChartData[] {
@@ -171,12 +187,7 @@ export class DataStore {
     data: readonly ChartData[],
     stepSize: number
   ): readonly ChartData[] {
-    const store = new DataStore();
-    const sortedData = [...data].sort((left, right) => left.time - right.time);
-    for (const point of sortedData) {
-      store.merge(point, stepSize);
-    }
-    return store.snapshot();
+    return new DataStore(data).createMappedStore(stepSize).snapshot();
   }
 
   static bucketTime(time: number, stepSize: number): number {
@@ -224,11 +235,13 @@ export class DataStore {
     return low;
   }
 
-  private static bucketPoint(point: ChartData, stepSize: number): ChartData {
-    const storedPoint = DataStore.copyPoint(point);
-    const time = DataStore.bucketTime(storedPoint.time, stepSize);
-    if (time === storedPoint.time) return storedPoint;
-    return Object.freeze({ ...storedPoint, time });
+  private static bucketStoredPoint(
+    point: ChartData,
+    stepSize: number
+  ): ChartData {
+    const time = DataStore.bucketTime(point.time, stepSize);
+    if (time === point.time) return point;
+    return { ...point, time };
   }
 
   private static mergePoints(current: ChartData, next: ChartData): ChartData {
@@ -270,7 +283,7 @@ export class DataStore {
       next.volume
     );
 
-    return Object.freeze(result);
+    return result;
   }
 
   private static copyPoint(point: ChartData): ChartData {
@@ -287,7 +300,7 @@ export class DataStore {
       }
     }
 
-    return Object.isFrozen(point) ? point : Object.freeze({ ...point });
+    return { ...point };
   }
 
   private static assignMergedValue(

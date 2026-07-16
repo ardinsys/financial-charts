@@ -21,8 +21,6 @@ describe("ChartModel data ownership", () => {
 
     expect(snapshot).toEqual([{ time: 60_000, close: 1 }]);
     expect(model.getData()).toBe(snapshot);
-    expect(Object.isFrozen(snapshot)).toBe(true);
-    expect(Object.isFrozen(snapshot[0])).toBe(true);
   });
 
   it("remaps from retained source timestamps when the step size changes", () => {
@@ -186,7 +184,6 @@ describe("ChartModel data ownership", () => {
 
     expect(model.getVisibleScale()).toBe(visibleScale);
     expect(model.getVisibleDataPoints()).toBe(visibleData);
-    expect(Object.isFrozen(visibleData)).toBe(true);
     expect(visibleData).toEqual(model.getData());
     expect(visibleScale.getYMin()).toBeLessThan(10);
     expect(visibleScale.getYMax()).toBeGreaterThan(20);

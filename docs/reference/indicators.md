@@ -126,9 +126,9 @@ The default adapter renders and wires:
   `onOptionsChanged(event)`, `onData(data)`, then
   `onVisibleRangeChanged(range)`. The initial options event has identical
   `previous`/`current` snapshots and an empty `changedKeys` array.
-- `onData(data)` receives frozen mapped chart data. Cache derived indicator data
-  here when recomputation should happen once per chart data update rather than
-  once per render.
+- `onData(data)` receives borrowed readonly mapped chart data. Cache derived
+  indicator data here when recomputation should happen once per chart data
+  update rather than once per render.
 - `onPointer(event)` receives pointer events in visual stacking order; return `true` to stop delivery to lower extensions and consume the gesture.
 - `onDrawingFinished(event)` receives completed drawing create and move operations.
 - `draw()` runs on each indicator render pass. Call `getDrawingContext()` to

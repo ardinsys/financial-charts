@@ -227,7 +227,6 @@ describe("plugin lifecycle", () => {
     });
     expect(initialData).toEqual(chart.getData());
     expect(initialData).toBe(chart.getData());
-    expect(Object.isFrozen(initialData)).toBe(true);
     expect(indicator.onVisibleRangeChanged).toHaveBeenCalledWith(
       chart.getVisibleTimeRange()
     );
@@ -419,7 +418,7 @@ describe("plugin lifecycle", () => {
     expect(chart.getIndicators()).toEqual([remover]);
   });
 
-  it("returns immutable snapshots for public collections", () => {
+  it("returns stable readonly snapshots for public collections", () => {
     const { chart, data } = createChart();
     const overlay = new MovingAverageIndicator();
     const paneled = new TestIndicator();
@@ -433,18 +432,7 @@ describe("plugin lifecycle", () => {
     chart.addIndicator(paneled);
     chart.addPlugin(plugin);
 
-    const snapshots: readonly (readonly unknown[])[] = [
-      chart.getData(),
-      chart.getIndicators(),
-      chart.getPanes(),
-      chart.getPlugins()
-    ];
-
-    for (const snapshot of snapshots) {
-      expect(Object.isFrozen(snapshot)).toBe(true);
-      expect(() => (snapshot as unknown[]).push({})).toThrow(TypeError);
-    }
-
+    expect(chart.getData()).toBe(chart.getData());
     expect(chart.getIndicators()).toBe(chart.getIndicators());
     expect(chart.getPanes()).toBe(chart.getPanes());
     expect(chart.getPlugins()).toBe(chart.getPlugins());

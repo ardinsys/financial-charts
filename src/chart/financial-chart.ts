@@ -193,7 +193,7 @@ export class FinancialChart {
     this.events.emit("state-restored", { state: restoredState });
   }
 
-  /** Returns the stable frozen snapshot for the current mapped dataset. */
+  /** Returns the stable readonly snapshot for the current mapped dataset. */
   getData(): readonly ChartData[] {
     return this.model.getData();
   }

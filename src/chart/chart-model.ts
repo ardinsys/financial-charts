@@ -37,7 +37,7 @@ export class ChartModel {
   private barAlignment: BarAlignment = "center";
   private dataScale?: DataScaleModel;
   private visibleScale?: DataScaleModel;
-  private visibleDataPoints: readonly ChartData[] = Object.freeze([]);
+  private visibleDataPoints: readonly ChartData[] = [];
 
   get length(): number {
     return this.mappedData.length;
@@ -57,17 +57,13 @@ export class ChartModel {
 
   replaceData(data: readonly ChartData[], stepSize: number): void {
     const originalData = new DataStore(data);
-    const mappedData = new DataStore(
-      DataStore.merge(originalData.snapshot(), stepSize)
-    );
+    const mappedData = originalData.createMappedStore(stepSize);
     this.originalData = originalData;
     this.mappedData = mappedData;
   }
 
   remapData(stepSize: number): void {
-    this.mappedData = new DataStore(
-      DataStore.merge(this.originalData.snapshot(), stepSize)
-    );
+    this.mappedData = this.originalData.createMappedStore(stepSize);
   }
 
   appendData(data: ChartData, stepSize: number): ChartData {
@@ -81,7 +77,7 @@ export class ChartModel {
     const originalIndex = this.originalData.append(data);
     const storedOriginal = this.originalData.get(originalIndex)!;
     const bucketTime = DataStore.bucketTime(storedOriginal.time, stepSize);
-    this.mappedData.merge(storedOriginal, stepSize);
+    this.mappedData.mergeStored(storedOriginal, stepSize);
     return this.mappedData.get(this.mappedData.indexOfTime(bucketTime))!;
   }
 
@@ -130,7 +126,7 @@ export class ChartModel {
       this.timeRange,
       this.getTimeScaleOptions()
     );
-    this.visibleDataPoints = Object.freeze([]);
+    this.visibleDataPoints = [];
     this.syncTimeScales();
   }
 
@@ -147,7 +143,7 @@ export class ChartModel {
       this.timeRange,
       this.getTimeScaleOptions()
     );
-    this.visibleDataPoints = Object.freeze(visibleDataPoints);
+    this.visibleDataPoints = visibleDataPoints;
     return this.visibleDataPoints;
   }
 

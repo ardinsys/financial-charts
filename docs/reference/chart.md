@@ -163,11 +163,11 @@ type LocaleValues = {
 | `setData(data)`        | Copies, sorts, buckets, and replaces the full dataset. Passing `[]` clears all data-dependent state immediately.                                       |
 | `updateData(point)`    | Streams a monotonic point: appends or merges it into the newest `stepSize` bucket while preserving zoom/pan where possible.                            |
 | `clearData()`          | Convenience equivalent of `setData([])`.                                                                                                                |
-| `getData()`            | Returns a frozen readonly snapshot of the dataset after it has been mapped to the active `stepSize`.                                                    |
+| `getData()`            | Returns a stable borrowed readonly snapshot of the dataset after it has been mapped to the active `stepSize`.                                           |
 
-Repeated `getData()` calls return the same frozen snapshot until mapped data
-changes. Stored points are frozen copies, so later mutation of the input array
-or mutable input objects cannot alter chart state.
+Repeated `getData()` calls return the same readonly snapshot until mapped data
+changes. The chart owns retained input points, so later mutation of the input
+array or its objects cannot alter chart state.
 
 `updateData` behavior:
 

@@ -151,8 +151,6 @@ describe("chart data contracts", () => {
     input.push({ time: 120_000, close: 3 });
 
     expect(first).toEqual([{ time: 60_000, close: 1 }]);
-    expect(Object.isFrozen(first)).toBe(true);
-    expect(Object.isFrozen(first[0])).toBe(true);
     expect(chart.getData()).toBe(first);
   });
 
