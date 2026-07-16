@@ -54,7 +54,7 @@ export function Chart({ data, locale }: Props) {
   }, [data]);
 
   useEffect(() => {
-    chartRef.current?.updateLocalization({
+    chartRef.current?.updateOptions({
       locale,
       localeValues
     });
@@ -71,6 +71,6 @@ export function Chart({ data, locale }: Props) {
   inferring streaming semantics from array differences.
 - Memoize expensive data transforms so referentially identical snapshots do not
   trigger redundant `setData()` calls.
-- Call `chart.updateTheme` or `chart.changeType` from event handlers as needed.
+- Call `chart.updateOptions({ theme })` or `chart.updateOptions({ type })` from event handlers as needed.
 - In SSR frameworks, render the container on the server but create the chart in
   a client-only effect.

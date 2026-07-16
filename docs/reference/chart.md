@@ -1,6 +1,9 @@
 # FinancialChart API
 
-`FinancialChart` is the main class exported by the library. It manages canvas creation, index-based scales, rendering, user input, indicators, plugins, drawings, and event emission.
+`FinancialChart` is the application-facing class exported by the library. It
+owns chart data, options, view commands, extension attachment, persistence,
+public event subscriptions, and disposal. Rendering and projection capabilities
+are exposed only through the focused authoring contexts described below.
 
 ## Package entry points
 
@@ -95,7 +98,7 @@ const chart = new FinancialChart(root, {
 
 #### Localization options
 
-- `locale` keeps the formatter and indicator UI in sync. `updateLocalization({ locale })` recomputes labels and rerenders the chart.
+- `locale` keeps the formatter and indicator UI in sync. `updateOptions({ locale })` recomputes labels and rerenders the chart.
 - `timeZone` controls date/time labels when the active formatter supports `setTimeZone()`. It is used by `DefaultFormatter`.
 - `localeValues` is merged with the internal `default` block (`Show/Hide/Settings/Remove` + OHLCV names). Supply only the locales you need; missing entries fall back to `default`.
 - `formatter` can extend `DefaultFormatter` to reuse axis formatting while customizing tooltip dates/prices.
@@ -103,7 +106,7 @@ const chart = new FinancialChart(root, {
 #### DOM chrome options
 
 - `domAdapter` controls the non-canvas UI seam. Use `DefaultDOMAdapter` plus the built-in `fci-*` classes for CSS restyling, or pass a custom `ChartDOMAdapter` to replace indicator labels/actions and pane dividers with app-owned DOM.
-- Canvas-rendered surfaces such as candles, axes, grid, crosshair labels, and volume remain theme-driven. Use `mergeThemes()` and `updateTheme()` for those.
+- Canvas-rendered surfaces such as candles, axes, grid, crosshair labels, and volume remain theme-driven. Use `mergeThemes()` and `updateOptions({ theme })` for those.
 - See [Design-system adapter](/guide/design-system-adapter) for the default class list and a custom adapter example.
 
 ## Data contracts
@@ -178,17 +181,12 @@ or mutable input objects cannot alter chart state.
 
 ### View and styling
 
-| Method                          | Description                                                                                       |
-| ------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `updateOptions(patch)`          | Updates any runtime chart options in one classified reset/remap/redraw cycle.                     |
-| `changeType(type)`              | Shorthand for `updateOptions({ type })`.                                                          |
-| `updateTheme(theme)`            | Shorthand for `updateOptions({ theme })`; theme patches are deeply merged.                        |
-| `setVolumeDraw(enabled)`        | Shorthand for `updateOptions({ volume: enabled })`.                                               |
-| `setPaneHeights(heights)`       | Applies logical pixel pane heights keyed by pane id or pane order. Values are min-height clamped. |
-| `updateLocalization(options)`   | Shorthand for updating locale, timezone, formatter, and/or localized UI strings.                  |
-| `updateLocale(locale, values?)` | Convenience shorthand for updating `locale` and `localeValues`.                                  |
-| `setCrosshair(options)`         | Sets the native crosshair to the nearest visible data point for a timestamp.                      |
-| `clearCrosshair()`              | Clears the native crosshair and resets pointer-aware indicator labels.                            |
+| Method                    | Description                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------- |
+| `updateOptions(patch)`    | Updates any runtime chart options in one classified reset/remap/redraw cycle.                     |
+| `setPaneHeights(heights)` | Applies logical pixel pane heights keyed by pane id or pane order. Values are min-height clamped. |
+| `setCrosshair(options)`   | Sets the native crosshair to the nearest visible data point for a timestamp.                      |
+| `clearCrosshair()`        | Clears the native crosshair and resets pointer-aware indicator labels.                            |
 
 ```ts
 chart.updateOptions({
@@ -257,23 +255,22 @@ entry.
 
 ### Query helpers
 
-| Method                                                              | Description                                                                                 |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `getVisibleLogicalRange()`                                          | Returns the precise fractional logical-index window.                                        |
-| `setVisibleIndexRange(range)`                                       | Sets, clamps, rescales, notifies, and redraws a fractional logical-index window.             |
-| `getVisibleTimeRange()`                                             | Returns the whole-bar window as an end-exclusive timestamp range.                            |
-| `setVisibleTimeRange(range)`                                        | Selects whole bars with timestamps in the end-exclusive range.                               |
-| `getVisibleTimeWindow()`                                            | Returns interpolated timestamps that preserve the fractional logical window.                 |
-| `setVisibleTimeWindow(range)`                                       | Restores an interpolated fractional window, primarily for pan/zoom synchronization.          |
-| `getTimeRange()`                                                    | Returns the configured base time range (before zoom/pan).                                   |
-| `getOptions()`                                                      | Returns an immutable public snapshot of the resolved chart configuration.                  |
-| `getPanes()` / `getMainPane()`                                      | Returns immutable pane descriptors with `id`, `height`, `kind`, and optional `indicatorInstanceId`. |
-| `getPaneHeights()`                                                  | Returns current logical pixel heights keyed by pane id.                                     |
-| `getPlugins()`                                                      | Returns a readonly snapshot of attached plugins.                                            |
-| `getIndicators()` / `getPaneledIndicators()` / `getAllIndicators()` | Returns readonly snapshots of overlay, paneled, or all indicators.                          |
-| `getIndicatorById(instanceId)`                                      | Returns the indicator with that unique instance ID, if attached.                            |
-| `getIndicatorsByType(typeId)`                                       | Returns a readonly snapshot of every indicator with the stable type ID.                     |
-| `getCrosshairState()`                                               | Returns the current crosshair state, or `undefined` when hidden.                            |
+| Method                                 | Description                                                                                             |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `getVisibleLogicalRange()`             | Returns the precise fractional logical-index window.                                                    |
+| `setVisibleIndexRange(range)`          | Sets, clamps, rescales, notifies, and redraws a fractional logical-index window.                         |
+| `getVisibleTimeRange()`                | Returns the whole-bar window as an end-exclusive timestamp range.                                        |
+| `setVisibleTimeRange(range)`           | Selects whole bars with timestamps in the end-exclusive range.                                           |
+| `getVisibleTimeWindow()`               | Returns interpolated timestamps that preserve the fractional logical window.                             |
+| `setVisibleTimeWindow(range)`          | Restores an interpolated fractional window, primarily for pan/zoom synchronization.                      |
+| `getTimeRange()`                       | Returns the configured base time range before zoom and pan.                                              |
+| `getOptions()`                         | Returns an immutable public snapshot of the resolved chart configuration.                                |
+| `getPanes()` / `getMainPane()`         | Returns immutable descriptors with `id`, `height`, `kind`, and optional `indicatorInstanceId`.          |
+| `getPlugins()`                         | Returns a readonly snapshot of attached plugins.                                                         |
+| `getIndicators()`                      | Returns every attached overlay and paneled indicator as one readonly snapshot.                           |
+| `getIndicatorById(instanceId)`         | Returns the indicator with that unique instance ID, if attached.                                         |
+| `getIndicatorsByType(typeId)`          | Returns a readonly snapshot of every indicator with the stable type ID.                                  |
+| `getCrosshairState()`                  | Returns the current crosshair state, or `undefined` when hidden.                                         |
 
 `getOptions()` returns the complete resolved configuration. Its time range,
 theme, locale values, and controller collection are immutable owned values and
@@ -402,10 +399,9 @@ host element belong to `ChartContext`; they are not application methods on
 
 ### Lifecycle
 
-| Method                             | Description                                                                                                                                                                                      |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `dispose()`                        | Idempotently aborts extension scopes, detaches indicators/plugins, clears listeners and observers, and removes chart-owned DOM. Call it before removing the host.                                |
-| `requestRedraw(parts, immediate?)` | Schedules a render pass for one or more of `"grid"`, `"axes"`, `"series"`, `"indicators"`, `"drawings"`, `"annotations"`, and `"crosshair"`. |
+| Method      | Description                                                                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dispose()` | Idempotently aborts extension scopes, detaches indicators/plugins, clears listeners and observers, and removes chart-owned DOM. Call it before removing the host. |
 
 `FinancialChart.on(event, handler)` subscribes and returns a disposer;
 `FinancialChart.off(event, handler)` removes a specific listener. Event

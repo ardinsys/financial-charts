@@ -21,7 +21,7 @@ reference pages.
 | `ChartOptions`, `ChartOptionsUpdate`, `ChartOptionsSnapshot`, `ChartOptionsChangeEvent`, `ChartOptionKey`, `ChartLocalizationOptions` | [Options](/reference/chart#chartoptions) |
 | `LocaleValues`, `LocaleValuesMap` | [i18n](/guide/i18n) |
 | `ControllerID`, `ControllerType`, `ControllerConstructor` | [Controllers](/reference/engine#custom-controllers) |
-| `ChartRedrawPart`, `ChartPaneSnapshot`, `PaneHeightsInput` | [Lifecycle and panes](/reference/chart#lifecycle) |
+| `ChartPaneSnapshot`, `PaneHeightsInput` | [View and panes](/reference/chart#view-and-styling) |
 | `ChartCrosshairOptions`, `ChartCrosshairState`, `ChartCrosshairChangeEvent` | [View and interactions](/guide/view-and-interactions) |
 | `IndicatorMutationOptions` | [Indicator management](/reference/chart#indicator-management) |
 
@@ -86,7 +86,8 @@ For a controller-curated bundle, import `FinancialChart` from
 ## Authoring entry points
 
 - `@ardinsys/financial-charts/extensions` exports plugin, indicator, drawing,
-  annotation, and DOM-adapter authoring contracts. See [Plugins](/reference/plugins),
+  annotation, DOM-adapter, `ChartCanvasLayer`, and `ChartRedrawPart` authoring
+  contracts. See [Plugins](/reference/plugins),
   [Indicators](/reference/indicators), [Drawings](/reference/drawings), and the
   [DOM adapter](/reference/dom-adapter).
 - `@ardinsys/financial-charts/engine` adds controllers, scales, panes, render

@@ -45,8 +45,10 @@ What to update:
 
 - Continue passing millisecond timestamps in `ChartData.time`.
 - Do not assume pixel distance equals elapsed wall-clock time.
-- Use `chart.getTimeScale().project(time, { canvas })` for a timestamp or
-  `projectIndex(index, { canvas })` when you already have an ordinal anchor.
+- Use projection helpers on `ChartControllerContext`,
+  `IndicatorDrawingContext`, or drawing render contexts. Plugins that need
+  lower-level projection can use panes from `ChartContext.getPanes()`.
+  Application code no longer reads chart scales directly.
 - Use `{ index, price }` for drawing anchors, not `{ time, price }`.
 
 ### Visible range and pan/zoom are range-model driven
@@ -69,12 +71,27 @@ What to update:
 - Avoid persisting old zoom/pan scalar values from v0.9; persist the data range,
   `getVisibleTimeRange()`, or `getVisibleLogicalRange()` depending on your UI.
 
+### Runtime options use one command
+
+The chart no longer carries convenience aliases for individual option groups:
+
+| Removed | Replacement |
+| --- | --- |
+| `changeType(type)` | `updateOptions({ type })` |
+| `updateTheme(theme)` | `updateOptions({ theme })` |
+| `setVolumeDraw(volume)` | `updateOptions({ volume })` |
+| `updateLocalization(options)` | `updateOptions(options)` |
+| `updateLocale(locale, localeValues)` | `updateOptions({ locale, localeValues })` |
+
+One patch validates and publishes related option changes as one transaction.
+
 ### Render invalidation uses named layers
 
-`requestRedraw()` now targets render layers:
+`ChartContext.requestRedraw()` targets render layers and is scoped to the
+owning plugin attachment:
 
 ```ts
-chart.requestRedraw([
+ctx.requestRedraw([
   "grid",
   "axes",
   "series",
@@ -224,7 +241,7 @@ const formatter = new DefaultFormatter({
 `Formatter` also supports seconds/sub-minute labels and `setTimeZone()` /
 `getTimeZone()` for runtime changes.
 `ChartOptions.timeZone` forwards the IANA timezone to compatible formatters, and
-`chart.updateLocalization({ locale, timeZone, formatter, localeValues })`
+`chart.updateOptions({ locale, timeZone, formatter, localeValues })`
 updates the full localization bundle in one redraw.
 
 ### Drawings are first-class plugins
@@ -398,19 +415,19 @@ indicator implementations remains a separate repository change.
 - Per-bar X-label generation was replaced by `TimeTickGenerator`.
 - The chart's old array scans were replaced with `DataStore` lookup helpers.
 
-### Public API renamed (`extent` → `scale`)
+### Extent authoring contracts renamed to scales
 
 The internal `Extent`/`DataExtent` rename to `Scale`/`DataScaleModel` is now
 carried through the public surface. These names changed (no compatibility
 aliases):
 
-| Old (0.9)                             | New (1.0)                         |
-| ------------------------------------- | --------------------------------- |
-| `chart.getVisibleExtent()`            | `chart.getVisibleScale()`         |
-| `chart.recalculateVisibleExtent()`    | `chart.recalculateVisibleScale()` |
-| `PaneledIndicator.createExtent()`     | `PaneledIndicator.createScale()`  |
-| `PaneledIndicator` protected `extent` | protected `scale`                 |
-| `PaneYAxisRenderOptions.extent`       | `PaneYAxisRenderOptions.scale`    |
+| Old (0.9)                             | New (1.0)                        |
+| ------------------------------------- | -------------------------------- |
+| `chart.getVisibleExtent()`            | Removed from the application API |
+| `chart.recalculateVisibleExtent()`    | Removed from the application API |
+| `PaneledIndicator.createExtent()`     | `PaneledIndicator.createScale()` |
+| `PaneledIndicator` protected `extent` | protected `scale`                |
+| `PaneYAxisRenderOptions.extent`       | `PaneYAxisRenderOptions.scale`   |
 
 ### Zoom/pan vocabulary removed in favor of the index range
 

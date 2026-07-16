@@ -64,7 +64,7 @@ const color = paletteColor(
 Apply themes on creation or at runtime:
 
 ```ts
-chart.updateTheme(baseTheme);
+chart.updateOptions({ theme: baseTheme });
 ```
 
 ## Responding to user preference
@@ -87,7 +87,9 @@ const chart = new FinancialChart(root, {
 window
   .matchMedia("(prefers-color-scheme: dark)")
   .addEventListener("change", (event) => {
-    chart.updateTheme(event.matches ? defaultDarkTheme : baseTheme);
+    chart.updateOptions({
+      theme: event.matches ? defaultDarkTheme : baseTheme
+    });
   });
 ```
 
@@ -127,7 +129,7 @@ const chart = new FinancialChart(root, {
   }
 });
 
-chart.updateLocalization({
+chart.updateOptions({
   locale: "hu-HU",
   timeZone: "Europe/Budapest",
   localeValues: {
@@ -196,7 +198,7 @@ class CustomFormatter extends DefaultFormatter {
   }
 }
 
-chart.updateLocalization({
+chart.updateOptions({
   locale: "en-US",
   timeZone: "America/New_York",
   formatter: new CustomFormatter()
@@ -270,7 +272,7 @@ const chart = new FinancialChart(root, {
 // Keep chart labels in sync with the active app locale
 function switchLocale(nextLocale: string, timeZone?: string) {
   setLocale(nextLocale);
-  chart.updateLocalization({
+  chart.updateOptions({
     locale: nextLocale,
     timeZone,
     localeValues: {
@@ -401,7 +403,7 @@ onMounted(() => {
 watchEffect(() => {
   if (!chart.value) return;
   const nextLocale = locale.value.toUpperCase();
-  chart.value.updateLocalization({
+  chart.value.updateOptions({
     locale: nextLocale,
     timeZone: appTimeZone.value,
     localeValues: chartLocaleBundle.value

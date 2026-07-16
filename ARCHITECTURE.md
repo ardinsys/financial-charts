@@ -27,6 +27,20 @@ cross multiple owners. It does not retain subsystem state that belongs to the
 model, options, extensions, panes, interaction, rendering, or persistence
 components listed below.
 
+Four capability surfaces keep each audience at its intended boundary:
+
+| Audience | Capability surface | Responsibility |
+|---|---|---|
+| Application code | `FinancialChart` | Data, options, visible range, extension attachment, pane snapshots, crosshair commands, persistence, subscriptions, and disposal |
+| Series controllers | `ChartControllerContext` | Precomputed frame input and main-series projection/drawing |
+| Plugins and drawings | `ChartContext` | Attachment-scoped data/options reads, pane projection, rendering, invalidation, events, synchronization commands, and cleanup |
+| Indicators | `IndicatorContext` | Attachment-scoped extension services plus indicator drawing, localization, invalidation, pane behavior, and self-removal |
+
+Application code does not receive canvases, scales, render caches, invalidation
+commands, raw panes, or publication rights. Authoring contexts expose only the
+capabilities required by their extension type and never retain the application
+facade.
+
 ## Financial data model
 
 `ChartData` represents one timestamped bar. A line-like series generally reads
@@ -69,7 +83,7 @@ price scale and Y-axis region.
 | Indicator behavior | `Indicator`, `PaneledIndicator` | Indicator state, labels, drawing, and optional pane-specific scale/container behavior |
 | Pane layout | `PaneLayout`, `Pane` | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales |
 | Browser interaction | `InteractionController`, `CrosshairResolver`, `interaction/crosshair.ts` | Listener lifetime, gesture state, pointer normalization, shared coordinate resolution, and the public crosshair contract |
-| Rendering | `ChartRenderer`, `RenderPipeline`, `chart-render-types.ts` | Canvas/context ownership, public layer contracts, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
+| Rendering | `ChartRenderer`, `RenderPipeline`, `chart-render-types.ts` | Canvas/context ownership, authoring layer contracts, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
 | DOM chrome | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
 | Public events | private `EventEmitter<ChartEventMap>` | Application subscription through `FinancialChart.on()` and `off()`; internal and extension-originated publication |
 | Chart persistence | `ChartStateController`, `chart-state.ts` | Serialization, restoration preparation, deferred restored views, versioned state contracts, validation, and contributor indexing |
@@ -86,7 +100,7 @@ column rather than searching the entire facade:
 | Pan or zoom | browser event → `InteractionController` → facade view command → `ChartModel` → `ChartChangePublisher` |
 | Resolve a crosshair | browser or public crosshair command → `CrosshairResolver` → `InteractionController` state → `ChartChangePublisher` |
 | Attach an extension | facade add method → `ExtensionHost` attach scope → current options, data, and visible-range delivery |
-| Render a frame | change publication or `requestRedraw()` → `ChartRenderer` layer set → `RenderPipeline` stages |
+| Render a frame | change publication or authoring-context invalidation → `ChartRenderer` layer set → `RenderPipeline` stages |
 | Restore state | `ChartStateController` validation and reconstruction → `FinancialChart.applyChartStateRestoration()` → one extension refresh, redraw, and public completion event |
 | Dispose the chart | `FinancialChart.dispose()` → interaction → renderer stop → extensions → panes → events → renderer → DOM |
 
@@ -98,8 +112,9 @@ when values cross into or out of the library:
 1. Retained caller input is validated and copied once.
 2. Every mutable runtime value has one owner.
 3. Full data and collection snapshots are created only when their owner changes.
-4. Repeated reads of cached snapshots return the same frozen value until the
-   corresponding state changes.
+4. Repeated reads of cached snapshots return the same value until the
+   corresponding state changes; defensive freezing is limited to retained
+   boundary values and infrequently changing public collections.
 5. Extension callbacks receive the same current snapshots exposed by chart
    getters.
 6. Deep cloning is reserved for foreign input and serialization boundaries, not
@@ -304,10 +319,11 @@ It reads model, pane, extension, and crosshair state through one render-model
 interface. Rendering does not repair or recalculate model state; chart commands
 make derived scales and visible-data caches current before invalidating layers.
 
-`requestRedraw()` delegates to the renderer. One or more layers are added to a
-set, so duplicate invalidations in one frame are free. Unless an immediate redraw
-is requested, one animation frame flushes the accumulated set. Invalidations
-raised during a render schedule a following frame.
+`ChartRenderer.requestRedraw()` is reached through internal change publication
+or an attachment-scoped authoring context. One or more layers are added to a
+set, so duplicate invalidations in one frame are free. Unless an immediate
+redraw is requested, one animation frame flushes the accumulated set.
+Invalidations raised during a render schedule a following frame.
 
 The `RenderPipeline` visits stages in this order:
 

@@ -69,22 +69,23 @@ data is loaded; after data is loaded, non-finite boundaries throw `RangeError`.
 
 - **Zoom:** pinch or scroll; `maxZoom` controls the minimum visible span.
 - **Pan:** click-drag or touch-drag.
-- **Volume overlay:** toggle with `setVolumeDraw(true | false)`.
-- **Theme/localization:** call `updateTheme` or `updateLocalization` whenever user preferences change.
+- **Volume overlay:** toggle with `updateOptions({ volume: true | false })`.
+- **Theme/localization:** pass `theme`, `locale`, `timeZone`, `formatter`, or `localeValues` to `updateOptions()` whenever user preferences change.
 - **Drawings:** attach `DrawingManager` and choose a drawing factory. See [Drawing tools](/guide/drawing-tools).
 - **Synced crosshair:** call `setCrosshair({ time })` on peer charts and `clearCrosshair()` when the source pointer leaves.
 
 ## Controllers, indicators, and plugins
 
-- Switch renderers without losing zoom/pan via `chart.changeType("hlc-area")` (controller must be registered first).
+- Switch renderers without losing zoom/pan via `chart.updateOptions({ type: "hlc-area" })` (controller must be registered first).
 - Add/remove overlay or paneled indicators dynamically: `chart.addIndicator(indicator)` / `chart.removeIndicator(indicator)`.
 - The chart automatically allocates space for paneled indicators while keeping at least 25% of height for price.
 - Attach custom overlay behavior with `chart.addPlugin(plugin)`. Plugins can listen to data, visible-range, pointer, and render lifecycle hooks.
 
-Render invalidation uses named layers:
+Render invalidation is an extension capability, not an application command.
+Plugins request named layers through their attachment-scoped context:
 
 ```ts
-chart.requestRedraw(["series", "indicators", "drawings"]);
+this.ctx.requestRedraw(["series", "indicators", "drawings"]);
 ```
 
 Request `"grid"`, `"axes"`, and `"series"` together when all controller-owned
@@ -103,7 +104,7 @@ function.
 | ------------------------------ | --------------------------------------------------------- | --------------------------------------------- |
 | `click`                        | `{ event: PointerEvent, point: ChartData }`               | User clicks the chart with a mouse.           |
 | `touch-click`                  | `{ event: TouchEvent, point: ChartData }`                 | User taps the chart on touch devices.         |
-| `crosshair-change`             | `{ time, y, pane, dataPoint }`                            | Native or programmatic crosshair moves.       |
+| `crosshair-change`             | `{ time, y, paneId, price, dataPoint }`                   | Native or programmatic crosshair moves.       |
 | `crosshair-clear`              | `{}`                                                      | Native or programmatic crosshair clears.      |
 | `options-change`               | `{ previous, current, changedKeys }`                      | An effective runtime option patch is applied. |
 | `indicator-visibility-changed` | `{ indicator, visible }`                                  | Indicator show/hide buttons are toggled.      |

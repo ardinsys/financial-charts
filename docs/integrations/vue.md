@@ -38,7 +38,7 @@ onMounted(() => {
   instance.setData(props.data);
   chart.value = instance;
 
-  chart.value.updateLocalization({
+  chart.value.updateOptions({
     locale: appLocale.value,
     localeValues
   });
@@ -52,7 +52,7 @@ watch(
 );
 
 watch(appLocale, (locale) => {
-  chart.value?.updateLocalization({
+  chart.value?.updateOptions({
     locale,
     localeValues
   });
@@ -76,6 +76,6 @@ onBeforeUnmount(() => {
 - Replace the `data` array when its snapshot changes; avoid a deep watcher over
   thousands of bars. For a single-candle live feed, call `updateData(point)` at
   the feed boundary.
-- Drive theme or controller changes via methods on `chart.value` in event handlers.
+- Drive theme or controller changes through `chart.value.updateOptions(...)` in event handlers.
 - In Nuxt or another SSR setup, keep construction inside a client-only mounted
   hook.
