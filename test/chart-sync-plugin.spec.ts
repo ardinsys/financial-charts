@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
-import type { ChartData } from "../src/chart/types";
+import type { ChartData, TimeRange } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import { DrawingManager, TrendLine } from "../src/drawings";
 import type { IndicatorResolver } from "../src/indicators/indicator";
@@ -8,6 +8,7 @@ import { MovingAverageIndicator } from "../src/indicators/simple/moving-average"
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
 import {
   ChartSyncPlugin,
+  type ChartSyncCrosshairSnapshot,
   type ChartSyncPostMessageOptions
 } from "../src/plugins";
 
@@ -31,6 +32,13 @@ const indicatorResolver: IndicatorResolver = ({ typeId }) =>
 
 interface ProbeSyncPayload {
   value: string;
+}
+
+interface ChartSyncInternals {
+  storeVisibleRange(range: TimeRange): void;
+  applyVisibleRange(range: TimeRange): void;
+  storeCrosshair(snapshot?: ChartSyncCrosshairSnapshot): void;
+  applyCrosshair(snapshot?: ChartSyncCrosshairSnapshot): void;
 }
 
 class SyncMessageProbePlugin implements ChartPlugin {
@@ -229,6 +237,57 @@ describe("ChartSyncPlugin", () => {
     expect(target.chart.getVisibleTimeRange()).toEqual(
       source.chart.getVisibleTimeRange()
     );
+  });
+
+  it("shares one scalar snapshot between storage and peers", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const firstTarget = createSyncedChart(group);
+    const secondTarget = createSyncedChart(group);
+    const sourceSync = source.syncPlugin as unknown as ChartSyncInternals;
+    const targetSyncs = [firstTarget, secondTarget].map(
+      ({ syncPlugin }) => syncPlugin as unknown as ChartSyncInternals
+    );
+    let storedRange: TimeRange | undefined;
+    let storedCrosshair: ChartSyncCrosshairSnapshot | undefined;
+    const appliedRanges: TimeRange[] = [];
+    const appliedCrosshairs: ChartSyncCrosshairSnapshot[] = [];
+    const storeVisibleRange = sourceSync.storeVisibleRange.bind(sourceSync);
+    const storeCrosshair = sourceSync.storeCrosshair.bind(sourceSync);
+
+    sourceSync.storeVisibleRange = (range) => {
+      storedRange = range;
+      storeVisibleRange(range);
+    };
+    sourceSync.storeCrosshair = (snapshot) => {
+      storedCrosshair = snapshot;
+      storeCrosshair(snapshot);
+    };
+    for (const targetSync of targetSyncs) {
+      const applyVisibleRange = targetSync.applyVisibleRange.bind(targetSync);
+      const applyCrosshair = targetSync.applyCrosshair.bind(targetSync);
+      targetSync.applyVisibleRange = (range) => {
+        appliedRanges.push(range);
+        applyVisibleRange(range);
+      };
+      targetSync.applyCrosshair = (snapshot) => {
+        if (snapshot) appliedCrosshairs.push(snapshot);
+        applyCrosshair(snapshot);
+      };
+    }
+
+    source.chart.setVisibleIndexRange({ from: 0.25, to: 2.25 });
+    source.chart.setCrosshair({
+      time: source.data[1].time,
+      price: source.data[1].close ?? undefined
+    });
+
+    expect(appliedRanges).toHaveLength(2);
+    expect(appliedRanges[0]).toBe(storedRange);
+    expect(appliedRanges[1]).toBe(storedRange);
+    expect(appliedCrosshairs).toHaveLength(2);
+    expect(appliedCrosshairs[0]).toBe(storedCrosshair);
+    expect(appliedCrosshairs[1]).toBe(storedCrosshair);
   });
 
   it("preserves fractional visible windows while panning", () => {

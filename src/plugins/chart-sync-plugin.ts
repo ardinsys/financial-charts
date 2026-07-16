@@ -14,9 +14,9 @@ import { cloneJSONStateValue } from "../utils/json-state";
 export type ChartSyncIndicatorSnapshot = IndicatorState;
 
 export interface ChartSyncCrosshairSnapshot {
-  paneId: number;
-  price?: number;
-  time: number;
+  readonly paneId: number;
+  readonly price?: number;
+  readonly time: number;
 }
 
 export interface ChartSyncMessageSource {
@@ -385,17 +385,17 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   private storeVisibleRange(range: TimeRange) {
-    this.getGroup().state.visibleRange = { ...range };
+    this.getGroup().state.visibleRange = range;
   }
 
   private createVisibleRangeSnapshot(): TimeRange | undefined {
     if (!this.ctx || this.ctx.getData().length === 0) return undefined;
 
-    return { ...this.ctx.getVisibleTimeWindow() };
+    return this.ctx.getVisibleTimeWindow();
   }
 
   private storeCrosshair(snapshot?: ChartSyncCrosshairSnapshot) {
-    this.getGroup().state.crosshair = snapshot ? { ...snapshot } : undefined;
+    this.getGroup().state.crosshair = snapshot;
   }
 
   private storeDrawingState() {
@@ -641,7 +641,7 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
   const clone: ChartSyncGroupState = {};
 
   if (state.visibleRange) {
-    clone.visibleRange = { ...state.visibleRange };
+    clone.visibleRange = state.visibleRange;
   }
   if (state.drawings) {
     clone.drawings = cloneSyncJSONValue(
@@ -653,7 +653,7 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
     clone.indicators = cloneIndicatorSnapshots(state.indicators);
   }
   if (Object.prototype.hasOwnProperty.call(state, "crosshair")) {
-    clone.crosshair = state.crosshair ? { ...state.crosshair } : undefined;
+    clone.crosshair = state.crosshair;
   }
 
   return clone;
