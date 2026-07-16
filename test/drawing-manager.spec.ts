@@ -320,6 +320,40 @@ describe("DrawingManager", () => {
     );
   });
 
+  it("owns anchor inputs and borrows stable anchor snapshots", () => {
+    const input = [
+      { index: 1, price: 10 },
+      { index: 2, price: 20 }
+    ];
+    const drawing = new StubDrawing({ anchors: input });
+    const first = drawing.getAnchors();
+
+    input[0].price = 100;
+
+    expect(first).toEqual([
+      { index: 1, price: 10 },
+      { index: 2, price: 20 }
+    ]);
+    expect(drawing.getAnchors()).toBe(first);
+
+    const json = drawing.toJSON();
+    expect(json.anchors).toEqual(first);
+    expect(json.anchors).not.toBe(first);
+    expect(json.anchors[0]).not.toBe(first[0]);
+
+    drawing.moveBy({ index: 1, price: 5 });
+
+    expect(drawing.getAnchors()).not.toBe(first);
+    expect(first).toEqual([
+      { index: 1, price: 10 },
+      { index: 2, price: 20 }
+    ]);
+    expect(drawing.getAnchors()).toEqual([
+      { index: 2, price: 15 },
+      { index: 3, price: 25 }
+    ]);
+  });
+
   it("creates, selects, moves, and deletes a stub drawing", () => {
     const { chart, data } = createChart();
     const manager = createManager(chart);

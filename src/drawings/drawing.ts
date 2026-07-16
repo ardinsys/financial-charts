@@ -54,7 +54,7 @@ export abstract class Drawing {
   /** Stable serialization key handled by a registered deserializer. */
   abstract readonly type: string;
   readonly id: string;
-  private anchors: DrawingAnchor[];
+  private anchors: readonly DrawingAnchor[];
   private paneId: number;
   private selected = false;
 
@@ -72,8 +72,8 @@ export abstract class Drawing {
     this.paneId = validatePaneId(paneId);
   }
 
-  getAnchors() {
-    return this.anchors.map((anchor) => ({ ...anchor }));
+  getAnchors(): readonly DrawingAnchor[] {
+    return this.anchors;
   }
 
   setAnchors(anchors: readonly DrawingAnchor[]) {
@@ -136,7 +136,7 @@ export abstract class Drawing {
   moveAnchor(index: number, anchor: DrawingAnchor): void {
     if (!this.anchors[index]) return;
 
-    const anchors = this.getAnchors();
+    const anchors = [...this.anchors];
     anchors[index] = anchor;
     this.setAnchors(anchors);
   }
@@ -144,7 +144,7 @@ export abstract class Drawing {
   toJSON(): DrawingJSON {
     const data = this.getDataJSON();
     return {
-      anchors: this.getAnchors(),
+      anchors: copyDrawingAnchors(this.anchors),
       id: this.id,
       paneId: this.paneId,
       type: this.type,

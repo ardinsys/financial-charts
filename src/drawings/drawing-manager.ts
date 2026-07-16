@@ -55,13 +55,13 @@ type Interaction =
       type: "dragging";
       drawing: Drawing;
       start: DrawingAnchor;
-      anchors: DrawingAnchor[];
+      anchors: readonly DrawingAnchor[];
     }
   | {
       type: "anchor";
       drawing: Drawing;
       index: number;
-      anchors: DrawingAnchor[];
+      anchors: readonly DrawingAnchor[];
     };
 
 type DrawingHistoryEntry =
@@ -78,8 +78,8 @@ type DrawingHistoryEntry =
   | {
       type: "move";
       drawing: Drawing;
-      before: DrawingAnchor[];
-      after: DrawingAnchor[];
+      before: readonly DrawingAnchor[];
+      after: readonly DrawingAnchor[];
     };
 
 export interface DrawingSelectionOptions {
@@ -721,7 +721,10 @@ export class DrawingManager implements ChartPlugin {
     );
   }
 
-  private sameAnchors(a: DrawingAnchor[], b: DrawingAnchor[]) {
+  private sameAnchors(
+    a: readonly DrawingAnchor[],
+    b: readonly DrawingAnchor[]
+  ) {
     if (a.length !== b.length) return false;
     return a.every(
       (anchor, index) =>

@@ -24,7 +24,7 @@ export interface DrawingSelectionEvent {
   id?: string;
   type?: string;
   paneId?: number;
-  anchors?: DrawingAnchor[];
+  anchors?: readonly DrawingAnchor[];
   json?: DrawingJSON;
 }
 
@@ -35,7 +35,7 @@ export interface DrawingFinishedEvent extends DrawingEvent {
   id: string;
   type: string;
   paneId: number;
-  anchors: DrawingAnchor[];
+  anchors: readonly DrawingAnchor[];
   json: DrawingJSON;
 }
 
