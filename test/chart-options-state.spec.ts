@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { ControllerConstructor } from "../src/chart/chart-options";
 import { ChartOptionsState } from "../src/chart/chart-options-state";
 import { CandlestickController } from "../src/controllers/candle-controller";
 import { LineController } from "../src/controllers/line-controller";
@@ -29,8 +30,6 @@ describe("ChartOptionsState", () => {
     expect(snapshot.theme.randomColors).toEqual(["#123456"]);
     expect(state.getSnapshot()).toBe(snapshot);
     expect(state.getResolved().theme).toBe(snapshot.theme);
-    expect(Object.isFrozen(snapshot)).toBe(true);
-    expect(Object.isFrozen(snapshot.theme.randomColors)).toBe(true);
   });
 
   it("creates one previous/current event only for effective updates", () => {
@@ -65,7 +64,6 @@ describe("ChartOptionsState", () => {
     expect(event.previous).toBe(previous);
     expect(event.current).toBe(state.getSnapshot());
     expect(event.changedKeys).toEqual(["type", "volume", "locale"]);
-    expect(Object.isFrozen(event.changedKeys)).toBe(true);
     expect(state.getResolved()).toMatchObject({
       type: "candle",
       volume: false,
@@ -74,20 +72,28 @@ describe("ChartOptionsState", () => {
   });
 
   it("replaces the controller snapshot when registration changes", () => {
+    const controllers: ControllerConstructor[] = [LineController];
     const state = new ChartOptionsState(
       { type: "line", stepSize: 60 },
-      [LineController],
+      controllers,
       false
     );
     const previous = state.getSnapshot();
+    controllers.push(CandlestickController);
 
-    state.setControllers([LineController, CandlestickController]);
+    expect(previous.controllers).toEqual([LineController]);
+
+    const replacements: ControllerConstructor[] = [
+      LineController,
+      CandlestickController
+    ];
+    state.setControllers(replacements);
+    replacements.pop();
 
     expect(state.getSnapshot()).not.toBe(previous);
     expect(state.getSnapshot().controllers).toEqual([
       LineController,
       CandlestickController
     ]);
-    expect(Object.isFrozen(state.getSnapshot().controllers)).toBe(true);
   });
 });

@@ -124,7 +124,6 @@ describe("chart options API", () => {
       locale: "hu-HU",
       theme: { key: "custom", backgroundColor: "#123456" }
     });
-    expect(Object.isFrozen(events[0].current.theme)).toBe(true);
     expect(
       getChartContext(chart, "main").canvas.closest(".financial-charts-custom")
     ).not.toBeNull();
@@ -185,8 +184,11 @@ describe("chart options API", () => {
     themeUpdate.randomColors[0] = "#000000";
 
     expect(updated.theme.randomColors).toEqual(["#fedcba"]);
-    expect(Object.isFrozen(updated.timeRange)).toBe(true);
-    expect(Object.isFrozen(updated.theme.randomColors)).toBe(true);
+
+    chart.updateOptions({
+      theme: { key: "updated", randomColors: ["#fedcba"] }
+    });
+    expect(chart.getOptions()).toBe(updated);
   });
 
   it("remaps data and resets the view only for core option changes", () => {

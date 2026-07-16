@@ -111,7 +111,7 @@ export interface ResolvedChartOptions {
   readonly localeValues: LocaleValuesMap;
 }
 
-/** Immutable public snapshot returned by `FinancialChart.getOptions()`. */
+/** Readonly public snapshot returned by `FinancialChart.getOptions()`. */
 export interface ChartOptionsSnapshot {
   readonly type: ControllerType;
   readonly timeRange: DeepReadonly<TimeRange> | "auto";
@@ -138,12 +138,8 @@ export type MutableResolvedChartOptions = {
   -readonly [P in keyof ResolvedChartOptions]: ResolvedChartOptions[P];
 };
 
-export function snapshotOptionValue<T>(value: T): T {
-  const clone =
-    typeof structuredClone === "function"
-      ? structuredClone(value)
-      : (JSON.parse(JSON.stringify(value)) as T);
-  return freezeOptionValue(clone);
+export function cloneOptionValue<T>(value: T): T {
+  return structuredClone(value);
 }
 
 export function assertTimeRangeOption(timeRange: TimeRange | "auto"): void {
@@ -198,10 +194,4 @@ export function optionValuesEqual(left: unknown, right: unknown): boolean {
       Object.prototype.hasOwnProperty.call(rightRecord, key) &&
       optionValuesEqual(leftRecord[key], rightRecord[key])
   );
-}
-
-function freezeOptionValue<T>(value: T): T {
-  if (value == null || typeof value !== "object") return value;
-  for (const nested of Object.values(value)) freezeOptionValue(nested);
-  return Object.freeze(value);
 }

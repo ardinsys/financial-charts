@@ -2,10 +2,8 @@ export function mergeObjects<T extends object>(
   defaults: T,
   overrides?: object | null
 ): T {
-  if (overrides == null) return { ...defaults };
-
   const defaultValues = defaults as Record<string, unknown>;
-  const overrideValues = overrides as Record<string, unknown>;
+  const overrideValues = (overrides ?? {}) as Record<string, unknown>;
   const result: Record<string, unknown> = {};
   const keys = new Set([
     ...Object.keys(defaultValues),
@@ -18,10 +16,20 @@ export function mergeObjects<T extends object>(
     result[key] =
       isPlainObject(defaultValue) && isPlainObject(overrideValue)
         ? mergeObjects(defaultValue, overrideValue)
-        : (overrideValue ?? defaultValue);
+        : cloneMergeValue(overrideValue ?? defaultValue);
   }
 
   return result as T;
+}
+
+function cloneMergeValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(cloneMergeValue);
+  }
+  if (isPlainObject(value)) {
+    return mergeObjects(value);
+  }
+  return value;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

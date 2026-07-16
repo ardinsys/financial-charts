@@ -160,7 +160,7 @@ describe("FinancialChart test harness", () => {
     chart.dispose();
   });
 
-  it("returns an immutable options snapshot that follows chart updates", () => {
+  it("returns a stable readonly options snapshot that follows chart updates", () => {
     const container = document.createElement("div");
     container.style.width = "800px";
     container.style.height = "400px";
@@ -175,21 +175,17 @@ describe("FinancialChart test harness", () => {
     });
     const initial = chart.getOptions();
 
-    expect(Object.isFrozen(initial)).toBe(true);
-    expect(Object.isFrozen(initial.theme)).toBe(true);
-    expect(Object.isFrozen(initial.localeValues)).toBe(true);
-    expect(Object.isFrozen(initial.controllers)).toBe(true);
+    expect(chart.getOptions()).toBe(initial);
     expect(Object.prototype.hasOwnProperty.call(initial, "timeZone")).toBe(
       true
     );
-    expect(() => {
-      (initial.theme as { backgroundColor: string }).backgroundColor = "red";
-    }).toThrow(TypeError);
-    expect(chart.getOptions().theme.backgroundColor).not.toBe("red");
 
     chart.updateOptions({ volume: true });
     expect(chart.getOptions()).not.toBe(initial);
     expect(chart.getOptions().volume).toBe(true);
+    expect(chart.getOptions().theme).toBe(initial.theme);
+    expect(chart.getOptions().formatter).toBe(initial.formatter);
+    expect(chart.getOptions().domAdapter).toBe(initial.domAdapter);
 
     chart.dispose();
   });

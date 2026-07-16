@@ -4,8 +4,8 @@ import { defaultLightTheme, mergeThemes } from "./themes";
 import {
   assertPositiveOption,
   assertTimeRangeOption,
+  cloneOptionValue,
   optionValuesEqual,
-  snapshotOptionValue,
   timeRangeOptionsEqual,
   type ChartOptionKey,
   type ChartOptions,
@@ -18,7 +18,7 @@ import {
   type MutableResolvedChartOptions
 } from "./chart-options";
 
-/** Owns resolved runtime options and their immutable public snapshot. */
+/** Owns resolved runtime options and their stable readonly public snapshot. */
 export class ChartOptionsState {
   private readonly resolved: MutableResolvedChartOptions;
   private snapshot: ChartOptionsSnapshot;
@@ -58,8 +58,7 @@ export class ChartOptionsState {
 
     this.resolved = {
       type,
-      timeRange:
-        timeRange === "auto" ? "auto" : Object.freeze({ ...timeRange }),
+      timeRange: timeRange === "auto" ? "auto" : { ...timeRange },
       stepSize: options.stepSize,
       maxZoom,
       volume: options.volume ?? true,
@@ -68,11 +67,9 @@ export class ChartOptionsState {
       locale,
       timeZone,
       formatter,
-      theme: snapshotOptionValue(
-        mergeThemes(defaultLightTheme, options.theme)
-      ),
+      theme: mergeThemes(defaultLightTheme, options.theme),
       domAdapter: options.domAdapter ?? new DefaultDOMAdapter(),
-      localeValues: snapshotOptionValue({
+      localeValues: cloneOptionValue({
         ...getDefaultLocaleValues(),
         ...options.localeValues
       })
@@ -116,10 +113,10 @@ export class ChartOptionsState {
         ? formatter.getTimeZone?.() ?? this.resolved.timeZone
         : this.resolved.timeZone;
     const theme = has("theme")
-      ? snapshotOptionValue(mergeThemes(this.resolved.theme, update.theme))
+      ? mergeThemes(this.resolved.theme, update.theme)
       : this.resolved.theme;
     const localeValues = has("localeValues")
-      ? snapshotOptionValue({
+      ? cloneOptionValue({
           ...getDefaultLocaleValues(),
           ...this.resolved.localeValues,
           ...(update.localeValues ?? {})
@@ -167,7 +164,7 @@ export class ChartOptionsState {
 
     this.resolved.type = type;
     this.resolved.timeRange =
-      timeRange === "auto" ? "auto" : Object.freeze({ ...timeRange });
+      timeRange === "auto" ? "auto" : { ...timeRange };
     this.resolved.stepSize = stepSize;
     this.resolved.maxZoom = maxZoom;
     this.resolved.volume = volume;
@@ -181,12 +178,12 @@ export class ChartOptionsState {
     return {
       previous,
       current: this.snapshot,
-      changedKeys: Object.freeze(changedKeys)
+      changedKeys
     };
   }
 
   private createSnapshot(): ChartOptionsSnapshot {
-    return Object.freeze({
+    return {
       type: this.resolved.type,
       timeRange: this.resolved.timeRange,
       stepSize: this.resolved.stepSize,
@@ -200,7 +197,7 @@ export class ChartOptionsState {
       theme: this.resolved.theme,
       domAdapter: this.resolved.domAdapter,
       localeValues: this.resolved.localeValues
-    });
+    };
   }
 }
 
@@ -238,7 +235,5 @@ function getDefaultLocaleValues(): LocaleValuesMap {
 function ownControllerSnapshot(
   controllers: readonly ControllerConstructor[]
 ): readonly ControllerConstructor[] {
-  return Object.isFrozen(controllers)
-    ? controllers
-    : Object.freeze([...controllers]);
+  return [...controllers];
 }

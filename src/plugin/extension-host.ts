@@ -484,11 +484,11 @@ export class ExtensionHost {
 
   private createInitialOptionsEvent(): ChartOptionsChangeEvent {
     const current = this.readModel.getOptions();
-    return Object.freeze({
+    return {
       previous: current,
       current,
-      changedKeys: Object.freeze([])
-    });
+      changedKeys: []
+    };
   }
 
   private forEachLifecycleExtension(
