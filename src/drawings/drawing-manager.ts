@@ -199,11 +199,14 @@ export class DrawingManager implements ChartPlugin {
     return drawings;
   }
 
-  addDrawing(drawing: Drawing) {
+  addDrawing(drawing: Drawing, options: DrawingMutationOptions = {}) {
     this.assertDrawingType(drawing.type);
     this.assertUniqueDrawingId(drawing.id);
     this.drawings.push(drawing);
-    this.selectDrawing(drawing);
+    if (options.emit) {
+      this.ctx?.emit("drawing-create", { drawing });
+    }
+    this.selectDrawing(drawing, { emit: options.emitSelection ?? true });
     this.ctx?.requestRedraw("drawings");
     return drawing;
   }

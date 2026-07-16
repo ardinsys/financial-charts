@@ -405,7 +405,9 @@ host element belong to `ChartContext`; they are not application methods on
 | `dispose()`                        | Idempotently aborts extension scopes, detaches indicators/plugins, clears listeners and observers, and removes chart-owned DOM. Call it before removing the host.                                |
 | `requestRedraw(parts, immediate?)` | Schedules a render pass for one or more of `"grid"`, `"axes"`, `"series"`, `"indicators"`, `"drawings"`, `"annotations"`, and `"crosshair"`. |
 
-Because `FinancialChart` extends an event emitter, the usual `on(event, handler)` and `off(event, handler)` helpers are also available.
+`FinancialChart.on(event, handler)` subscribes and returns a disposer;
+`FinancialChart.off(event, handler)` removes a specific listener. Event
+publication and bulk listener cleanup are internal chart operations.
 
 ## Events
 

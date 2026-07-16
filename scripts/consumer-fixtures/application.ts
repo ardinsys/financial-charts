@@ -24,6 +24,12 @@ const unsubscribe = chart.on(
 const options = chart.getOptions();
 const mappedData = chart.getData();
 
+// @ts-expect-error Applications subscribe to chart events but cannot publish them.
+chart.emit("options-change", {});
+// @ts-expect-error Bulk listener cleanup is owned by the chart lifecycle.
+chart.removeAllListeners();
+// @ts-expect-error Listener bookkeeping is not an application API.
+chart.listenerCount();
 // @ts-expect-error Render hooks are extension capabilities.
 chart.onRenderStage("series", () => {});
 // @ts-expect-error Logical canvas sizes are extension capabilities.

@@ -284,8 +284,7 @@ describe("ChartSyncPlugin", () => {
       start: source.data[1].time,
       end: source.data[2].time + 60_000
     });
-    source.drawingManager.addDrawing(sourceDrawing);
-    source.chart.emit("drawing-create", { drawing: sourceDrawing });
+    source.drawingManager.addDrawing(sourceDrawing, { emit: true });
     source.chart.addIndicator(sourceIndicator);
     source.chart.setCrosshair({
       time: source.data[2].time,
@@ -334,8 +333,7 @@ describe("ChartSyncPlugin", () => {
       start: source.data[1].time,
       end: source.data[2].time + 60_000
     });
-    source.drawingManager.addDrawing(sourceDrawing);
-    source.chart.emit("drawing-create", { drawing: sourceDrawing });
+    source.drawingManager.addDrawing(sourceDrawing, { emit: true });
     source.chart.addIndicator(sourceIndicator);
     source.chart.setCrosshair({
       time: source.data[2].time,
@@ -403,7 +401,7 @@ describe("ChartSyncPlugin", () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const target = createSyncedChart(group);
-    const drawing = new TrendLine({
+    let drawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
         { index: 2, price: 14 }
@@ -412,16 +410,18 @@ describe("ChartSyncPlugin", () => {
       paneId: source.chart.getMainPane().getId()
     });
 
-    source.drawingManager.addDrawing(drawing);
-    source.chart.emit("drawing-create", { drawing });
+    source.drawingManager.addDrawing(drawing, { emit: true });
 
     expect(target.drawingManager.getDrawings()[0]?.id).toBe("trend-sync");
+    expect(target.drawingManager.getSelectedDrawing()?.id).toBe("trend-sync");
 
     drawing.setAnchors([
       { index: 1, price: 11 },
       { index: 3, price: 16 }
     ]);
-    source.chart.emit("drawing-change", { drawing });
+    drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
+      emit: true
+    }) as TrendLine;
 
     expect(target.drawingManager.getDrawings()[0]?.getAnchors()).toEqual(
       drawing.getAnchors()

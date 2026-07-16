@@ -52,6 +52,22 @@ class PointerPaneIndicator extends TestIndicator {
   onPointer = vi.fn();
 }
 
+class EventSourcePlugin implements ChartPlugin {
+  readonly key = "event-source";
+  private context?: ChartContext;
+
+  attach(context: ChartContext): void {
+    this.context = context;
+  }
+
+  emit<K extends keyof ChartEventMap>(
+    event: K,
+    data: ChartEventMap[K]
+  ): void {
+    this.context?.emit(event, data);
+  }
+}
+
 afterEach(() => {
   while (charts.length > 0) {
     charts.pop()?.dispose();
@@ -264,13 +280,6 @@ describe("plugin lifecycle", () => {
     expect(indicator.onDrawingFinished).toHaveBeenCalledWith(drawingEvent);
     expect(pluginHooks.onDrawingFinished).toHaveBeenCalledWith(drawingEvent);
     expect(publicDrawingFinished).toHaveBeenCalledWith(drawingEvent);
-
-    indicator.onDrawingFinished.mockClear();
-    pluginHooks.onDrawingFinished.mockClear();
-    chart.emit("drawing-finished", drawingEvent);
-    expect(indicator.onDrawingFinished).not.toHaveBeenCalled();
-    expect(pluginHooks.onDrawingFinished).not.toHaveBeenCalled();
-    expect(publicDrawingFinished).toHaveBeenCalledTimes(2);
 
     chart.requestRedraw("indicators", true);
     expect(draw).toHaveBeenCalledOnce();
@@ -615,6 +624,7 @@ describe("plugin lifecycle", () => {
     const eventListener = vi.fn();
     const renderHook = vi.fn();
     let stopListening: (() => void) | undefined;
+    const eventSource = new EventSourcePlugin();
     const plugin: ChartPlugin = {
       key: "scoped-subscriptions",
       attach: (ctx) => {
@@ -623,15 +633,16 @@ describe("plugin lifecycle", () => {
       }
     };
 
+    chart.addPlugin(eventSource);
     chart.addPlugin(plugin);
-    chart.emit("drawing-select", {});
+    eventSource.emit("drawing-select", {});
     chart.requestRedraw("drawings", true);
 
     expect(eventListener).toHaveBeenCalledOnce();
     expect(renderHook).toHaveBeenCalledOnce();
 
     stopListening?.();
-    chart.emit("drawing-select", {});
+    eventSource.emit("drawing-select", {});
     expect(eventListener).toHaveBeenCalledOnce();
 
     chart.removePlugin(plugin);
@@ -643,6 +654,7 @@ describe("plugin lifecycle", () => {
     const { chart } = createChart();
     const indicator = new ThrowingDetachIndicator();
     const eventListener = vi.fn();
+    const eventSource = new EventSourcePlugin();
     const plugin: ChartPlugin = {
       key: "throwing-detach",
       attach: (ctx) => {
@@ -654,6 +666,7 @@ describe("plugin lifecycle", () => {
     };
 
     chart.addIndicator(indicator);
+    chart.addPlugin(eventSource);
     chart.addPlugin(plugin);
 
     expect(() => chart.removeIndicator(indicator)).toThrow(
@@ -661,9 +674,9 @@ describe("plugin lifecycle", () => {
     );
     expect(() => chart.removePlugin(plugin)).toThrow("plugin detach failed");
     expect(chart.getIndicators()).toEqual([]);
-    expect(chart.getPlugins()).toEqual([]);
+    expect(chart.getPlugins()).toEqual([eventSource]);
 
-    chart.emit("drawing-select", {});
+    eventSource.emit("drawing-select", {});
     expect(eventListener).not.toHaveBeenCalled();
 
     indicator.shouldThrow = false;
@@ -675,6 +688,7 @@ describe("plugin lifecycle", () => {
     const { chart } = createChart();
     const eventListener = vi.fn();
     const renderHook = vi.fn();
+    const eventSource = new EventSourcePlugin();
     const plugin: ChartPlugin = {
       key: "failed-subscriptions",
       attach: (ctx) => {
@@ -684,10 +698,10 @@ describe("plugin lifecycle", () => {
       }
     };
 
+    chart.addPlugin(eventSource);
     expect(() => chart.addPlugin(plugin)).toThrow("attach failed");
-    expect(chart.listenerCount("drawing-select")).toBe(0);
 
-    chart.emit("drawing-select", {});
+    eventSource.emit("drawing-select", {});
     chart.requestRedraw("drawings", true);
     expect(eventListener).not.toHaveBeenCalled();
     expect(renderHook).not.toHaveBeenCalled();
@@ -728,25 +742,22 @@ describe("plugin lifecycle", () => {
     const { chart, data } = createChart();
     chart.setData(data);
     const indicator = new DetachProbeIndicator();
-    const emitSpy = vi.spyOn(chart, "emit");
+    const onIndicatorRemove = vi.fn();
+    chart.on("indicator-remove", onIndicatorRemove);
 
     for (let i = 1; i <= 3; i++) {
       chart.addIndicator(indicator);
-      emitSpy.mockClear();
       const removeButton = indicator
         .getLabelContainer()
         .querySelector('[data-id="remove"]') as HTMLElement;
 
       chart.removeIndicator(indicator);
-      emitSpy.mockClear();
+      expect(onIndicatorRemove).toHaveBeenCalledOnce();
+      onIndicatorRemove.mockClear();
       removeButton.click();
 
       expect(indicator.detachCalls).toBe(i);
-      expect(emitSpy).not.toHaveBeenCalledWith(
-        "indicator-remove",
-        expect.anything()
-      );
-      emitSpy.mockClear();
+      expect(onIndicatorRemove).not.toHaveBeenCalled();
     }
   });
 
@@ -773,8 +784,6 @@ describe("plugin lifecycle", () => {
     );
     const finalCrosshair = chart.getCrosshairState();
 
-    expect(chart.listenerCount("click")).toBe(1);
-
     chart.dispose();
     chart.dispose();
     charts.pop();
@@ -789,7 +798,6 @@ describe("plugin lifecycle", () => {
 
     expect(indicator.detachCalls).toBe(1);
     expect(plugin.detach).toHaveBeenCalledOnce();
-    expect(chart.listenerCount("click")).toBe(0);
     expect(chart.getCrosshairState()).toEqual(finalCrosshair);
     expect(() => chart.addIndicator(new DetachProbeIndicator())).toThrow(
       "Cannot add an indicator to a disposed chart."
@@ -806,6 +814,7 @@ describe("plugin lifecycle", () => {
       renderer: { stop(): void; dispose(): void };
       extensionHost: { dispose(): void };
       paneLayout: { dispose(): void };
+      events: { removeAllListeners(): void };
       overlay: { destroy(): void };
       container: HTMLElement;
     };
@@ -817,11 +826,7 @@ describe("plugin lifecycle", () => {
       [internals.renderer, "stop", "renderer-stop"],
       [internals.extensionHost, "dispose", "extensions"],
       [internals.paneLayout, "dispose", "panes"],
-      [
-        chart as unknown as Record<string, () => void>,
-        "removeAllListeners",
-        "events"
-      ],
+      [internals.events, "removeAllListeners", "events"],
       [internals.renderer, "dispose", "renderer-dispose"],
       [internals.overlay, "destroy", "overlay"],
       [
@@ -859,6 +864,13 @@ describe("plugin lifecycle", () => {
 
   it("keeps final chart state readable during detach and finishes cleanup after detach throws", () => {
     const { chart, container } = createChart();
+    const events = (
+      chart as unknown as {
+        events: {
+          listenerCount(event?: keyof ChartEventMap): number;
+        };
+      }
+    ).events;
     const canvas = chart.getContext("crosshair").canvas;
     const finalState: Array<{
       canvasConnected: boolean;
@@ -871,7 +883,7 @@ describe("plugin lifecycle", () => {
       detach: () => {
         finalState.push({
           canvasConnected: canvas.isConnected,
-          listenerCount: chart.listenerCount("click"),
+          listenerCount: events.listenerCount("click"),
           pluginCount: chart.getPlugins().length
         });
         throw new Error("dispose detach failed");
@@ -887,7 +899,7 @@ describe("plugin lifecycle", () => {
     expect(finalState).toEqual([
       { canvasConnected: true, listenerCount: 1, pluginCount: 1 }
     ]);
-    expect(chart.listenerCount()).toBe(0);
+    expect(events.listenerCount()).toBe(0);
     expect(canvas.isConnected).toBe(false);
     expect(container.querySelector(".financial-charts")).toBeNull();
     expect(() => chart.dispose()).not.toThrow();

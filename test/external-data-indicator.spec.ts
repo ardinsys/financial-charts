@@ -192,10 +192,12 @@ describe("external-data indicators", () => {
     const removeButton = indicator
       .getLabelContainer()
       .querySelector('[data-id="remove"]') as HTMLElement;
-    const emit = vi.spyOn(chart, "emit");
+    const onIndicatorRemove = vi.fn();
+    chart.on("indicator-remove", onIndicatorRemove);
 
     chart.removeIndicator(indicator);
-    emit.mockClear();
+    expect(onIndicatorRemove).toHaveBeenCalledOnce();
+    onIndicatorRemove.mockClear();
     expect(signal.aborted).toBe(true);
     expect(indicator.detachCalls).toBe(1);
 
@@ -204,10 +206,7 @@ describe("external-data indicators", () => {
     expect(indicator.getPrices()).toEqual([80]);
 
     removeButton.click();
-    expect(emit).not.toHaveBeenCalledWith(
-      "indicator-remove",
-      expect.anything()
-    );
+    expect(onIndicatorRemove).not.toHaveBeenCalled();
 
     const requestRedraw = vi.spyOn(chart, "requestRedraw");
     expect(() => indicator.setPrices([400])).not.toThrow();

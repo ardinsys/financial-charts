@@ -9,7 +9,7 @@ import type { ScaleRangeModifier } from "../scales/data-scale-model";
 import type { TimeScaleRange } from "../scales/time-scale";
 import type { ChartTheme } from "./themes";
 import { ChartData, TimeRange } from "./types";
-import { EventEmitter } from "./event-emitter";
+import { EventEmitter, type ChartEventMap } from "./event-emitter";
 import { createPositionedContainer } from "../utils/dom";
 import { disposeInOrder } from "../utils/dispose";
 import type { ChartDOMOverlay } from "../ui/chart-dom-adapter";
@@ -109,7 +109,8 @@ const ALL_REDRAW_PARTS = [
   "crosshair"
 ] as const;
 
-export class FinancialChart extends EventEmitter {
+export class FinancialChart {
+  private readonly events = new EventEmitter<ChartEventMap>();
   private readonly controllerRegistry: ControllerRegistry;
   private controller: ChartController;
   protected container: HTMLElement;
@@ -132,6 +133,20 @@ export class FinancialChart extends EventEmitter {
 
   private get options(): MutableResolvedChartOptions {
     return this.optionsState.getResolved();
+  }
+
+  public on<K extends keyof ChartEventMap>(
+    event: K,
+    listener: (data: ChartEventMap[K]) => void
+  ): () => void {
+    return this.events.on(event, listener);
+  }
+
+  public off<K extends keyof ChartEventMap>(
+    event: K,
+    listener: (data: ChartEventMap[K]) => void
+  ): void {
+    this.events.off(event, listener);
   }
 
   public registerController(controllerClass: ControllerConstructor) {
@@ -202,7 +217,7 @@ export class FinancialChart extends EventEmitter {
       throw new Error("Cannot restore state into a disposed chart.");
     }
     const restoredState = this.stateController.restore(state, options);
-    this.emit("state-restored", { state: restoredState });
+    this.events.emit("state-restored", { state: restoredState });
   }
 
   /** Returns the stable frozen snapshot for the current mapped dataset. */
@@ -466,7 +481,6 @@ export class FinancialChart extends EventEmitter {
   }
 
   constructor(container: HTMLElement, options: ChartOptions) {
-    super();
     const defaultControllerConstructors =
       getDefaultControllerConstructors(options);
     this.controllerRegistry = new ControllerRegistry(
@@ -583,7 +597,7 @@ export class FinancialChart extends EventEmitter {
       }
     );
     this.extensionHost = new ExtensionHost(
-      this,
+      this.events,
       {
         getCrosshairState: () =>
           this.interactionController.getCrosshairState(),
@@ -613,7 +627,7 @@ export class FinancialChart extends EventEmitter {
     );
     this.changePublisher = new ChartChangePublisher(
       this.extensionHost,
-      this,
+      this.events,
       (part, immediate) => {
         if (immediate) {
           this.requestRedraw(part, true);
@@ -665,8 +679,10 @@ export class FinancialChart extends EventEmitter {
             redraw: "crosshair"
           });
         },
-        click: (event, point) => this.emit("click", { event, point }),
-        touchClick: (event, point) => this.emit("touch-click", { event, point })
+        click: (event, point) =>
+          this.events.emit("click", { event, point }),
+        touchClick: (event, point) =>
+          this.events.emit("touch-click", { event, point })
       },
       this.container,
       topCanvas
@@ -1128,7 +1144,7 @@ export class FinancialChart extends EventEmitter {
       return () => {};
     }
     if (emit) {
-      this.emit("indicator-add", { indicator });
+      this.events.emit("indicator-add", { indicator });
     }
     return () => {
       this.removeIndicator(indicator, { emit });
@@ -1156,7 +1172,7 @@ export class FinancialChart extends EventEmitter {
     if (!removed) return false;
 
     if (options.emit ?? true) {
-      this.emit("indicator-remove", { indicator });
+      this.events.emit("indicator-remove", { indicator });
     }
     return true;
   }
@@ -1206,7 +1222,7 @@ export class FinancialChart extends EventEmitter {
       () => this.renderer.stop(),
       () => this.extensionHost.dispose(),
       () => this.paneLayout.dispose(),
-      () => this.removeAllListeners(),
+      () => this.events.removeAllListeners(),
       () => this.renderer.dispose(),
       () => this.overlay.destroy(),
       () => this.container.remove()

@@ -75,7 +75,7 @@ the retained manager selection; reattachment publishes that selection again.
 | `getDrawings()`                             | Returns a snapshot of managed drawing objects.                         |
 | `getDrawingById(id)`                        | Returns one drawing by its unique ID.                                  |
 | `getSelectedDrawing()`                      | Returns the selected drawing, if any.                                  |
-| `addDrawing(drawing)`                       | Adds and selects a programmatic drawing.                               |
+| `addDrawing(drawing, options?)`             | Adds and selects a programmatic drawing with opt-in create emission.   |
 | `upsertDrawing(json, options?)`             | Replaces or inserts serialized state by ID.                            |
 | `selectDrawing(drawing?, options?)`         | Selects a managed drawing or clears selection.                         |
 | `selectDrawingById(id?, options?)`          | Selects by ID; an unknown ID leaves the current selection unchanged.   |

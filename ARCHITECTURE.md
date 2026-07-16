@@ -71,7 +71,7 @@ price scale and Y-axis region.
 | Browser interaction | `InteractionController`, `CrosshairResolver`, `interaction/crosshair.ts` | Listener lifetime, gesture state, pointer normalization, shared coordinate resolution, and the public crosshair contract |
 | Rendering | `ChartRenderer`, `RenderPipeline`, `chart-render-types.ts` | Canvas/context ownership, public layer contracts, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
 | DOM chrome | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
-| Public events | `EventEmitter` and `ChartEventMap` | Application-facing chart, indicator, drawing, options, and state events |
+| Public events | private `EventEmitter<ChartEventMap>` | Application subscription through `FinancialChart.on()` and `off()`; internal and extension-originated publication |
 | Chart persistence | `ChartStateController`, `chart-state.ts` | Serialization, restoration preparation, deferred restored views, versioned state contracts, validation, and contributor indexing |
 | Extension persistence | indicator and drawing state helpers | Versioned JSON-safe indicator and drawing state plus reconstruction contracts |
 
@@ -245,7 +245,8 @@ engine-to-extension contract. New internal state propagation should not be
 routed through the public emitter merely to reach engine-owned extensions.
 `ChartContext.emit()` marks an extension-originated event; drawing completion
 uses that path to deliver `onDrawingFinished()` before publishing the public
-event. Calling `chart.emit()` itself only publishes to public listeners.
+event. `FinancialChart` exposes subscription only; publication and listener
+cleanup remain owned by its private event channel.
 
 ## Panes and layout
 

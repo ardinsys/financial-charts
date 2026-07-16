@@ -89,8 +89,16 @@ describe("DrawingAxisBoundsPlugin", () => {
       formatYValue: ({ anchor }) => anchor.price.toFixed(0)
     });
     const sibling = new SiblingAnnotationPlugin();
+    let eventContext: ChartContext | undefined;
+    const eventSource: ChartPlugin = {
+      key: "drawing-event-source",
+      attach: (context) => {
+        eventContext = context;
+      }
+    };
     chart.addPlugin(bounds);
     chart.addPlugin(sibling);
+    chart.addPlugin(eventSource);
     sibling.show();
 
     const drawing = new BoundsDrawing({
@@ -103,7 +111,7 @@ describe("DrawingAxisBoundsPlugin", () => {
     const getData = vi.spyOn(chart, "getData");
     const getOptions = vi.spyOn(chart, "getOptions");
 
-    chart.emit("drawing-select", { drawing });
+    eventContext?.emit("drawing-select", { drawing });
 
     expect(getContext).not.toHaveBeenCalled();
     expect(getData).not.toHaveBeenCalled();
@@ -125,7 +133,7 @@ describe("DrawingAxisBoundsPlugin", () => {
     );
 
     vi.mocked(context.fillText).mockClear();
-    chart.emit("drawing-select", {});
+    eventContext?.emit("drawing-select", {});
     chart.requestRedraw("annotations", true);
 
     expect(
