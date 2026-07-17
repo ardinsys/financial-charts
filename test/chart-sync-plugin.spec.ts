@@ -21,7 +21,7 @@ import {
   type ChartSyncPostMessageOptions
 } from "../src/plugins";
 import { DrawingAxisBoundsPlugin } from "../src/plugins/drawing-axis-bounds-plugin";
-import { getExtensionHost } from "./chart-test-harness";
+import { getChartContext, getExtensionHost } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 const syncGroups = new Set<string>();
@@ -846,6 +846,62 @@ describe("ChartSyncPlugin", () => {
     source.chart.clearCrosshair();
 
     expect(target.chart.getCrosshairState()).toBeUndefined();
+  });
+
+  it("removes a cancelled live creation preview from current and late peers", async () => {
+    const group = createGroup();
+    const source = createSyncedChart(group, {
+      drawingFactory: ({ anchors, paneId }) =>
+        new TrendLine({ anchors, paneId })
+    });
+    const target = createSyncedChart(group);
+    const canvas = getChartContext(source.chart, "crosshair").canvas;
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        button: 0,
+        clientX: 120,
+        clientY: 120,
+        pointerId: 7,
+        pointerType: "mouse"
+      })
+    );
+    canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        bubbles: true,
+        clientX: 280,
+        clientY: 220
+      })
+    );
+    await nextAnimationFrame();
+
+    const preview = source.drawingManager.getDrawings()[0]!;
+    expect(target.drawingManager.getDrawingById(preview.id)).toBeDefined();
+
+    canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        bubbles: true,
+        clientX: 360,
+        clientY: 180
+      })
+    );
+    source.container.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key: "Escape"
+      })
+    );
+
+    expect(source.drawingManager.getDrawings()).toEqual([]);
+    expect(source.drawingManager.canUndo()).toBe(false);
+    expect(target.drawingManager.getDrawings()).toEqual([]);
+
+    await nextAnimationFrame();
+    expect(target.drawingManager.getDrawings()).toEqual([]);
+
+    const late = createSyncedChart(group);
+    expect(late.drawingManager.getDrawings()).toEqual([]);
   });
 
   it("syncs drawing create, change, selection, and delete", () => {

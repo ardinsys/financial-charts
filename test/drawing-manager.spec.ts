@@ -540,6 +540,7 @@ describe("DrawingManager", () => {
     expect(plugin.onDrawingFinished).toHaveBeenCalledWith(
       expect.objectContaining({ drawing, operation: "create" })
     );
+    expect(deleted).not.toHaveBeenCalled();
     expect(anchorsBeforeMove[0]).not.toEqual(anchorsBeforeMove[1]);
 
     const [firstProjectedAnchor] = drawing.projectForTest(
@@ -619,19 +620,49 @@ describe("DrawingManager", () => {
     const { chart, container, data } = createChart();
     const manager = createManager(chart);
     const created = vi.fn();
+    const changed = vi.fn();
+    const deleted = vi.fn();
+    const finished = vi.fn();
     chart.on("drawing-create", created);
+    chart.on("drawing-change", changed);
+    chart.on("drawing-delete", deleted);
+    chart.on("drawing-finished", finished);
 
     manager.onPointer(pointerEvent(chart, data[0], "down", { x: 120, y: 120 }));
     manager.onPointer(pointerEvent(chart, data[1], "move", { x: 280, y: 220 }));
 
+    const preview = manager.getDrawings()[0];
     expect(manager.getDrawings()).toHaveLength(1);
+    expect(changed).toHaveBeenCalledWith({ drawing: preview });
     expect(keyDown(container, "Escape")).toBe(false);
     expect(manager.getDrawings()).toEqual([]);
     expect(manager.getSelectedDrawing()).toBeUndefined();
     expect(created).not.toHaveBeenCalled();
+    expect(deleted).toHaveBeenCalledOnce();
+    expect(deleted).toHaveBeenCalledWith({ drawing: preview });
+    expect(finished).not.toHaveBeenCalled();
+    expect(manager.canUndo()).toBe(false);
 
     manager.onPointer(pointerEvent(chart, data[2], "down", { x: 520, y: 140 }));
     expect(manager.getDrawings()).toEqual([]);
+  });
+
+  it("publishes deletion when an announced preview is discarded on detach", () => {
+    const { chart, data } = createChart();
+    const manager = createManager(chart);
+    const deleted = vi.fn();
+    chart.on("drawing-delete", deleted);
+
+    manager.onPointer(pointerEvent(chart, data[0], "down", { x: 120, y: 120 }));
+    manager.onPointer(pointerEvent(chart, data[1], "move", { x: 280, y: 220 }));
+    const preview = manager.getDrawings()[0];
+
+    chart.removePlugin(manager);
+
+    expect(deleted).toHaveBeenCalledOnce();
+    expect(deleted).toHaveBeenCalledWith({ drawing: preview });
+    expect(manager.getDrawings()).toEqual([]);
+    expect(manager.canUndo()).toBe(false);
   });
 
   it("creates the default two-anchor drawing with two clicks", () => {
@@ -792,13 +823,16 @@ describe("DrawingManager", () => {
     const manager = createManager(chart);
     const canvas = getChartContext(chart, "crosshair").canvas;
     const created = vi.fn();
+    const deleted = vi.fn();
     chart.on("drawing-create", created);
+    chart.on("drawing-delete", deleted);
 
     dispatchTouchPointer(canvas, "pointerdown", { x: 120, y: 120 });
     dispatchTouchPointer(canvas, "pointermove", { x: 280, y: 220 });
     dispatchTouchPointer(canvas, "pointercancel", { x: 280, y: 220 });
 
     expect(created).not.toHaveBeenCalled();
+    expect(deleted).toHaveBeenCalledOnce();
     expect(manager.getDrawings()).toEqual([]);
 
     dispatchTouchPointer(canvas, "pointerdown", { x: 120, y: 120 });
@@ -826,10 +860,15 @@ describe("DrawingManager", () => {
     const { chart } = createChart();
     const manager = createManager(chart);
     const canvas = getChartContext(chart, "crosshair").canvas;
+    const deleted = vi.fn();
+    chart.on("drawing-delete", deleted);
 
     dispatchTouchPointer(canvas, "pointerdown", { x: 120, y: 120 }, 11);
+    dispatchTouchPointer(canvas, "pointermove", { x: 220, y: 180 }, 11);
     dispatchTouchPointer(canvas, "pointerdown", { x: 320, y: 120 }, 12);
     expect(manager.getDrawings()).toEqual([]);
+    expect(deleted).toHaveBeenCalledOnce();
+    expect(manager.canUndo()).toBe(false);
 
     const before = chart.getVisibleLogicalRange();
     dispatchTouchEvent(canvas, "touchstart", [
@@ -1034,6 +1073,11 @@ describe("DrawingManager", () => {
       })
     );
     const [firstAnchor] = drawing.getAnchorHandles(drawingContext(chart));
+    const changed = vi.fn();
+    const finished = vi.fn();
+    chart.on("drawing-change", changed);
+    chart.on("drawing-finished", finished);
+    const couldUndoBefore = manager.canUndo();
 
     manager.onPointer(pointerEvent(chart, data[0], "down", firstAnchor.point));
     const replacement = manager.upsertDrawing({
@@ -1050,6 +1094,13 @@ describe("DrawingManager", () => {
       { index: 1, price: 11 },
       { index: 2, price: 13 }
     ]);
+    expect(drawing.getAnchors()).toEqual([
+      { index: 0, price: 10 },
+      { index: 1, price: 12 }
+    ]);
+    expect(changed).not.toHaveBeenCalled();
+    expect(finished).not.toHaveBeenCalled();
+    expect(manager.canUndo()).toBe(couldUndoBefore);
   });
 
   it("does not replay move history for a removed drawing", () => {

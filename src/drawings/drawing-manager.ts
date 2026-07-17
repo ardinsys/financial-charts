@@ -60,6 +60,7 @@ type Interaction =
   | {
       type: "creating";
       drawing: Drawing;
+      announced: boolean;
       anchorCount: number;
       placedAnchorCount: number;
       pointerActive: boolean;
@@ -260,7 +261,7 @@ export class DrawingManager implements ChartPlugin {
         index === existingIndex ? drawing : item
       );
       if (options.emit) {
-        this.ctx?.emit("drawing-change", { drawing });
+        this.emitDrawingChange(drawing);
       }
     }
 
@@ -285,7 +286,7 @@ export class DrawingManager implements ChartPlugin {
 
     drawing.setAnchors(anchors);
     if (options.emit) {
-      this.ctx?.emit("drawing-change", { drawing });
+      this.emitDrawingChange(drawing);
     }
     this.ctx?.requestRedraw("drawings");
     return drawing;
@@ -450,7 +451,7 @@ export class DrawingManager implements ChartPlugin {
 
     if (!this.drawings.includes(entry.drawing)) return;
     entry.drawing.setAnchors(direction === "undo" ? entry.before : entry.after);
-    this.ctx?.emit("drawing-change", { drawing: entry.drawing });
+    this.emitDrawingChange(entry.drawing);
     this.ctx?.requestRedraw("drawings");
   }
 
@@ -634,6 +635,7 @@ export class DrawingManager implements ChartPlugin {
     this.interaction = {
       type: "creating",
       drawing,
+      announced: false,
       anchorCount,
       placedAnchorCount: 1,
       pointerActive: true,
@@ -661,9 +663,7 @@ export class DrawingManager implements ChartPlugin {
 
     if (this.interaction.type === "anchor") {
       this.interaction.drawing.moveAnchor(this.interaction.index, anchor);
-      this.ctx?.emit("drawing-change", {
-        drawing: this.interaction.drawing
-      });
+      this.emitDrawingChange(this.interaction.drawing);
       this.ctx?.requestRedraw("drawings");
       return;
     }
@@ -678,9 +678,7 @@ export class DrawingManager implements ChartPlugin {
         price: originalAnchor.price + delta.price
       }))
     );
-    this.ctx?.emit("drawing-change", {
-      drawing: this.interaction.drawing
-    });
+    this.emitDrawingChange(this.interaction.drawing);
     this.ctx?.requestRedraw("drawings");
   }
 
@@ -725,7 +723,7 @@ export class DrawingManager implements ChartPlugin {
     }
 
     this.interaction.drawing.setAnchors(this.interaction.anchors);
-    this.ctx?.emit("drawing-change", { drawing: this.interaction.drawing });
+    this.emitDrawingChange(this.interaction.drawing);
     this.interaction = undefined;
     this.ctx?.requestRedraw("drawings");
   }
@@ -743,7 +741,7 @@ export class DrawingManager implements ChartPlugin {
       anchors[index] = anchor;
     }
     creation.drawing.setAnchors(anchors);
-    this.ctx?.emit("drawing-change", { drawing: creation.drawing });
+    this.emitDrawingChange(creation.drawing);
     this.ctx?.requestRedraw("drawings");
   }
 
@@ -874,10 +872,14 @@ export class DrawingManager implements ChartPlugin {
     clearFactory: boolean
   ) {
     this.interaction = undefined;
+    creation.drawing.bindMutationHandler();
     this.drawings = this.drawings.filter(
       (candidate) => candidate !== creation.drawing
     );
     if (clearFactory) this.setDrawingFactory(undefined);
+    if (creation.announced) {
+      this.ctx?.emit("drawing-delete", { drawing: creation.drawing });
+    }
     this.ctx?.requestRedraw("drawings");
   }
 
@@ -920,9 +922,20 @@ export class DrawingManager implements ChartPlugin {
   private bindDrawingMutation(drawing: Drawing): void {
     drawing.bindMutationHandler(() => {
       if (!this.drawings.includes(drawing)) return;
-      this.ctx?.emit("drawing-change", { drawing });
+      this.emitDrawingChange(drawing);
       this.ctx?.requestRedraw("drawings");
     });
+  }
+
+  private emitDrawingChange(drawing: Drawing): void {
+    if (!this.ctx) return;
+    if (
+      this.interaction?.type === "creating" &&
+      this.interaction.drawing === drawing
+    ) {
+      this.interaction.announced = true;
+    }
+    this.ctx.emit("drawing-change", { drawing });
   }
 
   private deserializeDrawing(json: DrawingJSON) {
