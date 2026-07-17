@@ -14,7 +14,7 @@ import {
   type DefaultIndicatorOptions,
   type ExtensionThemeDefaults,
   type IndicatorDrawingContext,
-  type IndicatorLabelContent
+  type IndicatorLabelContent,
 } from "@ardinsys/financial-charts/extensions";
 import type { ChartData } from "@ardinsys/financial-charts";
 
@@ -38,14 +38,14 @@ class LastPriceIndicator extends Indicator<LastPriceTheme, LastPriceOptions> {
     return {
       labelKey: "last-price",
       names: { default: "Last price" },
-      source: "close"
+      source: "close",
     };
   }
 
   public getDefaultThemes(): ExtensionThemeDefaults<LastPriceTheme> {
     return {
       light: { color: "#2563eb", lineWidth: 2 },
-      dark: { color: "#93c5fd", lineWidth: 2 }
+      dark: { color: "#93c5fd", lineWidth: 2 },
     };
   }
 
@@ -67,9 +67,9 @@ class LastPriceIndicator extends Indicator<LastPriceTheme, LastPriceOptions> {
                 text: this.indicatorContext
                   .getOptions()
                   .formatter.formatPrice(value),
-                color: this.theme.color
-              }
-            ]
+                color: this.theme.color,
+              },
+            ],
     };
   }
 
@@ -125,7 +125,7 @@ import {
   type DefaultIndicatorOptions,
   type ExtensionThemeDefaults,
   type IndicatorLabelContent,
-  type PaneledIndicatorDrawingContext
+  type PaneledIndicatorDrawingContext,
 } from "@ardinsys/financial-charts/extensions";
 import { DataScaleModel } from "@ardinsys/financial-charts/engine";
 import type { ChartData, TimeRange } from "@ardinsys/financial-charts";
@@ -145,29 +145,20 @@ class RangePaneIndicator extends PaneledIndicator<
   public getDefaultOptions(): DefaultIndicatorOptions {
     return {
       labelKey: "range-pane",
-      names: { default: "Range" }
+      names: { default: "Range" },
     };
   }
 
   public getDefaultThemes(): ExtensionThemeDefaults<RangePaneTheme> {
     return {
       light: { color: "#7c3aed" },
-      dark: { color: "#c4b5fd" }
+      dark: { color: "#c4b5fd" },
     };
   }
 
   public createScale(): DataScaleModel {
     this.rangeData = this.toRangeData(this.indicatorContext.getData());
     return this.createRangeScale();
-  }
-
-  public onData(data: readonly ChartData[]): void {
-    this.rangeData = this.toRangeData(data);
-    this.recalculateScale(this.indicatorContext.getVisibleTimeRange());
-  }
-
-  public onVisibleRangeChanged(range: TimeRange): void {
-    this.recalculateScale(range);
   }
 
   protected getLabelContent(): IndicatorLabelContent {
@@ -221,23 +212,32 @@ class RangePaneIndicator extends PaneledIndicator<
     );
   }
 
-  private recalculateScale(range: TimeRange): void {
-    const data =
-      this.rangeData.length > 0 ? this.rangeData : [{ time: 0, close: 0 }];
-    this.scale.recalculate(data, range);
+  protected updateScale(
+    data: readonly ChartData[],
+    visibleRange: TimeRange
+  ): void {
+    this.rangeData = this.toRangeData(data);
+    this.scale.recalculate(this.rangeData, visibleRange);
   }
 
   private toRangeData(data: readonly ChartData[]): ChartData[] {
     return data.map((point) => ({
       time: point.time,
       close:
-        point.high == null || point.low == null ? null : point.high - point.low
+        point.high == null || point.low == null ? null : point.high - point.low,
     }));
   }
 }
 
 chart.addIndicator(new RangePaneIndicator());
 ```
+
+The base draw path calls `updateScale(visibleData, visibleRange)` before it
+synchronizes the pane price scale. Its default implementation recalculates the
+indicator scale, and skips work while the data snapshot and visible range are
+unchanged. Override the hook for derived indicator data or fixed ranges. For a
+fixed 0–100 scale, create that range in `createScale()` and override
+`updateScale()` with a no-op.
 
 ## Runtime updates
 
@@ -316,7 +316,7 @@ import {
   type ExtensionThemeDefaults,
   type ExtensionThemeMap,
   type IndicatorLabelContent,
-  type IndicatorOptionsInput
+  type IndicatorOptionsInput,
 } from "@ardinsys/financial-charts/extensions";
 import type { ScaleRangeModifier } from "@ardinsys/financial-charts/engine";
 
@@ -358,21 +358,21 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
   override attach(ctx: IndicatorContext): void {
     super.attach(ctx);
     this.source.subscribe((orders) => this.setOrders(orders), {
-      signal: ctx.signal
+      signal: ctx.signal,
     });
   }
 
   getDefaultOptions(): OrdersOptions {
     return {
       labelKey: "orders",
-      names: { default: "Orders" }
+      names: { default: "Orders" },
     };
   }
 
   getDefaultThemes(): ExtensionThemeDefaults<OrdersTheme> {
     return {
       light: { buyColor: "#00897b", sellColor: "#d81b60" },
-      dark: { buyColor: "#4db6ac", sellColor: "#f06292" }
+      dark: { buyColor: "#4db6ac", sellColor: "#f06292" },
     };
   }
 
@@ -400,7 +400,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
       actor: this,
       enabled: true,
       yMin: Math.min(...prices),
-      yMax: Math.max(...prices)
+      yMax: Math.max(...prices),
     };
   }
 
@@ -436,10 +436,10 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
               text: this.indicatorContext
                 .getOptions()
                 .formatter.formatPrice(hovered.price),
-              color: this.getColor(hovered)
-            }
+              color: this.getColor(hovered),
+            },
           ]
-        : []
+        : [],
     };
   }
 
@@ -482,7 +482,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
           .formatter.formatPrice(order.price),
         color: this.getColor(order),
         emphasized: order.id === this.hoveredId,
-        lineDash: [4, 3]
+        lineDash: [4, 3],
       }))
     );
   }

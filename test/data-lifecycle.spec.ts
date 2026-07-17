@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import { LineController } from "../src/controllers/line-controller";
-import { TestIndicator } from "../src/indicators/paneled/test-indicator";
+import {
+  FixedRangeTestIndicator,
+  TestIndicator,
+} from "../src/indicators/paneled/test-indicator";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
 import {
   getChartContext,
   getChartModel,
-  getChartRenderer
+  getChartRenderer,
+  getInternalPanes,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -29,7 +33,7 @@ function createChart() {
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
   });
   charts.push(chart);
   return chart;
@@ -42,7 +46,7 @@ describe("chart data lifecycle", () => {
     const plugin: ChartPlugin = {
       key: "data-probe",
       attach: vi.fn(),
-      onData
+      onData,
     };
     const start = Date.UTC(2024, 0, 1, 9);
 
@@ -57,7 +61,7 @@ describe("chart data lifecycle", () => {
 
     expect(chart.getData()).toEqual([{ time: start + 60_000, close: 11 }]);
     expect(onData).toHaveBeenLastCalledWith([
-      { time: start + 60_000, close: 11 }
+      { time: start + 60_000, close: 11 },
     ]);
   });
 
@@ -66,7 +70,7 @@ describe("chart data lifecycle", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     chart.setData([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 12 }
+      { time: start + 60_000, close: 12 },
     ]);
 
     chart.updateData({ time: start + 60_000, close: 100 });
@@ -83,7 +87,7 @@ describe("chart data lifecycle", () => {
     chart.setData(
       Array.from({ length: 200 }, (_, index) => ({
         time: start + index * 60_000,
-        close: index % 2 === 0 ? 10 : 20
+        close: index % 2 === 0 ? 10 : 20,
       }))
     );
     const scale = getChartModel(chart).getVisibleScale();
@@ -92,11 +96,35 @@ describe("chart data lifecycle", () => {
     for (let index = 200; index < 300; index += 1) {
       chart.updateData({
         time: start + index * 60_000,
-        close: 15
+        close: 15,
       });
     }
 
     expect([scale.getYMin(), scale.getYMax()]).toEqual(range);
+  });
+
+  it("updates paneled scales while preserving overridden fixed ranges", async () => {
+    const chart = createChart();
+    const start = Date.UTC(2024, 0, 1, 9);
+    chart.setData([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 20 },
+    ]);
+    const automatic = new TestIndicator();
+    const fixed = new FixedRangeTestIndicator();
+    chart.addIndicator(automatic);
+    chart.addIndicator(fixed);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    const automaticPane = getInternalPanes(chart)[1];
+    const fixedPane = getInternalPanes(chart)[2];
+    const fixedRange = fixedPane.getPriceScale().getRange();
+
+    chart.updateData({ time: start + 60_000, close: 1_000 });
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(automaticPane.getPriceScale().getRange().max).toBeGreaterThan(1_000);
+    expect(fixedPane.getPriceScale().getRange()).toBe(fixedRange);
   });
 
   it("clears data-dependent state and rendered chart layers immediately", () => {
@@ -104,13 +132,13 @@ describe("chart data lifecycle", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const data = [
       { time: start, close: 10 },
-      { time: start + 60_000, close: 12 }
+      { time: start + 60_000, close: 12 },
     ] as const;
     const onData = vi.fn();
     const plugin: ChartPlugin = {
       key: "clear-probe",
       attach: vi.fn(),
-      onData
+      onData,
     };
     const paneledIndicator = new TestIndicator();
 
@@ -124,7 +152,7 @@ describe("chart data lifecycle", () => {
       actor: "clear-probe",
       enabled: true,
       yMin: -100,
-      yMax: 100
+      yMax: 100,
     });
 
     const clearedContexts = [
@@ -132,7 +160,7 @@ describe("chart data lifecycle", () => {
       getChartContext(chart, "x-label"),
       getChartContext(chart, "y-label"),
       getChartContext(chart, "indicator"),
-      getChartContext(chart, "crosshair")
+      getChartContext(chart, "crosshair"),
     ];
     for (const context of clearedContexts) {
       vi.mocked(context.clearRect).mockClear();

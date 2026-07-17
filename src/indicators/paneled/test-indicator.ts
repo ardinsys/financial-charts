@@ -1,13 +1,14 @@
 import { DataScaleModel } from "../../scales/data-scale-model";
 import {
   DefaultIndicatorOptions,
-  type IndicatorLabelContent
+  type IndicatorLabelContent,
 } from "../indicator";
 import {
   PaneledIndicator,
-  type PaneledIndicatorDrawingContext
+  type PaneledIndicatorDrawingContext,
 } from "../paneled-indicator";
 import type { ExtensionThemeDefaults } from "../../plugin/extension-theme";
+import type { ChartData, TimeRange } from "../../chart/types";
 
 export class TestIndicator extends PaneledIndicator<
   {},
@@ -45,12 +46,32 @@ export class TestIndicator extends PaneledIndicator<
     return {
       labelKey: "test",
       names: {
-        default: "Test"
-      }
+        default: "Test",
+      },
     };
   }
 
   public getDefaultThemes(): ExtensionThemeDefaults<{}> {
     return { light: {}, dark: {} };
   }
+}
+
+export class FixedRangeTestIndicator extends TestIndicator {
+  static ID = "fixed-range-test";
+
+  public createScale(): DataScaleModel {
+    return new DataScaleModel(
+      "simple",
+      [
+        { time: 0, close: 0 },
+        { time: 1, close: 100 },
+      ],
+      this.indicatorContext.getVisibleTimeRange()
+    );
+  }
+
+  protected updateScale(
+    _data: readonly ChartData[],
+    _visibleRange: TimeRange
+  ): void {}
 }

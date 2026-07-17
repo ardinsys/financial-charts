@@ -7,7 +7,7 @@ Indicators can be drawn either on top of the main price chart (overlay indicator
 ```ts
 import {
   Indicator,
-  type DefaultIndicatorOptions
+  type DefaultIndicatorOptions,
 } from "@ardinsys/financial-charts/extensions";
 
 abstract class MyIndicator extends Indicator<MyTheme, MyOptions> {
@@ -80,7 +80,7 @@ visibility after checking the state:
 ```ts
 import {
   MovingAverageIndicator,
-  restoreIndicator
+  restoreIndicator,
 } from "@ardinsys/financial-charts";
 
 const stored = JSON.stringify(indicator.toJSON());
@@ -212,6 +212,12 @@ abstract class MyPaneledIndicator extends PaneledIndicator<MyTheme, MyOptions> {
   public createScale(): DataScaleModel {
     /* setup scale model */
   }
+  protected updateScale(
+    data: readonly ChartData[],
+    visibleRange: TimeRange
+  ): void {
+    /* derive or preserve the pane range */
+  }
   protected drawPane(ctx: PaneledIndicatorDrawingContext): void {
     /* draw only pane content; background/grid/Y axis are handled by the base */
   }
@@ -226,6 +232,8 @@ abstract class MyPaneledIndicator extends PaneledIndicator<MyTheme, MyOptions> {
 
 - `init(params)` and `resize(params)` are handled by the chart.
 - `draw()` is implemented by the base class. It clears the panel, paints the background, draws shared grid lines, syncs the pane price scale, draws the Y axis, and then calls `drawPane(context)` when the indicator is visible.
+- `updateScale(visibleData, visibleRange)` recalculates the scale by default
+  when either input changes. Override it for derived data or a fixed range.
 - `drawPane(context)` receives the pane canvas context, axis context, pane,
   indicator scale, dimensions, data, visible data, visible range,
   formatter/theme, and projection helpers.
@@ -258,7 +266,7 @@ import { MovingAverageIndicator } from "@ardinsys/financial-charts";
 const sma = new MovingAverageIndicator(null, {
   instanceId: "primary-sma",
   period: 20,
-  source: "close"
+  source: "close",
 });
 
 chart.addIndicator(sma);

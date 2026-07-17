@@ -1,22 +1,22 @@
 import type { Pane } from "../panes/pane";
 import { DataScaleModel } from "../scales/data-scale-model";
+import type { ChartData, TimeRange } from "../chart/types";
 import {
   calculateStepSize as calculatePriceStepSize,
-  calculateYAxisLabels as calculatePriceYAxisLabels
+  calculateYAxisLabels as calculatePriceYAxisLabels,
 } from "../scales/ticks/price-ticks";
 import type { BarAlignment } from "../scales/time-scale";
 import {
   configurePositionedElement,
   createCanvasLayer,
   createPositionedContainer,
-  resizeCanvasLayer
+  resizeCanvasLayer,
 } from "../utils/dom";
-import { pixelRatio } from "../utils/screen";
 import {
   DefaultIndicatorOptions,
   Indicator,
   type IndicatorDrawingContext,
-  type IndicatorPoint
+  type IndicatorPoint,
 } from "./indicator";
 
 export interface InitParams {
@@ -30,11 +30,7 @@ export interface InitParams {
 
 export interface PaneledIndicatorDrawingContext extends Omit<
   IndicatorDrawingContext,
-  | "ctx"
-  | "canvas"
-  | "projectTime"
-  | "projectPrice"
-  | "projectPoint"
+  "ctx" | "canvas" | "projectTime" | "projectPrice" | "projectPoint"
 > {
   readonly ctx: CanvasRenderingContext2D;
   readonly axisCtx: CanvasRenderingContext2D;
@@ -56,7 +52,7 @@ export interface PaneledIndicatorDrawingContext extends Omit<
 
 export abstract class PaneledIndicator<
   TTheme extends object,
-  TOptions extends DefaultIndicatorOptions
+  TOptions extends DefaultIndicatorOptions,
 > extends Indicator<TTheme, TOptions> {
   protected container!: HTMLElement;
   protected canvas!: HTMLCanvasElement;
@@ -65,6 +61,12 @@ export abstract class PaneledIndicator<
   protected axisContext!: CanvasRenderingContext2D;
   protected scale!: DataScaleModel;
   protected pane?: Pane;
+  private logicalWidth = 0;
+  private logicalHeight = 0;
+  private logicalAxisWidth = 0;
+  private devicePixelRatio = 1;
+  private scaleData?: readonly ChartData[];
+  private scaleRange?: TimeRange;
 
   public abstract createScale(): DataScaleModel;
 
@@ -77,11 +79,18 @@ export abstract class PaneledIndicator<
     const yAxisRegion = params.pane?.getYAxisRegion();
     const defaultAxisWidth =
       this.indicatorContext.getLogicalCanvas("y-label").width;
-    const mainWidth =
-      paneRegion?.width ?? params.width - defaultAxisWidth;
+    const mainWidth = paneRegion?.width ?? params.width - defaultAxisWidth;
     const axisWidth = yAxisRegion?.width ?? defaultAxisWidth;
     const height = paneRegion?.height ?? params.height;
     const context = isMain ? this.context : this.axisContext;
+
+    this.devicePixelRatio = params.devicePixelRatio;
+    this.logicalHeight = height;
+    if (isMain) {
+      this.logicalWidth = mainWidth;
+    } else {
+      this.logicalAxisWidth = axisWidth;
+    }
 
     resizeCanvasLayer(canvas, {
       left: isMain ? 0 : mainWidth,
@@ -89,23 +98,25 @@ export abstract class PaneledIndicator<
       width: isMain ? mainWidth : axisWidth,
       height,
       pixelRatio: params.devicePixelRatio,
-      context
+      context,
     });
   }
 
   public init(params: InitParams): void {
     this.pane = params.pane;
     this.scale = this.createScale();
+    this.scaleData = undefined;
+    this.scaleRange = undefined;
     this.container = createPositionedContainer({
       overflow: "hidden",
       userSelect: "none",
       tapHighlightColor: "transparent",
-      borderTop: `2px solid ${this.indicatorContext.getOptions().theme.grid.color}`,
       left: params.x,
       top: params.y,
       width: params.width,
-      height: params.height
+      height: params.height,
     });
+    this.container.classList.add("fci-indicator-pane");
     this.canvas = createCanvasLayer();
     this.axisCanvas = createCanvasLayer();
 
@@ -121,7 +132,7 @@ export abstract class PaneledIndicator<
     configurePositionedElement(this.labelContainer, {
       position: "relative",
       left: 5,
-      top: 10
+      top: 10,
     });
     this.container.appendChild(this.labelContainer);
   }
@@ -132,7 +143,7 @@ export abstract class PaneledIndicator<
       left: params.x,
       top: params.y,
       width: params.width,
-      height: params.height
+      height: params.height,
     });
     this.adjustCanvas(this.canvas, params, true);
     this.adjustCanvas(this.axisCanvas, params, false);
@@ -145,23 +156,52 @@ export abstract class PaneledIndicator<
   public abstract getCrosshairValue(time: number, relativeY: number): string;
 
   public draw(): void {
+    const context = this.getPaneDrawingContext();
+    this.updateScaleIfNeeded(context);
     this.initDrawing();
     if (!this.visible) return;
-    this.drawPane(this.getPaneDrawingContext());
+    this.drawPane(context);
   }
 
   /** @internal */
   public clearDrawing(): void {
+    this.updateScaleIfNeeded(this.getPaneDrawingContext());
     this.initDrawing();
   }
 
   protected drawPane(_context: PaneledIndicatorDrawingContext): void {}
+
+  protected updateScale(
+    data: readonly ChartData[],
+    visibleRange: TimeRange
+  ): void {
+    this.scale.recalculate(data, visibleRange);
+  }
+
+  private updateScaleIfNeeded(context: PaneledIndicatorDrawingContext): void {
+    const range = context.visibleTimeRange;
+    if (
+      this.scaleData === context.visibleData &&
+      this.scaleRange?.start === range.start &&
+      this.scaleRange.end === range.end
+    ) {
+      return;
+    }
+
+    this.updateScale(context.visibleData, range);
+    this.scaleData = context.visibleData;
+    this.scaleRange = range;
+  }
 
   protected initDrawing() {
     this.pane?.setPriceRange(this.scale.getYMin(), this.scale.getYMax());
 
     const ctx = this.context;
     const theme = this.indicatorContext.getOptions().theme;
+    this.container.style.setProperty(
+      "--fci-pane-border-color",
+      theme.grid.color
+    );
     ctx.clearRect(0, 0, this.width(), this.height());
     ctx.fillStyle = theme.backgroundColor;
     ctx.fillRect(0, 0, this.width(), this.height());
@@ -189,7 +229,7 @@ export abstract class PaneledIndicator<
     const timeAnchorAlignment = this.pane?.getTimeAnchorAlignment() ?? "center";
     const scaleOptions = {
       canvas,
-      barAlignment: timeAnchorAlignment
+      barAlignment: timeAnchorAlignment,
     };
 
     return {
@@ -202,7 +242,7 @@ export abstract class PaneledIndicator<
       scale: this.scale,
       width: paneRegion?.width ?? this.width(),
       height: paneRegion?.height ?? this.height(),
-      axisWidth: yAxisRegion?.width ?? this.axisCanvas.width / pixelRatio(),
+      axisWidth: yAxisRegion?.width ?? this.logicalAxisWidth,
       projectTime: (time, barAlignment = timeAnchorAlignment) =>
         timeScale
           ? timeScale.project(time, { canvas, barAlignment })
@@ -217,38 +257,27 @@ export abstract class PaneledIndicator<
           : base.projectTime(time, barAlignment),
         y: priceScale
           ? priceScale.project(value, scaleOptions)
-          : base.projectPrice(value)
-      })
+          : base.projectPrice(value),
+      }),
     };
   }
 
   private initYAxis() {
     const ctx = this.axisContext;
     const theme = this.indicatorContext.getOptions().theme;
-    const axisWidth =
-      this.indicatorContext.getLogicalCanvas("y-label").width;
+    const axisWidth = this.logicalAxisWidth;
     ctx.fillStyle = theme.yAxis.backgroundColor;
-    ctx.clearRect(
-      0,
-      0,
-      axisWidth,
-      this.height()
-    );
-    ctx.fillRect(
-      0,
-      0,
-      axisWidth,
-      this.height()
-    );
+    ctx.clearRect(0, 0, axisWidth, this.height());
+    ctx.fillRect(0, 0, axisWidth, this.height());
     this.drawYAxis();
   }
 
   protected width() {
-    return this.canvas.width / pixelRatio();
+    return this.logicalWidth;
   }
 
   protected height() {
-    return this.canvas.height / pixelRatio();
+    return this.logicalHeight;
   }
 
   protected calculateYAxisLabels(fontSize: number, labelSpacing: number) {
@@ -259,9 +288,9 @@ export abstract class PaneledIndicator<
     return calculatePriceYAxisLabels({
       yMin: this.scale.getYMin(),
       yMax: this.scale.getYMax(),
-      canvasHeight: this.axisCanvas.height / pixelRatio(),
+      canvasHeight: this.logicalHeight,
       fontSize,
-      labelSpacing
+      labelSpacing,
     });
   }
 
@@ -282,21 +311,20 @@ export abstract class PaneledIndicator<
         scale: this.scale,
         theme: options.theme,
         formatter: options.formatter,
-        pixelRatio: pixelRatio(),
-        labelSpacing: 30
+        pixelRatio: this.devicePixelRatio,
+        labelSpacing: 30,
       });
       return;
     }
 
     const theme = options.theme;
-    const yAxisValues = this.calculateYAxisLabels(theme.xAxis.fontSize, 30);
+    const yAxisValues = this.calculateYAxisLabels(theme.yAxis.fontSize, 30);
 
     const ctx = this.axisContext;
-    const ratio = pixelRatio();
+    const ratio = this.devicePixelRatio;
 
     ctx.fillStyle = theme.yAxis.color;
-    ctx.font =
-      ctx.font = `${theme.yAxis.fontSize}px ${theme.xAxis.font}, monospace`;
+    ctx.font = `${theme.yAxis.fontSize}px ${theme.xAxis.font}, monospace`;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 

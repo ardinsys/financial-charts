@@ -116,6 +116,11 @@
   opacity: 0.6;
 }
 
+.financial-charts .fci-indicator-pane {
+  border-top: 2px solid var(--fci-pane-border-color, transparent);
+  box-sizing: border-box;
+}
+
 .financial-charts .fci-pane-divider {
   align-items: center;
   box-sizing: border-box;
