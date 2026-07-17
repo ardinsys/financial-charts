@@ -198,7 +198,12 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
     const drawingCanvas = ctx.getCanvasContext("drawings").canvas;
     const axisBounds = drawing.getAxisBounds({
       pane,
-      canvas: drawingCanvas
+      canvas: drawingCanvas,
+      handleTheme: {
+        centerColor: chartOptions.theme.yAxis.color,
+        fillColor: chartOptions.theme.backgroundColor,
+        strokeColor: chartOptions.theme.crosshair.color
+      }
     });
     const theme = this.themeResolver.resolve(chartOptions.theme);
 
@@ -294,7 +299,15 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
     const locale = chartOptions.locale;
     const labels = this.resolveLabels(locale);
     const drawingCanvas = ctx.getCanvasContext("drawings").canvas;
-    const axisBounds = drawing.getAxisBounds({ pane, canvas: drawingCanvas });
+    const axisBounds = drawing.getAxisBounds({
+      pane,
+      canvas: drawingCanvas,
+      handleTheme: {
+        centerColor: chartOptions.theme.yAxis.color,
+        fillColor: chartOptions.theme.backgroundColor,
+        strokeColor: chartOptions.theme.crosshair.color
+      }
+    });
     const marks: FormattedAxisMark[] = this.createAxisMarks(
       axisBounds.y ?? [],
       "y",

@@ -317,13 +317,14 @@ export class ChartRenderer {
     }
     if (!Number.isFinite(stepSize)) return 0;
 
-    for (let decimals = 0; decimals <= 6; decimals++) {
+    for (let decimals = 0; decimals <= 8; decimals++) {
       const scaledStep = stepSize * 10 ** decimals;
-      if (Math.abs(Math.round(scaledStep) - scaledStep) < 1e-8) {
+      const tolerance = 1e-10 * Math.max(1, Math.abs(scaledStep));
+      if (Math.abs(Math.round(scaledStep) - scaledStep) <= tolerance) {
         return decimals;
       }
     }
-    return 6;
+    return 8;
   }
 
   private drawXAxis(): void {

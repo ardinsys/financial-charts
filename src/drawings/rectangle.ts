@@ -20,7 +20,7 @@ export interface RectangleDrawingOptions extends DrawingOptions {
 interface RectangleDrawingJSONData {
   fillColor: string;
   lineWidth: number;
-  selectedColor: string;
+  selectedColor?: string;
   strokeColor: string;
 }
 
@@ -30,13 +30,13 @@ export class RectangleDrawing extends Drawing {
 
   private fillColor: string;
   private lineWidth: number;
-  private selectedColor: string;
+  private selectedColor?: string;
   private strokeColor: string;
 
   constructor({
     fillColor = "rgba(37, 99, 235, 0.12)",
     lineWidth = 2,
-    selectedColor = "#f59e0b",
+    selectedColor,
     strokeColor = "#2563eb",
     ...options
   }: RectangleDrawingOptions) {
@@ -76,7 +76,12 @@ export class RectangleDrawing extends Drawing {
 
     if (this.isSelected()) {
       for (const handle of this.getAnchorHandles(context)) {
-        drawAnchorHandle(ctx, handle.point, this.selectedColor);
+        drawAnchorHandle(
+          ctx,
+          handle.point,
+          context.handleTheme,
+          this.selectedColor
+        );
       }
     }
     ctx.restore();
@@ -92,23 +97,14 @@ export class RectangleDrawing extends Drawing {
       point.x <= bounds.x + bounds.width + tolerance &&
       point.y >= bounds.y - tolerance &&
       point.y <= bounds.y + bounds.height + tolerance;
-    if (!insideExpandedBounds) return false;
-
-    const nearVerticalEdge =
-      Math.abs(point.x - bounds.x) <= tolerance ||
-      Math.abs(point.x - (bounds.x + bounds.width)) <= tolerance;
-    const nearHorizontalEdge =
-      Math.abs(point.y - bounds.y) <= tolerance ||
-      Math.abs(point.y - (bounds.y + bounds.height)) <= tolerance;
-
-    return nearVerticalEdge || nearHorizontalEdge;
+    return insideExpandedBounds;
   }
 
   protected getDataJSON(): RectangleDrawingJSONData {
     return {
       fillColor: this.fillColor,
       lineWidth: this.lineWidth,
-      selectedColor: this.selectedColor,
+      ...(this.selectedColor ? { selectedColor: this.selectedColor } : {}),
       strokeColor: this.strokeColor
     };
   }

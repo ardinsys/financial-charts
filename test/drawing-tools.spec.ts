@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
@@ -17,6 +17,7 @@ import {
 import type { ChartPointerEvent } from "../src/plugin/chart-plugin";
 import {
   getChartContext,
+  getChartRenderer,
   getInternalMainPane,
   requestChartRedraw
 } from "./chart-test-harness";
@@ -105,9 +106,15 @@ function createDrawing(
 }
 
 function drawingContext(chart: FinancialChart): DrawingRenderContext {
+  const theme = chart.getOptions().theme;
   return {
     pane: getInternalMainPane(chart),
-    canvas: getChartContext(chart, "drawings").canvas
+    canvas: getChartContext(chart, "drawings").canvas,
+    handleTheme: {
+      centerColor: theme.yAxis.color,
+      fillColor: theme.backgroundColor,
+      strokeColor: theme.crosshair.color
+    }
   };
 }
 
@@ -151,6 +158,32 @@ describe("drawing tools", () => {
     manager.deleteSelected();
 
     expect(manager.getDrawings()).toEqual([]);
+  });
+
+  it("resolves drawing handles from the active chart theme", () => {
+    const { chart } = createChart();
+    const manager = createManager(
+      chart,
+      ({ anchors, paneId }) => new TrendLine({ anchors, paneId })
+    );
+    manager.addDrawing(
+      new TrendLine({
+        anchors: [
+          { index: 0, price: 10 },
+          { index: 2, price: 14 }
+        ]
+      })
+    );
+    const context = getChartContext(chart, "drawings");
+
+    requestChartRedraw(chart, "drawings", true);
+    expect(context.fillStyle).toBe(chart.getOptions().theme.yAxis.color);
+    expect(context.strokeStyle).toBe(chart.getOptions().theme.crosshair.color);
+
+    chart.updateOptions({ theme: "dark" });
+    requestChartRedraw(chart, "drawings", true);
+    expect(context.fillStyle).toBe(chart.getOptions().theme.yAxis.color);
+    expect(context.strokeStyle).toBe(chart.getOptions().theme.crosshair.color);
   });
 
   it("creates, hit-tests, moves, draws, and deletes a horizontal line", () => {
@@ -213,7 +246,7 @@ describe("drawing tools", () => {
       manager.hitTest({ x: 240, y: 160 }, getInternalMainPane(chart))
     ).toBe(drawing);
     expect(drawing.hitTest({ x: 240, y: 200 }, drawingHitContext(chart))).toBe(
-      false
+      true
     );
 
     manager.onPointer(pointerEvent(chart, data[1], "down", { x: 240, y: 160 }));
@@ -263,9 +296,20 @@ describe("drawing tools", () => {
       false
     );
 
+    const changed = vi.fn();
+    chart.on("drawing-change", changed);
+    const requestRedraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
+    requestRedraw.mockClear();
+
     drawing.setText("Guidance");
 
     expect(drawing.getText()).toBe("Guidance");
+    expect(changed).toHaveBeenCalledWith({ drawing });
+    expect(requestRedraw).toHaveBeenCalledWith("drawings", undefined);
+
+    changed.mockClear();
+    drawing.setText("Guidance");
+    expect(changed).not.toHaveBeenCalled();
 
     manager.onPointer(
       pointerEvent(chart, data[1], "down", {

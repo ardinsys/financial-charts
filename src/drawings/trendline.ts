@@ -17,7 +17,7 @@ export interface TrendLineOptions extends DrawingOptions {
 interface TrendLineJSONData {
   color: string;
   lineWidth: number;
-  selectedColor: string;
+  selectedColor?: string;
 }
 
 export class TrendLine extends Drawing {
@@ -26,12 +26,12 @@ export class TrendLine extends Drawing {
 
   private color: string;
   private lineWidth: number;
-  private selectedColor: string;
+  private selectedColor?: string;
 
   constructor({
     color = "#2563eb",
     lineWidth = 2,
-    selectedColor = "#f59e0b",
+    selectedColor,
     ...options
   }: TrendLineOptions) {
     super(options);
@@ -66,8 +66,8 @@ export class TrendLine extends Drawing {
     ctx.stroke();
 
     if (this.isSelected()) {
-      drawAnchorHandle(ctx, start, this.selectedColor);
-      drawAnchorHandle(ctx, end, this.selectedColor);
+      drawAnchorHandle(ctx, start, context.handleTheme, this.selectedColor);
+      drawAnchorHandle(ctx, end, context.handleTheme, this.selectedColor);
     }
     ctx.restore();
   }
@@ -83,7 +83,7 @@ export class TrendLine extends Drawing {
     return {
       color: this.color,
       lineWidth: this.lineWidth,
-      selectedColor: this.selectedColor
+      ...(this.selectedColor ? { selectedColor: this.selectedColor } : {})
     };
   }
 }

@@ -9,14 +9,10 @@ export interface PriceTickOptions {
 }
 
 export function calculateStepSize(range: number, maxLabels: number): number {
-  // Step 1: Determine the initial raw step size
   const rawStep = range / maxLabels;
-
-  // Step 2: Adjust for precision based on the range's magnitude
   const scale = Math.pow(10, Math.floor(Math.log10(rawStep)));
-  const normalizedStep = rawStep / scale; // Normalize step size to [1, 10)
+  const normalizedStep = rawStep / scale;
 
-  // Step 3: Round to a nice value
   let roundedStep: number;
   if (normalizedStep < 1.5) {
     roundedStep = 1;
@@ -28,12 +24,7 @@ export function calculateStepSize(range: number, maxLabels: number): number {
     roundedStep = 10;
   }
 
-  // Calculate final step size
-  const stepSize = roundedStep * scale;
-
-  // Step 4: Adjust decimal places for the step size to ensure precision
-  const decimalPlaces = Math.max(-Math.floor(Math.log10(stepSize)), 0);
-  return parseFloat(stepSize.toFixed(decimalPlaces));
+  return Number((roundedStep * scale).toPrecision(15));
 }
 
 export function calculateYAxisLabels({
@@ -43,22 +34,29 @@ export function calculateYAxisLabels({
   fontSize,
   labelSpacing,
 }: PriceTickOptions): AxisLabel[] {
-  const textHeight = fontSize * 1.2; // Estimated height of text
+  const textHeight = fontSize * 1.2;
 
-  let range = yMax - yMin;
-  range = Math.max(range, 0.0001); // Ensure a minimum range to avoid division by zero
+  const rawRange = yMax - yMin;
+  const referenceValue = Math.max(Math.abs(yMin), Math.abs(yMax));
+  const range = Math.max(rawRange, referenceValue * 1e-4, 1e-12);
 
-  const maxPossibleLabels = Math.floor(
-    canvasHeight / (textHeight + labelSpacing)
+  const maxPossibleLabels = Math.max(
+    1,
+    Math.floor(canvasHeight / (textHeight + labelSpacing))
   );
   const stepSize = calculateStepSize(range, maxPossibleLabels);
 
   const firstLabel = Math.ceil(yMin / stepSize) * stepSize;
   const labels: AxisLabel[] = [];
 
-  for (let value = firstLabel; value <= yMax; value += stepSize) {
+  const labelCount = Math.max(
+    0,
+    Math.floor((yMax - firstLabel) / stepSize + 1e-12) + 1
+  );
+  for (let index = 0; index < labelCount; index++) {
+    const value = firstLabel + index * stepSize;
     const position = canvasHeight - ((value - yMin) / range) * canvasHeight;
-    labels.push({ value: parseFloat(value.toFixed(10)), position });
+    labels.push({ value: Number(value.toPrecision(15)), position });
   }
 
   return labels;

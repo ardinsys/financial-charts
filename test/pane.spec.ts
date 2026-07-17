@@ -8,6 +8,7 @@ import {
   getChartContext,
   getInternalMainPane,
   getInternalPanes,
+  getPaneLayout,
   requestChartRedraw
 } from "./chart-test-harness";
 
@@ -293,6 +294,10 @@ describe("Pane", () => {
     expect(divider).toBeTruthy();
     expect(divider.dataset.beforePaneId).toBe(String(mainPane.id));
     expect(divider.dataset.afterPaneId).toBe(String(indicatorPane.id));
+    const layout = getPaneLayout(chart) as unknown as {
+      paneHeightsCustomized: boolean;
+    };
+    expect(layout.paneHeightsCustomized).toBe(false);
 
     divider.dispatchEvent(
       new MouseEvent("pointerdown", {
@@ -300,12 +305,21 @@ describe("Pane", () => {
         clientY: 277.5
       })
     );
+    expect(layout.paneHeightsCustomized).toBe(false);
+    window.dispatchEvent(
+      new MouseEvent("pointermove", {
+        bubbles: true,
+        clientY: 277.5
+      })
+    );
+    expect(layout.paneHeightsCustomized).toBe(false);
     window.dispatchEvent(
       new MouseEvent("pointermove", {
         bubbles: true,
         clientY: 307.5
       })
     );
+    expect(layout.paneHeightsCustomized).toBe(true);
 
     expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 307.5,

@@ -132,7 +132,6 @@ export class DrawingManager implements ChartPlugin {
   private keyboardDisposer?: Dispose;
   private keyboardHost?: HTMLElement;
   private addedKeyboardTabIndex = false;
-  private previousKeyboardOutline?: string;
 
   constructor(options: DrawingManagerOptions = {}) {
     this.setDrawingFactory(options.drawingFactory);
@@ -152,6 +151,7 @@ export class DrawingManager implements ChartPlugin {
       throw new Error("DrawingManager is already attached to a chart.");
     }
     this.ctx = ctx;
+    for (const drawing of this.drawings) this.bindDrawingMutation(drawing);
     this.bindKeyboard();
     if (this.selectedDrawing) {
       this.emitDrawingSelection(this.selectedDrawing);
@@ -203,7 +203,10 @@ export class DrawingManager implements ChartPlugin {
     this.interaction = undefined;
     this.selectedDrawing?.setSelected(false);
     this.selectedDrawing = undefined;
-    if (drawings.length > 0) this.drawings = [];
+    if (drawings.length > 0) {
+      for (const drawing of drawings) drawing.bindMutationHandler();
+      this.drawings = [];
+    }
     this.undoStack = [];
     this.redoStack = [];
 
@@ -222,6 +225,7 @@ export class DrawingManager implements ChartPlugin {
   addDrawing(drawing: Drawing, options: DrawingMutationOptions = {}) {
     this.assertDrawingType(drawing.type);
     this.assertUniqueDrawingId(drawing.id);
+    this.bindDrawingMutation(drawing);
     this.drawings = [...this.drawings, drawing];
     if (options.emit) {
       this.ctx?.emit("drawing-create", { drawing });
@@ -239,6 +243,7 @@ export class DrawingManager implements ChartPlugin {
     const drawing = this.deserializeDrawing(json);
 
     drawing.setSelected(wasSelected);
+    this.bindDrawingMutation(drawing);
     if (existingIndex === -1) {
       this.drawings = [...this.drawings, drawing];
       if (options.emit) {
@@ -246,6 +251,7 @@ export class DrawingManager implements ChartPlugin {
       }
     } else {
       const existing = this.drawings[existingIndex];
+      existing.bindMutationHandler();
       existing.setSelected(false);
       if (this.interaction?.drawing === existing) {
         this.interaction = undefined;
@@ -362,6 +368,7 @@ export class DrawingManager implements ChartPlugin {
     this.drawings = this.drawings.filter(
       (_candidate, candidateIndex) => candidateIndex !== index
     );
+    drawing.bindMutationHandler();
     if (this.selectedDrawing === drawing) {
       this.selectDrawing(undefined, selectionOptions);
     }
@@ -381,6 +388,7 @@ export class DrawingManager implements ChartPlugin {
     }
 
     drawing.setSelected(false);
+    this.bindDrawingMutation(drawing);
     const insertionIndex = Math.max(0, Math.min(index, this.drawings.length));
     this.drawings = [
       ...this.drawings.slice(0, insertionIndex),
@@ -454,7 +462,9 @@ export class DrawingManager implements ChartPlugin {
 
     this.interaction = undefined;
     this.selectedDrawing?.setSelected(false);
+    for (const drawing of this.drawings) drawing.bindMutationHandler();
     this.drawings = drawings;
+    for (const drawing of drawings) this.bindDrawingMutation(drawing);
     this.undoStack = [];
     this.redoStack = [];
     this.selectedDrawing = selectedDrawing;
@@ -510,10 +520,7 @@ export class DrawingManager implements ChartPlugin {
       ctx.rect(region.x, region.y, region.width, region.height);
       ctx.clip();
       try {
-        drawing.draw(ctx, {
-          pane,
-          canvas: ctx.canvas
-        });
+        drawing.draw(ctx, this.getDrawingContext(pane));
       } finally {
         ctx.restore();
       }
@@ -523,15 +530,13 @@ export class DrawingManager implements ChartPlugin {
   detach() {
     this.keyboardDisposer?.();
     this.keyboardDisposer = undefined;
-    if (this.previousKeyboardOutline !== undefined && this.keyboardHost) {
-      this.keyboardHost.style.outline = this.previousKeyboardOutline;
-      this.previousKeyboardOutline = undefined;
-    }
+    this.keyboardHost?.classList.remove("fci-drawing-host");
     if (this.addedKeyboardTabIndex) {
       this.keyboardHost?.removeAttribute("tabindex");
       this.addedKeyboardTabIndex = false;
     }
     this.keyboardHost = undefined;
+    for (const drawing of this.drawings) drawing.bindMutationHandler();
     if (this.interaction?.type === "creating") {
       this.discardCreation(this.interaction, false);
     } else {
@@ -608,6 +613,7 @@ export class DrawingManager implements ChartPlugin {
     this.assertDrawingType(drawing.type);
     this.assertUniqueDrawingId(drawing.id);
     this.drawings = [...this.drawings, drawing];
+    this.bindDrawingMutation(drawing);
     this.interaction = {
       type: "creating",
       drawing,
@@ -778,11 +784,23 @@ export class DrawingManager implements ChartPlugin {
   }
 
   private getHitTestContext(pane: Pane): DrawingHitTestContext {
+    return {
+      ...this.getDrawingContext(pane),
+      tolerance: this.hitTestTolerance
+    };
+  }
+
+  private getDrawingContext(pane: Pane) {
     const ctx = this.requireContext();
+    const theme = ctx.getOptions().theme;
     return {
       pane,
       canvas: ctx.getCanvasContext("drawings").canvas,
-      tolerance: this.hitTestTolerance
+      handleTheme: {
+        centerColor: theme.yAxis.color,
+        fillColor: theme.backgroundColor,
+        strokeColor: theme.crosshair.color
+      }
     };
   }
 
@@ -793,8 +811,7 @@ export class DrawingManager implements ChartPlugin {
       host.tabIndex = 0;
       this.addedKeyboardTabIndex = true;
     }
-    this.previousKeyboardOutline = host.style.outline;
-    host.style.outline = "none";
+    host.classList.add("fci-drawing-host");
     this.keyboardDisposer = bindEvent(host, "keydown", this.onKeyDown);
   }
 
@@ -881,6 +898,14 @@ export class DrawingManager implements ChartPlugin {
     return this.requireContext()
       .getPanes()
       .find((pane) => pane.getId() === paneId);
+  }
+
+  private bindDrawingMutation(drawing: Drawing): void {
+    drawing.bindMutationHandler(() => {
+      if (!this.drawings.includes(drawing)) return;
+      this.ctx?.emit("drawing-change", { drawing });
+      this.ctx?.requestRedraw("drawings");
+    });
   }
 
   private deserializeDrawing(json: DrawingJSON) {

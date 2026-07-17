@@ -1,8 +1,6 @@
 import {
   Scale,
   ScaleProjectOptions,
-  ScaleTick,
-  ScaleTickOptions,
   resolveDevicePixelRatio,
 } from "./scale";
 
@@ -59,10 +57,6 @@ export class PriceScale implements Scale {
     if (this.range.max <= 0) return 0;
 
     return (value / this.range.max) * maxColumnHeight;
-  }
-
-  getTicks(_options: ScaleTickOptions): ScaleTick[] {
-    return [];
   }
 }
 

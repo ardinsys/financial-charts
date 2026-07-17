@@ -20,7 +20,7 @@ export interface HorizontalLineOptions extends DrawingOptions {
 interface HorizontalLineJSONData {
   color: string;
   lineWidth: number;
-  selectedColor: string;
+  selectedColor?: string;
 }
 
 export class HorizontalLine extends Drawing {
@@ -29,12 +29,12 @@ export class HorizontalLine extends Drawing {
 
   private color: string;
   private lineWidth: number;
-  private selectedColor: string;
+  private selectedColor?: string;
 
   constructor({
     color = "#0f766e",
     lineWidth = 2,
-    selectedColor = "#f59e0b",
+    selectedColor,
     ...options
   }: HorizontalLineOptions) {
     super(options);
@@ -69,7 +69,7 @@ export class HorizontalLine extends Drawing {
     ctx.stroke();
 
     if (this.isSelected()) {
-      drawAnchorHandle(ctx, point, this.selectedColor);
+      drawAnchorHandle(ctx, point, context.handleTheme, this.selectedColor);
     }
     ctx.restore();
   }
@@ -108,7 +108,7 @@ export class HorizontalLine extends Drawing {
     return {
       color: this.color,
       lineWidth: this.lineWidth,
-      selectedColor: this.selectedColor
+      ...(this.selectedColor ? { selectedColor: this.selectedColor } : {})
     };
   }
 }

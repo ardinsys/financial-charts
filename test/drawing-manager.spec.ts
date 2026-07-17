@@ -175,9 +175,15 @@ function distance(a: DrawingPoint, b: DrawingPoint) {
 }
 
 function drawingContext(chart: FinancialChart): DrawingRenderContext {
+  const theme = chart.getOptions().theme;
   return {
     pane: getInternalMainPane(chart),
-    canvas: getChartContext(chart, "drawings").canvas
+    canvas: getChartContext(chart, "drawings").canvas,
+    handleTheme: {
+      centerColor: theme.yAxis.color,
+      fillColor: theme.backgroundColor,
+      strokeColor: theme.crosshair.color
+    }
   };
 }
 
@@ -583,7 +589,8 @@ describe("DrawingManager", () => {
 
     const drawing = manager.getDrawings()[0]!;
     expect(container.tabIndex).toBe(0);
-    expect(container.style.outline).toBe("none");
+    expect(container.style.outline).toBe("");
+    expect(container.classList.contains("fci-drawing-host")).toBe(true);
     expect(manager.canUndo()).toBe(true);
     expect(manager.canRedo()).toBe(false);
 
@@ -1195,7 +1202,11 @@ describe("DrawingManager", () => {
     manager.addDrawing(drawing);
 
     const context = getChartContext(chart, "drawings");
-    const [point] = drawing.projectForTest({ pane, canvas: context.canvas });
+    const [point] = drawing.projectForTest({
+      ...drawingContext(chart),
+      pane,
+      canvas: context.canvas
+    });
     const region = pane.getRegion();
 
     expect(Number.parseFloat(context.canvas.style.height)).toBe(

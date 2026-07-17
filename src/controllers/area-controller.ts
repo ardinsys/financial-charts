@@ -48,8 +48,6 @@ export class AreaController extends SimpleController {
 
     ctx.stroke(linePath);
 
-    ctx.strokeStyle = "transparent";
-    ctx.lineWidth = 0;
     linePath.lineTo(lastX, logicalSize.height);
     linePath.lineTo(firstX, logicalSize.height);
     linePath.closePath();

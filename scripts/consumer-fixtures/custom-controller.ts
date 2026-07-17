@@ -38,16 +38,17 @@ class CloseController extends ChartController {
     const {
       canvasContext,
       visibleData,
-      projectTime,
+      visibleStartIndex,
+      projectIndex,
       projectPrice
     } = this.context.getDrawingContext();
     let started = false;
 
     canvasContext.beginPath();
-    for (const point of visibleData) {
+    for (const [offset, point] of visibleData.entries()) {
       if (point.close == null) continue;
 
-      const x = projectTime(point.time);
+      const x = projectIndex(visibleStartIndex + offset);
       const y = projectPrice(point.close);
       if (started) {
         canvasContext.lineTo(x, y);

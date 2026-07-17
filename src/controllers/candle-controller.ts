@@ -37,14 +37,17 @@ export class CandlestickController extends OHLCController {
       const close = projectPrice(point.close!);
       const path = point.close! > point.open! ? upPath : downPath;
       const wickX = x + candleWidth / 2 + candleSpacing / 2;
+      const bodyHeight = Math.max(1, Math.abs(open - close));
+      const bodyTop =
+        open === close ? open - bodyHeight / 2 : Math.min(open, close);
 
       path.moveTo(wickX, high);
       path.lineTo(wickX, low);
       path.rect(
         x + candleSpacing / 2,
-        Math.min(open, close),
+        bodyTop,
         candleWidth,
-        Math.abs(open - close)
+        bodyHeight
       );
     }
 

@@ -24,7 +24,7 @@ interface TextDrawingJSONData {
   color: string;
   font: string;
   padding: number;
-  selectedColor: string;
+  selectedColor?: string;
   text: string;
 }
 
@@ -36,7 +36,7 @@ export class TextDrawing extends Drawing {
   private color: string;
   private font: string;
   private padding: number;
-  private selectedColor: string;
+  private selectedColor?: string;
   private text: string;
 
   constructor({
@@ -44,7 +44,7 @@ export class TextDrawing extends Drawing {
     color = "#f8fafc",
     font = "13px sans-serif",
     padding = 4,
-    selectedColor = "#f59e0b",
+    selectedColor,
     text = "Text",
     ...options
   }: TextDrawingOptions) {
@@ -78,7 +78,9 @@ export class TextDrawing extends Drawing {
   }
 
   setText(text: string) {
+    if (this.text === text) return;
     this.text = text;
+    this.notifyMutation();
   }
 
   draw(ctx: CanvasRenderingContext2D, context: DrawingRenderContext) {
@@ -97,6 +99,7 @@ export class TextDrawing extends Drawing {
       drawAnchorHandle(
         ctx,
         this.projectAnchor(this.getTextAnchor(), context),
+        context.handleTheme,
         this.selectedColor
       );
     }
@@ -134,7 +137,7 @@ export class TextDrawing extends Drawing {
       color: this.color,
       font: this.font,
       padding: this.padding,
-      selectedColor: this.selectedColor,
+      ...(this.selectedColor ? { selectedColor: this.selectedColor } : {}),
       text: this.text
     };
   }

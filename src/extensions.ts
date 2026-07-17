@@ -47,6 +47,7 @@ export {
   type DrawingAnchor,
   type DrawingAnchorHandle,
   type DrawingAxisBounds,
+  type DrawingHandleTheme,
   type DrawingHitTestContext,
   type DrawingJSON,
   type DrawingOptions,

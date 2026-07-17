@@ -5,6 +5,7 @@ import type { Pane } from "../panes/pane";
 import type { ChartData } from "../chart/types";
 
 type CrosshairSource = "mouse" | "touch" | "programmatic";
+const panMovementThreshold = 4;
 
 interface CrosshairModel {
   state: ChartCrosshairState;
@@ -42,6 +43,7 @@ export class InteractionController {
   private touchGestureConsumed = false;
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
+  private pointerStartPosition?: { x: number; y: number };
   private isTouchCrosshair = false;
   private touchCrosshairTimeout?: ReturnType<typeof setTimeout>;
   private activePointerId?: number;
@@ -150,6 +152,9 @@ export class InteractionController {
     this.lastPointerPosition = this.pointerGestureConsumed
       ? undefined
       : { x: event.clientX };
+    this.pointerStartPosition = this.pointerGestureConsumed
+      ? undefined
+      : { x: event.clientX, y: event.clientY };
   };
 
   private onPointerMove = (event: PointerEvent) => {
@@ -217,6 +222,7 @@ export class InteractionController {
     }
     this.activePointerId = undefined;
     this.lastPointerPosition = undefined;
+    this.pointerStartPosition = undefined;
     this.pointerGestureConsumed = false;
     this.isPanning = false;
   }
@@ -228,6 +234,7 @@ export class InteractionController {
     } else {
       this.activePointerId = undefined;
       this.lastPointerPosition = undefined;
+      this.pointerStartPosition = undefined;
       this.isPanning = false;
     }
     this.touchGestureConsumed = false;
@@ -239,8 +246,15 @@ export class InteractionController {
   private onMouseMove = (event: MouseEvent) => {
     if (!this.hasData()) return;
     if (this.lastPointerPosition) {
-      this.isPanning = true;
-      this.host.panByPixels(event.clientX - this.lastPointerPosition.x);
+      const start = this.pointerStartPosition;
+      const movedFarEnough =
+        start !== undefined &&
+        Math.hypot(event.clientX - start.x, event.clientY - start.y) >=
+          panMovementThreshold;
+      if (this.isPanning || movedFarEnough) {
+        this.isPanning = true;
+        this.host.panByPixels(event.clientX - this.lastPointerPosition.x);
+      }
       this.lastPointerPosition = { x: event.clientX };
     } else {
       this.isPanning = false;
@@ -252,7 +266,11 @@ export class InteractionController {
   private onWheel = (event: WheelEvent) => {
     if (!this.hasData()) return;
     event.preventDefault();
-    const zoomFactor = event.deltaY < 0 ? 1.1 : 0.9;
+    const deltaPixels = normalizeWheelDelta(event, this.getCanvasRect().height);
+    const sensitivity = event.ctrlKey ? 0.01 : 0.001;
+    const zoomFactor = Math.exp(
+      -Math.max(-100, Math.min(100, deltaPixels)) * sensitivity
+    );
     const offsetX = this.getCanvasPoint(event.clientX, event.clientY).x;
     this.host.zoomAtPixel(zoomFactor, offsetX);
   };
@@ -346,6 +364,7 @@ export class InteractionController {
     if (event.pointerType === "touch") return;
     if (this.activePointerId === event.pointerId) return;
     this.lastPointerPosition = undefined;
+    this.pointerStartPosition = undefined;
     this.lastTouchDistance = undefined;
     this.isPanning = false;
     requestAnimationFrame(() => {
@@ -395,6 +414,7 @@ export class InteractionController {
     this.touchGestureConsumed = false;
     this.lastTouchDistance = undefined;
     this.lastPointerPosition = undefined;
+    this.pointerStartPosition = undefined;
     this.isTouchCrosshair = false;
     const pointerId = this.activePointerId;
     this.activePointerId = undefined;
@@ -408,4 +428,12 @@ function touchDistance(touches: TouchList): number {
   const dx = touches[0].clientX - touches[1].clientX;
   const dy = touches[0].clientY - touches[1].clientY;
   return Math.sqrt(dx * dx + dy * dy);
+}
+
+function normalizeWheelDelta(event: WheelEvent, pageHeight: number): number {
+  if (event.deltaMode === WheelEvent.DOM_DELTA_LINE) return event.deltaY * 16;
+  if (event.deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+    return event.deltaY * pageHeight;
+  }
+  return event.deltaY;
 }

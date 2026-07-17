@@ -223,6 +223,43 @@ describe("visible range contracts", () => {
     expect(requestRedraw).toHaveBeenCalled();
   });
 
+  it("keeps click semantics for sub-threshold pointer movement", () => {
+    const { chart } = createChart();
+    const canvas = getChartContext(chart, "crosshair").canvas;
+    const clicked = vi.fn();
+    chart.on("click", clicked);
+
+    canvas.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        clientX: 200,
+        clientY: 100,
+        pointerId: 4,
+        pointerType: "mouse",
+        button: 0,
+        bubbles: true
+      })
+    );
+    canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        clientX: 201,
+        clientY: 101,
+        bubbles: true
+      })
+    );
+    canvas.dispatchEvent(
+      new PointerEvent("pointerup", {
+        clientX: 201,
+        clientY: 101,
+        pointerId: 4,
+        pointerType: "mouse",
+        button: 0,
+        bubbles: true
+      })
+    );
+
+    expect(clicked).toHaveBeenCalledOnce();
+  });
+
   it("clamps ranges and rejects non-finite boundaries", () => {
     const { chart } = createChart();
     const fullRange = chart.getVisibleLogicalRange();

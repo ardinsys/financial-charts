@@ -42,6 +42,9 @@ export class HollowCandleController extends OHLCController {
       const wickX = x + (candleWidth / 2 + candleSpacing / 2);
       const topWickY = Math.min(open, close);
       const bottomWickY = Math.max(open, close);
+      const bodyHeight = Math.max(1, bottomWickY - topWickY);
+      const bodyTop =
+        open === close ? topWickY - bodyHeight / 2 : topWickY;
       const wickPath = isHollow ? upWicks : downWicks;
       const bodyPath = isHollow ? upBodies : downBodies;
 
@@ -51,9 +54,9 @@ export class HollowCandleController extends OHLCController {
       wickPath.lineTo(wickX, bottomWickY);
       bodyPath.rect(
         x + candleSpacing / 2,
-        topWickY,
+        bodyTop,
         candleWidth,
-        bottomWickY - topWickY
+        bodyHeight
       );
     }
 

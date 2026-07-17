@@ -385,7 +385,6 @@ export class PaneLayout {
     if (!beforePane || !afterPane) return;
 
     this.stopResize();
-    this.paneHeightsCustomized = true;
     this.resizeDrag = {
       dividerIndex,
       startClientY: event.clientY,
@@ -413,6 +412,8 @@ export class PaneLayout {
       this.getPaneMinHeight(beforePane) - drag.beforeStartHeight,
       Math.min(dy, drag.afterStartHeight - this.getPaneMinHeight(afterPane))
     );
+    if (clampedDy === 0) return;
+    this.paneHeightsCustomized = true;
     const desired = new Map(this.paneHeights);
     desired.set(beforePane, drag.beforeStartHeight + clampedDy);
     desired.set(afterPane, drag.afterStartHeight - clampedDy);

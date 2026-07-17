@@ -12,8 +12,6 @@ export class LineController extends SimpleController {
       projectPrice
     } = this.context.getDrawingContext();
 
-    ctx.fillStyle = this.options.theme.line.color;
-    ctx.lineWidth = this.options.theme.line.width;
     ctx.beginPath();
     ctx.strokeStyle = this.options.theme.line.color;
     ctx.lineWidth = this.options.theme.line.width;

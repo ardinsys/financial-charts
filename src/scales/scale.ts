@@ -11,21 +11,9 @@ export interface ScaleProjectOptions {
   readonly barAlignment?: "center" | "edge";
 }
 
-export interface ScaleTick {
-  readonly value: number;
-  readonly position: number;
-  readonly label?: string;
-}
-
-export interface ScaleTickOptions {
-  readonly canvas: ScaleCanvas;
-  readonly devicePixelRatio?: number;
-}
-
 export interface Scale {
   project(value: number, options: ScaleProjectOptions): number;
   unproject(pixel: number, options: ScaleProjectOptions): number;
-  getTicks(options: ScaleTickOptions): ScaleTick[];
 }
 
 export function resolveDevicePixelRatio(options: {

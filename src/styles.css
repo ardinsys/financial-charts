@@ -160,3 +160,12 @@
 .financial-charts-dark .fci-pane-divider:focus-visible .fci-pane-divider-line {
   background-color: rgba(255, 255, 255, 0.58);
 }
+
+.fci-drawing-host:focus-visible {
+  outline: 2px solid #2962ff;
+  outline-offset: -2px;
+}
+
+.fci-drawing-host:has(> .financial-charts-dark):focus-visible {
+  outline-color: #8aa8ff;
+}

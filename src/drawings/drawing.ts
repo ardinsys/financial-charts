@@ -20,11 +20,18 @@ export interface DrawingAxisBounds {
   readonly y?: readonly DrawingAnchor[];
 }
 
+export interface DrawingHandleTheme {
+  readonly centerColor: string;
+  readonly fillColor: string;
+  readonly strokeColor: string;
+}
+
 export interface DrawingRenderContext {
   /** Target pane; projected drawing points use chart-local logical pixels. */
   readonly pane: Pane;
   /** Physical backing canvas for the shared drawings layer. */
   readonly canvas: HTMLCanvasElement;
+  readonly handleTheme: DrawingHandleTheme;
 }
 
 export interface DrawingHitTestContext extends DrawingRenderContext {
@@ -57,6 +64,7 @@ export abstract class Drawing {
   private anchors: readonly DrawingAnchor[];
   private paneId: number;
   private selected = false;
+  private mutationHandler?: () => void;
 
   constructor({ anchors, id, paneId = 0 }: DrawingOptions) {
     this.id = validateDrawingId(id ?? createDrawingId());
@@ -95,6 +103,11 @@ export abstract class Drawing {
     }));
   }
 
+  /** @internal Binds manager-owned reactions to direct drawing mutations. */
+  bindMutationHandler(handler?: () => void): void {
+    this.mutationHandler = handler;
+  }
+
   getAnchorHandles(context: DrawingRenderContext): DrawingAnchorHandle[] {
     return this.projectAnchors(context).map((point, index) => ({
       index,
@@ -102,10 +115,8 @@ export abstract class Drawing {
     }));
   }
 
-  getAxisBounds(context: DrawingRenderContext): DrawingAxisBounds {
-    const anchors = this.getAnchorHandles(context).map((handle) =>
-      this.unprojectPoint(handle.point, context)
-    );
+  getAxisBounds(_context: DrawingRenderContext): DrawingAxisBounds {
+    const anchors = this.getAnchors();
 
     return {
       x: anchors,
@@ -183,28 +194,8 @@ export abstract class Drawing {
     return this.anchors.map((anchor) => this.projectAnchor(anchor, context));
   }
 
-  protected unprojectPoint(
-    point: DrawingPoint,
-    { pane }: DrawingRenderContext
-  ): DrawingAnchor {
-    const timeScale = pane.getTimeScale();
-    if (!timeScale) {
-      return { index: 0, price: 0 };
-    }
-
-    const region = pane.getRegion();
-    const scaleOptions = {
-      canvas: { width: region.width, height: region.height },
-      devicePixelRatio: 1,
-      barAlignment: pane.getTimeAnchorAlignment()
-    };
-
-    return {
-      index: Math.round(
-        timeScale.unprojectIndex(point.x - region.x, scaleOptions)
-      ),
-      price: pane.getPriceScale().unproject(point.y - region.y, scaleOptions)
-    };
+  protected notifyMutation(): void {
+    this.mutationHandler?.();
   }
 
   abstract draw(
@@ -229,18 +220,19 @@ function createDrawingId(): string {
 export function drawAnchorHandle(
   ctx: CanvasRenderingContext2D,
   point: DrawingPoint,
-  color = "#f59e0b"
+  theme: DrawingHandleTheme,
+  strokeColor?: string
 ) {
   ctx.save();
   ctx.lineWidth = 2;
-  ctx.fillStyle = "rgba(19, 23, 34, 0.95)";
-  ctx.strokeStyle = color;
+  ctx.fillStyle = theme.fillColor;
+  ctx.strokeStyle = strokeColor ?? theme.strokeColor;
   ctx.beginPath();
   ctx.arc(point.x, point.y, 7, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
-  ctx.fillStyle = "#fde68a";
+  ctx.fillStyle = theme.centerColor;
   ctx.beginPath();
   ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
   ctx.fill();

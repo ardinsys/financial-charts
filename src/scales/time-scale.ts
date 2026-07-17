@@ -1,8 +1,6 @@
 import {
   Scale,
   ScaleProjectOptions,
-  ScaleTick,
-  ScaleTickOptions,
   resolveDevicePixelRatio
 } from "./scale";
 
@@ -91,10 +89,6 @@ export class TimeScale implements Scale {
       coordinate -
       this.alignmentOffset(options.barAlignment ?? this.barAlignment)
     );
-  }
-
-  getTicks(_options: ScaleTickOptions): ScaleTick[] {
-    return [];
   }
 
   private getSpan() {

@@ -159,6 +159,37 @@ describe("current price tick calculations", () => {
       "1.00001"
     );
   });
+
+  it("keeps micro-price ticks stable through eight decimal places", () => {
+    const labels = calculateYAxisLabels({
+      yMin: 0.00000001,
+      yMax: 0.00000005,
+      canvasHeight: 400,
+      fontSize: 12,
+      labelSpacing: 30
+    });
+    expect(labels.at(-1)?.value).toBe(0.00000005);
+
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart(
+      [
+        { time: start, close: 0.00000001 },
+        { time: start + 60_000, close: 0.00000002 }
+      ],
+      { start, end: start + 60_000 }
+    );
+    const renderer = getChartRenderer(chart) as unknown as {
+      calculateYAxisLabels(spacing: number): AxisLabel[];
+      estimatePriceLabelDecimalPlaces(spacing: number): number;
+    };
+    const scale = getChartModel(chart).getVisibleScale();
+    expect(scale.getYMin()).toBe(8e-9);
+    expect(renderer.calculateYAxisLabels(30)).toHaveLength(7);
+    expect(renderer.estimatePriceLabelDecimalPlaces(30)).toBe(8);
+    expect(getCrosshairPriceLabel(chart, start, 0.00000001)).toBe(
+      "0.00000001"
+    );
+  });
 });
 
 describe("current scale coordinate mapping", () => {
