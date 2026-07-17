@@ -1852,16 +1852,77 @@ html.dark .theme-moon {
     top: 74px;
     right: 0;
     left: 0;
-    display: none;
-    padding: 26px 22px;
+    padding: 6px 22px 14px;
     border-bottom: 1px solid var(--border);
     flex-direction: column;
-    align-items: flex-start;
-    background: var(--surface);
-    box-shadow: var(--shadow);
+    align-items: stretch;
+    gap: 0;
+    counter-reset: nav-item;
+    /* Solid: a nested backdrop-filter cannot blur past the header's own
+       backdrop root, so a translucent panel would show the page through. */
+    background: var(--bg);
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition:
+      opacity 0.22s ease,
+      transform 0.26s cubic-bezier(0.2, 0.7, 0.2, 1),
+      visibility 0s linear 0.26s;
   }
   .site-nav.is-open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+    transition:
+      opacity 0.22s ease,
+      transform 0.26s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .site-nav a {
     display: flex;
+    padding: 15px 2px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    gap: 14px;
+    color: var(--text);
+    font-size: 14px;
+    opacity: 0;
+    transform: translateY(-6px);
+    transition:
+      opacity 0.3s ease,
+      transform 0.3s ease,
+      color 0.2s ease;
+  }
+  .site-nav a:last-child {
+    border-bottom: 0;
+  }
+  .site-nav a::after {
+    display: none;
+  }
+  .site-nav a::before {
+    content: counter(nav-item, decimal-leading-zero);
+    counter-increment: nav-item;
+    color: var(--accent);
+    font: 10px var(--mono);
+    letter-spacing: 0.08em;
+  }
+  .site-nav a:hover {
+    color: var(--accent);
+  }
+  .site-nav.is-open a {
+    opacity: 1;
+    transform: none;
+  }
+  .site-nav.is-open a:nth-child(2) {
+    transition-delay: 0.05s;
+  }
+  .site-nav.is-open a:nth-child(3) {
+    transition-delay: 0.1s;
+  }
+  .site-nav.is-open a:nth-child(4) {
+    transition-delay: 0.15s;
   }
   .menu-button {
     display: grid;
@@ -2108,6 +2169,10 @@ html.dark .theme-moon {
   [data-reveal] {
     opacity: 1;
     transform: none;
+    transition: none;
+  }
+  .site-nav,
+  .site-nav a {
     transition: none;
   }
 }
