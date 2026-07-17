@@ -20,7 +20,7 @@ function toggleTheme() {
 <template>
   <header class="site-header">
     <div class="shell nav-shell">
-      <a class="brand" href="#top" aria-label="ARDINSYS Charts home">
+      <a class="brand" href="/" aria-label="ARDINSYS Charts home">
         <ArdinsysLogo />
         <span class="brand-divider" />
         <span class="product-name">Charts<span>.</span></span>
@@ -30,11 +30,11 @@ function toggleTheme() {
         :class="['site-nav', { 'is-open': menuOpen }]"
         aria-label="Main navigation"
       >
-        <a href="#examples" @click="menuOpen = false">{{
+        <a href="/#examples" @click="menuOpen = false">{{
           copy.nav.examples
         }}</a>
-        <a href="#engine" @click="menuOpen = false">{{ copy.nav.engine }}</a>
-        <a href="#frameworks" @click="menuOpen = false">{{
+        <a href="/#engine" @click="menuOpen = false">{{ copy.nav.engine }}</a>
+        <a href="/#frameworks" @click="menuOpen = false">{{
           copy.nav.frameworks
         }}</a>
         <a

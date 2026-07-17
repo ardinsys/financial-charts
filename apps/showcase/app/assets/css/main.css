@@ -1628,6 +1628,95 @@ html.dark .theme-moon {
   font-size: 10px;
 }
 
+/* Error page */
+.error-page {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.error-section {
+  position: relative;
+  display: flex;
+  padding: 170px 0 110px;
+  flex: 1;
+  align-items: center;
+  overflow: hidden;
+}
+
+.error-shell {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.error-shell .kicker {
+  margin-bottom: 12px;
+}
+
+.error-code {
+  font-size: clamp(110px, 20vw, 210px);
+  font-weight: 900;
+  letter-spacing: -0.07em;
+  line-height: 0.9;
+}
+
+.error-code span {
+  color: var(--accent);
+}
+
+.error-shell h1 {
+  margin: 22px 0 0;
+  font-size: clamp(28px, 3.4vw, 42px);
+  font-weight: 850;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+}
+
+.error-body {
+  max-width: 52ch;
+  margin: 18px 0 0;
+  color: var(--text-muted);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+.error-actions {
+  display: flex;
+  margin-top: 34px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.error-path {
+  margin-top: 42px;
+  padding: 10px 15px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text-faint);
+  background: var(--surface-2);
+  font-size: 11px;
+}
+
+.error-path span {
+  color: var(--accent);
+  word-break: break-all;
+}
+
+@media (max-width: 620px) {
+  .error-section {
+    padding: 135px 0 80px;
+  }
+  .error-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+  .error-actions .button {
+    width: 100%;
+  }
+}
+
 /* Motion */
 [data-reveal] {
   opacity: 0;

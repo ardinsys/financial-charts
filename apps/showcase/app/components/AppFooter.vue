@@ -15,9 +15,9 @@ const { copy } = useSiteLocale();
       </div>
       <div>
         <h3>{{ copy.footer.product }}</h3>
-        <a href="#examples">{{ copy.nav.examples }}</a>
-        <a href="#engine">{{ copy.nav.engine }}</a>
-        <a href="#frameworks">{{ copy.nav.frameworks }}</a>
+        <a href="/#examples">{{ copy.nav.examples }}</a>
+        <a href="/#engine">{{ copy.nav.engine }}</a>
+        <a href="/#frameworks">{{ copy.nav.frameworks }}</a>
       </div>
       <div>
         <h3>{{ copy.footer.resources }}</h3>

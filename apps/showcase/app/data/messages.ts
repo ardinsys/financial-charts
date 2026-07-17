@@ -130,6 +130,18 @@ export const messages = {
       company: "Company",
       copyright: "ARDINSYS Zrt. All rights reserved.",
     },
+    errorPage: {
+      kicker: "Signal lost",
+      notFoundTitle: "This page was never listed.",
+      notFoundBody:
+        "The address you requested is not traded here. Check the URL, or head back to the live charts.",
+      errorTitle: "Something went wrong.",
+      errorBody:
+        "An unexpected error interrupted rendering. Reload the page, or head back to the live charts.",
+      primary: "Back to the charts",
+      secondary: "Open the documentation",
+      requested: "Requested",
+    },
   },
 } as const;
 
