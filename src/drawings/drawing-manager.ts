@@ -274,6 +274,23 @@ export class DrawingManager implements ChartPlugin {
     return drawing;
   }
 
+  /** @internal Applies remote anchors without replacing the managed drawing. */
+  applyDrawingAnchors(
+    id: string,
+    anchors: readonly DrawingAnchor[],
+    options: DrawingMutationOptions = {}
+  ) {
+    const drawing = this.getDrawingById(id);
+    if (!drawing) return undefined;
+
+    drawing.setAnchors(anchors);
+    if (options.emit) {
+      this.ctx?.emit("drawing-change", { drawing });
+    }
+    this.ctx?.requestRedraw("drawings");
+    return drawing;
+  }
+
   selectDrawing(drawing?: Drawing, options: DrawingSelectionOptions = {}) {
     const { emit = true, force = false } = options;
     if (drawing && !this.drawings.includes(drawing)) {

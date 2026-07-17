@@ -5,6 +5,7 @@ import { LineController } from "../src/controllers/line-controller";
 import {
   Drawing,
   DrawingManager,
+  TextDrawing,
   TrendLine,
   type DrawingJSON,
   type DrawingManagerOptions,
@@ -19,6 +20,8 @@ import {
   type ChartSyncCrosshairSnapshot,
   type ChartSyncPostMessageOptions
 } from "../src/plugins";
+import { DrawingAxisBoundsPlugin } from "../src/plugins/drawing-axis-bounds-plugin";
+import { getExtensionHost } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 const syncGroups = new Set<string>();
@@ -882,6 +885,102 @@ describe("ChartSyncPlugin", () => {
     source.drawingManager.deleteDrawing(drawing);
 
     expect(target.drawingManager.getDrawings()).toEqual([]);
+  });
+
+  it("preserves drawing identity and axis bounds during synced anchor moves", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group, {}, 400, (chart) => {
+      chart.addPlugin(new DrawingAxisBoundsPlugin());
+    });
+    const targetSync = target.syncPlugin as unknown as ChartSyncInternals;
+    let drawing = new TrendLine({
+      anchors: [
+        { index: 0, price: 10 },
+        { index: 2, price: 14 }
+      ],
+      id: "identity-preserved",
+      paneId: source.chart.getMainPane().id
+    });
+    source.drawingManager.addDrawing(drawing, { emit: true });
+    const targetDrawing = target.drawingManager.getDrawingById(drawing.id);
+    const replaceDrawing = vi.spyOn(target.drawingManager, "upsertDrawing");
+    const applySelection = vi.spyOn(targetSync, "applyDrawingSelection");
+
+    for (const anchors of [
+      [
+        { index: 1, price: 11 },
+        { index: 2, price: 15 }
+      ],
+      [
+        { index: 1, price: 12 },
+        { index: 3, price: 16 }
+      ]
+    ]) {
+      drawing.setAnchors(anchors);
+      drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
+        emit: true
+      }) as TrendLine;
+    }
+
+    expect(target.drawingManager.getDrawingById(drawing.id)).toBe(
+      targetDrawing
+    );
+    expect(targetDrawing?.getAnchors()).toEqual(drawing.getAnchors());
+    expect(target.drawingManager.getSelectedDrawing()).toBe(targetDrawing);
+    expect(replaceDrawing).not.toHaveBeenCalled();
+    expect(applySelection).not.toHaveBeenCalled();
+    expect(
+      Array.from(
+        getExtensionHost(target.chart).getPriceAxisAnnotations()
+      ).map(({ value }) => value)
+    ).toEqual([12, 16]);
+  });
+
+  it("uses full replacement when synced non-anchor drawing state changes", async () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group);
+    const drawing = new TextDrawing({
+      anchors: [{ index: 1, price: 12 }],
+      id: "synced-text",
+      paneId: source.chart.getMainPane().id,
+      text: "Before"
+    });
+    source.drawingManager.addDrawing(drawing, { emit: true });
+    const originalTargetDrawing = target.drawingManager.getDrawingById(
+      drawing.id
+    );
+
+    drawing.setText("After");
+    await nextAnimationFrame();
+
+    const updatedTargetDrawing = target.drawingManager.getDrawingById(
+      drawing.id
+    );
+    expect(updatedTargetDrawing).not.toBe(originalTargetDrawing);
+    expect(updatedTargetDrawing).toBeInstanceOf(TextDrawing);
+    expect((updatedTargetDrawing as TextDrawing).getText()).toBe("After");
+  });
+
+  it("uses full replacement to create an unknown synced drawing", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group);
+    const upsertDrawing = vi.spyOn(target.drawingManager, "upsertDrawing");
+    const drawing = new TrendLine({
+      anchors: [
+        { index: 0, price: 10 },
+        { index: 2, price: 14 }
+      ],
+      id: "unknown-on-peer",
+      paneId: source.chart.getMainPane().id
+    });
+
+    source.drawingManager.addDrawing(drawing, { emit: true });
+
+    expect(upsertDrawing).toHaveBeenCalledOnce();
+    expect(target.drawingManager.getDrawingById(drawing.id)).toBeDefined();
   });
 
   it("updates retained drawing state without serializing unrelated drawings", async () => {

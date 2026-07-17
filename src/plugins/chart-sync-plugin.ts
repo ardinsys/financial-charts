@@ -285,6 +285,7 @@ export class ChartSyncPlugin implements ChartPlugin {
         ctx.on("drawing-select", ({ id }) => {
           if (this.applying) return;
           this.flushPendingSync();
+          if (this.hasStoredDrawingSelection(id)) return;
           this.storeDrawingSelection(id);
           this.broadcast((peer) => peer.applyDrawingSelection(id));
         }),
@@ -558,6 +559,11 @@ export class ChartSyncPlugin implements ChartPlugin {
     group.state.drawings = createDrawingState(state.drawings, id);
   }
 
+  private hasStoredDrawingSelection(id?: string) {
+    const state = this.getGroup().state.drawings;
+    return !!state && state.selectedDrawingId === id;
+  }
+
   private storeIndicatorState() {
     this.getGroup().state.indicators = this.createIndicatorState();
   }
@@ -723,7 +729,18 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   private applyDrawing(json: DrawingJSON) {
-    this.getDrawingManager()?.upsertDrawing(json, {
+    const manager = this.getDrawingManager();
+    const existing = manager?.getDrawingById(json.id);
+    if (
+      manager &&
+      existing?.type === json.type &&
+      hasMatchingDrawingMetadata(existing.toJSON(), json)
+    ) {
+      manager.applyDrawingAnchors(json.id, json.anchors, { emit: true });
+      return;
+    }
+
+    manager?.upsertDrawing(json, {
       emit: true,
       emitSelection: true,
     });
@@ -889,4 +906,48 @@ function scheduleSyncFrame(callback: () => void): () => void {
 
   const handle = globalThis.setTimeout(callback, 16);
   return () => globalThis.clearTimeout(handle);
+}
+
+function hasMatchingDrawingMetadata(
+  current: DrawingJSON,
+  incoming: DrawingJSON,
+): boolean {
+  return (
+    current.id === incoming.id &&
+    current.type === incoming.type &&
+    current.paneId === incoming.paneId &&
+    areJSONValuesEqual(current.data, incoming.data)
+  );
+}
+
+function areJSONValuesEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (
+    left === null ||
+    right === null ||
+    typeof left !== "object" ||
+    typeof right !== "object"
+  ) {
+    return false;
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((value, index) => areJSONValuesEqual(value, right[index]))
+    );
+  }
+
+  const leftRecord = left as Record<string, unknown>;
+  const rightRecord = right as Record<string, unknown>;
+  const keys = Object.keys(leftRecord);
+  return (
+    keys.length === Object.keys(rightRecord).length &&
+    keys.every(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(rightRecord, key) &&
+        areJSONValuesEqual(leftRecord[key], rightRecord[key]),
+    )
+  );
 }
