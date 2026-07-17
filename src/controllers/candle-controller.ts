@@ -17,8 +17,10 @@ export class CandlestickController extends OHLCController {
 
     const candleSpacing = pixelsPerBar * this.spacing;
     const candleWidth = pixelsPerBar - candleSpacing;
-    const upPath = new Path2D();
-    const downPath = new Path2D();
+    const upWicks = new Path2D();
+    const downWicks = new Path2D();
+    const upBodies = new Path2D();
+    const downBodies = new Path2D();
 
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 
@@ -35,15 +37,17 @@ export class CandlestickController extends OHLCController {
       const low = projectPrice(point.low!);
       const open = projectPrice(point.open!);
       const close = projectPrice(point.close!);
-      const path = point.close! > point.open! ? upPath : downPath;
+      const isUp = point.close! > point.open!;
+      const wickPath = isUp ? upWicks : downWicks;
+      const bodyPath = isUp ? upBodies : downBodies;
       const wickX = x + candleWidth / 2 + candleSpacing / 2;
       const bodyHeight = Math.max(1, Math.abs(open - close));
       const bodyTop =
         open === close ? open - bodyHeight / 2 : Math.min(open, close);
 
-      path.moveTo(wickX, high);
-      path.lineTo(wickX, low);
-      path.rect(
+      wickPath.moveTo(wickX, high);
+      wickPath.lineTo(wickX, low);
+      bodyPath.rect(
         x + candleSpacing / 2,
         bodyTop,
         candleWidth,
@@ -51,14 +55,29 @@ export class CandlestickController extends OHLCController {
       );
     }
 
-    this.drawPath(ctx, upPath, this.options.theme.candle.upColor);
-    this.drawPath(ctx, downPath, this.options.theme.candle.downColor);
+    this.drawPaths(
+      ctx,
+      upWicks,
+      upBodies,
+      this.options.theme.candle.upColor
+    );
+    this.drawPaths(
+      ctx,
+      downWicks,
+      downBodies,
+      this.options.theme.candle.downColor
+    );
   }
 
-  private drawPath(ctx: CanvasRenderingContext2D, path: Path2D, color: string) {
-    ctx.fillStyle = color;
+  private drawPaths(
+    ctx: CanvasRenderingContext2D,
+    wickPath: Path2D,
+    bodyPath: Path2D,
+    color: string
+  ) {
     ctx.strokeStyle = color;
-    ctx.fill(path);
-    ctx.stroke(path);
+    ctx.stroke(wickPath);
+    ctx.fillStyle = color;
+    ctx.fill(bodyPath);
   }
 }
