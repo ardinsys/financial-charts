@@ -7,6 +7,7 @@ import type { ChartOptionsState } from "../chart/chart-options-state";
 import type { ChartData, TimeRange } from "../chart/types";
 import type { Pane } from "../panes/pane";
 import type { PaneLayout } from "../panes/pane-layout";
+import type { TimeScaleRange } from "../scales/time-scale";
 
 export class ChartExtensionReadModel {
   constructor(
@@ -34,6 +35,10 @@ export class ChartExtensionReadModel {
 
   getVisibleTimeRange(): TimeRange {
     return this.model.getVisibleTimeRange(this.options.getSnapshot().stepSize);
+  }
+
+  getVisibleLogicalRange(): TimeScaleRange {
+    return this.model.getVisibleIndexRange();
   }
 
   getVisibleTimeWindow(): TimeRange {

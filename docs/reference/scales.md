@@ -51,7 +51,7 @@ const point = priceScale.project(125.5, {
 | `setTimes(times)`                | Updates the timestamp lookup array.                                        |
 | `setBarAlignment(alignment)`     | Sets default `"center"` or `"edge"` bar alignment.                         |
 
-`TimeScaleRange` is `{ from, to, rightOffset? }` in index units. Range setters
+`TimeScaleRange` is `{ from, to }` in index units. Range setters
 own a copy of their input. Range getters return the same borrowed readonly
 snapshot until the next setter call, so reading a range during rendering does
 not allocate.

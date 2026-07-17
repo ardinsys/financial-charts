@@ -74,7 +74,10 @@ export interface IndicatorState {
 
 /** Creates a detached indicator for validated state supplied by the caller. */
 export type IndicatorResolver<
-  TIndicator extends Indicator<any, any> = Indicator<any, any>
+  TIndicator extends Indicator<object, DefaultIndicatorOptions> = Indicator<
+    object,
+    DefaultIndicatorOptions
+  >
 > = (
   state: IndicatorState
 ) => TIndicator | undefined;
@@ -458,7 +461,9 @@ export abstract class Indicator<
 }
 
 /** Restores validated state through an application-owned indicator resolver. */
-export function restoreIndicator<TIndicator extends Indicator<any, any>>(
+export function restoreIndicator<
+  TIndicator extends Indicator<object, DefaultIndicatorOptions>
+>(
   state: unknown,
   resolver: IndicatorResolver<TIndicator>
 ): TIndicator {
@@ -467,7 +472,7 @@ export function restoreIndicator<TIndicator extends Indicator<any, any>>(
 
 /** @internal Restores an indicator state owned by a validated container. */
 export function restoreValidatedIndicator<
-  TIndicator extends Indicator<any, any>
+  TIndicator extends Indicator<object, DefaultIndicatorOptions>
 >(
   state: IndicatorState,
   resolver: IndicatorResolver<TIndicator>

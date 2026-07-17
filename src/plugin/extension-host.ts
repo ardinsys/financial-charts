@@ -313,6 +313,8 @@ export class ExtensionHost {
         extension.attach({
           ...context,
           getCrosshairState: () => this.commands.getCrosshairState(),
+          getVisibleLogicalRange: () =>
+            this.readModel.getVisibleLogicalRange(),
           getPaneHeightRatios: () => this.commands.getPaneHeightRatios(),
           setPaneHeightRatios: (panes) =>
             this.commands.setPaneHeightRatios(panes),

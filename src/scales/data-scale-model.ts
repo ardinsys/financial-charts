@@ -225,8 +225,7 @@ export class DataScaleModel {
   private getDefaultIndexRange(dataset: readonly ChartData[]): TimeScaleRange {
     return {
       from: 0,
-      to: Math.max(dataset.length, 1),
-      rightOffset: 0
+      to: Math.max(dataset.length, 1)
     };
   }
 

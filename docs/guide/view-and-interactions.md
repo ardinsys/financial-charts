@@ -56,7 +56,7 @@ Choose the representation based on the required precision:
 
 | API | Meaning | Typical use |
 | --- | --- | --- |
-| `getVisibleLogicalRange()` / `setVisibleIndexRange()` | Fractional ordinal bar indexes, including right offset. | Chart-native persistence and index-aware navigation. |
+| `getVisibleLogicalRange()` / `setVisibleLogicalRange()` | Fractional ordinal bar indexes. | Chart-native persistence and index-aware navigation. |
 | `getVisibleTimeWindow()` / `setVisibleTimeWindow()` | Interpolated timestamps that preserve fractional indexes. | Lossless synchronization between charts. |
 | `getVisibleTimeRange()` / `setVisibleTimeRange()` | Whole selected bars as `[start, end)`. | Date controls and application UI. |
 

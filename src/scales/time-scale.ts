@@ -9,7 +9,6 @@ import {
 export interface TimeScaleRange {
   readonly from: number;
   readonly to: number;
-  readonly rightOffset?: number;
 }
 
 export type BarAlignment = "center" | "edge";
@@ -36,8 +35,7 @@ export class TimeScale implements Scale {
   setRange(range: TimeScaleRange): void {
     if (
       this.range.from === range.from &&
-      this.range.to === range.to &&
-      this.range.rightOffset === range.rightOffset
+      this.range.to === range.to
     ) {
       return;
     }
@@ -147,5 +145,5 @@ export class TimeScale implements Scale {
 }
 
 function copyRange(range: TimeScaleRange): TimeScaleRange {
-  return { ...range };
+  return { from: range.from, to: range.to };
 }

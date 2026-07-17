@@ -16,6 +16,7 @@ chart.setData(data);
 chart.updateData({ time: 120_000, close: 102 });
 chart.updateOptions({ type: "line", volume: false });
 chart.setVisibleTimeRange({ start: 0, end: 120_000 });
+chart.setVisibleLogicalRange({ from: 0, to: 2 });
 
 const unsubscribe = chart.on(
   "options-change",
@@ -26,6 +27,15 @@ const mappedData = chart.getData();
 const indicators = chart.getIndicators();
 const panes = chart.getPanes();
 const crosshair = chart.getCrosshairState();
+const pixelsPerBar = chart.getPixelsPerBar();
+const unsubscribeVisibleRange = chart.on(
+  "visible-range-change",
+  (range) => void range.start
+);
+const unsubscribePaneHeights = chart.on(
+  "pane-heights-change",
+  (panes) => void panes[0]?.heightRatio
+);
 void [panes[0]?.id, panes[0]?.height, panes[0]?.kind];
 
 // @ts-expect-error Application pane descriptors do not expose engine geometry.
@@ -71,7 +81,9 @@ chart.getTimeAnchorAlignment();
 chart.getYLabelWidth();
 
 unsubscribe();
+unsubscribeVisibleRange();
+unsubscribePaneHeights();
 chart.clearData();
 chart.dispose();
 
-void [options, mappedData, indicators, panes, crosshair];
+void [options, mappedData, indicators, panes, crosshair, pixelsPerBar];

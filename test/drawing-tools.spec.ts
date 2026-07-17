@@ -364,9 +364,9 @@ describe("drawing tools", () => {
 
     (
       chart as unknown as {
-        setVisibleIndexRange(range: { from: number; to: number }): void;
+        setVisibleLogicalRange(range: { from: number; to: number }): void;
       }
-    ).setVisibleIndexRange({ from: 1, to: 4 });
+    ).setVisibleLogicalRange({ from: 1, to: 4 });
 
     const afterPan = projectAnchor(chart, reloadedTrend.getAnchors()[0]);
 

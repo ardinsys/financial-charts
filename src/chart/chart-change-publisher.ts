@@ -4,10 +4,12 @@ import type { ChartRedrawPart } from "../render/chart-render-types";
 import type { ChartOptionsChangeEvent } from "./chart-options";
 import type { ChartEventMap, EventEmitter } from "./event-emitter";
 import type { ChartData, TimeRange } from "./types";
+import type { ChartPaneState } from "./chart-state";
 
 export interface ChartChange {
   readonly data?: readonly ChartData[];
   readonly visibleRange?: TimeRange;
+  readonly paneHeights?: readonly ChartPaneState[];
   readonly options?: ChartOptionsChangeEvent;
   readonly crosshairChanged?: ChartCrosshairState;
   readonly crosshairCleared?: boolean;
@@ -36,9 +38,18 @@ export class ChartChangePublisher {
     if (change.visibleRange) {
       this.extensions.notifyVisibleRangeChanged(change.visibleRange);
     }
+    if (change.paneHeights) {
+      this.extensions.notifyPaneHeightsChanged(change.paneHeights);
+    }
 
     if (change.options) {
       this.events.emit("options-change", change.options);
+    }
+    if (change.visibleRange) {
+      this.events.emit("visible-range-change", change.visibleRange);
+    }
+    if (change.paneHeights) {
+      this.events.emit("pane-heights-change", change.paneHeights);
     }
     if (change.crosshairChanged) {
       this.events.emit("crosshair-change", change.crosshairChanged);

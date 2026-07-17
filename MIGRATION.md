@@ -66,6 +66,9 @@ What to update:
 - Public logical, whole-bar time, and precise time-window setters now all
   clamp, rescale, notify extensions once, and redraw without a follow-up call.
   They are no-ops before data is loaded.
+- Rename `setVisibleIndexRange(range)` to `setVisibleLogicalRange(range)`.
+- `TimeScaleRange` and `getVisibleLogicalRange()` now contain only `{ from, to }`;
+  the unused `rightOffset` field was removed.
 - Use `updateOptions({ timeRange, stepSize, maxZoom })` when changing symbol,
   timeframe, or base range. `updateCoreOptions` was removed.
 - Avoid persisting old zoom/pan scalar values from v0.9; persist the data range,
@@ -441,6 +444,11 @@ import {
 | `ChartDOMAdapter` and adapter model/handle contracts | `./extensions` |
 | `ChartController`, scales, panes, render stages, ticks, DOM/canvas helpers | `./engine` |
 
+The extensions entry now contains authoring contracts and the abstract
+`Indicator`, `PaneledIndicator`, and `Drawing` bases only. Import bundled
+plugins, drawing implementations, `DrawingManager`, and `DefaultDOMAdapter`
+from the root entry.
+
 `TestIndicator` and the default adapter's raw icon strings are implementation
 fixtures and are no longer exported. Applications should provide their own
 paneled indicator class and icon assets.
@@ -481,7 +489,7 @@ The old continuous-time zoom/pan scalars no longer model the index-based scale
 
 - `chart.getZoomLevel()` / `chart.getPanOffset()` → **removed**. Use
   `chart.getVisibleLogicalRange()`, which returns the visible bar index range
-  `{ from, to, rightOffset }`.
+  `{ from, to }`.
 - `ScaleProjectOptions.zoomLevel` / `.panOffset` → **removed**. `project()` /
   `unproject()` derive position from the scale's own range; pass only
   `{ canvas, barAlignment? }`.

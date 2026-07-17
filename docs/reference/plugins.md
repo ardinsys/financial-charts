@@ -126,7 +126,7 @@ unchanged.
 
 | Helper                            | Description                                                                                                    |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `domAdapter`                      | Active `ChartDOMAdapter`, useful when plugins need app-owned DOM chrome.                                       |
+| `domAdapter`                      | Active `ChartDOMAdapter`, useful when plugins need app-owned overlay UI.                                      |
 | `hostElement`                     | The element passed to the chart constructor, for scoped keyboard or focus handling.                           |
 | `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()`, on failed attachment, and on chart disposal.      |
 | `emit(event, data)`               | Emits a chart event.                                                                                           |
@@ -140,6 +140,7 @@ unchanged.
 | `getPlugins()`                    | Returns a readonly snapshot of currently attached plugins.                                                     |
 | `getVisibleTimeWindow()`          | Returns the precise fractional visible timestamp window for pan/zoom replication.                              |
 | `getVisibleTimeRange()`           | Returns the current visible timestamp range.                                                                   |
+| `getVisibleLogicalRange()`        | Returns the precise fractional logical-index range.                                                            |
 | `setVisibleTimeWindow(range)`     | Applies a precise fractional timestamp window.                                                                 |
 | `setPaneHeightRatios(panes)`      | Resolves portable pane ratios against this chart's available height.                                          |
 | `getCrosshairState()`             | Returns the current resolved native crosshair state.                                                           |

@@ -57,20 +57,24 @@ describe("visible range contracts", () => {
   it("synchronizes scale, notification, and redraw for logical setters", () => {
     const { chart } = createChart();
     const onVisibleRangeChanged = attachRangeProbe(chart);
+    const onVisibleRangeChange = vi.fn();
+    chart.on("visible-range-change", onVisibleRangeChange);
     const requestRedraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
     const fullRangeMax = getChartModel(chart).getVisibleScale().getYMax();
 
-    chart.setVisibleIndexRange({ from: 0, to: 3 });
+    chart.setVisibleLogicalRange({ from: 0, to: 3 });
 
     expect(chart.getVisibleLogicalRange()).toEqual({
       from: 0,
-      to: 3,
-      rightOffset: 0
+      to: 3
     });
     expect(getChartModel(chart).getVisibleScale().getYMax()).toBeLessThan(
       fullRangeMax
     );
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
+    expect(onVisibleRangeChange).toHaveBeenCalledWith(
+      chart.getVisibleTimeRange()
+    );
     expect(requestRedraw).toHaveBeenCalledOnce();
     expect(requestRedraw).toHaveBeenCalledWith(
       [
@@ -85,9 +89,10 @@ describe("visible range contracts", () => {
       false
     );
 
-    chart.setVisibleIndexRange({ from: 0, to: 3 });
+    chart.setVisibleLogicalRange({ from: 0, to: 3 });
 
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
+    expect(onVisibleRangeChange).toHaveBeenCalledOnce();
     expect(requestRedraw).toHaveBeenCalledOnce();
   });
 
@@ -102,8 +107,7 @@ describe("visible range contracts", () => {
 
     expect(chart.getVisibleLogicalRange()).toEqual({
       from: 1,
-      to: 4,
-      rightOffset: 0
+      to: 4
     });
     expect(chart.getVisibleTimeRange()).toEqual({
       start: data[1].time,
@@ -111,7 +115,7 @@ describe("visible range contracts", () => {
     });
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
 
-    chart.setVisibleIndexRange({ from: 1.25, to: 4.25 });
+    chart.setVisibleLogicalRange({ from: 1.25, to: 4.25 });
     const logicalRange = chart.getVisibleLogicalRange();
     const preciseWindow = chart.getVisibleTimeWindow();
     onVisibleRangeChanged.mockClear();
@@ -128,7 +132,7 @@ describe("visible range contracts", () => {
 
   it("uses the same completed mutation for pointer pan and zoom", () => {
     const { chart } = createChart();
-    chart.setVisibleIndexRange({ from: 1, to: 5 });
+    chart.setVisibleLogicalRange({ from: 1, to: 5 });
     const onVisibleRangeChanged = attachRangeProbe(chart);
     const requestRedraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
     const canvas = getChartContext(chart, "crosshair").canvas;
@@ -180,18 +184,17 @@ describe("visible range contracts", () => {
     const { chart } = createChart();
     const fullRange = chart.getVisibleLogicalRange();
 
-    chart.setVisibleIndexRange({ from: 3, to: 2 });
+    chart.setVisibleLogicalRange({ from: 3, to: 2 });
     expect(chart.getVisibleLogicalRange()).toEqual({
       from: 3,
-      to: 4,
-      rightOffset: 0
+      to: 4
     });
 
-    chart.setVisibleIndexRange({ from: -100, to: 100 });
+    chart.setVisibleLogicalRange({ from: -100, to: 100 });
     expect(chart.getVisibleLogicalRange()).toEqual(fullRange);
 
     expect(() =>
-      chart.setVisibleIndexRange({ from: Number.NaN, to: 4 })
+      chart.setVisibleLogicalRange({ from: Number.NaN, to: 4 })
     ).toThrow("Visible index range values must be finite.");
     expect(() =>
       chart.setVisibleTimeRange({ start: 0, end: Number.POSITIVE_INFINITY })
@@ -209,7 +212,7 @@ describe("visible range contracts", () => {
     const timeRange = chart.getVisibleTimeRange();
     const timeWindow = chart.getVisibleTimeWindow();
 
-    chart.setVisibleIndexRange({ from: 10, to: 20 });
+    chart.setVisibleLogicalRange({ from: 10, to: 20 });
     chart.setVisibleTimeRange({ start: 10, end: 20 });
     chart.setVisibleTimeWindow({ start: 10, end: 20 });
 

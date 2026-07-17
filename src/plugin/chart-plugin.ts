@@ -17,7 +17,11 @@ import type { ChartPaneState } from "../chart/chart-state";
 import type { Pane } from "../panes/pane";
 import type { RenderCallback, RenderStage } from "../render/render-pipeline";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
-import type { Indicator } from "../indicators/indicator";
+import type {
+  DefaultIndicatorOptions,
+  Indicator
+} from "../indicators/indicator";
+import type { TimeScaleRange } from "../scales/time-scale";
 
 export interface Drawable {
   beforeDraw?(): void;
@@ -37,10 +41,10 @@ export interface ChartPointerEvent {
 }
 
 export interface ExtensionContext {
-  domAdapter: ChartDOMAdapter;
+  readonly domAdapter: ChartDOMAdapter;
   readonly hostElement: HTMLElement;
   /** Aborted when the owning extension is detached or the chart is disposed. */
-  signal: AbortSignal;
+  readonly signal: AbortSignal;
   emit<K extends keyof ChartEventMap>(event: K, data: ChartEventMap[K]): void;
   getData(): readonly ChartData[];
   getOptions(): ChartOptionsSnapshot;
@@ -76,15 +80,22 @@ export interface ExtensionContext {
 
 export interface ChartContext extends ExtensionContext {
   getCrosshairState(): ChartCrosshairState | undefined;
+  getVisibleLogicalRange(): TimeScaleRange;
   /** Returns portable pane ratios keyed by main-pane or indicator identity. */
   getPaneHeightRatios(): readonly ChartPaneState[];
   /** Applies portable pane ratios against this chart's available height. */
   setPaneHeightRatios(panes: readonly ChartPaneState[]): void;
   setVisibleTimeWindow(range: TimeRange): void;
-  getIndicators(): readonly Indicator<any, any>[];
-  getIndicatorById(instanceId: string): Indicator<any, any> | undefined;
-  addIndicator(indicator: Indicator<any, any>): void;
-  removeIndicator(indicator: Indicator<any, any>): void;
+  getIndicators(): readonly Indicator<object, DefaultIndicatorOptions>[];
+  getIndicatorById(
+    instanceId: string
+  ): Indicator<object, DefaultIndicatorOptions> | undefined;
+  addIndicator(
+    indicator: Indicator<object, DefaultIndicatorOptions>
+  ): void;
+  removeIndicator(
+    indicator: Indicator<object, DefaultIndicatorOptions>
+  ): void;
 }
 
 export interface ChartExtension extends Drawable {

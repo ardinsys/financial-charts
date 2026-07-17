@@ -78,10 +78,10 @@ describe("ChartModel data ownership", () => {
       60
     );
     model.refreshIndexBounds({ minimumVisibleSlots: 1, reset: true });
-    model.setVisibleIndexRange({ from: 0.25, to: 2.25 });
+    model.setVisibleLogicalRange({ from: 0.25, to: 2.25 });
     const logicalRange = model.getVisibleIndexRange();
 
-    expect(model.setVisibleIndexRange(logicalRange)).toBe(false);
+    expect(model.setVisibleLogicalRange(logicalRange)).toBe(false);
     expect(model.getVisibleIndexRange()).toBe(logicalRange);
   });
 
@@ -101,8 +101,7 @@ describe("ChartModel data ownership", () => {
     expect(model.getTimeRange()).toEqual({ start: 0, end: 240 });
     expect(model.getVisibleIndexRange()).toEqual({
       from: 0,
-      to: 4,
-      rightOffset: 2
+      to: 4
     });
     expect(model.isPinnedToRightEdge()).toBe(true);
   });
@@ -119,7 +118,7 @@ describe("ChartModel data ownership", () => {
     );
     model.configureTimeRange("auto", 60, 3);
     model.refreshIndexBounds({ minimumVisibleSlots: 3, reset: true });
-    model.setVisibleIndexRange({ from: 0.5, to: 2.5 });
+    model.setVisibleLogicalRange({ from: 0.5, to: 2.5 });
 
     const window = model.getVisibleTimeWindow(60, "center");
 
@@ -144,14 +143,13 @@ describe("ChartModel data ownership", () => {
     model.configureTimeRange("auto", 60, 3);
     model.refreshIndexBounds({ minimumVisibleSlots: 3, reset: true });
 
-    model.setVisibleIndexRange({ from: -10, to: 10 });
+    model.setVisibleLogicalRange({ from: -10, to: 10 });
     expect(model.getVisibleIndexRange()).toEqual({
       from: 0,
-      to: 3,
-      rightOffset: 0
+      to: 3
     });
     expect(() =>
-      model.setVisibleIndexRange({ from: Number.NaN, to: 2 })
+      model.setVisibleLogicalRange({ from: Number.NaN, to: 2 })
     ).toThrow("Visible index range values must be finite.");
     expect(() =>
       model.logicalRangeForTimeRange({
@@ -216,12 +214,11 @@ describe("ChartModel data ownership", () => {
     model.configureScales(createSimpleScale, "center");
     model.refreshIndexBounds({ minimumVisibleSlots: 3, reset: true });
 
-    model.setVisibleIndexRange({ from: 0.5, to: 2.5 });
+    model.setVisibleLogicalRange({ from: 0.5, to: 2.5 });
 
     expect(model.getTimeScale().getRange()).toEqual({
       from: 0.5,
-      to: 2.5,
-      rightOffset: 0
+      to: 2.5
     });
   });
 

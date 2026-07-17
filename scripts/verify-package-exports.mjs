@@ -32,6 +32,12 @@ const internalRuntimeExports = [
   "restoreValidatedIndicator",
   "validateIndicatorState"
 ];
+const bundledExtensionImplementations = [
+  "ChartSyncPlugin",
+  "DefaultDOMAdapter",
+  "DrawingManager",
+  "TrendLine"
+];
 
 for (const modulePath of ["dist/extensions.js", "dist/engine.js"]) {
   const publicModule = await import(
@@ -41,6 +47,17 @@ for (const modulePath of ["dist/extensions.js", "dist/engine.js"]) {
     if (exportName in publicModule) {
       throw new Error(`${exportName} must not be exported from ${modulePath}`);
     }
+  }
+}
+
+const extensionsModule = await import(
+  new URL("../dist/extensions.js", import.meta.url)
+);
+for (const exportName of bundledExtensionImplementations) {
+  if (exportName in extensionsModule) {
+    throw new Error(
+      `${exportName} must not be exported from dist/extensions.js`
+    );
   }
 }
 
@@ -86,7 +103,9 @@ for (const declarationPath of publicDeclarationPaths) {
     "randomColor",
     "recalculateVisibleExtent",
     "registerIndicator",
+    "rightOffset",
     "setChart",
+    "setVisibleIndexRange",
     "updateCoreOptions",
     "updateLabel"
   ]) {
@@ -99,6 +118,16 @@ for (const declarationPath of publicDeclarationPaths) {
     throw new Error(
       `The removed controller redraw alias appears in ${declarationPath}`
     );
+  }
+}
+
+const extensionsDeclaration = await readFile(
+  new URL("../dist/extensions.d.ts", import.meta.url),
+  "utf8"
+);
+for (const exportName of bundledExtensionImplementations) {
+  if (new RegExp(`\\b${exportName}\\b`).test(extensionsDeclaration)) {
+    throw new Error(`${exportName} must not appear in dist/extensions.d.ts`);
   }
 }
 

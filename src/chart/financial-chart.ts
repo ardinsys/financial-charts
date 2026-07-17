@@ -1,6 +1,9 @@
 import { ChartController } from "../controllers/controller";
 import { PaneledIndicator } from "../indicators/paneled-indicator";
-import { Indicator } from "../indicators/indicator";
+import {
+  Indicator,
+  type DefaultIndicatorOptions
+} from "../indicators/indicator";
 import { ChartIndicatorHost } from "../indicators/chart-indicator-host";
 import type { ScaleRangeModifier } from "../scales/data-scale-model";
 import type { TimeScaleRange } from "../scales/time-scale";
@@ -91,7 +94,7 @@ const ALL_REDRAW_PARTS = [
   "crosshair"
 ] as const;
 
-export class FinancialChart {
+export class FinancialChartBase {
   private readonly events = new EventEmitter<ChartEventMap>();
   private readonly controllerRegistry: ControllerRegistry;
   private controller: ChartController;
@@ -232,7 +235,8 @@ export class FinancialChart {
     return this.model.getVisibleIndexSpan();
   }
 
-  private getPixelsPerBar() {
+  /** Returns the current logical plot width allocated to one visible bar. */
+  public getPixelsPerBar(): number {
     return this.renderer.getDrawingSize().width / this.getVisibleIndexSpan();
   }
 
@@ -240,7 +244,7 @@ export class FinancialChart {
     return this.model.isPinnedToRightEdge();
   }
 
-  private resetVisibleIndexRange() {
+  private resetVisibleLogicalRange() {
     return this.refreshIndexBounds({ reset: true });
   }
 
@@ -267,9 +271,9 @@ export class FinancialChart {
    *
    * @throws {RangeError} when either boundary is not finite
    */
-  public setVisibleIndexRange(range: TimeScaleRange): void {
+  public setVisibleLogicalRange(range: TimeScaleRange): void {
     if (!this.model.hasData()) return;
-    this.applyVisibleIndexRange(range);
+    this.applyVisibleLogicalRange(range);
   }
 
   /**
@@ -280,7 +284,7 @@ export class FinancialChart {
    */
   public setVisibleTimeRange(range: TimeRange): void {
     if (!this.model.hasData()) return;
-    this.setVisibleIndexRange(this.model.logicalRangeForTimeRange(range));
+    this.setVisibleLogicalRange(this.model.logicalRangeForTimeRange(range));
   }
 
   /**
@@ -291,7 +295,7 @@ export class FinancialChart {
    */
   public setVisibleTimeWindow(range: TimeRange): void {
     if (!this.model.hasData()) return;
-    this.setVisibleIndexRange(this.resolveVisibleTimeWindow(range));
+    this.setVisibleLogicalRange(this.resolveVisibleTimeWindow(range));
   }
 
   private resolveVisibleTimeWindow(range: TimeRange): TimeScaleRange {
@@ -302,8 +306,8 @@ export class FinancialChart {
     );
   }
 
-  private applyVisibleIndexRange(range: TimeScaleRange): boolean {
-    const changed = this.updateVisibleIndexRange(range);
+  private applyVisibleLogicalRange(range: TimeScaleRange): boolean {
+    const changed = this.updateVisibleLogicalRange(range);
     if (!changed) return false;
 
     this.recalculateVisibleScale();
@@ -314,8 +318,8 @@ export class FinancialChart {
     return true;
   }
 
-  private updateVisibleIndexRange(range: TimeScaleRange): boolean {
-    const changed = this.model.setVisibleIndexRange(range);
+  private updateVisibleLogicalRange(range: TimeScaleRange): boolean {
+    const changed = this.model.setVisibleLogicalRange(range);
     this.syncPaneTimeScales();
     return changed;
   }
@@ -326,7 +330,7 @@ export class FinancialChart {
 
     const delta = dx / pixelsPerBar;
     const visibleRange = this.model.getVisibleIndexRange();
-    this.setVisibleIndexRange({
+    this.setVisibleLogicalRange({
       from: visibleRange.from - delta,
       to: visibleRange.to - delta
     });
@@ -346,20 +350,24 @@ export class FinancialChart {
       this.model.getVisibleIndexRange().from + anchorRatio * oldSpan;
     const from = anchorIndex - anchorRatio * newSpan;
 
-    this.setVisibleIndexRange({ from, to: from + newSpan });
+    this.setVisibleLogicalRange({ from, to: from + newSpan });
   }
 
-  getIndicators(): readonly Indicator<any, any>[] {
+  getIndicators(): readonly Indicator<object, DefaultIndicatorOptions>[] {
     return this.extensionHost.getAllIndicators();
   }
 
   /** Returns an attached indicator by its unique instance identity. */
-  getIndicatorById(instanceId: string): Indicator<any, any> | undefined {
+  getIndicatorById(
+    instanceId: string
+  ): Indicator<object, DefaultIndicatorOptions> | undefined {
     return this.extensionHost.getIndicatorById(instanceId);
   }
 
   /** Returns all attached indicators sharing a factory/type identity. */
-  getIndicatorsByType(typeId: string): readonly Indicator<any, any>[] {
+  getIndicatorsByType(
+    typeId: string
+  ): readonly Indicator<object, DefaultIndicatorOptions>[] {
     return this.extensionHost.getIndicatorsByType(typeId);
   }
 
@@ -658,7 +666,7 @@ export class FinancialChart {
       () => this.captureChartState(),
       (restoration) => this.applyChartStateRestoration(restoration),
       (range) =>
-        this.updateVisibleIndexRange(this.resolveVisibleTimeWindow(range))
+        this.updateVisibleLogicalRange(this.resolveVisibleTimeWindow(range))
     );
   }
 
@@ -738,9 +746,9 @@ export class FinancialChart {
   }
 
   private notifyPaneHeightsChanged(): void {
-    this.extensionHost.notifyPaneHeightsChanged(
-      this.capturePaneHeightRatios()
-    );
+    this.changePublisher.commit({
+      paneHeights: this.capturePaneHeightRatios()
+    });
   }
 
   private applyChartStateRestoration({
@@ -760,7 +768,7 @@ export class FinancialChart {
 
       optionsEvent = this.applyOptionsUpdate(state.core)?.options;
       if (this.model.hasData()) {
-        this.updateVisibleIndexRange(
+        this.updateVisibleLogicalRange(
           this.resolveVisibleTimeWindow(state.visibleRange)
         );
       } else {
@@ -841,12 +849,12 @@ export class FinancialChart {
       (data, timeRange) => this.controller.createDataScale(data, timeRange),
       this.controller.getBarAlignment()
     );
-    if (resetVisibleRange) this.resetVisibleIndexRange();
+    if (resetVisibleRange) this.resetVisibleLogicalRange();
     this.syncPaneTimeScales();
     if (this.model.hasData()) this.recalculateVisibleScale();
   }
 
-  private applyThemeChrome(previousThemeKey: string) {
+  private applyThemeOverlay(previousThemeKey: string) {
     this.container.classList.remove(`financial-charts-${previousThemeKey}`);
     this.container.classList.add(`financial-charts-${this.options.theme.key}`);
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
@@ -907,7 +915,7 @@ export class FinancialChart {
       this.rebuildScales(false);
     }
 
-    if (changed.has("theme")) this.applyThemeChrome(previousThemeKey);
+    if (changed.has("theme")) this.applyThemeOverlay(previousThemeKey);
     if (localizationChanged) this.refreshLocalizationLabels();
 
     const redrawParts = new Set<RenderLayer>();
@@ -994,7 +1002,7 @@ export class FinancialChart {
       this.refreshAutoTimeRange();
     }
 
-    let rangeChanged = this.resetVisibleIndexRange();
+    let rangeChanged = this.resetVisibleLogicalRange();
     rangeChanged =
       this.stateController.applyPendingVisibleRange() || rangeChanged;
     this.recalculateVisibleScale();
@@ -1057,7 +1065,9 @@ export class FinancialChart {
    *
    * @param indicator indicator to draw
    */
-  public addIndicator(indicator: Indicator<any, any>): () => void {
+  public addIndicator(
+    indicator: Indicator<object, DefaultIndicatorOptions>
+  ): () => void {
     return this.attachIndicator(indicator, true);
   }
 
@@ -1142,7 +1152,9 @@ export class FinancialChart {
    * @param indicator indicator to remove
    */
 
-  public removeIndicator(indicator: Indicator<any, any>): boolean {
+  public removeIndicator(
+    indicator: Indicator<object, DefaultIndicatorOptions>
+  ): boolean {
     return this.detachIndicator(indicator, true);
   }
 

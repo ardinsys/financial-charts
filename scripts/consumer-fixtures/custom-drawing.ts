@@ -1,6 +1,6 @@
+import { DrawingManager } from "@ardinsys/financial-charts";
 import {
   Drawing,
-  DrawingManager,
   type DrawingHitTestContext,
   type DrawingJSON,
   type DrawingOptions,

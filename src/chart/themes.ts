@@ -44,7 +44,7 @@ export interface ChartTheme {
       color?: string;
       fill?: string;
     };
-    low: {
+    low?: {
       color?: string;
       fill?: string;
     };

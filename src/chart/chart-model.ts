@@ -29,8 +29,7 @@ export class ChartModel {
   private timeRange: TimeRange = { start: 0, end: 0 };
   private indexBounds: TimeScaleRange = {
     from: 0,
-    to: 1,
-    rightOffset: 0
+    to: 1
   };
   private visibleIndexRange = this.indexBounds;
   private barAlignment: BarAlignment = "center";
@@ -220,8 +219,7 @@ export class ChartModel {
     }
     this.indexBounds = {
       from: 0,
-      to: 1,
-      rightOffset: 0
+      to: 1
     };
     this.visibleIndexRange = this.indexBounds;
   }
@@ -244,24 +242,17 @@ export class ChartModel {
       };
     }
 
-    return this.setVisibleIndexRange(range);
+    return this.setVisibleLogicalRange(range);
   }
 
-  setVisibleIndexRange(range: TimeScaleRange): boolean {
+  setVisibleLogicalRange(range: TimeScaleRange): boolean {
     const previous = this.visibleIndexRange;
     const next = this.clampVisibleIndexRange(range);
     const changed =
       Math.abs(previous.from - next.from) > logicalRangeEpsilon ||
       Math.abs(previous.to - next.to) > logicalRangeEpsilon;
 
-    if (changed || previous.rightOffset !== next.rightOffset) {
-      this.visibleIndexRange = changed
-        ? next
-        : {
-            ...previous,
-            rightOffset: next.rightOffset
-          };
-    }
+    if (changed) this.visibleIndexRange = next;
     this.syncTimeScales();
     return changed;
   }
@@ -345,15 +336,14 @@ export class ChartModel {
     minimumVisibleSlots: number
   ): TimeScaleRange {
     if (!this.hasData()) {
-      return { from: 0, to: 1, rightOffset: 0 };
+      return { from: 0, to: 1 };
     }
 
     if (this.autoTimeRange) {
       const slotCount = Math.max(this.mappedData.length, minimumVisibleSlots);
       return {
         from: 0,
-        to: slotCount,
-        rightOffset: Math.max(0, slotCount - this.mappedData.length)
+        to: slotCount
       };
     }
 
@@ -363,8 +353,7 @@ export class ChartModel {
     );
     return {
       from: range.from,
-      to: range.to,
-      rightOffset: Math.max(0, range.to - this.mappedData.length)
+      to: range.to
     };
   }
 
@@ -391,8 +380,7 @@ export class ChartModel {
 
     return {
       from,
-      to,
-      rightOffset: Math.max(0, to - this.mappedData.length)
+      to
     };
   }
 
@@ -434,7 +422,6 @@ function indexRangesEqual(
 ): boolean {
   return (
     left.from === right.from &&
-    left.to === right.to &&
-    left.rightOffset === right.rightOffset
+    left.to === right.to
   );
 }

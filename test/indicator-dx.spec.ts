@@ -168,7 +168,7 @@ describe("indicator authoring contexts", () => {
     );
   });
 
-  it("prepares paneled indicator chrome before calling the pane draw body", async () => {
+  it("prepares paneled indicator drawing state before calling the pane draw body", async () => {
     const chart = createChart(createData());
     const indicator = new PaneledProbeIndicator();
 

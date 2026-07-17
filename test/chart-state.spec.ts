@@ -93,7 +93,7 @@ describe("chart state", () => {
     source.addIndicator(fast);
     source.addIndicator(slow);
     source.addIndicator(paneled);
-    source.setVisibleIndexRange({ from: 1.25, to: 5.25 });
+    source.setVisibleLogicalRange({ from: 1.25, to: 5.25 });
 
     const [mainPane, indicatorPane] = source.getPanes();
     source.setPaneHeights({
@@ -168,8 +168,14 @@ describe("chart state", () => {
     expect(target.getIndicatorsByType(MovingAverageIndicator.ID)).toHaveLength(
       2
     );
-    expect(target.getIndicatorById("fast-sma")?.getOptions().period).toBe(9);
-    expect(target.getIndicatorById("slow-sma")?.getOptions().period).toBe(21);
+    expect(
+      (target.getIndicatorById("fast-sma") as MovingAverageIndicator)
+        .getOptions().period
+    ).toBe(9);
+    expect(
+      (target.getIndicatorById("slow-sma") as MovingAverageIndicator)
+        .getOptions().period
+    ).toBe(21);
     expect(target.getIndicatorById("slow-sma")?.isIndicatorVisible()).toBe(
       false
     );
@@ -197,7 +203,7 @@ describe("chart state", () => {
   it("keeps a restored precise view pending until data is available", () => {
     const data = createData();
     const source = createChart({ data });
-    source.setVisibleIndexRange({ from: 1.5, to: 4.5 });
+    source.setVisibleLogicalRange({ from: 1.5, to: 4.5 });
     source.addIndicator(
       new MovingAverageIndicator(null, {
         instanceId: "deferred-sma",

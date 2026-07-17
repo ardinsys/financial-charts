@@ -275,6 +275,16 @@ function createGroup() {
   return group;
 }
 
+function getCustomIndicator(chart: FinancialChart, instanceId: string) {
+  return chart.getIndicatorById(instanceId) as
+    | CustomMovingAverageIndicator
+    | undefined;
+}
+
+function getFirstCustomIndicator(chart: FinancialChart) {
+  return chart.getIndicators()[0] as CustomMovingAverageIndicator | undefined;
+}
+
 describe("ChartSyncPlugin", () => {
   it("clears retained state for an empty sync group", () => {
     const group = createGroup();
@@ -462,7 +472,7 @@ describe("ChartSyncPlugin", () => {
       };
     }
 
-    source.chart.setVisibleIndexRange({ from: 0.25, to: 2.25 });
+    source.chart.setVisibleLogicalRange({ from: 0.25, to: 2.25 });
     source.chart.setCrosshair({
       time: source.data[1].time,
       price: source.data[1].close ?? undefined
@@ -481,7 +491,7 @@ describe("ChartSyncPlugin", () => {
     const source = createSyncedChart(group);
     const target = createSyncedChart(group);
 
-    source.chart.setVisibleIndexRange({ from: 0.35, to: 2.35 });
+    source.chart.setVisibleLogicalRange({ from: 0.35, to: 2.35 });
 
     const sourceLogical = source.chart.getVisibleLogicalRange();
     const targetLogical = target.chart.getVisibleLogicalRange();
@@ -543,7 +553,7 @@ describe("ChartSyncPlugin", () => {
     expect(target.chart.getIndicators()[0]).toBeInstanceOf(
       CustomMovingAverageIndicator
     );
-    expect(target.chart.getIndicators()[0]?.getOptions().period).toBe(7);
+    expect(getFirstCustomIndicator(target.chart)?.getOptions().period).toBe(7);
     expect(target.chart.getCrosshairState()?.time).toBe(source.data[2].time);
   });
 
@@ -588,7 +598,9 @@ describe("ChartSyncPlugin", () => {
     expect(target.chart.getIndicators()[0]).toBeInstanceOf(
       CustomMovingAverageIndicator
     );
-    expect(target.chart.getIndicators()[0]?.getOptions().period).toBe(13);
+    expect(getFirstCustomIndicator(target.chart)?.getOptions().period).toBe(
+      13
+    );
     expect(target.chart.getCrosshairState()?.time).toBe(source.data[2].time);
   });
 
@@ -806,10 +818,10 @@ describe("ChartSyncPlugin", () => {
     expect(target.chart.getIndicatorById("fast-sma")).toBeInstanceOf(
       CustomMovingAverageIndicator
     );
-    expect(target.chart.getIndicatorById("fast-sma")?.getOptions().period).toBe(
+    expect(getCustomIndicator(target.chart, "fast-sma")?.getOptions().period).toBe(
       9
     );
-    expect(target.chart.getIndicatorById("slow-sma")?.getOptions().period).toBe(
+    expect(getCustomIndicator(target.chart, "slow-sma")?.getOptions().period).toBe(
       21
     );
     expect(
@@ -823,10 +835,10 @@ describe("ChartSyncPlugin", () => {
     expect(serializeFast).toHaveBeenCalledTimes(1);
     expect(serializeSlow).not.toHaveBeenCalled();
     expect(targetEvents.at(-1)).toBe("change:fast-sma");
-    expect(target.chart.getIndicatorById("fast-sma")?.getOptions().period).toBe(
+    expect(getCustomIndicator(target.chart, "fast-sma")?.getOptions().period).toBe(
       12
     );
-    expect(target.chart.getIndicatorById("slow-sma")?.getOptions().period).toBe(
+    expect(getCustomIndicator(target.chart, "slow-sma")?.getOptions().period).toBe(
       21
     );
 
@@ -865,7 +877,7 @@ describe("ChartSyncPlugin", () => {
     expect(late.chart.getIndicatorById("slow-sma")).toBeInstanceOf(
       CustomMovingAverageIndicator
     );
-    expect(late.chart.getIndicatorById("slow-sma")?.getOptions().period).toBe(
+    expect(getCustomIndicator(late.chart, "slow-sma")?.getOptions().period).toBe(
       21
     );
     expect(

@@ -216,6 +216,8 @@ describe("Pane", () => {
     const indicator = new TestIndicator();
 
     chart.addIndicator(indicator);
+    const onPaneHeightsChange = vi.fn();
+    chart.on("pane-heights-change", onPaneHeightsChange);
 
     const initialPanes = chart.getPanes();
     const [mainPane, indicatorPane] = initialPanes;
@@ -245,6 +247,10 @@ describe("Pane", () => {
     });
     expect(indicator.getContainer().style.top).toBe("220px");
     expect(indicator.getContainer().style.height).toBe("150px");
+    expect(onPaneHeightsChange).toHaveBeenCalledOnce();
+    expect(onPaneHeightsChange).toHaveBeenCalledWith(
+      chart.toJSON().panes
+    );
   });
 
   it("clamps explicit pane heights to the pane minimums", () => {

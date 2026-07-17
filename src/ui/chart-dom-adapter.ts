@@ -99,7 +99,7 @@ export interface ChartDOMOverlay {
 }
 
 /**
- * Renders the DOM chrome that sits around the canvases. The default
+ * Renders the DOM overlay that sits around the canvases. The default
  * {@link DefaultDOMAdapter} reproduces the built-in HTML behavior. The core
  * delegates non-canvas DOM to this adapter so applications can restyle or
  * replace it while staying in an HTMLElement-based environment. The default

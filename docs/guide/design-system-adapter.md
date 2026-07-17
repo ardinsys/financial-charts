@@ -1,8 +1,8 @@
 # Design-system adapter
 
-Financial charts draws market data on canvas, but DOM chrome is routed through `ChartDOMAdapter`. Use the default adapter when CSS hooks are enough, or pass your own adapter when labels and pane dividers should be rendered by your design system.
+Financial charts draws market data on canvas, but overlay UI is routed through `ChartDOMAdapter`. Use the default adapter when CSS hooks are enough, or pass your own adapter when labels and pane dividers should be rendered by your design system.
 
-## Restyle the default chrome
+## Restyle the default overlay
 
 Import the shipped stylesheet, then override the stable classes inside your chart container.
 

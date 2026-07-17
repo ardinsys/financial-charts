@@ -860,9 +860,9 @@ describe("DrawingManager", () => {
     const { chart } = createChart();
     createManager(chart);
     const internals = chart as unknown as {
-      setVisibleIndexRange(range: { from: number; to: number }): void;
+      setVisibleLogicalRange(range: { from: number; to: number }): void;
     };
-    internals.setVisibleIndexRange({ from: 1, to: 3 });
+    internals.setVisibleLogicalRange({ from: 1, to: 3 });
     const before = chart.getVisibleLogicalRange();
     const clicked = vi.fn();
     chart.on("click", clicked);
@@ -883,9 +883,9 @@ describe("DrawingManager", () => {
 
     const drawing = manager.getDrawings()[0] as StubDrawing;
     const internals = chart as unknown as {
-      setVisibleIndexRange(range: { from: number; to: number }): void;
+      setVisibleLogicalRange(range: { from: number; to: number }): void;
     };
-    internals.setVisibleIndexRange({ from: 1, to: 3 });
+    internals.setVisibleLogicalRange({ from: 1, to: 3 });
     const [beforePan] = drawing.projectForTest(drawingContext(chart));
 
     drawing.draw.mockClear();
@@ -937,9 +937,9 @@ describe("DrawingManager", () => {
 
     (
       chart as unknown as {
-        setVisibleIndexRange(range: { from: number; to: number }): void;
+        setVisibleLogicalRange(range: { from: number; to: number }): void;
       }
-    ).setVisibleIndexRange({ from: 1, to: 4 });
+    ).setVisibleLogicalRange({ from: 1, to: 4 });
 
     const [afterPan] = drawing.projectForTest(drawingContext(chart));
 

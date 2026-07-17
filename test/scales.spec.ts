@@ -164,7 +164,7 @@ describe("index-based time scales", () => {
     const chart = createChart(data, "auto");
     const fullRange = chart.getVisibleLogicalRange();
     const targetSpan = (fullRange.to - fullRange.from) / 2;
-    chart.setVisibleIndexRange({
+    chart.setVisibleLogicalRange({
       from: fullRange.to - targetSpan,
       to: fullRange.to
     });

@@ -68,7 +68,7 @@ describe("CrosshairResolver", () => {
 
   it("uses the visible time scale for click resolution", () => {
     const { model, resolver } = createResolver();
-    model.setVisibleIndexRange({ from: 1, to: 3 });
+    model.setVisibleLogicalRange({ from: 1, to: 3 });
 
     expect(resolver.resolveDataPoint(0, 100, "data")?.time).toBe(60);
     expect(resolver.resolveDataPoint(0, 100, "visible")?.time).toBe(60);
@@ -88,7 +88,7 @@ describe("CrosshairResolver", () => {
 
   it("rejects programmatic points outside the visible logical window", () => {
     const { model, resolver } = createResolver();
-    model.setVisibleIndexRange({ from: 1, to: 2 });
+    model.setVisibleLogicalRange({ from: 1, to: 2 });
 
     expect(resolver.resolveProgrammatic({ time: 0 })).toBeUndefined();
   });

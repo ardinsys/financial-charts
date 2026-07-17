@@ -1,6 +1,6 @@
 # DOM adapter
 
-`ChartDOMAdapter` is the non-canvas UI seam. The chart renders market data, axes, grid, and crosshair labels on canvas; the adapter owns DOM chrome such as the overlay region, indicator labels/actions, and pane dividers.
+`ChartDOMAdapter` is the non-canvas UI seam. The chart renders market data, axes, grid, and crosshair labels on canvas; the adapter owns overlay UI such as the indicator-label region, indicator actions, and pane dividers.
 
 Import adapter authoring contracts and `DefaultDOMAdapter` from
 `@ardinsys/financial-charts/extensions`.

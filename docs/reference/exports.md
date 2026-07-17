@@ -86,8 +86,11 @@ For a controller-curated bundle, import `FinancialChart` from
 ## Authoring entry points
 
 - `@ardinsys/financial-charts/extensions` exports plugin, indicator, drawing,
-  annotation, DOM-adapter, `ChartCanvasLayer`, and `ChartRedrawPart` authoring
-  contracts. See [Plugins](/reference/plugins),
+  annotation, DOM-adapter, rendering, chart-state, view, formatting, locale,
+  and scale authoring contracts. It includes the abstract `Indicator`,
+  `PaneledIndicator`, and `Drawing` authoring bases, but not bundled plugins,
+  drawings, managers, or `DefaultDOMAdapter`; those remain on the root entry.
+  See [Plugins](/reference/plugins),
   [Indicators](/reference/indicators), [Drawings](/reference/drawings), and the
   [DOM adapter](/reference/dom-adapter).
 - `@ardinsys/financial-charts/engine` adds controllers, scales, panes, render

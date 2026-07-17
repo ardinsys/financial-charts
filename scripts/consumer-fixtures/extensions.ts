@@ -1,9 +1,16 @@
 import {
-  DefaultDOMAdapter,
   Drawing,
   Indicator,
+  type BarAlignment,
+  type ChartCrosshairOptions,
+  type ChartCrosshairState,
+  type ChartData,
   type ChartDOMAdapter,
   type ChartCanvasLayer,
+  type ChartEventMap,
+  type ChartOptionsChangeEvent,
+  type ChartOptionsSnapshot,
+  type ChartPaneState,
   type ChartPlugin,
   type ChartRedrawPart,
   type DefaultIndicatorOptions,
@@ -12,8 +19,15 @@ import {
   type DrawingPoint,
   type DrawingRenderContext,
   type ExtensionThemeDefaults,
+  type Formatter,
   type IndicatorLabelContent,
-  type PriceAxisAnnotation
+  type LocaleValues,
+  type PriceAxisAnnotation,
+  type RenderCallback,
+  type RenderStage,
+  type ScaleRangeModifier,
+  type TimeRange,
+  type TimeScaleRange
 } from "@ardinsys/financial-charts/extensions";
 
 class ExtensionIndicator extends Indicator<{}, DefaultIndicatorOptions> {
@@ -56,14 +70,32 @@ const plugin = {
       ctx.getOptions(),
       ctx.hostElement,
       ctx.getCrosshairState(),
-      ctx.getIndicators()
+      ctx.getIndicators(),
+      ctx.getVisibleLogicalRange()
     ];
   }
 } satisfies ChartPlugin;
-const adapter: ChartDOMAdapter = new DefaultDOMAdapter();
+const adapter = {} as ChartDOMAdapter;
 const annotation: PriceAxisAnnotation = { id: "fixture", value: 1 };
 const canvasLayer: ChartCanvasLayer = "main";
 const redrawPart: ChartRedrawPart = "series";
+type AuthoringContracts = [
+  BarAlignment,
+  ChartCrosshairOptions,
+  ChartCrosshairState,
+  ChartData,
+  ChartEventMap,
+  ChartOptionsChangeEvent,
+  ChartOptionsSnapshot,
+  ChartPaneState,
+  Formatter,
+  LocaleValues,
+  RenderCallback,
+  RenderStage,
+  ScaleRangeModifier,
+  TimeRange,
+  TimeScaleRange
+];
 
 void [
   ExtensionIndicator,
@@ -72,5 +104,6 @@ void [
   adapter,
   annotation,
   canvasLayer,
-  redrawPart
+  redrawPart,
+  null as unknown as AuthoringContracts
 ];

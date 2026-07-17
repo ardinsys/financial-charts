@@ -1,5 +1,5 @@
+import { DefaultDOMAdapter } from "@ardinsys/financial-charts";
 import {
-  DefaultDOMAdapter,
   type IndicatorLabelActions,
   type IndicatorLabelHandle,
   type IndicatorLabelModel,

@@ -1,12 +1,15 @@
-import { Indicator } from "../indicators/indicator";
+import type {
+  DefaultIndicatorOptions,
+  Indicator
+} from "../indicators/indicator";
 import type { Drawing, DrawingAnchor, DrawingJSON } from "../drawings/drawing";
-import { ChartData } from "./types";
+import type { ChartData, TimeRange } from "./types";
 import type { ChartOptionsChangeEvent } from "./chart-options";
-import type { ChartStateRestoredEvent } from "./chart-state";
+import type { ChartPaneState, ChartStateRestoredEvent } from "./chart-state";
 import type { ChartCrosshairState } from "../interaction/crosshair";
 
 interface IndicatorEvent {
-  readonly indicator: Indicator<any, any>;
+  readonly indicator: Indicator<object, DefaultIndicatorOptions>;
 }
 
 interface IndicatorVisibilityChangedEvent extends IndicatorEvent {
@@ -48,6 +51,8 @@ export interface ChartEventMap {
   "crosshair-change": ChartCrosshairChangeEvent;
   "crosshair-clear": {};
   "options-change": ChartOptionsChangeEvent;
+  "visible-range-change": TimeRange;
+  "pane-heights-change": readonly ChartPaneState[];
   "state-restored": ChartStateRestoredEvent;
   "drawing-create": DrawingEvent;
   "drawing-change": DrawingEvent;

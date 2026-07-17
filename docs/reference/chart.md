@@ -77,7 +77,7 @@ type ChartOptions = {
 | `includeDefaultControllers` | Controls class-provided defaults. The root chart defaults to `true`; the controller-neutral core defaults to `false`.                   |
 | `theme`                     | Active registered theme key. The built-in `"light"` and `"dark"` keys are always available; defaults to `"light"`.                 |
 | `themes`                    | Theme definitions registered for the chart lifetime. Custom keys inherit from light unless their definition sets `base: "dark"`.     |
-| `domAdapter`                | `ChartDOMAdapter` implementation for DOM chrome: overlay, indicator labels/actions, and pane dividers. Defaults to `DefaultDOMAdapter`. |
+| `domAdapter`                | `ChartDOMAdapter` implementation for overlay UI, indicator labels/actions, and pane dividers. Defaults to `DefaultDOMAdapter`. |
 | `locale`                    | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`.                                    |
 | `timeZone`                  | IANA timezone forwarded to formatters that support `setTimeZone()`.                                                                     |
 | `formatter`                 | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                                                     |
@@ -121,7 +121,7 @@ const chart = new FinancialChart(root, {
 - `localeValues` is merged with the internal `default` block (`Show/Hide/Settings/Remove` + OHLCV names). Supply only the locales you need; missing entries fall back to `default`.
 - `formatter` can extend `DefaultFormatter` to reuse axis formatting while customizing tooltip dates/prices.
 
-#### DOM chrome options
+#### DOM overlay options
 
 - `domAdapter` controls the non-canvas UI seam. Use `DefaultDOMAdapter` plus the built-in `fci-*` classes for CSS restyling, or pass a custom `ChartDOMAdapter` to replace indicator labels/actions and pane dividers with app-owned DOM.
 - Canvas-rendered surfaces such as candles, axes, grid, crosshair labels, and volume remain theme-driven. Register definitions with `themes` and switch them with `updateOptions({ theme: key })`.
@@ -276,7 +276,8 @@ entry.
 | Method                                 | Description                                                                                             |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | `getVisibleLogicalRange()`             | Returns the precise fractional logical-index window.                                                    |
-| `setVisibleIndexRange(range)`          | Sets, clamps, rescales, notifies, and redraws a fractional logical-index window.                         |
+| `setVisibleLogicalRange(range)`          | Sets, clamps, rescales, notifies, and redraws a fractional logical-index window.                         |
+| `getPixelsPerBar()`                    | Returns the current logical plot width allocated to one visible bar.                                    |
 | `getVisibleTimeRange()`                | Returns the whole-bar window as an end-exclusive timestamp range.                                        |
 | `setVisibleTimeRange(range)`           | Selects whole bars with timestamps in the end-exclusive range.                                           |
 | `getVisibleTimeWindow()`               | Returns interpolated timestamps that preserve the fractional logical window.                             |
@@ -439,6 +440,8 @@ Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 | `crosshair-change`             | `{ time, y, paneId, price, dataPoint }`                   | Native or programmatic crosshair moves.       |
 | `crosshair-clear`              | `{}`                                                      | Native or programmatic crosshair clears.      |
 | `options-change`               | `{ previous, current, changedKeys }`                      | Effective runtime options change.             |
+| `visible-range-change`         | `{ start, end }`                                         | Effective visible range changes.               |
+| `pane-heights-change`          | `ChartPaneState[]`                                       | Explicit or interactive pane heights change.  |
 | `state-restored`               | `{ state }`                                               | Complete chart state has been restored.       |
 | `indicator-add`                | `{ indicator }`                                           | Indicator is added to the chart.              |
 | `indicator-change`             | `{ indicator }`                                           | Indicator options are updated.                |

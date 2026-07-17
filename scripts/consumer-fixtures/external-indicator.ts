@@ -1,4 +1,3 @@
-import type { TimeRange } from "@ardinsys/financial-charts";
 import {
   Indicator,
   type IndicatorContext,
@@ -7,9 +6,10 @@ import {
   type ExtensionThemeDefaults,
   type ExtensionThemeMap,
   type IndicatorLabelContent,
-  type IndicatorOptionsInput
+  type IndicatorOptionsInput,
+  type ScaleRangeModifier,
+  type TimeRange
 } from "@ardinsys/financial-charts/extensions";
-import type { ScaleRangeModifier } from "@ardinsys/financial-charts/engine";
 
 interface Order {
   readonly id: string;

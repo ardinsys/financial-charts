@@ -245,7 +245,7 @@ describe("chart options API", () => {
       onVisibleRangeChanged
     };
     chart.addPlugin(plugin);
-    chart.setVisibleIndexRange({ from: 1.25, to: 4.25 });
+    chart.setVisibleLogicalRange({ from: 1.25, to: 4.25 });
     onData.mockClear();
     onVisibleRangeChanged.mockClear();
 
@@ -315,7 +315,7 @@ describe("chart options API", () => {
       onVisibleRangeChanged: () => order.push("range")
     };
     chart.addPlugin(plugin);
-    chart.setVisibleIndexRange({ from: 1, to: 3 });
+    chart.setVisibleLogicalRange({ from: 1, to: 3 });
     const redraw = vi
       .spyOn(getChartRenderer(chart), "requestRedraw")
       .mockImplementation(() => order.push("redraw"));

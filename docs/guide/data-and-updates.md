@@ -95,7 +95,7 @@ remain visually compact.
 
 The three public view representations have distinct precision:
 
-- `getVisibleLogicalRange()` / `setVisibleIndexRange()` use exact fractional
+- `getVisibleLogicalRange()` / `setVisibleLogicalRange()` use exact fractional
   bar indexes.
 - `getVisibleTimeWindow()` / `setVisibleTimeWindow()` preserve that fractional
   position through interpolated timestamps, making them suitable for chart
