@@ -485,7 +485,11 @@ export class DrawingManager implements ChartPlugin {
       return this.interaction !== undefined;
     } else {
       const handled = this.interaction !== undefined;
-      this.pointerUp();
+      if (event.cancelled) {
+        this.cancelInteraction();
+      } else {
+        this.pointerUp();
+      }
       return handled;
     }
   }
@@ -687,6 +691,20 @@ export class DrawingManager implements ChartPlugin {
       this.emitDrawingFinished(drawing, "move");
     }
     this.interaction = undefined;
+  }
+
+  private cancelInteraction() {
+    if (!this.interaction) return;
+
+    if (this.interaction.type === "creating") {
+      this.discardCreation(this.interaction, false);
+      return;
+    }
+
+    this.interaction.drawing.setAnchors(this.interaction.anchors);
+    this.ctx?.emit("drawing-change", { drawing: this.interaction.drawing });
+    this.interaction = undefined;
+    this.ctx?.requestRedraw("drawings");
   }
 
   private updateCreationPreview(

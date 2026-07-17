@@ -229,6 +229,36 @@ function dragChart(
   );
 }
 
+function dispatchTouchPointer(
+  canvas: HTMLCanvasElement,
+  type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel",
+  point: DrawingPoint,
+  pointerId = 11
+) {
+  canvas.dispatchEvent(
+    new PointerEvent(type, {
+      clientX: point.x,
+      clientY: point.y,
+      pointerId,
+      pointerType: "touch",
+      button: 0,
+      bubbles: true,
+      cancelable: true
+    })
+  );
+}
+
+function dispatchTouchEvent(
+  canvas: HTMLCanvasElement,
+  type: "touchstart" | "touchmove",
+  touches: Array<{ clientX: number; clientY: number }>
+) {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "touches", { value: touches });
+  Object.defineProperty(event, "changedTouches", { value: touches });
+  canvas.dispatchEvent(event);
+}
+
 function waitForRedraw() {
   return new Promise((resolve) => requestAnimationFrame(resolve));
 }
@@ -715,6 +745,98 @@ describe("DrawingManager", () => {
       expect(manager.getDrawings()).toHaveLength(1);
     }
   );
+
+  it("creates and moves drawings with single-touch pointer gestures", () => {
+    const { chart } = createChart();
+    const manager = createManager(chart);
+    const canvas = getChartContext(chart, "crosshair").canvas;
+    const created = vi.fn();
+    const moved = vi.fn();
+    chart.on("drawing-create", created);
+    chart.on("drawing-finished", (event) => {
+      if (event.operation === "move") moved(event);
+    });
+
+    dispatchTouchPointer(canvas, "pointerdown", { x: 120, y: 120 });
+    dispatchTouchPointer(canvas, "pointermove", { x: 280, y: 220 });
+    dispatchTouchPointer(canvas, "pointerup", { x: 280, y: 220 });
+
+    expect(created).toHaveBeenCalledOnce();
+    const drawing = manager.getDrawings()[0];
+    const before = drawing.getAnchors();
+    const anchor = drawing.getAnchorHandles(drawingContext(chart))[0].point;
+
+    dispatchTouchPointer(canvas, "pointerdown", anchor);
+    dispatchTouchPointer(canvas, "pointermove", {
+      x: anchor.x + 40,
+      y: anchor.y + 20
+    });
+    dispatchTouchPointer(canvas, "pointerup", {
+      x: anchor.x + 40,
+      y: anchor.y + 20
+    });
+
+    expect(drawing.getAnchors()).not.toEqual(before);
+    expect(moved).toHaveBeenCalledOnce();
+  });
+
+  it("rolls back a touch drawing gesture on pointercancel", () => {
+    const { chart } = createChart();
+    const manager = createManager(chart);
+    const canvas = getChartContext(chart, "crosshair").canvas;
+    const created = vi.fn();
+    chart.on("drawing-create", created);
+
+    dispatchTouchPointer(canvas, "pointerdown", { x: 120, y: 120 });
+    dispatchTouchPointer(canvas, "pointermove", { x: 280, y: 220 });
+    dispatchTouchPointer(canvas, "pointercancel", { x: 280, y: 220 });
+
+    expect(created).not.toHaveBeenCalled();
+    expect(manager.getDrawings()).toEqual([]);
+
+    dispatchTouchPointer(canvas, "pointerdown", { x: 120, y: 120 });
+    dispatchTouchPointer(canvas, "pointermove", { x: 280, y: 220 });
+    dispatchTouchPointer(canvas, "pointerup", { x: 280, y: 220 });
+
+    const drawing = manager.getDrawings()[0];
+    const before = drawing.getAnchors();
+    const anchor = drawing.getAnchorHandles(drawingContext(chart))[0].point;
+    dispatchTouchPointer(canvas, "pointerdown", anchor);
+    dispatchTouchPointer(canvas, "pointermove", {
+      x: anchor.x + 40,
+      y: anchor.y + 20
+    });
+    dispatchTouchPointer(canvas, "pointercancel", {
+      x: anchor.x + 40,
+      y: anchor.y + 20
+    });
+
+    expect(drawing.getAnchors()).toEqual(before);
+    expect(created).toHaveBeenCalledOnce();
+  });
+
+  it("cancels a drawing touch when a second touch begins and keeps pinch zoom", () => {
+    const { chart } = createChart();
+    const manager = createManager(chart);
+    const canvas = getChartContext(chart, "crosshair").canvas;
+
+    dispatchTouchPointer(canvas, "pointerdown", { x: 120, y: 120 }, 11);
+    dispatchTouchPointer(canvas, "pointerdown", { x: 320, y: 120 }, 12);
+    expect(manager.getDrawings()).toEqual([]);
+
+    const before = chart.getVisibleLogicalRange();
+    dispatchTouchEvent(canvas, "touchstart", [
+      { clientX: 120, clientY: 120 },
+      { clientX: 320, clientY: 120 }
+    ]);
+    dispatchTouchEvent(canvas, "touchmove", [
+      { clientX: 100, clientY: 120 },
+      { clientX: 340, clientY: 120 }
+    ]);
+
+    const after = chart.getVisibleLogicalRange();
+    expect(after.to - after.from).toBeLessThan(before.to - before.from);
+  });
 
   it("clears the active drawing factory after finishing a created drawing", () => {
     const { chart, data } = createChart();

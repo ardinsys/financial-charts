@@ -39,6 +39,7 @@ export class InteractionController {
   private crosshair?: CrosshairModel;
   private isPanning = false;
   private pointerGestureConsumed = false;
+  private touchGestureConsumed = false;
   private lastTouchDistance?: number;
   private lastPointerPosition?: { x: number };
   private isTouchCrosshair = false;
@@ -54,6 +55,7 @@ export class InteractionController {
   ) {
     this.disposers.push(
       bindEvent(canvas, "pointerdown", this.onPointerDown),
+      bindEvent(canvas, "pointermove", this.onPointerMove),
       bindEvent(canvas, "pointerup", this.onPointerUp),
       bindEvent(canvas, "pointercancel", this.onPointerCancel),
       bindEvent(canvas, "lostpointercapture", this.onLostPointerCapture),
@@ -121,7 +123,11 @@ export class InteractionController {
   }
 
   private onPointerDown = (event: PointerEvent) => {
-    if (event.pointerType === "touch" || event.button !== 0) return;
+    if (event.button !== 0) return;
+    if (event.pointerType === "touch" && this.activePointerId !== undefined) {
+      this.cancelActiveTouchGesture(event);
+      return;
+    }
     this.activePointerId = event.pointerId;
     this.canvas.setPointerCapture?.(event.pointerId);
     const { x, y } = this.getCanvasPoint(event.clientX, event.clientY);
@@ -129,34 +135,64 @@ export class InteractionController {
     this.pointerGestureConsumed = pointerEvent
       ? this.host.dispatchPointer(pointerEvent)
       : false;
+    this.touchGestureConsumed =
+      event.pointerType === "touch" && this.pointerGestureConsumed;
+    if (this.touchGestureConsumed) event.preventDefault();
     this.lastPointerPosition = this.pointerGestureConsumed
       ? undefined
       : { x: event.clientX };
   };
 
-  private onPointerUp = (event: PointerEvent) => {
-    if (event.pointerType === "touch" || event.button !== 0) return;
-    this.finishPointerGesture(event, true);
-  };
-
-  private onPointerCancel = (event: PointerEvent) => {
+  private onPointerMove = (event: PointerEvent) => {
     if (
-      event.pointerType === "touch" ||
-      this.activePointerId !== event.pointerId
+      event.pointerType !== "touch" ||
+      event.pointerId !== this.activePointerId ||
+      !this.pointerGestureConsumed
     ) {
       return;
     }
-    this.finishPointerGesture(event, false);
+
+    event.preventDefault();
+    const { x, y } = this.getCanvasPoint(event.clientX, event.clientY);
+    const pointerEvent = this.host.createPointerEvent("move", x, y, event);
+    if (pointerEvent) this.host.dispatchPointer(pointerEvent);
+  };
+
+  private onPointerUp = (event: PointerEvent) => {
+    if (event.button !== 0 || event.pointerId !== this.activePointerId) {
+      return;
+    }
+    this.finishPointerGesture(event, event.pointerType !== "touch");
+  };
+
+  private onPointerCancel = (event: PointerEvent) => {
+    if (this.activePointerId !== event.pointerId) {
+      return;
+    }
+    this.finishPointerGesture(event, false, event.pointerType === "touch");
   };
 
   private onLostPointerCapture = (event: PointerEvent) => {
     if (this.activePointerId !== event.pointerId) return;
-    this.finishPointerGesture(event, false);
+    this.finishPointerGesture(event, false, event.pointerType === "touch");
   };
 
-  private finishPointerGesture(event: PointerEvent, emitClick: boolean) {
+  private finishPointerGesture(
+    event: PointerEvent,
+    emitClick: boolean,
+    cancelled = false
+  ) {
     const { x, y } = this.getCanvasPoint(event.clientX, event.clientY);
-    const pointerEvent = this.host.createPointerEvent("up", x, y, event);
+    const resolvedPointerEvent = this.host.createPointerEvent(
+      "up",
+      x,
+      y,
+      event
+    );
+    const pointerEvent =
+      resolvedPointerEvent && cancelled
+        ? { ...resolvedPointerEvent, cancelled: true }
+        : resolvedPointerEvent;
     const consumed = pointerEvent
       ? this.host.dispatchPointer(pointerEvent)
       : false;
@@ -174,7 +210,22 @@ export class InteractionController {
     this.lastPointerPosition = undefined;
     this.pointerGestureConsumed = false;
     this.isPanning = false;
-  };
+  }
+
+  private cancelActiveTouchGesture(event: PointerEvent): void {
+    const pointerId = this.activePointerId;
+    if (this.pointerGestureConsumed) {
+      this.finishPointerGesture(event, false, true);
+    } else {
+      this.activePointerId = undefined;
+      this.lastPointerPosition = undefined;
+      this.isPanning = false;
+    }
+    this.touchGestureConsumed = false;
+    if (pointerId !== undefined && this.canvas.hasPointerCapture?.(pointerId)) {
+      this.canvas.releasePointerCapture(pointerId);
+    }
+  }
 
   private onMouseMove = (event: MouseEvent) => {
     if (!this.hasData()) return;
@@ -199,6 +250,10 @@ export class InteractionController {
 
   private onTouchStart = (event: TouchEvent) => {
     if (!this.hasData()) return;
+    if (this.touchGestureConsumed) {
+      event.preventDefault();
+      return;
+    }
     if (event.touches.length === 1) {
       const touch = event.touches[0];
       this.lastPointerPosition = { x: touch.clientX };
@@ -221,6 +276,12 @@ export class InteractionController {
   };
 
   private onTouchEnd = (event: TouchEvent) => {
+    if (this.touchGestureConsumed) {
+      event.preventDefault();
+      this.touchGestureConsumed = false;
+      this.cancelTouchCrosshairTimeout();
+      return;
+    }
     if (!this.isTouchCrosshair) {
       this.lastPointerPosition = undefined;
       this.lastTouchDistance = undefined;
@@ -238,6 +299,10 @@ export class InteractionController {
 
   private onTouchMove = (event: TouchEvent) => {
     if (!this.hasData()) return;
+    if (this.touchGestureConsumed) {
+      event.preventDefault();
+      return;
+    }
     this.cancelTouchCrosshairTimeout();
 
     if (event.touches.length === 1 && this.lastPointerPosition) {
@@ -314,6 +379,7 @@ export class InteractionController {
     this.cancelTouchCrosshairTimeout();
     this.isPanning = false;
     this.pointerGestureConsumed = false;
+    this.touchGestureConsumed = false;
     this.lastTouchDistance = undefined;
     this.lastPointerPosition = undefined;
     this.isTouchCrosshair = false;

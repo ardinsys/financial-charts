@@ -38,6 +38,8 @@ export interface ChartPointerEvent {
   readonly dataPoint: ChartData;
   readonly button?: number;
   readonly buttons?: number;
+  /** True when the active gesture ended without committing its changes. */
+  readonly cancelled?: boolean;
 }
 
 export interface ExtensionContext {
