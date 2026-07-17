@@ -315,6 +315,32 @@ describe("DrawingManager", () => {
     expect(manager.getDrawings()).toEqual([]);
   });
 
+  it("creates a unique drawing after restoring generated-style ids", () => {
+    const { chart, data } = createChart();
+    const manager = new DrawingManager({
+      drawingFactory: ({ anchors, paneId }) =>
+        new TrendLine({ anchors, paneId })
+    });
+    chart.addPlugin(manager);
+    manager.fromJSON({
+      drawings: [
+        new TrendLine({
+          anchors: [{ index: 0, price: 10 }],
+          id: "drawing-1"
+        }).toJSON()
+      ]
+    });
+
+    manager.onPointer(pointerEvent(chart, data[0], "down", { x: 120, y: 120 }));
+    manager.onPointer(pointerEvent(chart, data[1], "move", { x: 280, y: 220 }));
+    manager.onPointer(pointerEvent(chart, data[1], "up", { x: 280, y: 220 }));
+
+    expect(manager.getDrawings()).toHaveLength(2);
+    expect(new Set(manager.getDrawings().map((drawing) => drawing.id)).size).toBe(
+      2
+    );
+  });
+
   it("synchronizes retained selection with selection plugins", () => {
     const { chart } = createChart();
     const manager = new DrawingManager();
@@ -438,6 +464,7 @@ describe("DrawingManager", () => {
       anchors: drawing.getAnchors(),
       json: drawing.toJSON()
     });
+    expect(selected).not.toHaveBeenCalledWith({ drawing: undefined });
     expect(finished).toHaveBeenCalledWith({
       drawing,
       operation: "create",
@@ -523,6 +550,73 @@ describe("DrawingManager", () => {
     );
     expect(manager.getDrawings()).toEqual([]);
   });
+
+  it("cancels in-flight creation with Escape", () => {
+    const { chart, container, data } = createChart();
+    const manager = createManager(chart);
+    const created = vi.fn();
+    chart.on("drawing-create", created);
+
+    manager.onPointer(pointerEvent(chart, data[0], "down", { x: 120, y: 120 }));
+    manager.onPointer(pointerEvent(chart, data[1], "move", { x: 280, y: 220 }));
+
+    expect(manager.getDrawings()).toHaveLength(1);
+    expect(keyDown(container, "Escape")).toBe(false);
+    expect(manager.getDrawings()).toEqual([]);
+    expect(manager.getSelectedDrawing()).toBeUndefined();
+    expect(created).not.toHaveBeenCalled();
+
+    manager.onPointer(pointerEvent(chart, data[2], "down", { x: 520, y: 140 }));
+    expect(manager.getDrawings()).toEqual([]);
+  });
+
+  it.each(["pointercancel", "lostpointercapture"])(
+    "finishes captured drawing gestures on %s",
+    (endType) => {
+      const { chart } = createChart();
+      const manager = createManager(chart);
+      const created = vi.fn();
+      const canvas = getChartContext(chart, "crosshair").canvas;
+      const setPointerCapture = vi.fn();
+      Object.defineProperty(canvas, "setPointerCapture", {
+        configurable: true,
+        value: setPointerCapture
+      });
+      chart.on("drawing-create", created);
+
+      canvas.dispatchEvent(
+        new PointerEvent("pointerdown", {
+          clientX: 120,
+          clientY: 120,
+          pointerId: 7,
+          pointerType: "mouse",
+          button: 0,
+          bubbles: true
+        })
+      );
+      canvas.dispatchEvent(
+        new MouseEvent("mousemove", {
+          clientX: 280,
+          clientY: 220,
+          bubbles: true
+        })
+      );
+      canvas.dispatchEvent(
+        new PointerEvent(endType, {
+          clientX: 280,
+          clientY: 220,
+          pointerId: 7,
+          pointerType: "mouse",
+          button: 0,
+          bubbles: true
+        })
+      );
+
+      expect(setPointerCapture).toHaveBeenCalledWith(7);
+      expect(created).toHaveBeenCalledOnce();
+      expect(manager.getDrawings()).toHaveLength(1);
+    }
+  );
 
   it("clears the active drawing factory after finishing a created drawing", () => {
     const { chart, data } = createChart();
@@ -658,6 +752,108 @@ describe("DrawingManager", () => {
     );
     expect(anchorsAfterMove[0].price).toBeLessThan(anchorsBeforeMove[0].price);
     expect(anchorsAfterMove[1]).toEqual(anchorsBeforeMove[1]);
+  });
+
+  it("keeps an active drawing gesture in its originating pane", () => {
+    const { chart, data } = createChart();
+    chart.addIndicator(new TestIndicator());
+    const manager = createManager(chart);
+
+    manager.onPointer(pointerEvent(chart, data[0], "down", { x: 120, y: 120 }));
+    manager.onPointer(pointerEvent(chart, data[1], "move", { x: 280, y: 220 }));
+    manager.onPointer(pointerEvent(chart, data[1], "up", { x: 280, y: 220 }));
+
+    const drawing = manager.getDrawings()[0] as StubDrawing;
+    const mainPane = getInternalMainPane(chart);
+    const indicatorPane = getInternalPanes(chart)[1];
+    const [firstAnchor] = drawing.projectForTest(drawingContext(chart));
+    const indicatorRegion = indicatorPane.getRegion();
+
+    manager.onPointer(pointerEvent(chart, data[0], "down", firstAnchor));
+    manager.onPointer(
+      pointerEvent(
+        chart,
+        data[1],
+        "move",
+        { x: firstAnchor.x + 90, y: indicatorRegion.y + 10 },
+        { pane: indicatorPane }
+      )
+    );
+    manager.onPointer(
+      pointerEvent(
+        chart,
+        data[1],
+        "up",
+        { x: firstAnchor.x + 90, y: indicatorRegion.y + 10 },
+        { pane: indicatorPane }
+      )
+    );
+
+    expect(drawing.getAnchors()[0].price).toBeCloseTo(
+      mainPane.getPriceScale().getRange().min
+    );
+  });
+
+  it("clears interactions when upserting the active drawing", () => {
+    const { chart, data } = createChart();
+    const manager = createManager(chart);
+    const drawing = manager.addDrawing(
+      new TrendLine({
+        id: "replace-active",
+        anchors: [
+          { index: 0, price: 10 },
+          { index: 1, price: 12 }
+        ]
+      })
+    );
+    const [firstAnchor] = drawing.getAnchorHandles(drawingContext(chart));
+
+    manager.onPointer(pointerEvent(chart, data[0], "down", firstAnchor.point));
+    const replacement = manager.upsertDrawing({
+      ...drawing.toJSON(),
+      anchors: [
+        { index: 1, price: 11 },
+        { index: 2, price: 13 }
+      ]
+    });
+    manager.onPointer(pointerEvent(chart, data[2], "move", { x: 600, y: 300 }));
+    manager.onPointer(pointerEvent(chart, data[2], "up", { x: 600, y: 300 }));
+
+    expect(replacement.getAnchors()).toEqual([
+      { index: 1, price: 11 },
+      { index: 2, price: 13 }
+    ]);
+  });
+
+  it("does not replay move history for a removed drawing", () => {
+    const { chart, data } = createChart();
+    const manager = createManager(chart);
+    const changed = vi.fn();
+    chart.on("drawing-change", changed);
+
+    manager.onPointer(pointerEvent(chart, data[0], "down", { x: 120, y: 120 }));
+    manager.onPointer(pointerEvent(chart, data[1], "move", { x: 280, y: 220 }));
+    manager.onPointer(pointerEvent(chart, data[1], "up", { x: 280, y: 220 }));
+    const drawing = manager.getDrawings()[0] as StubDrawing;
+    const [firstAnchor] = drawing.projectForTest(drawingContext(chart));
+    manager.onPointer(pointerEvent(chart, data[0], "down", firstAnchor));
+    manager.onPointer(
+      pointerEvent(chart, data[1], "move", {
+        x: firstAnchor.x + 90,
+        y: firstAnchor.y + 30
+      })
+    );
+    manager.onPointer(
+      pointerEvent(chart, data[1], "up", {
+        x: firstAnchor.x + 90,
+        y: firstAnchor.y + 30
+      })
+    );
+    manager.removeDrawingById(drawing.id);
+    changed.mockClear();
+
+    expect(manager.undo()).toBe(true);
+    expect(changed).not.toHaveBeenCalled();
   });
 
   it("prevents chart panning while a drawing tool is active", () => {

@@ -48,7 +48,7 @@ export interface DrawingJSON<
   readonly type: TType;
 }
 
-let drawingId = 0;
+let nextDrawingInstanceId = 0;
 
 export abstract class Drawing {
   /** Stable serialization key handled by a registered deserializer. */
@@ -59,7 +59,7 @@ export abstract class Drawing {
   private selected = false;
 
   constructor({ anchors, id, paneId = 0 }: DrawingOptions) {
-    this.id = validateDrawingId(id ?? `drawing-${++drawingId}`);
+    this.id = validateDrawingId(id ?? createDrawingId());
     this.anchors = copyDrawingAnchors(anchors);
     this.paneId = validatePaneId(paneId);
   }
@@ -216,6 +216,14 @@ export abstract class Drawing {
     point: DrawingPoint,
     context: DrawingHitTestContext
   ): boolean;
+}
+
+function createDrawingId(): string {
+  const randomId = globalThis.crypto?.randomUUID?.();
+  if (randomId) return `drawing-${randomId}`;
+
+  nextDrawingInstanceId += 1;
+  return `drawing-${Date.now().toString(36)}-${nextDrawingInstanceId}`;
 }
 
 export function drawAnchorHandle(

@@ -50,18 +50,21 @@ type Interaction =
       type: "creating";
       drawing: Drawing;
       start: DrawingAnchor;
+      pane: Pane;
     }
   | {
       type: "dragging";
       drawing: Drawing;
       start: DrawingAnchor;
       anchors: readonly DrawingAnchor[];
+      pane: Pane;
     }
   | {
       type: "anchor";
       drawing: Drawing;
       index: number;
       anchors: readonly DrawingAnchor[];
+      pane: Pane;
     };
 
 type DrawingHistoryEntry =
@@ -225,7 +228,11 @@ export class DrawingManager implements ChartPlugin {
         this.ctx?.emit("drawing-create", { drawing });
       }
     } else {
-      this.drawings[existingIndex].setSelected(false);
+      const existing = this.drawings[existingIndex];
+      existing.setSelected(false);
+      if (this.interaction?.drawing === existing) {
+        this.interaction = undefined;
+      }
       this.drawings = this.drawings.map((item, index) =>
         index === existingIndex ? drawing : item
       );
@@ -399,6 +406,7 @@ export class DrawingManager implements ChartPlugin {
       return;
     }
 
+    if (!this.drawings.includes(entry.drawing)) return;
     entry.drawing.setAnchors(direction === "undo" ? entry.before : entry.after);
     this.ctx?.emit("drawing-change", { drawing: entry.drawing });
     this.ctx?.requestRedraw("drawings");
@@ -442,13 +450,16 @@ export class DrawingManager implements ChartPlugin {
 
   onPointer(event: ChartPointerEvent) {
     if (!this.ctx) return false;
-    const panePoint = this.toPanePoint(event);
-    const anchor = anchorFromPoint(panePoint, event.pane);
 
     if (event.type === "down") {
       if (!this.isPrimaryPointer(event)) return false;
+      const panePoint = this.toPanePoint(event, event.pane);
+      const anchor = anchorFromPoint(panePoint, event.pane);
       return this.pointerDown(event, panePoint, anchor);
     } else if (event.type === "move") {
+      const pane = this.interaction?.pane ?? event.pane;
+      const panePoint = this.toPanePoint(event, pane);
+      const anchor = anchorFromPoint(panePoint, pane);
       this.pointerMove(anchor);
       return this.interaction !== undefined;
     } else {
@@ -527,7 +538,8 @@ export class DrawingManager implements ChartPlugin {
         type: "anchor",
         drawing: selectedAnchor.drawing,
         index: selectedAnchor.index,
-        anchors: selectedAnchor.drawing.getAnchors()
+        anchors: selectedAnchor.drawing.getAnchors(),
+        pane: event.pane
       };
       return true;
     }
@@ -539,7 +551,8 @@ export class DrawingManager implements ChartPlugin {
         type: "dragging",
         drawing: hitDrawing,
         start: anchor,
-        anchors: hitDrawing.getAnchors()
+        anchors: hitDrawing.getAnchors(),
+        pane: event.pane
       };
       return true;
     }
@@ -556,14 +569,11 @@ export class DrawingManager implements ChartPlugin {
     this.assertDrawingType(drawing.type);
     this.assertUniqueDrawingId(drawing.id);
     this.drawings = [...this.drawings, drawing];
-    if (this.selectedDrawing) {
-      this.selectDrawing(undefined);
-    }
-    this.selectDrawing(drawing, { emit: false, force: true });
     this.interaction = {
       type: "creating",
       drawing,
-      start: anchor
+      start: anchor,
+      pane: event.pane
     };
     this.ctx?.requestRedraw("drawings");
     return true;
@@ -705,7 +715,12 @@ export class DrawingManager implements ChartPlugin {
     const modifier = event.metaKey || event.ctrlKey;
     let handled = false;
 
-    if ((event.key === "Delete" || event.key === "Backspace") && !modifier) {
+    if (event.key === "Escape") {
+      handled = this.cancelCreation();
+    } else if (
+      (event.key === "Delete" || event.key === "Backspace") &&
+      !modifier
+    ) {
       handled = this.deleteSelected();
     } else if (modifier && key === "z") {
       handled = event.shiftKey ? this.redo() : this.undo();
@@ -718,6 +733,17 @@ export class DrawingManager implements ChartPlugin {
     event.preventDefault();
     event.stopPropagation();
   };
+
+  private cancelCreation(): boolean {
+    if (this.interaction?.type !== "creating") return false;
+
+    const drawing = this.interaction.drawing;
+    this.interaction = undefined;
+    this.drawings = this.drawings.filter((candidate) => candidate !== drawing);
+    this.setDrawingFactory(undefined);
+    this.ctx?.requestRedraw("drawings");
+    return true;
+  }
 
   private isEditableTarget(target: EventTarget | null) {
     if (!(target instanceof HTMLElement)) return false;
@@ -741,10 +767,11 @@ export class DrawingManager implements ChartPlugin {
     return event.button === undefined || event.button === 0;
   }
 
-  private toPanePoint(event: ChartPointerEvent): DrawingPoint {
+  private toPanePoint(event: ChartPointerEvent, pane: Pane): DrawingPoint {
+    const region = pane.getRegion();
     return {
       x: event.x,
-      y: event.y
+      y: Math.max(region.y, Math.min(event.y, region.y + region.height))
     };
   }
 

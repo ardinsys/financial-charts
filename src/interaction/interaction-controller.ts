@@ -43,6 +43,7 @@ export class InteractionController {
   private lastPointerPosition?: { x: number };
   private isTouchCrosshair = false;
   private touchCrosshairTimeout?: ReturnType<typeof setTimeout>;
+  private activePointerId?: number;
   private readonly disposers: Array<() => void> = [];
   private disposed = false;
 
@@ -54,6 +55,8 @@ export class InteractionController {
     this.disposers.push(
       bindEvent(canvas, "pointerdown", this.onPointerDown),
       bindEvent(canvas, "pointerup", this.onPointerUp),
+      bindEvent(canvas, "pointercancel", this.onPointerCancel),
+      bindEvent(canvas, "lostpointercapture", this.onLostPointerCapture),
       bindEvent(canvas, "mousemove", this.onMouseMove),
       bindEvent(canvas, "wheel", this.onWheel, { passive: false }),
       bindEvent(canvas, "touchstart", this.onTouchStart, { passive: false }),
@@ -119,6 +122,8 @@ export class InteractionController {
 
   private onPointerDown = (event: PointerEvent) => {
     if (event.pointerType === "touch" || event.button !== 0) return;
+    this.activePointerId = event.pointerId;
+    this.canvas.setPointerCapture?.(event.pointerId);
     const { x, y } = this.getCanvasPoint(event.clientX, event.clientY);
     const pointerEvent = this.host.createPointerEvent("down", x, y, event);
     this.pointerGestureConsumed = pointerEvent
@@ -131,16 +136,41 @@ export class InteractionController {
 
   private onPointerUp = (event: PointerEvent) => {
     if (event.pointerType === "touch" || event.button !== 0) return;
+    this.finishPointerGesture(event, true);
+  };
+
+  private onPointerCancel = (event: PointerEvent) => {
+    if (
+      event.pointerType === "touch" ||
+      this.activePointerId !== event.pointerId
+    ) {
+      return;
+    }
+    this.finishPointerGesture(event, false);
+  };
+
+  private onLostPointerCapture = (event: PointerEvent) => {
+    if (this.activePointerId !== event.pointerId) return;
+    this.finishPointerGesture(event, false);
+  };
+
+  private finishPointerGesture(event: PointerEvent, emitClick: boolean) {
     const { x, y } = this.getCanvasPoint(event.clientX, event.clientY);
     const pointerEvent = this.host.createPointerEvent("up", x, y, event);
     const consumed = pointerEvent
       ? this.host.dispatchPointer(pointerEvent)
       : false;
 
-    if (!this.isPanning && !this.pointerGestureConsumed && !consumed) {
+    if (
+      emitClick &&
+      !this.isPanning &&
+      !this.pointerGestureConsumed &&
+      !consumed
+    ) {
       const point = this.host.resolveDataPoint(x, y, "data");
       if (point) this.host.click(event, point);
     }
+    this.activePointerId = undefined;
     this.lastPointerPosition = undefined;
     this.pointerGestureConsumed = false;
     this.isPanning = false;
@@ -240,6 +270,7 @@ export class InteractionController {
 
   private onPointerLeave = (event: PointerEvent) => {
     if (event.pointerType === "touch") return;
+    if (this.activePointerId === event.pointerId) return;
     this.lastPointerPosition = undefined;
     this.lastTouchDistance = undefined;
     this.isPanning = false;
@@ -286,6 +317,11 @@ export class InteractionController {
     this.lastTouchDistance = undefined;
     this.lastPointerPosition = undefined;
     this.isTouchCrosshair = false;
+    const pointerId = this.activePointerId;
+    this.activePointerId = undefined;
+    if (pointerId !== undefined && this.canvas.hasPointerCapture?.(pointerId)) {
+      this.canvas.releasePointerCapture(pointerId);
+    }
   }
 }
 
