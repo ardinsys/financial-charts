@@ -97,6 +97,11 @@ interface ChartSyncInternals {
   applyVisibleRange(range: TimeRange): void;
   storeCrosshair(snapshot?: ChartSyncCrosshairSnapshot): void;
   applyCrosshair(snapshot?: ChartSyncCrosshairSnapshot): void;
+  flushPendingSync(): void;
+  applyDrawing(json: DrawingJSON): void;
+  applyDrawingDelete(id: string): void;
+  applyDrawingSelection(id?: string): void;
+  onDrawingFinished(): void;
 }
 
 class SyncMessageProbePlugin implements ChartPlugin {
@@ -275,6 +280,10 @@ function createGroup() {
   return group;
 }
 
+function nextAnimationFrame() {
+  return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+}
+
 function getCustomIndicator(chart: FinancialChart, instanceId: string) {
   return chart.getIndicatorById(instanceId) as
     | CustomMovingAverageIndicator
@@ -307,7 +316,7 @@ describe("ChartSyncPlugin", () => {
     );
   });
 
-  it("syncs visible ranges by time", () => {
+  it("syncs visible ranges by time", async () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const target = createSyncedChart(group);
@@ -316,13 +325,14 @@ describe("ChartSyncPlugin", () => {
       start: source.data[1].time,
       end: source.data[2].time + 60_000
     });
+    await nextAnimationFrame();
 
     expect(target.chart.getVisibleTimeRange()).toEqual(
       source.chart.getVisibleTimeRange()
     );
   });
 
-  it("restores initial and ongoing sync after reattachment", () => {
+  it("restores initial and ongoing sync after reattachment", async () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const target = createSyncedChart(group);
@@ -332,6 +342,7 @@ describe("ChartSyncPlugin", () => {
       start: source.data[2].time,
       end: source.data[3].time + 60_000
     });
+    await nextAnimationFrame();
     target.chart.addPlugin(target.syncPlugin);
 
     expect(target.chart.getVisibleTimeRange()).toEqual(
@@ -342,6 +353,7 @@ describe("ChartSyncPlugin", () => {
       start: target.data[0].time,
       end: target.data[1].time + 60_000
     });
+    await nextAnimationFrame();
 
     expect(source.chart.getVisibleTimeRange()).toEqual(
       target.chart.getVisibleTimeRange()
@@ -364,7 +376,7 @@ describe("ChartSyncPlugin", () => {
     expect(source.chart.getVisibleTimeRange()).toEqual(sourceRange);
   });
 
-  it("syncs pane height ratios across different chart sizes", () => {
+  it("syncs pane height ratios across different chart sizes", async () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const target = createSyncedChart(group, {}, 770, (chart) => {
@@ -383,6 +395,7 @@ describe("ChartSyncPlugin", () => {
       [mainPane.id]: 222,
       [indicatorPane.id]: 148
     });
+    await nextAnimationFrame();
     expect(target.chart.getPanes().map(({ height }) => height)).toEqual([
       444, 296
     ]);
@@ -403,6 +416,7 @@ describe("ChartSyncPlugin", () => {
       })
     );
     window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+    await nextAnimationFrame();
 
     expect(source.chart.getPanes().map(({ height }) => height)).toEqual([
       252, 118
@@ -435,7 +449,7 @@ describe("ChartSyncPlugin", () => {
     ]);
   });
 
-  it("shares one scalar snapshot between storage and peers", () => {
+  it("shares one scalar snapshot between storage and peers", async () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const firstTarget = createSyncedChart(group);
@@ -477,6 +491,7 @@ describe("ChartSyncPlugin", () => {
       time: source.data[1].time,
       price: source.data[1].close ?? undefined
     });
+    await nextAnimationFrame();
 
     expect(appliedRanges).toHaveLength(2);
     expect(appliedRanges[0]).toBe(storedRange);
@@ -486,12 +501,199 @@ describe("ChartSyncPlugin", () => {
     expect(appliedCrosshairs[1]).toBe(storedCrosshair);
   });
 
-  it("preserves fractional visible windows while panning", () => {
+  it("coalesces range and drawing changes to their final frame values without echo", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group);
+    const sourceSync = source.syncPlugin as unknown as ChartSyncInternals;
+    const targetSync = target.syncPlugin as unknown as ChartSyncInternals;
+    let drawing = new TrendLine({
+      anchors: [
+        { index: 0, price: 10 },
+        { index: 1, price: 12 }
+      ],
+      id: "coalesced-drawing",
+      paneId: source.chart.getMainPane().id
+    });
+    const selected = new TrendLine({
+      anchors: [
+        { index: 2, price: 14 },
+        { index: 3, price: 16 }
+      ],
+      id: "selected-drawing",
+      paneId: source.chart.getMainPane().id
+    });
+    source.drawingManager.addDrawing(drawing, { emit: true });
+    source.drawingManager.addDrawing(selected, { emit: true });
+
+    const applyRange = vi.spyOn(targetSync, "applyVisibleRange");
+    const applyDrawing = vi.spyOn(targetSync, "applyDrawing");
+    const echoRange = vi.spyOn(sourceSync, "applyVisibleRange");
+    const echoDrawing = vi.spyOn(sourceSync, "applyDrawing");
+    source.chart.setVisibleLogicalRange({ from: 0.1, to: 2.1 });
+    source.chart.setVisibleLogicalRange({ from: 0.4, to: 2.4 });
+    drawing.setAnchors([
+      { index: 0, price: 11 },
+      { index: 2, price: 15 }
+    ]);
+    drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
+      emit: true
+    }) as TrendLine;
+    drawing.setAnchors([
+      { index: 1, price: 13 },
+      { index: 3, price: 17 }
+    ]);
+    drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
+      emit: true
+    }) as TrendLine;
+
+    sourceSync.flushPendingSync();
+
+    expect(applyRange).toHaveBeenCalledOnce();
+    expect(applyDrawing).toHaveBeenCalledOnce();
+    expect(applyDrawing).toHaveBeenCalledWith(drawing.toJSON());
+    expect(target.chart.getVisibleLogicalRange()).toEqual(
+      source.chart.getVisibleLogicalRange()
+    );
+    expect(
+      target.drawingManager.getDrawingById(drawing.id)?.getAnchors()
+    ).toEqual(drawing.getAnchors());
+    expect(echoRange).not.toHaveBeenCalled();
+    expect(echoDrawing).not.toHaveBeenCalled();
+  });
+
+  it("drops a pending drawing change before synchronizing its deletion", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group);
+    const targetSync = target.syncPlugin as unknown as ChartSyncInternals;
+    let drawing = new TrendLine({
+      anchors: [
+        { index: 0, price: 10 },
+        { index: 1, price: 12 }
+      ],
+      id: "deleted-before-flush",
+      paneId: source.chart.getMainPane().id
+    });
+    const selected = new TrendLine({
+      anchors: [
+        { index: 2, price: 14 },
+        { index: 3, price: 16 }
+      ],
+      id: "delete-selected-drawing",
+      paneId: source.chart.getMainPane().id
+    });
+    source.drawingManager.addDrawing(drawing, { emit: true });
+    source.drawingManager.addDrawing(selected, { emit: true });
+    const applyDrawing = vi.spyOn(targetSync, "applyDrawing");
+    const applyDelete = vi.spyOn(targetSync, "applyDrawingDelete");
+
+    drawing.setAnchors([
+      { index: 1, price: 11 },
+      { index: 2, price: 15 }
+    ]);
+    drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
+      emit: true
+    }) as TrendLine;
+    source.drawingManager.deleteDrawing(drawing);
+
+    expect(applyDrawing).not.toHaveBeenCalled();
+    expect(applyDelete).toHaveBeenCalledOnce();
+    expect(target.drawingManager.getDrawingById(drawing.id)).toBeUndefined();
+  });
+
+  it("flushes a pending drawing change before selection and finish", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group);
+    const sourceSync = source.syncPlugin as unknown as ChartSyncInternals;
+    const targetSync = target.syncPlugin as unknown as ChartSyncInternals;
+    let drawing = new TrendLine({
+      anchors: [
+        { index: 0, price: 10 },
+        { index: 1, price: 12 }
+      ],
+      id: "ordered-drawing",
+      paneId: source.chart.getMainPane().id
+    });
+    const selected = new TrendLine({
+      anchors: [
+        { index: 2, price: 14 },
+        { index: 3, price: 16 }
+      ],
+      id: "ordered-selected-drawing",
+      paneId: source.chart.getMainPane().id
+    });
+    source.drawingManager.addDrawing(drawing, { emit: true });
+    source.drawingManager.addDrawing(selected, { emit: true });
+    const order: string[] = [];
+    const applyDrawing = targetSync.applyDrawing.bind(targetSync);
+    targetSync.applyDrawing = (json) => {
+      order.push("change");
+      applyDrawing(json);
+    };
+    const applySelection = targetSync.applyDrawingSelection.bind(targetSync);
+    targetSync.applyDrawingSelection = (id) => {
+      order.push("select");
+      applySelection(id);
+    };
+
+    drawing.setAnchors([
+      { index: 1, price: 11 },
+      { index: 2, price: 15 }
+    ]);
+    drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
+      emit: true
+    }) as TrendLine;
+    source.drawingManager.selectDrawing(drawing);
+
+    expect(order).toEqual(["change", "select"]);
+
+    source.drawingManager.selectDrawing(selected);
+    order.length = 0;
+    drawing.setAnchors([
+      { index: 1, price: 12 },
+      { index: 3, price: 16 }
+    ]);
+    source.drawingManager.upsertDrawing(drawing.toJSON(), { emit: true });
+    sourceSync.onDrawingFinished();
+
+    expect(order).toEqual(["change"]);
+  });
+
+  it("flushes pending state on detach and resets scheduling for reattachment", async () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group);
+    const cancelAnimationFrame = vi.spyOn(
+      globalThis,
+      "cancelAnimationFrame"
+    );
+
+    source.chart.setVisibleLogicalRange({ from: 0.3, to: 2.3 });
+    source.chart.removePlugin(source.syncPlugin);
+
+    expect(target.chart.getVisibleLogicalRange()).toEqual(
+      source.chart.getVisibleLogicalRange()
+    );
+    expect(cancelAnimationFrame).toHaveBeenCalled();
+
+    source.chart.addPlugin(source.syncPlugin);
+    target.chart.setVisibleLogicalRange({ from: 0.6, to: 2.6 });
+    await nextAnimationFrame();
+
+    expect(source.chart.getVisibleLogicalRange()).toEqual(
+      target.chart.getVisibleLogicalRange()
+    );
+  });
+
+  it("preserves fractional visible windows while panning", async () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const target = createSyncedChart(group);
 
     source.chart.setVisibleLogicalRange({ from: 0.35, to: 2.35 });
+    await nextAnimationFrame();
 
     const sourceLogical = source.chart.getVisibleLogicalRange();
     const targetLogical = target.chart.getVisibleLogicalRange();
@@ -682,7 +884,7 @@ describe("ChartSyncPlugin", () => {
     expect(target.drawingManager.getDrawings()).toEqual([]);
   });
 
-  it("updates retained drawing state without serializing unrelated drawings", () => {
+  it("updates retained drawing state without serializing unrelated drawings", async () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const target = createSyncedChart(group);
@@ -714,6 +916,7 @@ describe("ChartSyncPlugin", () => {
     first = source.drawingManager.upsertDrawing(first.toJSON(), {
       emit: true
     }) as TrendLine;
+    await nextAnimationFrame();
 
     expect(serializeSecond).not.toHaveBeenCalled();
     expect(

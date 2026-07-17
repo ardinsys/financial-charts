@@ -111,6 +111,10 @@ export class ChartSyncPlugin implements ChartPlugin {
   private deliveringMessage = false;
   private initialSyncSource?: ChartSyncPlugin;
   private initialSyncApplied = false;
+  private cancelPendingFrame?: () => void;
+  private pendingDrawingChanges = new Map<string, DrawingJSON>();
+  private pendingPaneHeights?: readonly ChartPaneState[];
+  private pendingVisibleRange?: TimeRange;
   private suppressNextVisibleRangeChange = false;
   private waitingForInitialSync = false;
   private readonly group: string;
@@ -142,21 +146,26 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   detach(): void {
-    this.storeCurrentState();
-    for (const unsubscribe of this.unsubscribers.splice(0)) {
-      unsubscribe();
+    try {
+      this.flushPendingSync();
+      this.storeCurrentState();
+    } finally {
+      this.clearPendingSync();
+      for (const unsubscribe of this.unsubscribers.splice(0)) {
+        unsubscribe();
+      }
+      this.messageHandlers.clear();
+      this.initialSyncSource = undefined;
+      this.initialSyncApplied = false;
+      this.suppressNextVisibleRangeChange = false;
+      this.waitingForInitialSync = false;
+      const group = chartSyncGroups.get(this.group);
+      group?.members.delete(this);
+      if (!group || (group.members.size === 0 && !this.hasStoredState())) {
+        chartSyncGroups.delete(this.group);
+      }
+      this.ctx = undefined;
     }
-    this.messageHandlers.clear();
-    this.initialSyncSource = undefined;
-    this.initialSyncApplied = false;
-    this.suppressNextVisibleRangeChange = false;
-    this.waitingForInitialSync = false;
-    const group = chartSyncGroups.get(this.group);
-    group?.members.delete(this);
-    if (!group || (group.members.size === 0 && !this.hasStoredState())) {
-      chartSyncGroups.delete(this.group);
-    }
-    this.ctx = undefined;
   }
 
   onVisibleRangeChanged(_range: TimeRange): void {
@@ -170,8 +179,8 @@ export class ChartSyncPlugin implements ChartPlugin {
     const range = this.createVisibleRangeSnapshot();
     if (!range) return;
 
-    this.storeVisibleRange(range);
-    this.broadcast((peer) => peer.applyVisibleRange(range));
+    this.pendingVisibleRange = range;
+    this.schedulePendingSync();
   }
 
   onData(data: readonly ChartData[]): void {
@@ -185,8 +194,13 @@ export class ChartSyncPlugin implements ChartPlugin {
     if (!this.isEnabled("paneHeights") || this.applying) return;
     if (this.hasPendingInitialSync()) return;
 
-    this.storePaneHeights(panes);
-    this.broadcast((peer) => peer.applyPaneHeights(panes));
+    this.pendingPaneHeights = panes;
+    this.schedulePendingSync();
+  }
+
+  onDrawingFinished(): void {
+    if (!this.isEnabled("drawings") || this.applying) return;
+    this.flushPendingSync();
   }
 
   onMessage<TPayload = unknown>(
@@ -250,6 +264,7 @@ export class ChartSyncPlugin implements ChartPlugin {
       unsubscribers.push(
         ctx.on("drawing-create", ({ drawing }) => {
           if (this.applying) return;
+          this.flushPendingSync();
           const snapshot = drawing.toJSON();
           this.storeDrawing(snapshot);
           this.broadcastDrawing(snapshot);
@@ -257,16 +272,19 @@ export class ChartSyncPlugin implements ChartPlugin {
         ctx.on("drawing-change", ({ drawing }) => {
           if (this.applying) return;
           const snapshot = drawing.toJSON();
-          this.storeDrawing(snapshot);
-          this.broadcastDrawing(snapshot);
+          this.pendingDrawingChanges.set(snapshot.id, snapshot);
+          this.schedulePendingSync();
         }),
         ctx.on("drawing-delete", ({ drawing }) => {
           if (this.applying) return;
+          this.pendingDrawingChanges.delete(drawing.id);
+          this.flushPendingSync();
           this.removeStoredDrawing(drawing.id);
           this.broadcast((peer) => peer.applyDrawingDelete(drawing.id));
         }),
         ctx.on("drawing-select", ({ id }) => {
           if (this.applying) return;
+          this.flushPendingSync();
           this.storeDrawingSelection(id);
           this.broadcast((peer) => peer.applyDrawingSelection(id));
         }),
@@ -326,6 +344,52 @@ export class ChartSyncPlugin implements ChartPlugin {
     for (const peer of this.getPeers()) {
       peer.apply(() => callback(peer));
     }
+  }
+
+  private schedulePendingSync() {
+    if (this.cancelPendingFrame) return;
+
+    this.cancelPendingFrame = scheduleSyncFrame(() => {
+      this.cancelPendingFrame = undefined;
+      this.flushPendingSync();
+    });
+  }
+
+  private flushPendingSync() {
+    this.cancelPendingSyncFrame();
+
+    const visibleRange = this.pendingVisibleRange;
+    const paneHeights = this.pendingPaneHeights;
+    const drawingChanges = [...this.pendingDrawingChanges.values()];
+    this.pendingVisibleRange = undefined;
+    this.pendingPaneHeights = undefined;
+    this.pendingDrawingChanges.clear();
+
+    if (visibleRange) {
+      this.storeVisibleRange(visibleRange);
+      this.broadcast((peer) => peer.applyVisibleRange(visibleRange));
+    }
+    if (paneHeights) {
+      this.storePaneHeights(paneHeights);
+      this.broadcast((peer) => peer.applyPaneHeights(paneHeights));
+    }
+    for (const drawing of drawingChanges) {
+      this.storeDrawing(drawing);
+      this.broadcastDrawing(drawing);
+    }
+  }
+
+  private cancelPendingSyncFrame() {
+    const cancel = this.cancelPendingFrame;
+    this.cancelPendingFrame = undefined;
+    cancel?.();
+  }
+
+  private clearPendingSync() {
+    this.cancelPendingSyncFrame();
+    this.pendingVisibleRange = undefined;
+    this.pendingPaneHeights = undefined;
+    this.pendingDrawingChanges.clear();
   }
 
   private apply(callback: () => void) {
@@ -815,4 +879,14 @@ function createDrawingState(
     drawings,
     ...(selectedDrawingId === undefined ? {} : { selectedDrawingId }),
   };
+}
+
+function scheduleSyncFrame(callback: () => void): () => void {
+  if (typeof globalThis.requestAnimationFrame === "function") {
+    const handle = globalThis.requestAnimationFrame(callback);
+    return () => globalThis.cancelAnimationFrame(handle);
+  }
+
+  const handle = globalThis.setTimeout(callback, 16);
+  return () => globalThis.clearTimeout(handle);
 }
