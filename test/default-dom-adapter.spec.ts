@@ -157,13 +157,16 @@ describe("DefaultDOMAdapter indicator label", () => {
     expect(q("show").classList.contains("fci-hide")).toBe(true);
   });
 
-  it("detaches listeners on destroy", () => {
+  it("detaches listeners and removes the label on destroy", () => {
     const { handle, spies, q } = makeLabel();
+    document.body.appendChild(handle.root);
+    handle.destroy();
     handle.destroy();
     q("remove").click();
     q("hide").click();
     expect(spies.onRemove).not.toHaveBeenCalled();
     expect(spies.onToggleVisibility).not.toHaveBeenCalled();
+    expect(handle.root.isConnected).toBe(false);
   });
 });
 

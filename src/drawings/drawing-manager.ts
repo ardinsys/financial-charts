@@ -438,15 +438,15 @@ export class DrawingManager implements ChartPlugin {
     };
   }
 
-  fromJSON(json: DrawingManagerJSON) {
-    const drawings = json.drawings.map((drawing) =>
+  fromJSON(json?: DrawingManagerJSON) {
+    const drawings = (json?.drawings ?? []).map((drawing) =>
       this.deserializeDrawing(drawing)
     );
     this.assertUniqueDrawingIds(drawings);
     const selectedDrawing = drawings.find(
-      (drawing) => drawing.id === json.selectedDrawingId
+      (drawing) => drawing.id === json?.selectedDrawingId
     );
-    if (json.selectedDrawingId !== undefined && !selectedDrawing) {
+    if (json?.selectedDrawingId !== undefined && !selectedDrawing) {
       throw new Error(
         `Selected drawing "${json.selectedDrawingId}" was not found.`
       );

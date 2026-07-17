@@ -375,6 +375,7 @@ describe("chart state", () => {
       key: sourceContributor.key,
       toJSON: () => ({ nested: { value: "restored" } }),
       fromJSON: (value) => {
+        if (!value) throw new Error("Expected persisted contributor state.");
         restored = value;
         value.nested.value = "contributor-mutated";
       }
@@ -384,5 +385,25 @@ describe("chart state", () => {
 
     expect(restored).not.toBe(serialized);
     expect(serialized.nested.value).toBe("serialized");
+  });
+
+  it("resets registered contributors missing from restored state", () => {
+    const source = createChart();
+    const target = createChart();
+    const drawings = new DrawingManager();
+    target.addPlugin(drawings);
+    drawings.addDrawing(
+      new TrendLine({
+        anchors: [
+          { index: 1, price: 12 },
+          { index: 3, price: 16 }
+        ],
+        paneId: target.getMainPane().id
+      })
+    );
+
+    target.restoreState(source.toJSON(), { contributors: [drawings] });
+
+    expect(drawings.getDrawings()).toEqual([]);
   });
 });

@@ -181,16 +181,13 @@ export class ChartStateController {
     state: ChartState,
     contributors: ReadonlyMap<string, ChartStateContributor>
   ): ChartStateContributor[] {
-    const restored: ChartStateContributor[] = [];
     for (const key of Object.keys(state.contributions ?? {})) {
-      const contributor = contributors.get(key);
-      if (!contributor) {
+      if (!contributors.has(key)) {
         throw new Error(
           `Chart state contribution "${key}" has no matching contributor.`
         );
       }
-      restored.push(contributor);
     }
-    return restored;
+    return [...contributors.values()];
   }
 }

@@ -782,7 +782,7 @@ export class FinancialChartBase {
       this.applyPaneHeightRatios(state.panes);
 
       for (const contributor of contributors) {
-        contributor.fromJSON(state.contributions![contributor.key]);
+        contributor.fromJSON(state.contributions?.[contributor.key]);
       }
 
       if (this.model.hasData()) {
@@ -876,6 +876,7 @@ export class FinancialChartBase {
 
   /** Applies an options patch in one reset, remap, and redraw cycle. */
   public updateOptions(update: ChartOptionsUpdate): void {
+    this.assertActive("update options on");
     const change = this.applyOptionsUpdate(update);
     if (change) this.changePublisher.commit(change);
   }
@@ -984,6 +985,7 @@ export class FinancialChartBase {
    * @throws {TypeError} when a present data value is not finite
    */
   public setData(data: readonly ChartData[]): void {
+    this.assertActive("set data on");
     this.applyPaneLayout();
     this.model.replaceData(data, this.options.stepSize);
 
@@ -1022,6 +1024,7 @@ export class FinancialChartBase {
    * @throws {RangeError} when the timestamp is older than the latest point
    */
   public updateData(data: ChartData): void {
+    this.assertActive("update data on");
     if (!this.model.hasData()) {
       this.setData([data]);
       return;
@@ -1230,6 +1233,12 @@ export class FinancialChartBase {
       () => this.overlay.destroy(),
       () => this.container.remove()
     ]);
+  }
+
+  private assertActive(operation: string): void {
+    if (this.disposed) {
+      throw new Error(`Cannot ${operation} a disposed chart.`);
+    }
   }
 
   private recalculateVisibleScale() {

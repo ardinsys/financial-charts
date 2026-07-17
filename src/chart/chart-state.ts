@@ -42,7 +42,8 @@ export interface ChartStateContributor<TState = unknown> {
   /** Unique persistence key stored under `ChartState.contributions`. */
   readonly key: string;
   toJSON(): TState;
-  fromJSON(state: TState): unknown;
+  /** Restores persisted state, or resets runtime state when the key is absent. */
+  fromJSON(state: TState | undefined): unknown;
 }
 
 export interface ChartStateSerializationOptions {

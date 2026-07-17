@@ -546,6 +546,46 @@ describe("plugin lifecycle", () => {
     expect(plugin.detach).toHaveBeenCalledOnce();
   });
 
+  it("detaches extensions once in reverse registration order", () => {
+    const { chart } = createChart();
+    const order: string[] = [];
+    const firstIndicator = new DetachProbeIndicator();
+    const secondIndicator = new DetachProbeIndicator();
+    vi.spyOn(firstIndicator, "detach").mockImplementation(() => {
+      order.push("first-indicator");
+    });
+    vi.spyOn(secondIndicator, "detach").mockImplementation(() => {
+      order.push("second-indicator");
+    });
+    const firstPlugin: ChartPlugin = {
+      key: "first-dispose-plugin",
+      attach: () => undefined,
+      detach: () => order.push("first-plugin")
+    };
+    const secondPlugin: ChartPlugin = {
+      key: "second-dispose-plugin",
+      attach: () => undefined,
+      detach: () => {
+        order.push("second-plugin");
+        chart.removePlugin(firstPlugin);
+      }
+    };
+
+    chart.addIndicator(firstIndicator);
+    chart.addIndicator(secondIndicator);
+    chart.addPlugin(firstPlugin);
+    chart.addPlugin(secondPlugin);
+    chart.dispose();
+    charts.pop();
+
+    expect(order).toEqual([
+      "second-indicator",
+      "first-indicator",
+      "second-plugin",
+      "first-plugin"
+    ]);
+  });
+
   it("exposes canvas and event helpers through the plugin context", () => {
     const { chart, container, data } = createChart();
     let attachedContext: Parameters<ChartPlugin["attach"]>[0] | undefined;
@@ -782,6 +822,15 @@ describe("plugin lifecycle", () => {
     );
     expect(() => chart.addPlugin(plugin)).toThrow(
       "Cannot add a plugin to a disposed chart."
+    );
+    expect(() => chart.setData(data)).toThrow(
+      "Cannot set data on a disposed chart."
+    );
+    expect(() => chart.updateData(data[0])).toThrow(
+      "Cannot update data on a disposed chart."
+    );
+    expect(() => chart.updateOptions({ maxZoom: 20 })).toThrow(
+      "Cannot update options on a disposed chart."
     );
   });
 

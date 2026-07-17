@@ -59,4 +59,24 @@ describe("EventEmitter", () => {
 
     expect(emitter.listenerCount()).toBe(0);
   });
+
+  it("delivers to every listener before rethrowing the first error", () => {
+    const emitter = new EventEmitter<CustomEventMap>();
+    const firstError = new Error("first listener failed");
+    const second = vi.fn();
+    const third = vi.fn(() => {
+      throw new Error("third listener failed");
+    });
+    emitter.on("custom-ready", () => {
+      throw firstError;
+    });
+    emitter.on("custom-ready", second);
+    emitter.on("custom-ready", third);
+
+    expect(() =>
+      emitter.emit("custom-ready", { id: "feed", count: 2 })
+    ).toThrow(firstError);
+    expect(second).toHaveBeenCalledOnce();
+    expect(third).toHaveBeenCalledOnce();
+  });
 });

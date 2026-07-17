@@ -113,20 +113,29 @@ export class MovingAverageIndicator extends Indicator<
       movingAverage: number;
     }> = [];
     let sum = 0;
+    let valueCount = 0;
 
     for (let i = 0; i < data.length; i++) {
       const value = data[i][this.options.source];
-      if (value === undefined) continue;
+      if (value != null) {
+        sum += value;
+        valueCount += 1;
+      }
 
-      sum += value ?? 0;
+      if (i >= this.options.period) {
+        const expired = data[i - this.options.period][this.options.source];
+        if (expired != null) {
+          sum -= expired;
+          valueCount -= 1;
+        }
+      }
+
+      if (value == null) continue;
+      // Warm-up uses the available values in the growing trailing window.
       movingAveragePoints.push({
         time: data[i].time,
-        movingAverage: sum / Math.min(i + 1, this.options.period)
+        movingAverage: sum / valueCount
       });
-
-      if (i >= this.options.period - 1) {
-        sum -= data[i - this.options.period + 1][this.options.source] ?? 0;
-      }
     }
 
     return movingAveragePoints;

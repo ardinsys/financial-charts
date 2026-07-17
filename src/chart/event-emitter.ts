@@ -120,10 +120,17 @@ export class EventEmitter<TEventMap extends object = ChartEventMap> {
   }
 
   emit<K extends keyof TEventMap>(event: K, data: TEventMap[K]) {
-    if (this.events[event]) {
-      this.events[event].forEach((listener) => {
+    const listeners = this.events[event];
+    if (!listeners) return;
+
+    let firstError: unknown;
+    listeners.forEach((listener) => {
+      try {
         listener(data);
-      });
-    }
+      } catch (error) {
+        firstError ??= error;
+      }
+    });
+    if (firstError !== undefined) throw firstError;
   }
 }

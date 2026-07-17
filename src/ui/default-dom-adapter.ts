@@ -166,6 +166,7 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       update,
       destroy: () => {
         for (const dispose of disposers.splice(0)) dispose();
+        root.remove();
       }
     };
   }

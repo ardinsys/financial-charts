@@ -271,7 +271,7 @@ export class ExtensionHost {
     if (this.disposed) return;
     this.disposed = true;
 
-    const indicators = [...this.allIndicators];
+    const indicators = [...this.allIndicators].reverse();
     const plugins = [...this.plugins].reverse();
     let firstError: unknown;
     // Detach hooks may persist final chart state, so registries stay readable
@@ -379,7 +379,7 @@ export class ExtensionHost {
   }
 
   private detach(extension: HostedExtension): void {
-    this.disposeAttachmentScope(extension);
+    if (!this.disposeAttachmentScope(extension)) return;
     const indicator = extension as Indicator<any, any>;
     const hooks = this.indicatorHooks.get(indicator);
     try {
@@ -457,10 +457,13 @@ export class ExtensionHost {
     return scopedDispose;
   }
 
-  private disposeAttachmentScope(extension: ChartExtension): void {
-    this.attachmentScopes.get(extension)?.abort();
+  private disposeAttachmentScope(extension: ChartExtension): boolean {
+    const scope = this.attachmentScopes.get(extension);
+    if (!scope) return false;
+    scope.abort();
     this.attachmentScopes.delete(extension);
     this.priceAxisAnnotations.delete(extension);
+    return true;
   }
 
   private setPriceAxisAnnotations(

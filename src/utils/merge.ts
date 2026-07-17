@@ -1,3 +1,5 @@
+import { isPlainRecord } from "./json-state";
+
 export function mergeObjects<T extends object>(
   defaults: T,
   overrides?: object | null
@@ -13,10 +15,17 @@ export function mergeObjects<T extends object>(
   for (const key of keys) {
     const defaultValue = defaultValues[key];
     const overrideValue = overrideValues[key];
-    result[key] =
-      isPlainObject(defaultValue) && isPlainObject(overrideValue)
+    const hasOverride = key in overrideValues && overrideValue !== undefined;
+    const value =
+      hasOverride && isPlainRecord(defaultValue) && isPlainRecord(overrideValue)
         ? mergeObjects(defaultValue, overrideValue)
-        : cloneMergeValue(overrideValue ?? defaultValue);
+        : cloneMergeValue(hasOverride ? overrideValue : defaultValue);
+    Object.defineProperty(result, key, {
+      configurable: true,
+      enumerable: true,
+      value,
+      writable: true
+    });
   }
 
   return result as T;
@@ -26,15 +35,8 @@ function cloneMergeValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(cloneMergeValue);
   }
-  if (isPlainObject(value)) {
+  if (isPlainRecord(value)) {
     return mergeObjects(value);
   }
   return value;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  if (value == null || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-  return Object.getPrototypeOf(value)?.constructor === Object;
 }

@@ -188,4 +188,24 @@ describe("MovingAverageIndicator", () => {
     expect(cache.cache.has(start)).toBe(false);
     expect([...cache.cache.keys()]).toEqual([nextStart, nextStart + 60_000]);
   });
+
+  it("uses only present values in a trailing window containing gaps", async () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart([
+      { time: start, close: 10 },
+      { time: start + 60_000 },
+      { time: start + 120_000, close: 20 },
+      { time: start + 180_000, close: 30 }
+    ]);
+    const indicator = new MovingAverageIndicator(null, { period: 3 });
+    const cache = indicator as unknown as { cache: Map<number, number> };
+
+    chart.addIndicator(indicator);
+    await waitForRedraw();
+
+    expect(cache.cache.get(start)).toBe(10);
+    expect(cache.cache.has(start + 60_000)).toBe(false);
+    expect(cache.cache.get(start + 120_000)).toBe(15);
+    expect(cache.cache.get(start + 180_000)).toBe(25);
+  });
 });
