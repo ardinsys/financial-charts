@@ -249,7 +249,8 @@ array does not change rendered annotations.
 
 `ChartSyncPlugin` links chart instances by `group` and synchronizes visible time
 range, crosshair, drawings, drawing selection, indicators, and pane heights. Add one plugin
-instance to each chart that should participate:
+instance to each chart that should participate. A chart can join one sync group because
+the plugin uses the fixed `"chart-sync"` plugin key.
 
 ```ts
 import {
@@ -312,6 +313,8 @@ Freshly mounted charts also perform their initial sync after their first
 keeps the latest state as detached snapshots, so virtualized rows can all
 unmount briefly and the next mounted chart can still rehydrate without holding
 old chart or DOM instances alive.
+Call `ChartSyncPlugin.clearGroup(group)` to discard a group's retained snapshot. Active
+members stay joined and repopulate the snapshot when their state next changes.
 Received indicator mutations publish the same chart events as local mutations;
 the plugin's application guard prevents those events from being rebroadcast.
 

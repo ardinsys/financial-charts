@@ -93,11 +93,25 @@ const chartSyncGroups = new Map<string, ChartSyncGroup>();
 export class ChartSyncPlugin implements ChartPlugin {
   readonly key = "chart-sync";
 
+  /** Discards retained state without disconnecting active group members. */
+  static clearGroup(group: string): void {
+    const syncGroup = chartSyncGroups.get(group);
+    if (!syncGroup) return;
+
+    if (syncGroup.members.size === 0) {
+      chartSyncGroups.delete(group);
+      return;
+    }
+
+    syncGroup.state = {};
+  }
+
   private applying = false;
   private ctx?: ChartContext;
   private deliveringMessage = false;
   private initialSyncSource?: ChartSyncPlugin;
   private initialSyncApplied = false;
+  private suppressNextVisibleRangeChange = false;
   private waitingForInitialSync = false;
   private readonly group: string;
   private readonly messageHandlers = new Map<
@@ -134,6 +148,8 @@ export class ChartSyncPlugin implements ChartPlugin {
     }
     this.messageHandlers.clear();
     this.initialSyncSource = undefined;
+    this.initialSyncApplied = false;
+    this.suppressNextVisibleRangeChange = false;
     this.waitingForInitialSync = false;
     const group = chartSyncGroups.get(this.group);
     group?.members.delete(this);
@@ -145,6 +161,10 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   onVisibleRangeChanged(_range: TimeRange): void {
     if (!this.isEnabled("visibleRange") || this.applying) return;
+    if (this.suppressNextVisibleRangeChange) {
+      this.suppressNextVisibleRangeChange = false;
+      return;
+    }
     if (this.hasPendingInitialSync()) return;
 
     const range = this.createVisibleRangeSnapshot();
@@ -518,7 +538,11 @@ export class ChartSyncPlugin implements ChartPlugin {
     if (!this.isInitialSyncEnabled()) return;
     if (!this.ctx || this.ctx.getData().length === 0) return;
 
-    if (this.initialSyncApplied) return;
+    if (this.initialSyncApplied) {
+      this.initialSyncSource = undefined;
+      this.waitingForInitialSync = false;
+      return;
+    }
 
     let state = this.createStoredStateSnapshot();
     if (!state) {
@@ -530,6 +554,9 @@ export class ChartSyncPlugin implements ChartPlugin {
       state = source.createCurrentStateSnapshot();
       this.getGroup().state = cloneSyncState(state);
     }
+    this.suppressNextVisibleRangeChange = Boolean(
+      this.isEnabled("visibleRange") && state.visibleRange,
+    );
     this.apply(() => {
       if (this.isEnabled("visibleRange") && state.visibleRange) {
         this.applyVisibleRange(state.visibleRange);
@@ -789,7 +816,3 @@ function createDrawingState(
     ...(selectedDrawingId === undefined ? {} : { selectedDrawingId }),
   };
 }
-
-Object.defineProperty(ChartSyncPlugin, "getGroupSizeForTest", {
-  value: (group: string) => chartSyncGroups.get(group)?.members.size ?? 0,
-});

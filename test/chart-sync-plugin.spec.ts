@@ -21,13 +21,8 @@ import {
 } from "../src/plugins";
 
 const charts: FinancialChart[] = [];
+const syncGroups = new Set<string>();
 let groupId = 0;
-
-const getSyncGroupSize = (
-  ChartSyncPlugin as unknown as {
-    getGroupSizeForTest(group: string): number;
-  }
-).getGroupSizeForTest;
 
 class CustomMovingAverageIndicator extends MovingAverageIndicator {
   static ID = "custom-moving-average";
@@ -148,6 +143,10 @@ afterEach(() => {
   while (charts.length > 0) {
     charts.pop()?.dispose();
   }
+  for (const group of syncGroups) {
+    ChartSyncPlugin.clearGroup(group);
+  }
+  syncGroups.clear();
   document.body.innerHTML = "";
 });
 
@@ -271,26 +270,31 @@ function createDeferredChartWithSync(
 
 function createGroup() {
   groupId += 1;
-  return `sync-test-${groupId}`;
+  const group = `sync-test-${groupId}`;
+  syncGroups.add(group);
+  return group;
 }
 
 describe("ChartSyncPlugin", () => {
-  it("cleans up empty sync groups when charts are disposed", () => {
+  it("clears retained state for an empty sync group", () => {
     const group = createGroup();
-    const first = createSyncedChart(group);
-    const second = createSyncedChart(group);
+    const source = createSyncedChart(group);
+    source.chart.setVisibleTimeRange({
+      start: source.data[1].time,
+      end: source.data[2].time + 60_000
+    });
+    const retainedRange = source.chart.getVisibleTimeRange();
+    source.chart.dispose();
+    charts.splice(charts.indexOf(source.chart), 1);
 
-    expect(getSyncGroupSize(group)).toBe(2);
+    ChartSyncPlugin.clearGroup(group);
 
-    first.chart.dispose();
-    charts.splice(charts.indexOf(first.chart), 1);
+    const target = createSyncedChartWithDeferredData(group);
+    target.chart.setData(target.data);
 
-    expect(getSyncGroupSize(group)).toBe(1);
-
-    second.chart.dispose();
-    charts.splice(charts.indexOf(second.chart), 1);
-
-    expect(getSyncGroupSize(group)).toBe(0);
+    expect(target.chart.getVisibleTimeRange()).not.toEqual(
+      retainedRange
+    );
   });
 
   it("syncs visible ranges by time", () => {
@@ -306,6 +310,48 @@ describe("ChartSyncPlugin", () => {
     expect(target.chart.getVisibleTimeRange()).toEqual(
       source.chart.getVisibleTimeRange()
     );
+  });
+
+  it("restores initial and ongoing sync after reattachment", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    const target = createSyncedChart(group);
+
+    target.chart.removePlugin(target.syncPlugin);
+    source.chart.setVisibleTimeRange({
+      start: source.data[2].time,
+      end: source.data[3].time + 60_000
+    });
+    target.chart.addPlugin(target.syncPlugin);
+
+    expect(target.chart.getVisibleTimeRange()).toEqual(
+      source.chart.getVisibleTimeRange()
+    );
+
+    target.chart.setVisibleTimeRange({
+      start: target.data[0].time,
+      end: target.data[1].time + 60_000
+    });
+
+    expect(source.chart.getVisibleTimeRange()).toEqual(
+      target.chart.getVisibleTimeRange()
+    );
+  });
+
+  it("does not move peers when initial sync clamps to shorter data", () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    source.chart.setVisibleTimeRange({
+      start: source.data[2].time,
+      end: source.data[3].time + 60_000
+    });
+    const sourceRange = source.chart.getVisibleTimeRange();
+
+    const target = createDeferredChartWithSync(group);
+    target.chart.setData(target.data.slice(0, 2));
+
+    expect(target.chart.getVisibleTimeRange()).not.toEqual(sourceRange);
+    expect(source.chart.getVisibleTimeRange()).toEqual(sourceRange);
   });
 
   it("syncs pane height ratios across different chart sizes", () => {
@@ -533,8 +579,6 @@ describe("ChartSyncPlugin", () => {
     const retainedVisibleRange = source.chart.getVisibleTimeRange();
     source.chart.dispose();
     charts.splice(charts.indexOf(source.chart), 1);
-
-    expect(getSyncGroupSize(group)).toBe(0);
 
     const target = createSyncedChartWithDeferredData(group);
     target.chart.setData(target.data);
