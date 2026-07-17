@@ -14,16 +14,16 @@ reference pages.
 
 ## Chart construction and data
 
-| Exports                                                                                                                               | Reference                                                     |
-| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `FinancialChart`, `CoreChartOptions`                                                                                                  | [FinancialChart](/reference/chart)                            |
-| `ChartData`, `TimeRange`                                                                                                              | [Data contracts](/reference/chart#data-contracts)             |
-| `ChartOptions`, `ChartOptionsUpdate`, `ChartOptionsSnapshot`, `ChartOptionsChangeEvent`, `ChartOptionKey`, `ChartLocalizationOptions` | [Options](/reference/chart#chartoptions)                      |
-| `LocaleValues`, `LocaleValuesMap`                                                                                                     | [i18n](/guide/i18n)                                           |
-| `ControllerID`, `ControllerType`, `ControllerConstructor`                                                                             | [Controllers](/reference/engine#custom-controllers)           |
-| `ChartPaneSnapshot`, `PaneHeightsInput`                                                                                               | [View and panes](/reference/chart#view-and-styling)           |
-| `ChartCrosshairOptions`, `ChartCrosshairState`, `ChartCrosshairChangeEvent`                                                           | [View and interactions](/guide/view-and-interactions)         |
-| `IndicatorMutationOptions`                                                                                                            | [Indicator management](/reference/chart#indicator-management) |
+| Exports                                                                                                                                                | Reference                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `FinancialChart`, `CoreChartOptions`                                                                                                                   | [FinancialChart](/reference/chart)                            |
+| `ChartData`, `TimeRange`                                                                                                                               | [Data contracts](/reference/chart#data-contracts)             |
+| `ChartOptions`, `ChartOptionsUpdate`, `ChartOptionsSnapshot`, `ChartOptionsChangeEvent`, `ChartOptionKey`, `ChartLocalizationOptions`, `WheelZoomMode` | [Options](/reference/chart#chartoptions)                      |
+| `LocaleValues`, `LocaleValuesMap`                                                                                                                      | [i18n](/guide/i18n)                                           |
+| `ControllerID`, `ControllerType`, `ControllerConstructor`                                                                                              | [Controllers](/reference/engine#custom-controllers)           |
+| `ChartPaneSnapshot`, `PaneHeightsInput`                                                                                                                | [View and panes](/reference/chart#view-and-styling)           |
+| `ChartCrosshairOptions`, `ChartCrosshairState`, `ChartCrosshairChangeEvent`                                                                            | [View and interactions](/guide/view-and-interactions)         |
+| `IndicatorMutationOptions`                                                                                                                             | [Indicator management](/reference/chart#indicator-management) |
 
 ## Events, formatting, and themes
 

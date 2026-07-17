@@ -223,6 +223,39 @@ describe("visible range contracts", () => {
     expect(requestRedraw).toHaveBeenCalled();
   });
 
+  it("allows page scrolling when wheel zoom requires a modifier", () => {
+    const { chart } = createChart();
+    chart.setVisibleLogicalRange({ from: 1, to: 5 });
+    chart.updateOptions({ wheelZoom: "modifier" });
+    const canvas = getChartContext(chart, "crosshair").canvas;
+    const initialRange = chart.getVisibleLogicalRange();
+    const scroll = new WheelEvent("wheel", {
+      clientX: 400,
+      clientY: 100,
+      deltaY: -50,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    canvas.dispatchEvent(scroll);
+
+    expect(scroll.defaultPrevented).toBe(false);
+    expect(chart.getVisibleLogicalRange()).toEqual(initialRange);
+
+    const zoom = new WheelEvent("wheel", {
+      clientX: 400,
+      clientY: 100,
+      deltaY: -50,
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    canvas.dispatchEvent(zoom);
+
+    expect(zoom.defaultPrevented).toBe(true);
+    expect(chart.getVisibleLogicalRange()).not.toEqual(initialRange);
+  });
+
   it("keeps click semantics for sub-threshold pointer movement", () => {
     const { chart } = createChart();
     const canvas = getChartContext(chart, "crosshair").canvas;

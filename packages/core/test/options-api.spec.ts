@@ -80,12 +80,14 @@ describe("chart options API", () => {
       type: "candle",
       timeRange: "auto",
       maxZoom: 100,
+      wheelZoom: "always",
       volume: true,
     });
     expect(core.getOptions()).toMatchObject({
       type: "line",
       timeRange: "auto",
       maxZoom: 100,
+      wheelZoom: "always",
       volume: true,
       includeDefaultControllers: false,
     });
@@ -103,6 +105,7 @@ describe("chart options API", () => {
       timeRange: "auto",
       stepSize: 60_000,
       maxZoom: 10,
+      wheelZoom: "always",
       volume: true,
       locale: "en-US",
     });
@@ -296,6 +299,21 @@ describe("chart options API", () => {
     expect(onVisibleRangeChanged).not.toHaveBeenCalled();
   });
 
+  it("updates wheel zoom behavior without redrawing", () => {
+    const chart = createChart();
+    const redraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
+    const listener = vi.fn();
+    chart.on("options-change", listener);
+
+    chart.updateOptions({ wheelZoom: "modifier" });
+
+    expect(chart.getOptions().wheelZoom).toBe("modifier");
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ changedKeys: ["wheelZoom"] })
+    );
+    expect(redraw).not.toHaveBeenCalled();
+  });
+
   it("commits option, data, range, and redraw effects in one order", () => {
     const chart = createChart();
     const order: string[] = [];
@@ -367,6 +385,14 @@ describe("chart options API", () => {
         volume: false,
       })
     ).toThrow("stepSize must be a finite number greater than zero.");
+    expect(chart.getOptions()).toBe(initial);
+    expect(listener).not.toHaveBeenCalled();
+
+    expect(() =>
+      chart.updateOptions({
+        wheelZoom: "invalid" as "always",
+      })
+    ).toThrow('wheelZoom must be either "always" or "modifier".');
     expect(chart.getOptions()).toBe(initial);
     expect(listener).not.toHaveBeenCalled();
   });

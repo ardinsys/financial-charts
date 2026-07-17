@@ -1,0 +1,24 @@
+{
+  "name": "@ardinsys/financial-charts-showcase",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@ardinsys/financial-charts": "workspace:*",
+    "@ardinsys/financial-charts-vue": "workspace:*",
+    "@nuxtjs/color-mode": "^4.0.1",
+    "@nuxtjs/i18n": "^10.4.1",
+    "nuxt": "^4.4.8"
+  },
+  "devDependencies": {
+    "@golar/vue": "^0.1.9",
+    "golar": "^0.1.9",
+    "typescript": "~7.0.2"
+  }
+}

@@ -13,7 +13,11 @@
     "verify:package": "pnpm --filter @ardinsys/financial-charts verify:package",
     "docs:dev": "pnpm --filter @ardinsys/financial-charts-docs dev",
     "docs:build": "pnpm --filter @ardinsys/financial-charts-docs build",
-    "docs:preview": "pnpm --filter @ardinsys/financial-charts-docs preview"
+    "docs:preview": "pnpm --filter @ardinsys/financial-charts-docs preview",
+    "showcase": "pnpm build && pnpm --filter @ardinsys/financial-charts-showcase dev",
+    "showcase:dev": "pnpm build && pnpm --filter @ardinsys/financial-charts-showcase dev",
+    "showcase:build": "pnpm build && pnpm --filter @ardinsys/financial-charts-showcase build",
+    "showcase:generate": "pnpm build && pnpm --filter @ardinsys/financial-charts-showcase generate"
   },
   "devDependencies": {
     "oxfmt": "^0.59.0"

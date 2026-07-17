@@ -662,6 +662,7 @@ export class FinancialChartBase {
         panByPixels: (dx) => this.panInteractionByPixels(dx),
         zoomAtPixel: (factor, pixel) =>
           this.zoomInteractionAtPixel(factor, pixel),
+        getWheelZoomMode: () => this.options.wheelZoom,
         clearCrosshair: () => this.clearCrosshair(),
         crosshairChanged: (state) => {
           this.changePublisher.commit({

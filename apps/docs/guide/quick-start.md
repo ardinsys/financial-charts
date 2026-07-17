@@ -3,7 +3,8 @@
 The root package provides a chart with every built-in controller registered.
 Only `stepSize` is required; the root chart otherwise defaults to candlesticks,
 automatic time range, volume enabled, `maxZoom: 100`, the light theme, and the
-browser locale.
+browser locale. Wheel input zooms by default; use `wheelZoom: "modifier"` when
+the chart is embedded in a scrolling page.
 
 ## Install
 
@@ -90,9 +91,9 @@ chart.updateOptions({
 });
 ```
 
-`type`, `timeRange`, `stepSize`, `maxZoom`, `volume`, theme, and localization
-are runtime options. The initial controller set and DOM adapter are constructor
-options; additional controller classes can be added later with
+`type`, `timeRange`, `stepSize`, `maxZoom`, `wheelZoom`, `volume`, theme, and
+localization are runtime options. The initial controller set and DOM adapter are
+constructor options; additional controller classes can be added later with
 `registerController()`.
 
 ## Dispose on unmount

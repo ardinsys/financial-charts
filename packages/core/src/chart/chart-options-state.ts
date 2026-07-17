@@ -5,6 +5,7 @@ import type { ChartThemeMap } from "./themes";
 import {
   assertPositiveOption,
   assertTimeRangeOption,
+  assertWheelZoomOption,
   cloneOptionValue,
   optionValuesEqual,
   timeRangeOptionsEqual,
@@ -44,9 +45,11 @@ export class ChartOptionsState {
 
     const timeRange = options.timeRange ?? "auto";
     const maxZoom = options.maxZoom ?? 100;
+    const wheelZoom = options.wheelZoom ?? "always";
     assertTimeRangeOption(timeRange);
     assertPositiveOption("stepSize", options.stepSize);
     assertPositiveOption("maxZoom", maxZoom);
+    assertWheelZoomOption(wheelZoom);
 
     const locale =
       options.locale ||
@@ -65,6 +68,7 @@ export class ChartOptionsState {
       timeRange: timeRange === "auto" ? "auto" : { ...timeRange },
       stepSize: options.stepSize,
       maxZoom,
+      wheelZoom,
       volume: options.volume ?? true,
       controllers: ownControllerSnapshot(controllers),
       includeDefaultControllers,
@@ -105,6 +109,7 @@ export class ChartOptionsState {
     const timeRange = update.timeRange ?? this.resolved.timeRange;
     const stepSize = update.stepSize ?? this.resolved.stepSize;
     const maxZoom = update.maxZoom ?? this.resolved.maxZoom;
+    const wheelZoom = update.wheelZoom ?? this.resolved.wheelZoom;
     const volume = update.volume ?? this.resolved.volume;
     const formatter = update.formatter ?? this.resolved.formatter;
     const hasFormatter = update.formatter !== undefined;
@@ -132,6 +137,7 @@ export class ChartOptionsState {
     assertTimeRangeOption(timeRange);
     assertPositiveOption("stepSize", stepSize);
     assertPositiveOption("maxZoom", maxZoom);
+    assertWheelZoomOption(wheelZoom);
     if (type !== this.resolved.type) assertControllerType(type);
 
     const changes: Array<[ChartOptionKey, boolean]> = [
@@ -139,6 +145,7 @@ export class ChartOptionsState {
       ["timeRange", !timeRangeOptionsEqual(timeRange, this.resolved.timeRange)],
       ["stepSize", stepSize !== this.resolved.stepSize],
       ["maxZoom", maxZoom !== this.resolved.maxZoom],
+      ["wheelZoom", wheelZoom !== this.resolved.wheelZoom],
       ["volume", volume !== this.resolved.volume],
       ["theme", theme.key !== this.resolved.theme.key],
       ["locale", locale !== this.resolved.locale],
@@ -169,6 +176,7 @@ export class ChartOptionsState {
     this.resolved.timeRange = timeRange === "auto" ? "auto" : { ...timeRange };
     this.resolved.stepSize = stepSize;
     this.resolved.maxZoom = maxZoom;
+    this.resolved.wheelZoom = wheelZoom;
     this.resolved.volume = volume;
     this.resolved.theme = theme;
     this.resolved.locale = locale;
@@ -190,6 +198,7 @@ export class ChartOptionsState {
       timeRange: this.resolved.timeRange,
       stepSize: this.resolved.stepSize,
       maxZoom: this.resolved.maxZoom,
+      wheelZoom: this.resolved.wheelZoom,
       volume: this.resolved.volume,
       controllers: this.resolved.controllers,
       includeDefaultControllers: this.resolved.includeDefaultControllers,

@@ -26,6 +26,7 @@ export type ControllerID =
   | "stepline"
   | "hlc-area";
 export type ControllerType = ControllerID | (string & {});
+export type WheelZoomMode = "always" | "modifier";
 
 export interface LocaleValues {
   common: {
@@ -64,6 +65,7 @@ export interface ChartOptionsUpdate extends ChartLocalizationOptions {
   timeRange?: TimeRange | "auto";
   stepSize?: number;
   maxZoom?: number;
+  wheelZoom?: WheelZoomMode;
   volume?: boolean;
   theme?: ChartThemeKey;
 }
@@ -83,6 +85,8 @@ export interface ChartOptions {
   timeRange?: TimeRange | "auto";
   stepSize: number;
   maxZoom?: number;
+  /** Controls whether wheel input zooms immediately or requires Ctrl/Cmd. */
+  wheelZoom?: WheelZoomMode;
   volume?: boolean;
   controllers?: readonly ControllerConstructor[];
   /**
@@ -107,6 +111,7 @@ export interface ResolvedChartOptions {
   readonly timeRange: TimeRange | "auto";
   readonly stepSize: number;
   readonly maxZoom: number;
+  readonly wheelZoom: WheelZoomMode;
   readonly volume: boolean;
   readonly controllers: readonly ControllerConstructor[];
   readonly includeDefaultControllers: boolean;
@@ -124,6 +129,7 @@ export interface ChartOptionsSnapshot {
   readonly timeRange: DeepReadonly<TimeRange> | "auto";
   readonly stepSize: number;
   readonly maxZoom: number;
+  readonly wheelZoom: WheelZoomMode;
   readonly volume: boolean;
   readonly controllers: readonly ControllerConstructor[];
   readonly includeDefaultControllers: boolean;
@@ -168,6 +174,14 @@ export function assertPositiveOption(
 ): void {
   if (!Number.isFinite(value) || value <= 0) {
     throw new RangeError(`${name} must be a finite number greater than zero.`);
+  }
+}
+
+export function assertWheelZoomOption(
+  value: unknown
+): asserts value is WheelZoomMode {
+  if (value !== "always" && value !== "modifier") {
+    throw new RangeError('wheelZoom must be either "always" or "modifier".');
   }
 }
 

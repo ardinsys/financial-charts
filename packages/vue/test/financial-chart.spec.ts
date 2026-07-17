@@ -54,9 +54,11 @@ describe("FinancialChart Vue component", () => {
       { time: 60_000, close: 101 },
     ];
     options.theme = "dark";
+    options.wheelZoom = "modifier";
     await nextTick();
     expect(firstChart.getData()).toHaveLength(2);
     expect(firstChart.getOptions().theme.key).toBe("dark");
+    expect(firstChart.getOptions().wheelZoom).toBe("modifier");
 
     const firstDispose = vi.spyOn(firstChart, "dispose");
     options.domAdapter = new DefaultDOMAdapter();

@@ -125,6 +125,7 @@ export const FinancialChart = defineComponent({
         () => rangeEnd(props.options.timeRange),
         () => props.options.stepSize,
         () => props.options.maxZoom,
+        () => props.options.wheelZoom,
         () => props.options.volume,
         () => props.options.theme,
         () => props.options.locale,
@@ -189,6 +190,7 @@ function takeRuntimeOptions(options: ChartOptions): RuntimeOptionsSnapshot {
     timeRange: options.timeRange,
     stepSize: options.stepSize,
     maxZoom: options.maxZoom,
+    wheelZoom: options.wheelZoom,
     volume: options.volume,
     theme: options.theme,
     locale: options.locale,
@@ -209,6 +211,9 @@ function diffRuntimeOptions(
   }
   if (previous.stepSize !== next.stepSize) update.stepSize = next.stepSize;
   if (previous.maxZoom !== next.maxZoom) update.maxZoom = next.maxZoom;
+  if (previous.wheelZoom !== next.wheelZoom) {
+    update.wheelZoom = next.wheelZoom;
+  }
   if (previous.volume !== next.volume) update.volume = next.volume;
   if (previous.theme !== next.theme) update.theme = next.theme;
   if (previous.locale !== next.locale) update.locale = next.locale;
@@ -228,6 +233,7 @@ function requiresRecreation(
     wasRemoved(previous.type, next.type) ||
     wasRemoved(previous.timeRange, next.timeRange) ||
     wasRemoved(previous.maxZoom, next.maxZoom) ||
+    wasRemoved(previous.wheelZoom, next.wheelZoom) ||
     wasRemoved(previous.volume, next.volume) ||
     wasRemoved(previous.theme, next.theme) ||
     wasRemoved(previous.locale, next.locale) ||

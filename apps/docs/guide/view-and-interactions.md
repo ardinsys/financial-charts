@@ -13,14 +13,15 @@ chart.updateOptions({
   timeRange: "auto",
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
+  wheelZoom: "modifier",
 });
 ```
 
-The runtime patch accepts `type`, `timeRange`, `stepSize`, `maxZoom`, `volume`,
-`theme`, `locale`, `timeZone`, `formatter`, and `localeValues`. The initial
-`controllers`, `includeDefaultControllers`, and `domAdapter` are constructor
-options. Use `registerController()` to add a controller class after
-construction; the DOM adapter cannot be replaced.
+The runtime patch accepts `type`, `timeRange`, `stepSize`, `maxZoom`,
+`wheelZoom`, `volume`, `theme`, `locale`, `timeZone`, `formatter`, and
+`localeValues`. The initial `controllers`, `includeDefaultControllers`, and
+`domAdapter` are constructor options. Use `registerController()` to add a
+controller class after construction; the DOM adapter cannot be replaced.
 
 The complete patch is validated before state changes. One effective patch emits
 one `options-change` event with the previous and current `getOptions()` snapshots
@@ -34,6 +35,7 @@ Option effects are deliberately narrow:
 - `type` rebuilds the active scale while preserving the visible window.
 - `theme`, localization, and volume redraw only affected layers.
 - `maxZoom` changes the next zoom clamp; it does not alter the current view.
+- `wheelZoom` changes which wheel events the chart consumes; it does not alter the current view.
 
 `getOptions()` returns the current borrowed readonly snapshot. A successful
 option change replaces the snapshot rather than mutating the previous one.
@@ -67,7 +69,7 @@ data is loaded; after data is loaded, non-finite boundaries throw `RangeError`.
 
 ## Interactions
 
-- **Zoom:** pinch or scroll; `maxZoom` controls the minimum visible span.
+- **Zoom:** pinch or scroll; `maxZoom` controls the minimum visible span. Set `wheelZoom: "modifier"` for embedded charts so ordinary wheel gestures scroll the page and Ctrl/Cmd + wheel zooms the chart.
 - **Pan:** click-drag or touch-drag.
 - **Volume overlay:** toggle with `updateOptions({ volume: true | false })`.
 - **Theme/localization:** pass `theme`, `locale`, `timeZone`, `formatter`, or `localeValues` to `updateOptions()` whenever user preferences change.

@@ -65,7 +65,7 @@ describe("FinancialChart React component", () => {
       { time: 0, close: 100 },
       { time: 60_000, close: 101 },
     ];
-    options = { ...options, theme: "dark" };
+    options = { ...options, theme: "dark", wheelZoom: "modifier" };
     await act(async () => {
       root.render(
         createElement(FinancialChart, {
@@ -79,6 +79,7 @@ describe("FinancialChart React component", () => {
     });
     expect(firstChart.getData()).toHaveLength(2);
     expect(firstChart.getOptions().theme.key).toBe("dark");
+    expect(firstChart.getOptions().wheelZoom).toBe("modifier");
 
     const firstDispose = vi.spyOn(firstChart, "dispose");
     options = { ...options, domAdapter: new DefaultDOMAdapter() };

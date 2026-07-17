@@ -53,6 +53,7 @@ type ChartOptions = {
   timeRange?: TimeRange | "auto";
   stepSize: number;
   maxZoom?: number;
+  wheelZoom?: "always" | "modifier";
   volume?: boolean;
   controllers?: readonly ControllerConstructor[];
   includeDefaultControllers?: boolean;
@@ -72,6 +73,7 @@ type ChartOptions = {
 | `timeRange`                 | Initial visible span. Defaults to `"auto"`, which derives the range from incoming data.                                                                  |
 | `stepSize`                  | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                                                                       |
 | `maxZoom`                   | Highest zoom factor before clamping user input. Defaults to `100`.                                                                                       |
+| `wheelZoom`                 | Use `"always"` to zoom on every wheel event or `"modifier"` to require Ctrl/Cmd. Defaults to `"always"`.                                                 |
 | `volume`                    | Enables a histogram below the price chart. Defaults to `true`.                                                                                           |
 | `controllers`               | Additional controller classes registered after the built-ins.                                                                                            |
 | `includeDefaultControllers` | Controls class-provided defaults. The root chart defaults to `true`; the controller-neutral core defaults to `false`.                                    |
@@ -96,6 +98,7 @@ type ChartOptionsUpdate = {
   timeRange?: TimeRange | "auto";
   stepSize?: number;
   maxZoom?: number;
+  wheelZoom?: "always" | "modifier";
   volume?: boolean;
   theme?: ChartThemeKey;
   locale?: string;

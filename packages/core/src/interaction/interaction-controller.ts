@@ -3,6 +3,7 @@ import type { ChartPointerEvent } from "../plugin/chart-plugin";
 import { bindEvent } from "../utils/dom";
 import type { Pane } from "../panes/pane";
 import type { ChartData } from "../chart/types";
+import type { WheelZoomMode } from "../chart/chart-options";
 
 type CrosshairSource = "mouse" | "touch" | "programmatic";
 const panMovementThreshold = 4;
@@ -30,6 +31,7 @@ interface InteractionHost {
   getPaneById(paneId: number): Pane;
   panByPixels(dx: number): void;
   zoomAtPixel(zoomFactor: number, pixel: number): void;
+  getWheelZoomMode(): WheelZoomMode;
   clearCrosshair(): void;
   crosshairChanged(state: ChartCrosshairState): void;
   click(event: PointerEvent, point: ChartData): void;
@@ -266,6 +268,13 @@ export class InteractionController {
 
   private onWheel = (event: WheelEvent) => {
     if (!this.hasData()) return;
+    if (
+      this.host.getWheelZoomMode() === "modifier" &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
+      return;
+    }
     event.preventDefault();
     const deltaPixels = normalizeWheelDelta(event, this.getCanvasRect().height);
     const sensitivity = event.ctrlKey ? 0.01 : 0.001;

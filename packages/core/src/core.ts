@@ -20,6 +20,7 @@ export type {
   ControllerType,
   LocaleValues,
   LocaleValuesMap,
+  WheelZoomMode,
 } from "./chart/chart-options";
 export type {
   ChartCrosshairOptions,
