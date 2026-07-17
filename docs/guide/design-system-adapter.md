@@ -37,7 +37,8 @@ Default DOM hooks:
 | Hook                                                                                 | Purpose                                        |
 | ------------------------------------------------------------------------------------ | ---------------------------------------------- |
 | `.financial-charts`                                                                  | Root chart host.                               |
-| `.financial-charts-light` / `.financial-charts-dark`                                 | Active theme key classes for built-in themes.  |
+| `.financial-charts-${key}`                                                           | Active registered theme key class.             |
+| `.financial-charts-light` / `.financial-charts-dark`                                 | Resolved base family, including custom themes. |
 | `.fci-overlay`                                                                       | Adapter-owned overlay region.                  |
 | `.fci-indicator-labels`                                                              | Container that receives indicator label roots. |
 | `.financial-indicator` / `.fci-indicator`                                            | Indicator label root.                          |

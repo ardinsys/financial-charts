@@ -94,6 +94,12 @@ const ALL_REDRAW_PARTS = [
   "crosshair"
 ] as const;
 
+function getThemeClassNames(theme: ChartOptionsSnapshot["theme"]): string[] {
+  return [...new Set([theme.key, theme.base])].map(
+    (key) => `financial-charts-${key}`
+  );
+}
+
 export class FinancialChartBase {
   private readonly events = new EventEmitter<ChartEventMap>();
   private readonly controllerRegistry: ControllerRegistry;
@@ -484,7 +490,7 @@ export class FinancialChartBase {
     });
     this.container.classList.add(
       "financial-charts",
-      `financial-charts-${this.options.theme.key}`
+      ...getThemeClassNames(this.options.theme)
     );
     container.appendChild(this.container);
     this.containerWidth = this.container.offsetWidth;
@@ -862,9 +868,9 @@ export class FinancialChartBase {
     if (this.model.hasData()) this.recalculateVisibleScale();
   }
 
-  private applyThemeOverlay(previousThemeKey: string) {
-    this.container.classList.remove(`financial-charts-${previousThemeKey}`);
-    this.container.classList.add(`financial-charts-${this.options.theme.key}`);
+  private applyThemeOverlay(previousTheme: ChartOptionsSnapshot["theme"]) {
+    this.container.classList.remove(...getThemeClassNames(previousTheme));
+    this.container.classList.add(...getThemeClassNames(this.options.theme));
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     this.overlay.update({
       themeKey: this.options.theme.key,
@@ -906,7 +912,6 @@ export class FinancialChartBase {
       changed.has("timeZone") ||
       changed.has("formatter") ||
       changed.has("localeValues");
-    const previousThemeKey = event.previous.theme.key;
 
     if (typeChanged) {
       const ControllerClass = this.getControllerClass(this.options.type);
@@ -924,7 +929,7 @@ export class FinancialChartBase {
       this.rebuildScales(false);
     }
 
-    if (changed.has("theme")) this.applyThemeOverlay(previousThemeKey);
+    if (changed.has("theme")) this.applyThemeOverlay(event.previous.theme);
     if (localizationChanged) this.refreshLocalizationLabels();
 
     const redrawParts = new Set<RenderLayer>();

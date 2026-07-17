@@ -30,7 +30,7 @@ function createChart() {
     volume: true,
     locale: "en-US",
     themes: {
-      custom: { backgroundColor: "#123456" }
+      custom: { base: "dark", backgroundColor: "#123456" }
     }
   });
   const start = Date.UTC(2024, 0, 1, 9);
@@ -45,6 +45,27 @@ function createChart() {
 }
 
 describe("chart options API", () => {
+  it("applies a custom theme's resolved base class to the chart DOM", () => {
+    const chart = createChart();
+    const root = getChartContext(chart, "main").canvas.closest(
+      ".financial-charts"
+    )!;
+
+    expect(root.classList.contains("financial-charts-light")).toBe(true);
+
+    chart.updateOptions({ theme: "custom" });
+
+    expect(root.classList.contains("financial-charts-custom")).toBe(true);
+    expect(root.classList.contains("financial-charts-dark")).toBe(true);
+    expect(root.classList.contains("financial-charts-light")).toBe(false);
+
+    chart.updateOptions({ theme: "light" });
+
+    expect(root.classList.contains("financial-charts-light")).toBe(true);
+    expect(root.classList.contains("financial-charts-custom")).toBe(false);
+    expect(root.classList.contains("financial-charts-dark")).toBe(false);
+  });
+
   it("provides convenient root defaults and core controller inference", () => {
     const root = new FinancialChart(createContainer(), {
       stepSize: 60_000
