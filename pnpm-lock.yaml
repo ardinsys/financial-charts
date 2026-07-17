@@ -58,6 +58,33 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@24.10.1)(jsdom@29.1.1)(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.32.0)(yaml@2.8.2))
 
+  packages/vue:
+    devDependencies:
+      '@ardinsys/financial-charts':
+        specifier: workspace:*
+        version: link:../core
+      '@types/node':
+        specifier: ^24.4.0
+        version: 24.10.1
+      jsdom:
+        specifier: ^29.1.1
+        version: 29.1.1
+      tsdown:
+        specifier: ^0.21.10
+        version: 0.21.10(@tsdown/css@0.21.10)(typescript@5.8.3)
+      typescript:
+        specifier: ~5.8.3
+        version: 5.8.3
+      vite:
+        specifier: ^7.0.4
+        version: 7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.32.0)(yaml@2.8.2)
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@24.10.1)(jsdom@29.1.1)(vite@7.2.4(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.32.0)(yaml@2.8.2))
+      vue:
+        specifier: ^3.3.11
+        version: 3.5.25(typescript@5.8.3)
+
 packages:
 
   '@algolia/abtesting@1.12.0':

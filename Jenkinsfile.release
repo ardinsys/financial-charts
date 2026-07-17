@@ -37,7 +37,7 @@ pipeline {
           '''
 
           echo "📦 Running versioning for packages"
-          nsh("pnpm --dir packages/core exec bumpp --no-push --yes --no-print-commits --commit \"chore: release v\" ${params.BUMP} --preid ${params.PREID}")
+          nsh("pnpm --dir packages/core exec bumpp package.json ../vue/package.json --no-push --yes --no-print-commits --commit \"chore: release v\" ${params.BUMP} --preid ${params.PREID}")
         }
       }
     }
@@ -61,7 +61,7 @@ pipeline {
       steps {
         script {
           def dryRunFlag = params.DRY_RUN ? '--dry-run' : ''
-          nsh("pnpm --dir packages/core publish --no-git-checks ${dryRunFlag}")
+          nsh("pnpm -r --filter './packages/**' publish --no-git-checks ${dryRunFlag}")
         }
         
       }

@@ -1,68 +1,51 @@
 # Vue 3+
 
-Use refs plus `onMounted`/`onBeforeUnmount` to manage the chart. Built-in chart types are available by default on each chart instance.
+Install the official Vue integration alongside the core package:
+
+```bash
+pnpm add @ardinsys/financial-charts @ardinsys/financial-charts-vue
+```
+
+The component owns chart creation and disposal, applies runtime option changes,
+and replaces chart data when the array reference changes.
 
 ```vue
-<template>
-  <div ref="container" class="chart"></div>
-</template>
-
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
+import { reactive, ref } from "vue";
+import type { ChartData, ChartOptions } from "@ardinsys/financial-charts";
+import {
+  FinancialChart,
+  type FinancialChartExposed,
+} from "@ardinsys/financial-charts-vue";
 import "@ardinsys/financial-charts/style.css";
 
-const props = defineProps<{ data: readonly ChartData[] }>();
-const appLocale = ref("en");
-const localeValues = {
-  en: {
-    indicators: { actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" } },
-    common: { sources: { open: "Open", high: "High", low: "Low", close: "Close", volume: "Volume" } }
-  }
-};
+const props = defineProps<{
+  data: readonly ChartData[];
+}>();
 
-const container = ref<HTMLElement | null>(null);
-const chart = ref<FinancialChart | null>(null);
-
-onMounted(() => {
-  if (!container.value) return;
-
-  const instance = new FinancialChart(container.value, {
-    timeRange: "auto",
-    type: "hlc-area",
-    stepSize: 15 * 60 * 1000,
-    maxZoom: 150,
-    volume: true,
-  });
-
-  instance.setData(props.data);
-  chart.value = instance;
-
-  chart.value.updateOptions({
-    locale: appLocale.value,
-    localeValues
-  });
+const chart = ref<FinancialChartExposed>();
+const options = reactive<ChartOptions>({
+  timeRange: "auto",
+  type: "hlc-area",
+  stepSize: 15 * 60 * 1000,
+  maxZoom: 150,
+  volume: true,
+  theme: "dark",
 });
 
-watch(
-  () => props.data,
-  (data) => {
-    chart.value?.setData(data);
-  }
-);
-
-watch(appLocale, (locale) => {
-  chart.value?.updateOptions({
-    locale,
-    localeValues
-  });
-});
-
-onBeforeUnmount(() => {
-  chart.value?.dispose();
-  chart.value = null;
-});
+function updateLiveData(point: ChartData) {
+  chart.value?.chart?.updateData(point);
+}
 </script>
+
+<template>
+  <FinancialChart
+    ref="chart"
+    class="chart"
+    :options="options"
+    :data="props.data"
+  />
+</template>
 
 <style scoped>
 .chart {
@@ -71,11 +54,75 @@ onBeforeUnmount(() => {
 </style>
 ```
 
-- Avoid creating the chart before the container is measurable (e.g. inside collapsed tabs).
-- Keep the `FinancialChart` instance outside of reactive renders to prevent re-creation.
-- Replace the `data` array when its snapshot changes; avoid a deep watcher over
-  thousands of bars. For a single-candle live feed, call `updateData(point)` at
-  the feed boundary.
-- Drive theme or controller changes through `chart.value.updateOptions(...)` in event handlers.
-- In Nuxt or another SSR setup, keep construction inside a client-only mounted
-  hook.
+- Runtime fields such as theme, locale, time range, and chart type are applied
+  through `updateOptions()` without recreating the chart.
+- Changing controllers, registered themes, or the core DOM adapter recreates
+  the chart because those are construction-time dependencies.
+- Replace the `data` array for a new snapshot. Do not deeply watch or mutate a
+  large array in place.
+- Send a live candle directly to `chart.value?.chart?.updateData(point)` instead
+  of routing it through Vue rendering.
+- The component renders only its host during SSR and constructs the chart in
+  `onMounted()`.
+
+## Custom indicator labels
+
+Custom labels remain inside the application's Vue tree through Teleport, so
+they can use provide/inject, application localization, stores, and component
+libraries normally.
+
+```vue
+<!-- OrderIndicatorLabel.vue -->
+<script setup lang="ts">
+import type { IndicatorLabelRendererProps } from "@ardinsys/financial-charts-vue";
+
+defineProps<IndicatorLabelRendererProps>();
+</script>
+
+<template>
+  <div class="order-label" :data-theme="model.themeKey">
+    <button type="button" @click="actions.onToggleVisibility(!model.visible)">
+      {{ model.name }} {{ model.detail }}
+    </button>
+
+    <span
+      v-for="(segment, index) in model.segments"
+      :key="index"
+      :style="{ color: segment.color }"
+    >
+      {{ segment.text }}
+    </span>
+
+    <button
+      v-if="model.actions.canRemove"
+      type="button"
+      :aria-label="model.actionTitles.remove"
+      @click="actions.onRemove"
+    >
+      ×
+    </button>
+  </div>
+</template>
+```
+
+Register it using the indicator's stable `labelKey`:
+
+```vue
+<script setup lang="ts">
+import OrderIndicatorLabel from "./OrderIndicatorLabel.vue";
+
+const indicatorLabels = {
+  orders: OrderIndicatorLabel,
+};
+</script>
+
+<template>
+  <FinancialChart
+    :options="options"
+    :data="data"
+    :indicator-labels="indicatorLabels"
+  />
+</template>
+```
+
+Labels without a matching component continue using the default core renderer.

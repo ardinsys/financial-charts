@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "pnpm --filter @ardinsys/financial-charts-playground dev",
     "playground": "pnpm --filter @ardinsys/financial-charts-playground dev",
-    "build": "pnpm --filter @ardinsys/financial-charts build",
-    "test": "pnpm --filter @ardinsys/financial-charts test",
-    "typecheck": "pnpm --filter @ardinsys/financial-charts typecheck",
+    "build": "pnpm -r --filter './packages/**' --if-present run build",
+    "test": "pnpm -r --filter './packages/**' --if-present run test",
+    "typecheck": "pnpm -r --filter './packages/**' --if-present run typecheck",
     "verify:package": "pnpm --filter @ardinsys/financial-charts verify:package",
     "docs:dev": "pnpm --filter @ardinsys/financial-charts-docs dev",
     "docs:build": "pnpm --filter @ardinsys/financial-charts-docs build",
