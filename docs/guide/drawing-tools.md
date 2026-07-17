@@ -47,6 +47,20 @@ The factory is one-shot for pointer-created drawings. After the user finishes a
 drawing, `DrawingManager` clears the active factory; call `setDrawingFactory()`
 again when the user selects the next drawing tool.
 
+A function factory uses two anchors and accepts either drag-release or two
+clicks. For a different fixed count, pass a descriptor:
+
+```ts
+manager.setDrawingFactory({
+  anchorCount: 3,
+  create: ({ anchors, paneId }) => new TriangleDrawing({ anchors, paneId })
+});
+```
+
+The preview retains committed anchors and follows the pointer with the next
+anchor. Each later click commits one anchor; the initial drag can commit the
+first two. `Escape` cancels any unfinished preview.
+
 ## Built-in tools
 
 - `TrendLine` uses two data-space anchors.
@@ -123,9 +137,9 @@ per-drawing create/delete events.
 Extend `Drawing`, provide a stable `type`, implement `draw()` and `hitTest()`, and register a deserializer when the drawing should be persisted. This example creates a price-band tool from two anchors:
 
 ```ts
+import { DrawingManager } from "@ardinsys/financial-charts";
 import {
   Drawing,
-  DrawingManager,
   type DrawingHitTestContext,
   type DrawingJSON,
   type DrawingOptions,

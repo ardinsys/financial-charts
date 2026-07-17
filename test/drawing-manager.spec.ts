@@ -9,6 +9,8 @@ import {
   Drawing,
   type DrawingHitTestContext,
   type DrawingFactory,
+  type DrawingFactoryDescriptor,
+  type DrawingJSON,
   DrawingManager,
   type DrawingPoint,
   type DrawingRenderContext,
@@ -54,6 +56,31 @@ class StubDrawing extends Drawing {
 
   projectForTest(context: DrawingRenderContext) {
     return this.projectAnchors(context);
+  }
+}
+
+class TriangleDrawing extends Drawing {
+  static readonly type = "triangle";
+  readonly type = TriangleDrawing.type;
+
+  static fromJSON(json: DrawingJSON) {
+    return new TriangleDrawing({
+      anchors: json.anchors,
+      id: json.id,
+      paneId: json.paneId
+    });
+  }
+
+  draw(
+    _ctx: CanvasRenderingContext2D,
+    _context: DrawingRenderContext
+  ): void {}
+
+  hitTest(
+    _point: DrawingPoint,
+    _context: DrawingHitTestContext
+  ): boolean {
+    return false;
   }
 }
 
@@ -568,6 +595,77 @@ describe("DrawingManager", () => {
 
     manager.onPointer(pointerEvent(chart, data[2], "down", { x: 520, y: 140 }));
     expect(manager.getDrawings()).toEqual([]);
+  });
+
+  it("creates the default two-anchor drawing with two clicks", () => {
+    const { chart, data } = createChart();
+    const manager = createManager(chart);
+    const created = vi.fn();
+    chart.on("drawing-create", created);
+
+    manager.onPointer(pointerEvent(chart, data[0], "down", { x: 120, y: 120 }));
+    manager.onPointer(pointerEvent(chart, data[0], "up", { x: 120, y: 120 }));
+
+    expect(manager.getDrawings()).toHaveLength(1);
+    expect(created).not.toHaveBeenCalled();
+
+    manager.onPointer(pointerEvent(chart, data[1], "move", { x: 360, y: 220 }));
+    manager.onPointer(pointerEvent(chart, data[1], "down", { x: 360, y: 220 }));
+    manager.onPointer(pointerEvent(chart, data[1], "up", { x: 360, y: 220 }));
+
+    const drawing = manager.getDrawings()[0]!;
+    expect(created).toHaveBeenCalledOnce();
+    expect(drawing.getAnchors()).toHaveLength(2);
+    expect(drawing.getAnchors()[0]).not.toEqual(drawing.getAnchors()[1]);
+  });
+
+  it("creates, cancels, and restores a three-anchor drawing", () => {
+    const { chart, container, data } = createChart();
+    const factory: DrawingFactoryDescriptor = {
+      anchorCount: 3,
+      create: ({ anchors, paneId }) =>
+        new TriangleDrawing({ anchors, paneId })
+    };
+    const manager = new DrawingManager({
+      drawingFactory: factory,
+      drawingDeserializers: {
+        [TriangleDrawing.type]: TriangleDrawing.fromJSON
+      }
+    });
+    chart.addPlugin(manager);
+    const created = vi.fn();
+    chart.on("drawing-create", created);
+    const click = (dataIndex: number, point: DrawingPoint) => {
+      manager.onPointer(pointerEvent(chart, data[dataIndex], "down", point));
+      manager.onPointer(pointerEvent(chart, data[dataIndex], "up", point));
+    };
+
+    click(0, { x: 120, y: 120 });
+    click(1, { x: 360, y: 220 });
+
+    expect(created).not.toHaveBeenCalled();
+    expect(manager.getDrawings()[0]?.getAnchors()).toHaveLength(3);
+    expect(keyDown(container, "Escape")).toBe(false);
+    expect(manager.getDrawings()).toEqual([]);
+
+    manager.setDrawingFactory(factory);
+    click(0, { x: 120, y: 120 });
+    click(1, { x: 360, y: 220 });
+    click(2, { x: 600, y: 160 });
+
+    expect(created).toHaveBeenCalledOnce();
+    expect(manager.getDrawings()[0]?.getAnchors()).toHaveLength(3);
+
+    const snapshot = manager.toJSON();
+    const restored = new DrawingManager({
+      drawingDeserializers: {
+        [TriangleDrawing.type]: TriangleDrawing.fromJSON
+      }
+    });
+    restored.fromJSON(snapshot);
+
+    expect(restored.toJSON()).toEqual(snapshot);
+    expect(restored.getDrawings()[0]).toBeInstanceOf(TriangleDrawing);
   });
 
   it.each(["pointercancel", "lostpointercapture"])(

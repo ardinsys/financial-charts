@@ -20,7 +20,21 @@ chart.addPlugin(manager);
 
 `drawingFactory` arms the next pointer-created drawing. After that drawing is
 finished, the manager clears the factory; call `setDrawingFactory()` again when
-the user selects another drawing tool.
+the user selects another drawing tool. Function factories use the default
+two-anchor protocol and support both drag-release and click-click placement.
+Use a `DrawingFactoryDescriptor` when a tool needs another fixed anchor count:
+
+```ts
+manager.setDrawingFactory({
+  anchorCount: 3,
+  create: ({ anchors, paneId }) => new TriangleDrawing({ anchors, paneId })
+});
+```
+
+Each click commits one anchor. A drag from the initial pointer-down commits the
+first two anchors together, preserving the built-in two-anchor gesture. Until
+the required count is reached, the drawing remains a preview and `Escape`
+cancels it without creating history or emitting `drawing-create`.
 
 ## Built-in drawings
 
@@ -82,7 +96,7 @@ the retained manager selection; reattachment publishes that selection again.
 | `deleteDrawing(drawing)` / `deleteSelected()` | Deletes with history and emits `drawing-delete`.                     |
 | `removeDrawingById(id, options?)`           | Reconciliation-oriented removal with opt-in event emission.            |
 | `clearDrawings(options?)`                   | Clears drawings, selection, interactions, and undo/redo history.       |
-| `setDrawingFactory(factory?)`               | Arms or clears the one-shot pointer creation factory.                  |
+| `setDrawingFactory(factory?)`               | Arms or clears a one-shot function factory or fixed-count descriptor.  |
 | `registerDrawingDeserializer(type, fn)`     | Registers a loader and returns an idempotent unregister function.      |
 
 `emit` on mutation options controls create/change/delete events and defaults to

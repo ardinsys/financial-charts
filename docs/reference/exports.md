@@ -52,7 +52,7 @@ definition from its declared built-in base and exposes the active complete
 | Exports | Reference |
 | --- | --- |
 | `Drawing`, `DrawingOptions`, `DrawingAnchor`, `DrawingJSON` | [Drawing base](/reference/drawings) |
-| `DrawingManager`, `DrawingManagerOptions`, `DrawingManagerJSON`, `DrawingFactory`, `DrawingDeserializer`, `DrawingMutationOptions`, `DrawingSelectionOptions` | [DrawingManager](/reference/drawings#manager-state-and-attachment) |
+| `DrawingManager`, `DrawingManagerOptions`, `DrawingManagerJSON`, `DrawingFactory`, `DrawingFactoryDescriptor`, `DrawingCreationFactory`, `DrawingDeserializer`, `DrawingMutationOptions`, `DrawingSelectionOptions` | [DrawingManager](/reference/drawings#manager-state-and-attachment) |
 | `TrendLine`, `TrendLineOptions`, `HorizontalLine`, `HorizontalLineOptions`, `RectangleDrawing`, `RectangleDrawingOptions`, `TextDrawing`, `TextDrawingOptions` | [Built-in drawings](/reference/drawings#built-in-drawings) |
 | `DrawingFinishedEvent`, `DrawingFinishedOperation`, `DrawingSelectionEvent` | [Drawing events](/reference/drawings#events) |
 | `PriceAxisAnnotation`, `PriceAxisAnnotationOffscreenBehavior` | [Price-axis annotations](/reference/plugins#price-axis-annotations) |

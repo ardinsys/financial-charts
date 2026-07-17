@@ -23,6 +23,17 @@ export type DrawingFactory = (options: {
   readonly paneId: number;
 }) => Drawing;
 
+export interface DrawingFactoryDescriptor {
+  /** Fixed number of anchors required before the preview is finalized. */
+  readonly anchorCount: number;
+  /** Creates the preview with `anchorCount` initialized anchors. */
+  readonly create: DrawingFactory;
+}
+
+export type DrawingCreationFactory =
+  | DrawingFactory
+  | DrawingFactoryDescriptor;
+
 export type DrawingDeserializer = (json: DrawingJSON) => Drawing;
 
 export interface DrawingManagerJSON {
@@ -34,7 +45,7 @@ export interface DrawingManagerOptions {
   readonly drawingDeserializers?: Readonly<
     Record<string, DrawingDeserializer>
   >;
-  readonly drawingFactory?: DrawingFactory;
+  readonly drawingFactory?: DrawingCreationFactory;
   readonly hitTestTolerance?: number;
 }
 
@@ -49,7 +60,11 @@ type Interaction =
   | {
       type: "creating";
       drawing: Drawing;
-      start: DrawingAnchor;
+      anchorCount: number;
+      placedAnchorCount: number;
+      pointerActive: boolean;
+      commitOnUp: boolean;
+      pointerStart: DrawingAnchor;
       pane: Pane;
     }
   | {
@@ -109,7 +124,7 @@ export class DrawingManager implements ChartPlugin {
   private drawings: readonly Drawing[] = [];
   private selectedDrawing?: Drawing;
   private interaction?: Interaction;
-  private drawingFactory?: DrawingFactory;
+  private drawingFactory?: DrawingFactoryDescriptor;
   private drawingDeserializers: Map<string, DrawingDeserializer>;
   private hitTestTolerance: number;
   private undoStack: DrawingHistoryEntry[] = [];
@@ -120,7 +135,7 @@ export class DrawingManager implements ChartPlugin {
   private previousKeyboardOutline?: string;
 
   constructor(options: DrawingManagerOptions = {}) {
-    this.drawingFactory = options.drawingFactory;
+    this.setDrawingFactory(options.drawingFactory);
     this.drawingDeserializers = new Map(
       Object.entries(builtInDrawingDeserializers)
     );
@@ -143,8 +158,10 @@ export class DrawingManager implements ChartPlugin {
     }
   }
 
-  setDrawingFactory(factory?: DrawingFactory) {
-    this.drawingFactory = factory;
+  setDrawingFactory(factory?: DrawingCreationFactory) {
+    this.drawingFactory = factory
+      ? normalizeDrawingFactory(factory)
+      : undefined;
   }
 
   /** Registers a serialized drawing type and returns an idempotent disposer. */
@@ -453,8 +470,12 @@ export class DrawingManager implements ChartPlugin {
 
     if (event.type === "down") {
       if (!this.isPrimaryPointer(event)) return false;
-      const panePoint = this.toPanePoint(event, event.pane);
-      const anchor = anchorFromPoint(panePoint, event.pane);
+      const pane =
+        this.interaction?.type === "creating"
+          ? this.interaction.pane
+          : event.pane;
+      const panePoint = this.toPanePoint(event, pane);
+      const anchor = anchorFromPoint(panePoint, pane);
       return this.pointerDown(event, panePoint, anchor);
     } else if (event.type === "move") {
       const pane = this.interaction?.pane ?? event.pane;
@@ -463,8 +484,9 @@ export class DrawingManager implements ChartPlugin {
       this.pointerMove(anchor);
       return this.interaction !== undefined;
     } else {
+      const handled = this.interaction !== undefined;
       this.pointerUp();
-      return this.interaction !== undefined;
+      return handled;
     }
   }
 
@@ -506,7 +528,11 @@ export class DrawingManager implements ChartPlugin {
       this.addedKeyboardTabIndex = false;
     }
     this.keyboardHost = undefined;
-    this.interaction = undefined;
+    if (this.interaction?.type === "creating") {
+      this.discardCreation(this.interaction, false);
+    } else {
+      this.interaction = undefined;
+    }
     if (this.selectedDrawing) {
       this.emitDrawingSelection(undefined);
     }
@@ -531,6 +557,14 @@ export class DrawingManager implements ChartPlugin {
     anchor: DrawingAnchor
   ) {
     this.focusKeyboardHost();
+
+    if (this.interaction?.type === "creating") {
+      this.interaction.pointerActive = true;
+      this.interaction.commitOnUp = true;
+      this.interaction.pointerStart = anchor;
+      this.updateCreationPreview(this.interaction, anchor);
+      return true;
+    }
 
     const selectedAnchor = this.hitTestSelectedAnchor(panePoint, event.pane);
     if (selectedAnchor) {
@@ -562,8 +596,9 @@ export class DrawingManager implements ChartPlugin {
       return false;
     }
 
-    const drawing = this.drawingFactory({
-      anchors: [anchor, anchor],
+    const { anchorCount, create } = this.drawingFactory;
+    const drawing = create({
+      anchors: Array.from({ length: anchorCount }, () => anchor),
       paneId: event.pane.getId()
     });
     this.assertDrawingType(drawing.type);
@@ -572,7 +607,11 @@ export class DrawingManager implements ChartPlugin {
     this.interaction = {
       type: "creating",
       drawing,
-      start: anchor,
+      anchorCount,
+      placedAnchorCount: 1,
+      pointerActive: true,
+      commitOnUp: false,
+      pointerStart: anchor,
       pane: event.pane
     };
     this.ctx?.requestRedraw("drawings");
@@ -583,11 +622,13 @@ export class DrawingManager implements ChartPlugin {
     if (!this.interaction) return;
 
     if (this.interaction.type === "creating") {
-      this.interaction.drawing.setAnchors([this.interaction.start, anchor]);
-      this.ctx?.emit("drawing-change", {
-        drawing: this.interaction.drawing
-      });
-      this.ctx?.requestRedraw("drawings");
+      if (
+        this.interaction.pointerActive &&
+        !sameAnchor(this.interaction.pointerStart, anchor)
+      ) {
+        this.interaction.commitOnUp = true;
+      }
+      this.updateCreationPreview(this.interaction, anchor);
       return;
     }
 
@@ -620,18 +661,21 @@ export class DrawingManager implements ChartPlugin {
     if (!this.interaction) return;
 
     if (this.interaction.type === "creating") {
-      const drawing = this.interaction.drawing;
-      const index = this.drawings.indexOf(drawing);
-      if (index !== -1) {
-        this.recordHistory({ type: "create", drawing, index });
+      const creation = this.interaction;
+      if (!creation.pointerActive) return;
+      creation.pointerActive = false;
+
+      if (creation.anchorCount === 1) {
+        this.finishCreation(creation);
+        return;
       }
-      this.ctx?.emit("drawing-create", {
-        drawing
-      });
-      this.interaction = undefined;
-      this.setDrawingFactory(undefined);
-      this.emitDrawingFinished(drawing, "create");
-      this.selectDrawing(drawing, { force: true });
+      if (!creation.commitOnUp) return;
+
+      creation.placedAnchorCount += 1;
+      creation.commitOnUp = false;
+      if (creation.placedAnchorCount >= creation.anchorCount) {
+        this.finishCreation(creation);
+      }
       return;
     }
 
@@ -643,6 +687,38 @@ export class DrawingManager implements ChartPlugin {
       this.emitDrawingFinished(drawing, "move");
     }
     this.interaction = undefined;
+  }
+
+  private updateCreationPreview(
+    creation: Extract<Interaction, { type: "creating" }>,
+    anchor: DrawingAnchor
+  ) {
+    const anchors = [...creation.drawing.getAnchors()];
+    for (
+      let index = creation.placedAnchorCount;
+      index < creation.anchorCount;
+      index++
+    ) {
+      anchors[index] = anchor;
+    }
+    creation.drawing.setAnchors(anchors);
+    this.ctx?.emit("drawing-change", { drawing: creation.drawing });
+    this.ctx?.requestRedraw("drawings");
+  }
+
+  private finishCreation(
+    creation: Extract<Interaction, { type: "creating" }>
+  ) {
+    const drawing = creation.drawing;
+    const index = this.drawings.indexOf(drawing);
+    if (index !== -1) {
+      this.recordHistory({ type: "create", drawing, index });
+    }
+    this.ctx?.emit("drawing-create", { drawing });
+    this.interaction = undefined;
+    this.setDrawingFactory(undefined);
+    this.emitDrawingFinished(drawing, "create");
+    this.selectDrawing(drawing, { force: true });
   }
 
   private emitDrawingFinished(drawing: Drawing, operation: "create" | "move") {
@@ -737,12 +813,20 @@ export class DrawingManager implements ChartPlugin {
   private cancelCreation(): boolean {
     if (this.interaction?.type !== "creating") return false;
 
-    const drawing = this.interaction.drawing;
-    this.interaction = undefined;
-    this.drawings = this.drawings.filter((candidate) => candidate !== drawing);
-    this.setDrawingFactory(undefined);
-    this.ctx?.requestRedraw("drawings");
+    this.discardCreation(this.interaction, true);
     return true;
+  }
+
+  private discardCreation(
+    creation: Extract<Interaction, { type: "creating" }>,
+    clearFactory: boolean
+  ) {
+    this.interaction = undefined;
+    this.drawings = this.drawings.filter(
+      (candidate) => candidate !== creation.drawing
+    );
+    if (clearFactory) this.setDrawingFactory(undefined);
+    this.ctx?.requestRedraw("drawings");
   }
 
   private isEditableTarget(target: EventTarget | null) {
@@ -825,4 +909,26 @@ export class DrawingManager implements ChartPlugin {
     }
     return this.ctx;
   }
+}
+
+function normalizeDrawingFactory(
+  factory: DrawingCreationFactory
+): DrawingFactoryDescriptor {
+  const descriptor =
+    typeof factory === "function"
+      ? { anchorCount: 2, create: factory }
+      : factory;
+  if (typeof descriptor.create !== "function") {
+    throw new TypeError("Drawing factory create must be a function.");
+  }
+  if (!Number.isInteger(descriptor.anchorCount) || descriptor.anchorCount < 1) {
+    throw new RangeError(
+      "Drawing factory anchorCount must be a positive integer."
+    );
+  }
+  return descriptor;
+}
+
+function sameAnchor(left: DrawingAnchor, right: DrawingAnchor) {
+  return left.index === right.index && left.price === right.price;
 }

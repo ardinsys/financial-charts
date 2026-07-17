@@ -50,8 +50,10 @@ export {
 } from "./drawings/drawing";
 export {
   DrawingManager,
+  type DrawingCreationFactory,
   type DrawingDeserializer,
   type DrawingFactory,
+  type DrawingFactoryDescriptor,
   type DrawingManagerJSON,
   type DrawingManagerOptions,
   type DrawingMutationOptions,
