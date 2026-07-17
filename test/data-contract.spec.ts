@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ControllerType } from "../src/chart/financial-chart";
+import { AreaController } from "../src/controllers/area-controller";
 import { CandlestickController } from "../src/controllers/candle-controller";
 import { HLCAreaController } from "../src/controllers/hlc-area-controller";
 import { LineController } from "../src/controllers/line-controller";
@@ -26,7 +27,12 @@ function createChart(type: ControllerType) {
   const chart = new FinancialChart(container, {
     timeRange: "auto",
     type,
-    controllers: [LineController, CandlestickController, HLCAreaController],
+    controllers: [
+      LineController,
+      AreaController,
+      CandlestickController,
+      HLCAreaController
+    ],
     includeDefaultControllers: false,
     stepSize: 60_000,
     maxZoom: 10,
@@ -100,6 +106,22 @@ describe("chart data contracts", () => {
     ]);
 
     expect(() => requestChartRedraw(chart, "series", true)).not.toThrow();
+  });
+
+  it("reuses area gradients while the theme and canvas height are unchanged", () => {
+    const chart = createChart("area");
+    const start = Date.UTC(2024, 0, 1, 9);
+    chart.setData([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 12 }
+    ]);
+    const context = getChartContext(chart, "main");
+    vi.mocked(context.createLinearGradient).mockClear();
+
+    requestChartRedraw(chart, "series", true);
+    requestChartRedraw(chart, "series", true);
+
+    expect(context.createLinearGradient).toHaveBeenCalledOnce();
   });
 
   it("rejects older streaming timestamps without changing data", () => {

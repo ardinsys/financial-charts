@@ -34,7 +34,8 @@ export class HLCAreaController extends OHLCController {
     const {
       canvasContext: ctx,
       visibleData,
-      projectTime,
+      visibleStartIndex,
+      projectIndex,
       projectPrice
     } = this.context.getDrawingContext();
     if (visibleData.length === 0) return;
@@ -70,11 +71,11 @@ export class HLCAreaController extends OHLCController {
         continue;
 
       const high = {
-        x: projectTime(point.time),
+        x: projectIndex(visibleStartIndex + i),
         y: projectPrice(point.high!)
       };
       const low = {
-        x: projectTime(point.time),
+        x: projectIndex(visibleStartIndex + i),
         y: projectPrice(point.low!)
       };
 
@@ -104,7 +105,7 @@ export class HLCAreaController extends OHLCController {
         continue;
 
       const close = {
-        x: projectTime(point.time),
+        x: projectIndex(visibleStartIndex + i),
         y: projectPrice(point.close!)
       };
 

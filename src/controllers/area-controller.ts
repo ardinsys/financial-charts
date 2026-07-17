@@ -2,14 +2,19 @@ import { SimpleController } from "./controller";
 
 export class AreaController extends SimpleController {
   static ID = "area";
+  private gradient?: CanvasGradient;
+  private gradientContext?: CanvasRenderingContext2D;
+  private gradientHeight?: number;
+  private gradientStops?: readonly (readonly [number, string])[];
 
   draw(): void {
     const {
       canvasContext: ctx,
       logicalSize,
       visibleData,
+      visibleStartIndex,
       timeRange,
-      projectTime,
+      projectIndex,
       projectPrice
     } = this.context.getDrawingContext();
 
@@ -28,7 +33,7 @@ export class AreaController extends SimpleController {
 
       if (point.close == undefined) continue;
 
-      const x = projectTime(point.time);
+      const x = projectIndex(visibleStartIndex + i);
       const y = projectPrice(point.close!);
 
       if (firstPoint) {
@@ -52,12 +57,35 @@ export class AreaController extends SimpleController {
     if (typeof this.options.theme.area.fill === "string") {
       ctx.fillStyle = this.options.theme.area.fill;
     } else {
-      const gradient = ctx.createLinearGradient(0, 0, 0, logicalSize.height);
-      for (const stop of this.options.theme.area.fill) {
-        gradient.addColorStop(stop[0], stop[1]);
-      }
-      ctx.fillStyle = gradient;
+      ctx.fillStyle = this.getGradient(
+        ctx,
+        logicalSize.height,
+        this.options.theme.area.fill
+      );
     }
     ctx.fill(linePath);
+  }
+
+  private getGradient(
+    ctx: CanvasRenderingContext2D,
+    height: number,
+    stops: readonly (readonly [number, string])[]
+  ): CanvasGradient {
+    if (
+      this.gradient &&
+      this.gradientContext === ctx &&
+      this.gradientHeight === height &&
+      this.gradientStops === stops
+    ) {
+      return this.gradient;
+    }
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    for (const [offset, color] of stops) gradient.addColorStop(offset, color);
+    this.gradient = gradient;
+    this.gradientContext = ctx;
+    this.gradientHeight = height;
+    this.gradientStops = stops;
+    return gradient;
   }
 }

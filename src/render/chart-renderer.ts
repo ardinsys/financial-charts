@@ -1,7 +1,12 @@
 import type { PriceAxisAnnotation } from "../annotations/price-axis-annotation";
 import { renderPriceAxisAnnotations } from "../annotations/price-axis-annotation";
 import type { ResolvedChartOptions } from "../chart/chart-options";
-import type { ChartData, ChartDataValueKey, TimeRange } from "../chart/types";
+import type {
+  AxisLabel,
+  ChartData,
+  ChartDataValueKey,
+  TimeRange
+} from "../chart/types";
 import type {
   ChartController,
   ChartControllerDrawingContext
@@ -88,6 +93,15 @@ interface XAxisLabelCache {
   readonly labels: readonly XAxisLabel[];
 }
 
+interface YAxisLabelCache {
+  readonly yMin: number;
+  readonly yMax: number;
+  readonly height: number;
+  readonly fontSize: number;
+  readonly labelSpacing: number;
+  readonly labels: readonly AxisLabel[];
+}
+
 interface ObservedSize {
   readonly width: number;
   readonly height: number;
@@ -138,12 +152,15 @@ export class ChartRenderer {
   private devicePixelRatio = pixelRatio();
   private lastXGridCoords: readonly number[] = [];
   private xAxisLabelCache?: XAxisLabelCache;
+  private yAxisLabelCache?: YAxisLabelCache;
+  private layout?: ChartRendererLayout;
 
   constructor(
     private readonly container: HTMLElement,
     private readonly model: ChartRenderModel,
     private readonly options: ChartRendererOptions
   ) {
+    this.layout = this.options.getLayout();
     for (const layer of canvasLayers) this.getOwnedCanvas(layer);
     this.configurePipeline();
     this.disposeWindowResize = bindEvent(window, "resize", () => {
@@ -190,14 +207,17 @@ export class ChartRenderer {
     const canvasContext = this.getContext("main");
     const scaleOptions = { canvas: canvasContext.canvas };
     const timeScale = this.model.getTimeScale();
+    const visibleRange = this.model.getVisibleIndexRange();
+    const visibleStartIndex = Math.max(0, Math.floor(visibleRange.from - 1));
     const priceScale = this.model.getVisibleScale().getPriceScale();
     return {
       canvasContext,
       logicalSize: this.getLogicalSize("main"),
       visibleData: this.model.getVisibleData(),
+      visibleStartIndex,
       timeRange: this.model.getTimeRange(),
       pixelsPerBar: this.model.getPixelsPerBar(),
-      projectTime: (time) => timeScale.project(time, scaleOptions),
+      projectIndex: (index) => timeScale.projectIndex(index, scaleOptions),
       projectPrice: (price) => priceScale.project(price, scaleOptions)
     };
   }
@@ -208,11 +228,14 @@ export class ChartRenderer {
 
   resetDerivedState(): void {
     this.lastXGridCoords = [];
+    this.yAxisLabelCache = undefined;
   }
 
   resizeCanvases(): void {
+    const layout = this.options.getLayout();
+    this.layout = layout;
     for (const [layer, canvas] of this.canvases) {
-      this.resizeCanvas(layer, canvas);
+      this.resizeCanvas(layer, canvas, layout);
     }
   }
 
@@ -250,13 +273,38 @@ export class ChartRenderer {
   private calculateYAxisLabels(labelSpacing: number) {
     const options = this.model.getOptions();
     const scale = this.model.getVisibleScale();
-    return calculatePriceYAxisLabels({
-      yMin: scale.getYMin(),
-      yMax: scale.getYMax(),
-      canvasHeight: this.getLogicalSize("y-label").height,
-      fontSize: options.theme.yAxis.fontSize,
+    const yMin = scale.getYMin();
+    const yMax = scale.getYMax();
+    const height = this.getLogicalSize("y-label").height;
+    const fontSize = options.theme.yAxis.fontSize;
+    const cached = this.yAxisLabelCache;
+    if (
+      cached &&
+      cached.yMin === yMin &&
+      cached.yMax === yMax &&
+      cached.height === height &&
+      cached.fontSize === fontSize &&
+      cached.labelSpacing === labelSpacing
+    ) {
+      return cached.labels;
+    }
+
+    const labels = calculatePriceYAxisLabels({
+      yMin,
+      yMax,
+      canvasHeight: height,
+      fontSize,
       labelSpacing
     });
+    this.yAxisLabelCache = {
+      yMin,
+      yMax,
+      height,
+      fontSize,
+      labelSpacing,
+      labels
+    };
+    return labels;
   }
 
   estimatePriceLabelDecimalPlaces(labelSpacing: number): number {
@@ -425,12 +473,21 @@ export class ChartRenderer {
       canvas: ctx.canvas,
       barAlignment: "edge" as const
     };
+    const visibleData = this.model.getVisibleData();
+    const visibleStartIndex = Math.max(
+      0,
+      Math.floor(this.model.getVisibleIndexRange().from - 1)
+    );
 
     ctx.lineWidth = Math.min(1, width / 5);
-    for (const point of this.model.getVisibleData()) {
+    for (let index = 0; index < visibleData.length; index++) {
+      const point = visibleData[index];
       if (point.time < timeRange.start) continue;
       if (point.time > timeRange.end) break;
-      const x = timeScale.project(point.time, scaleOptions);
+      const x = timeScale.projectIndex(
+        visibleStartIndex + index,
+        scaleOptions
+      );
       const height = volumeScale.projectVolume(point.volume!, scaleOptions);
       ctx.beginPath();
       ctx.fillStyle =
@@ -484,7 +541,7 @@ export class ChartRenderer {
 
     const state = this.model.getCrosshairState();
     if (!state || !this.model.shouldDrawCrosshair()) return;
-    const layout = this.options.getLayout();
+    const layout = this.layout!;
     if (state.y >= layout.paneLayoutHeight) return;
 
     const options = this.model.getOptions();
@@ -676,7 +733,7 @@ export class ChartRenderer {
     if (layer === "crosshair") canvas.style.touchAction = "pan-x";
     this.container.appendChild(canvas);
     this.canvases.set(layer, canvas);
-    this.resizeCanvas(layer, canvas);
+    this.resizeCanvas(layer, canvas, this.layout!);
     return canvas;
   }
 
@@ -701,9 +758,9 @@ export class ChartRenderer {
 
   private resizeCanvas(
     layer: ChartOwnedCanvasLayer,
-    canvas: HTMLCanvasElement
+    canvas: HTMLCanvasElement,
+    layout: ChartRendererLayout
   ): void {
-    const layout = this.options.getLayout();
     let width = layout.plotWidth;
     let height = layout.plotHeight;
     let right: number | undefined;

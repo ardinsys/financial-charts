@@ -7,9 +7,10 @@ export interface ChartControllerDrawingContext {
   readonly canvasContext: CanvasRenderingContext2D;
   readonly logicalSize: Readonly<{ width: number; height: number }>;
   readonly visibleData: readonly ChartData[];
+  readonly visibleStartIndex: number;
   readonly timeRange: TimeRange;
   readonly pixelsPerBar: number;
-  projectTime(time: number): number;
+  projectIndex(index: number): number;
   projectPrice(price: number): number;
 }
 

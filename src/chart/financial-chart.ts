@@ -115,6 +115,8 @@ export class FinancialChartBase {
 
   protected yLabelWidth = 80;
   protected xLabelHeight = 30;
+  private containerWidth = 0;
+  private containerHeight = 0;
 
   private get options(): MutableResolvedChartOptions {
     return this.optionsState.getResolved();
@@ -385,6 +387,8 @@ export class FinancialChartBase {
   }
 
   private applyPaneHeights(heights: PaneHeightsInput): void {
+    this.containerWidth = this.container.offsetWidth;
+    this.containerHeight = this.container.offsetHeight;
     this.paneLayout.setPaneHeights(heights, this.getPaneLayoutHeight());
     this.applyPaneLayout({ redraw: true, immediate: true });
   }
@@ -417,7 +421,7 @@ export class FinancialChartBase {
   }
 
   private getPaneLayoutHeight() {
-    return Math.max(0, this.container.offsetHeight - this.xLabelHeight);
+    return Math.max(0, this.containerHeight - this.xLabelHeight);
   }
 
   private applyPaneLayout({
@@ -431,11 +435,13 @@ export class FinancialChartBase {
     redraw?: boolean;
     immediate?: boolean;
   } = {}) {
+    this.containerWidth = this.container.offsetWidth;
+    this.containerHeight = this.container.offsetHeight;
     this.paneLayout.applyGeometry({
-      width: Math.max(0, this.container.offsetWidth - this.yLabelWidth),
+      width: Math.max(0, this.containerWidth - this.yLabelWidth),
       height: this.getPaneLayoutHeight(),
       yAxisWidth: this.yLabelWidth,
-      containerWidth: this.container.offsetWidth,
+      containerWidth: this.containerWidth,
       themeKey: this.options.theme.key
     });
 
@@ -481,6 +487,8 @@ export class FinancialChartBase {
       `financial-charts-${this.options.theme.key}`
     );
     container.appendChild(this.container);
+    this.containerWidth = this.container.offsetWidth;
+    this.containerHeight = this.container.offsetHeight;
     this.paneLayout = new PaneLayout(this.container, domAdapter, {
       mainPaneMinHeight: 80,
       indicatorPaneMinHeight: 50,
@@ -543,8 +551,8 @@ export class FinancialChartBase {
             paneLayoutHeight: this.getPaneLayoutHeight(),
             yAxisWidth: yAxisRegion.width,
             yAxisHeight: yAxisRegion.height,
-            fullWidth: this.container.offsetWidth,
-            fullHeight: this.container.offsetHeight,
+            fullWidth: this.containerWidth,
+            fullHeight: this.containerHeight,
             xAxisHeight: this.xLabelHeight
           };
         },
@@ -630,7 +638,7 @@ export class FinancialChartBase {
           this.controller.getTimeFromRawDataPoint(point),
         getMainCanvas: () => this.renderer.getCanvas("main"),
         getDrawingWidth: () => this.renderer.getDrawingSize().width,
-        getPlotHeight: () => this.container.offsetHeight - this.xLabelHeight,
+        getPlotHeight: () => this.getPaneLayoutHeight(),
         getTimeAnchorAlignment: () => this.controller.getTimeAnchorAlignment()
       }
     );
@@ -659,7 +667,6 @@ export class FinancialChartBase {
         touchClick: (event, point) =>
           this.events.emit("touch-click", { event, point })
       },
-      this.container,
       topCanvas
     );
     this.stateController = new ChartStateController(
@@ -798,6 +805,7 @@ export class FinancialChartBase {
   }
 
   private handleRendererResize(): void {
+    this.interactionController.invalidateBounds();
     this.applyPaneLayout();
     this.indicatorLabelContainer.style.maxHeight =
       this.renderer.getLogicalSize("main").height -
@@ -1242,7 +1250,6 @@ export class FinancialChartBase {
   }
 
   private recalculateVisibleScale() {
-    this.refreshIndexBounds();
     const visibleTimeRange = this.getVisibleTimeRange();
     const modifiers: ScaleRangeModifier[] = [];
 

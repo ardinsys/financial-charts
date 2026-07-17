@@ -10,12 +10,17 @@ export class HollowCandleController extends OHLCController {
       canvasContext: ctx,
       pixelsPerBar,
       visibleData,
-      projectTime,
+      visibleStartIndex,
+      projectIndex,
       projectPrice
     } = this.context.getDrawingContext();
 
     const candleSpacing = pixelsPerBar * this.spacing;
     const candleWidth = pixelsPerBar - candleSpacing;
+    const upWicks = new Path2D();
+    const downWicks = new Path2D();
+    const upBodies = new Path2D();
+    const downBodies = new Path2D();
 
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 
@@ -27,52 +32,38 @@ export class HollowCandleController extends OHLCController {
       if (point.high == undefined) continue;
       if (point.low == undefined) continue;
 
-      const x = projectTime(point.time);
+      const x = projectIndex(visibleStartIndex + i);
       const high = projectPrice(point.high!);
       const low = projectPrice(point.low!);
       const open = projectPrice(point.open!);
       const close = projectPrice(point.close!);
 
       const isHollow = point.close! > point.open!;
-      const bodyColor = isHollow
-        ? this.options.theme.candle.upColor
-        : this.options.theme.candle.downColor;
-
       const wickX = x + (candleWidth / 2 + candleSpacing / 2);
       const topWickY = Math.min(open, close);
       const bottomWickY = Math.max(open, close);
+      const wickPath = isHollow ? upWicks : downWicks;
+      const bodyPath = isHollow ? upBodies : downBodies;
 
-      ctx.beginPath();
-      ctx.strokeStyle = isHollow
-        ? this.options.theme.candle.upWickColor
-        : this.options.theme.candle.downWickColor;
-
-      ctx.moveTo(wickX, high);
-      ctx.lineTo(wickX, topWickY);
-      ctx.moveTo(wickX, low);
-      ctx.lineTo(wickX, bottomWickY);
-      ctx.stroke();
-
-      ctx.beginPath();
-      if (isHollow) {
-        ctx.strokeStyle = bodyColor;
-        ctx.rect(
-          x + candleSpacing / 2,
-          topWickY,
-          candleWidth,
-          bottomWickY - topWickY
-        );
-        ctx.stroke();
-      } else {
-        ctx.fillStyle = bodyColor;
-        ctx.rect(
-          x + candleSpacing / 2,
-          topWickY,
-          candleWidth,
-          bottomWickY - topWickY
-        );
-        ctx.fill();
-      }
+      wickPath.moveTo(wickX, high);
+      wickPath.lineTo(wickX, topWickY);
+      wickPath.moveTo(wickX, low);
+      wickPath.lineTo(wickX, bottomWickY);
+      bodyPath.rect(
+        x + candleSpacing / 2,
+        topWickY,
+        candleWidth,
+        bottomWickY - topWickY
+      );
     }
+
+    ctx.strokeStyle = this.options.theme.candle.upWickColor;
+    ctx.stroke(upWicks);
+    ctx.strokeStyle = this.options.theme.candle.downWickColor;
+    ctx.stroke(downWicks);
+    ctx.strokeStyle = this.options.theme.candle.upColor;
+    ctx.stroke(upBodies);
+    ctx.fillStyle = this.options.theme.candle.downColor;
+    ctx.fill(downBodies);
   }
 }

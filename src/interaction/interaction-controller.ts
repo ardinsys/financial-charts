@@ -45,12 +45,12 @@ export class InteractionController {
   private isTouchCrosshair = false;
   private touchCrosshairTimeout?: ReturnType<typeof setTimeout>;
   private activePointerId?: number;
+  private canvasRect?: DOMRect;
   private readonly disposers: Array<() => void> = [];
   private disposed = false;
 
   constructor(
     private readonly host: InteractionHost,
-    private readonly container: HTMLElement,
     private readonly canvas: HTMLCanvasElement
   ) {
     this.disposers.push(
@@ -65,9 +65,18 @@ export class InteractionController {
       bindEvent(canvas, "touchend", this.onTouchEnd, { passive: false }),
       bindEvent(canvas, "touchmove", this.onTouchMove, { passive: false }),
       bindEvent(canvas, "contextmenu", (event) => event.preventDefault()),
-      bindEvent(canvas, "pointerleave", this.onPointerLeave)
+      bindEvent(canvas, "pointerleave", this.onPointerLeave),
+      bindEvent(window, "resize", this.invalidateBounds),
+      bindEvent(window, "scroll", this.invalidateBounds, {
+        capture: true,
+        passive: true
+      })
     );
   }
+
+  invalidateBounds = (): void => {
+    this.canvasRect = undefined;
+  };
 
   getCrosshairState(): ChartCrosshairState | undefined {
     return this.crosshair?.state;
@@ -244,7 +253,7 @@ export class InteractionController {
     if (!this.hasData()) return;
     event.preventDefault();
     const zoomFactor = event.deltaY < 0 ? 1.1 : 0.9;
-    const offsetX = event.clientX - this.container.getBoundingClientRect().left;
+    const offsetX = this.getCanvasPoint(event.clientX, event.clientY).x;
     this.host.zoomAtPixel(zoomFactor, offsetX);
   };
 
@@ -321,7 +330,7 @@ export class InteractionController {
       if (this.isTouchCrosshair) return;
       event.preventDefault();
       const distance = touchDistance(event.touches);
-      const rect = this.canvas.getBoundingClientRect();
+      const rect = this.getCanvasRect();
       const offsetX =
         (event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left;
       this.host.zoomAtPixel(distance / this.lastTouchDistance, offsetX);
@@ -365,8 +374,12 @@ export class InteractionController {
   }
 
   private getCanvasPoint(clientX: number, clientY: number) {
-    const rect = this.canvas.getBoundingClientRect();
+    const rect = this.getCanvasRect();
     return { x: clientX - rect.left, y: clientY - rect.top };
+  }
+
+  private getCanvasRect(): DOMRect {
+    return (this.canvasRect ??= this.canvas.getBoundingClientRect());
   }
 
   private cancelTouchCrosshairTimeout(): void {

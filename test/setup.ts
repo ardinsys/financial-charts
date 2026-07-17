@@ -14,6 +14,26 @@ class CanvasGradientMock implements CanvasGradient {
   addColorStop = vi.fn();
 }
 
+class Path2DMock implements Path2D {
+  addPath = vi.fn();
+  closePath = vi.fn();
+  lineTo = vi.fn();
+  moveTo = vi.fn();
+  rect = vi.fn();
+  arc = vi.fn();
+  arcTo = vi.fn();
+  bezierCurveTo = vi.fn();
+  ellipse = vi.fn();
+  quadraticCurveTo = vi.fn();
+  roundRect = vi.fn();
+}
+
+Object.defineProperty(globalThis, "Path2D", {
+  configurable: true,
+  writable: true,
+  value: Path2DMock
+});
+
 const createCanvasContext = (
   canvas: HTMLCanvasElement
 ): Partial<CanvasRenderingContext2D> => ({

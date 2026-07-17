@@ -7,7 +7,8 @@ export class LineController extends SimpleController {
     const {
       canvasContext: ctx,
       visibleData,
-      projectTime,
+      visibleStartIndex,
+      projectIndex,
       projectPrice
     } = this.context.getDrawingContext();
 
@@ -23,7 +24,7 @@ export class LineController extends SimpleController {
 
       if (point.close == undefined) continue;
 
-      const x = projectTime(point.time);
+      const x = projectIndex(visibleStartIndex + i);
       const y = projectPrice(point.close!);
 
       if (firstPoint) {

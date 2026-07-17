@@ -60,7 +60,9 @@ describe("visible range contracts", () => {
     const onVisibleRangeChange = vi.fn();
     chart.on("visible-range-change", onVisibleRangeChange);
     const requestRedraw = vi.spyOn(getChartRenderer(chart), "requestRedraw");
-    const fullRangeMax = getChartModel(chart).getVisibleScale().getYMax();
+    const model = getChartModel(chart);
+    const refreshIndexBounds = vi.spyOn(model, "refreshIndexBounds");
+    const fullRangeMax = model.getVisibleScale().getYMax();
 
     chart.setVisibleLogicalRange({ from: 0, to: 3 });
 
@@ -88,12 +90,53 @@ describe("visible range contracts", () => {
       ],
       false
     );
+    expect(refreshIndexBounds).not.toHaveBeenCalled();
 
     chart.setVisibleLogicalRange({ from: 0, to: 3 });
 
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
     expect(onVisibleRangeChange).toHaveBeenCalledOnce();
     expect(requestRedraw).toHaveBeenCalledOnce();
+  });
+
+  it("reuses axis labels and pointer bounds until their inputs change", () => {
+    const { chart } = createChart();
+    const renderer = getChartRenderer(chart) as unknown as {
+      calculateYAxisLabels(spacing: number): readonly unknown[];
+    };
+    const firstLabels = renderer.calculateYAxisLabels(30);
+    expect(renderer.calculateYAxisLabels(30)).toBe(firstLabels);
+
+    chart.setVisibleLogicalRange({ from: 0, to: 3 });
+    expect(renderer.calculateYAxisLabels(30)).not.toBe(firstLabels);
+
+    const canvas = getChartContext(chart, "crosshair").canvas;
+    const getBounds = vi.spyOn(canvas, "getBoundingClientRect");
+    canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        clientX: 100,
+        clientY: 100,
+        bubbles: true
+      })
+    );
+    canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        clientX: 120,
+        clientY: 100,
+        bubbles: true
+      })
+    );
+    expect(getBounds).toHaveBeenCalledOnce();
+
+    window.dispatchEvent(new Event("scroll"));
+    canvas.dispatchEvent(
+      new MouseEvent("mousemove", {
+        clientX: 140,
+        clientY: 100,
+        bubbles: true
+      })
+    );
+    expect(getBounds).toHaveBeenCalledTimes(2);
   });
 
   it("defines rounded ranges and precise fractional windows", () => {

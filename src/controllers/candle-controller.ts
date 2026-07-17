@@ -10,12 +10,15 @@ export class CandlestickController extends OHLCController {
       canvasContext: ctx,
       pixelsPerBar,
       visibleData,
-      projectTime,
+      visibleStartIndex,
+      projectIndex,
       projectPrice
     } = this.context.getDrawingContext();
 
     const candleSpacing = pixelsPerBar * this.spacing;
     const candleWidth = pixelsPerBar - candleSpacing;
+    const upPath = new Path2D();
+    const downPath = new Path2D();
 
     ctx.lineWidth = Math.min(1, candleWidth / 5);
 
@@ -27,33 +30,32 @@ export class CandlestickController extends OHLCController {
       if (point.high == undefined) continue;
       if (point.low == undefined) continue;
 
-      const x = projectTime(point.time);
+      const x = projectIndex(visibleStartIndex + i);
       const high = projectPrice(point.high!);
       const low = projectPrice(point.low!);
       const open = projectPrice(point.open!);
       const close = projectPrice(point.close!);
+      const path = point.close! > point.open! ? upPath : downPath;
+      const wickX = x + candleWidth / 2 + candleSpacing / 2;
 
-      ctx.beginPath();
-      ctx.strokeStyle =
-        point.close! > point.open!
-          ? this.options.theme.candle.upColor
-          : this.options.theme.candle.downColor;
-      ctx.moveTo(x + (candleWidth / 2 + candleSpacing / 2), high);
-      ctx.lineTo(x + (candleWidth / 2 + candleSpacing / 2), low);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.fillStyle =
-        point.close! > point.open!
-          ? this.options.theme.candle.upColor
-          : this.options.theme.candle.downColor;
-      ctx.rect(
+      path.moveTo(wickX, high);
+      path.lineTo(wickX, low);
+      path.rect(
         x + candleSpacing / 2,
         Math.min(open, close),
         candleWidth,
         Math.abs(open - close)
       );
-      ctx.fill();
     }
+
+    this.drawPath(ctx, upPath, this.options.theme.candle.upColor);
+    this.drawPath(ctx, downPath, this.options.theme.candle.downColor);
+  }
+
+  private drawPath(ctx: CanvasRenderingContext2D, path: Path2D, color: string) {
+    ctx.fillStyle = color;
+    ctx.strokeStyle = color;
+    ctx.fill(path);
+    ctx.stroke(path);
   }
 }

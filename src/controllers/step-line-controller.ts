@@ -27,7 +27,8 @@ export class SteplineController extends OHLCController {
     const {
       canvasContext: ctx,
       visibleData,
-      projectTime,
+      visibleStartIndex,
+      projectIndex,
       projectPrice
     } = this.context.getDrawingContext();
 
@@ -43,7 +44,7 @@ export class SteplineController extends OHLCController {
 
       if (point.close == undefined) continue;
 
-      const x = projectTime(point.time);
+      const x = projectIndex(visibleStartIndex + i);
       const y = projectPrice(point.close!);
 
       if (lastX === null || lastY === null) {
