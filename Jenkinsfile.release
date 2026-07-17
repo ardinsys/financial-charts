@@ -72,6 +72,7 @@ pipeline {
           nsh('''
             pnpm build
             pnpm docs:build
+            NUXT_APP_BASE_URL=/financial-charts-showcase/ pnpm --filter @ardinsys/financial-charts-showcase generate
           ''')
         }
       }
@@ -98,7 +99,9 @@ pipeline {
       steps {
         script {
           def dryRunFlag = params.DRY_RUN ? '--dry-run' : ''
-          nsh("pnpm -r --filter './packages/**' publish --no-git-checks ${dryRunFlag}")
+          // Prereleases must not become the npm "latest" dist-tag.
+          def distTag = params.BUMP.startsWith('pre') ? "--tag ${params.PREID}" : ''
+          nsh("pnpm -r --filter './packages/**' publish --no-git-checks ${distTag} ${dryRunFlag}")
         }
         
       }
@@ -136,6 +139,33 @@ pipeline {
                   remoteDirectory: 'financial-charts',
                   removePrefix: 'apps/docs/.vitepress/dist',
                   sourceFiles: 'apps/docs/.vitepress/dist/**'
+                )
+              ]
+            )
+          ]
+        )
+      }
+    }
+
+    // Temporary home for the showcase site until it gets its own domain.
+    stage('Publish showcase') {
+      when {
+        expression { !params.DRY_RUN }
+      }
+      steps {
+        sshPublisher(
+          publishers: [
+            sshPublisherDesc(
+              configName: 'docs.ardinsys.eu',
+              transfers: [
+                sshTransfer(
+                  cleanRemote: true,
+                  execTimeout: 120000,
+                  makeEmptyDirs: true,
+                  noDefaultExcludes: true,
+                  remoteDirectory: 'financial-charts-showcase',
+                  removePrefix: 'apps/showcase/.output/public',
+                  sourceFiles: 'apps/showcase/.output/public/**'
                 )
               ]
             )
