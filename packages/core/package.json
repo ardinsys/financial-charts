@@ -1,6 +1,6 @@
 {
   "name": "@ardinsys/financial-charts",
-  "version": "0.9.8",
+  "version": "1.0.0-rc.1",
   "description": "Canvas-based charting engine for financial time series — candlestick, bar, line, area, and HLC controllers, indicators, drawings, and plugins. Framework agnostic, zero runtime dependencies.",
   "keywords": [
     "charts",

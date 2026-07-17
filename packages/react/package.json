@@ -1,6 +1,6 @@
 {
   "name": "@ardinsys/financial-charts-react",
-  "version": "0.9.8",
+  "version": "1.0.0-rc.1",
   "description": "Official React bindings for @ardinsys/financial-charts — a chart component owning lifecycle, data replacement, runtime options, and chart-managed label rendering.",
   "keywords": [
     "charts",
