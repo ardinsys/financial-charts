@@ -1,4 +1,4 @@
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const packageJsonUrl = new URL("../package.json", import.meta.url);
@@ -72,6 +72,7 @@ for (const declarationPath of publicDeclarationPaths) {
     "ICON_HIDE",
     "ICON_SETTINGS",
     "ICON_REMOVE",
+    "applyDrawingAnchors",
     "defaultControllers",
     "drawNextPoint",
     ...internalRuntimeExports,
@@ -117,6 +118,23 @@ for (const declarationPath of publicDeclarationPaths) {
   if (declaration.includes('"controller"')) {
     throw new Error(
       `The removed controller redraw alias appears in ${declarationPath}`
+    );
+  }
+}
+
+const documentationPaths = await readdir(
+  new URL("../docs/", import.meta.url),
+  { recursive: true }
+);
+for (const documentationPath of documentationPaths) {
+  if (!documentationPath.endsWith(".md")) continue;
+  const documentation = await readFile(
+    new URL(`../docs/${documentationPath}`, import.meta.url),
+    "utf8"
+  );
+  if (/\bapplyDrawingAnchors\b/.test(documentation)) {
+    throw new Error(
+      `applyDrawingAnchors must not be documented in docs/${documentationPath}`
     );
   }
 }

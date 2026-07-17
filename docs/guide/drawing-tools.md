@@ -103,6 +103,12 @@ reserved for drawings and do not pan the chart.
 Drawing gestures use the primary mouse button; right-clicks are ignored by the
 drawing manager.
 
+On touch screens, the first contact is dispatched to drawings immediately. If
+the drawing manager consumes it, the gesture draws; otherwise one-finger
+movement pans the chart. A long press still toggles the touch crosshair. A
+second contact cancels and rolls back the active drawing gesture before the
+two-finger pinch gesture proceeds.
+
 The drawing events are:
 
 | Event              | When it fires                                                                                                                              |

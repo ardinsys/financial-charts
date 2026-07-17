@@ -186,6 +186,9 @@ While a drawing tool or drawing edit gesture is active, pointer drags are
 reserved for drawings and do not pan the chart.
 Drawing gestures use the primary mouse button; right-clicks are ignored by the
 drawing manager.
+On touch screens, one contact draws when the manager consumes it and pans
+otherwise; long press toggles the crosshair, while a second contact cancels the
+drawing gesture before pinch zoom proceeds.
 
 Loading drawings with `fromJSON()` and clearing with default options are treated
 as state reconciliation and do not emit per-drawing create/delete events.

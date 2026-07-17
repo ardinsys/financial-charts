@@ -357,6 +357,11 @@ accepts a sorted public `times: readonly number[]` input instead of the internal
 data store. `TimeScale`, `PriceScale`, and pane range getters return stable
 borrowed readonly snapshots rather than caller-owned mutable objects.
 
+`projectTime` was removed from the controller drawing context exposed by
+`@ardinsys/financial-charts/engine`. Custom controllers project visible data by
+index instead: replace `projectTime(point.time)` inside an indexed drawing loop
+with `projectIndex(visibleStartIndex + i)`.
+
 The chart-coupled `randomColor(chart, index)` helper was removed. Use
 `paletteColor(colors, index)` from the engine entry and pass the desired palette
 explicitly.

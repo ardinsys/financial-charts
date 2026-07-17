@@ -69,7 +69,6 @@ listeners and child DOM until `destroy()`.
 
 ```ts
 import {
-  DefaultDOMAdapter,
   type IndicatorLabelActions,
   type IndicatorLabelHandle,
   type IndicatorLabelModel,
@@ -77,7 +76,10 @@ import {
   type PaneDividerHandle,
   type PaneDividerModel
 } from "@ardinsys/financial-charts/extensions";
-import { FinancialChart } from "@ardinsys/financial-charts";
+import {
+  DefaultDOMAdapter,
+  FinancialChart
+} from "@ardinsys/financial-charts";
 import { bindEvent } from "@ardinsys/financial-charts/engine";
 
 class DesignSystemAdapter extends DefaultDOMAdapter {

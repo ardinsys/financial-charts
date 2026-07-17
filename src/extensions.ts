@@ -1,6 +1,7 @@
 export type {
   ChartPaneState,
-  ChartStateContributor
+  ChartStateContributor,
+  ChartStateRestoredEvent
 } from "./chart/chart-state";
 export type {
   ChartOptionsChangeEvent,

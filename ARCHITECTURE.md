@@ -226,8 +226,10 @@ specialized indicators override the protected scale-update hook.
 
 `DrawingManager` owns the drawing-creation state machine. A creation factory
 declares its anchor count, and the manager supports drag-release or successive
-click placement while retaining one preview drawing. Escape, pointer cancel,
-or a competing touch gesture rolls the preview back.
+click placement while retaining one preview drawing. Escape, touch
+`pointercancel`, or a competing touch gesture rolls the preview back. Mouse
+`pointercancel` and `lostpointercapture` complete the captured creation at its
+last resolved position.
 
 Initial state is delivered synchronously after attachment in this order:
 

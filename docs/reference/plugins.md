@@ -309,6 +309,9 @@ while stored sync-group state contains only serializable configuration.
 Pane heights use `ChartPaneState.heightRatio` and match panes by indicator
 instance ID, so each peer resolves the same proportions against its own
 container height.
+Visible-range and drawing changes are coalesced to one sync flush per animation
+frame. A detaching chart flushes its pending sync state before leaving the
+group.
 Freshly mounted charts also perform their initial sync after their first
 `setData()` if the sync plugin was attached before data was available. The group
 keeps the latest state as detached snapshots, so virtualized rows can all
