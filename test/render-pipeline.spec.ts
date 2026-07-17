@@ -173,6 +173,26 @@ describe("RenderPipeline", () => {
     expect(main.stroke).toHaveBeenCalled();
   });
 
+  it("shares aligned main-pane grid coordinates with paneled indicators", () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 11 }
+    ]);
+    const context = attachRenderContext(chart);
+    const renderer = getChartRenderer(chart);
+    const main = renderer.getContext("main");
+    vi.mocked(main.moveTo).mockClear();
+
+    context.requestRedraw(["grid", "axes"], true);
+
+    const verticalGridCoordinates = vi
+      .mocked(main.moveTo)
+      .mock.calls.filter(([, y]) => y === 0)
+      .map(([x]) => x);
+    expect(renderer.getLastXGridCoords()).toEqual(verticalGridCoordinates);
+  });
+
   it("handles a real resize after a device-pixel-ratio change", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([
@@ -181,6 +201,8 @@ describe("RenderPipeline", () => {
     ]);
     const renderer = getChartRenderer(chart);
     const resizeCanvases = vi.spyOn(renderer, "resizeCanvases");
+    const container =
+      renderer.getCanvas("main").parentElement!.parentElement!;
     const observer = (
       renderer as unknown as {
         resizeObserver: ResizeObserver & {
@@ -199,19 +221,25 @@ describe("RenderPipeline", () => {
 
       expect(resizeCanvases).toHaveBeenCalledOnce();
 
-      observer.callback(
-        [{ contentRect: { width: 800, height: 400 } } as ResizeObserverEntry],
-        observer
-      );
-      expect(resizeCanvases).toHaveBeenCalledOnce();
-
-      renderer.getCanvas("main").parentElement!.parentElement!.style.width =
-        "900px";
+      container.style.width = "900px";
       observer.callback(
         [{ contentRect: { width: 900, height: 400 } } as ResizeObserverEntry],
         observer
       );
 
+      expect(resizeCanvases).toHaveBeenCalledTimes(2);
+
+      observer.callback(
+        [{ contentRect: { width: 900, height: 400 } } as ResizeObserverEntry],
+        observer
+      );
+      expect(resizeCanvases).toHaveBeenCalledTimes(2);
+
+      container.style.padding = "20px";
+      observer.callback(
+        [{ contentRect: { width: 860, height: 360 } } as ResizeObserverEntry],
+        observer
+      );
       expect(resizeCanvases).toHaveBeenCalledTimes(2);
     } finally {
       Object.defineProperty(window, "devicePixelRatio", {

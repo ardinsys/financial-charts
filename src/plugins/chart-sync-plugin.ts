@@ -90,6 +90,10 @@ const defaultOptions = {
 
 const chartSyncGroups = new Map<string, ChartSyncGroup>();
 
+function rangesEqual(left: TimeRange, right: TimeRange): boolean {
+  return left.start === right.start && left.end === right.end;
+}
+
 export class ChartSyncPlugin implements ChartPlugin {
   readonly key = "chart-sync";
 
@@ -115,7 +119,7 @@ export class ChartSyncPlugin implements ChartPlugin {
   private pendingDrawingChanges = new Map<string, DrawingJSON>();
   private pendingPaneHeights?: readonly ChartPaneState[];
   private pendingVisibleRange?: TimeRange;
-  private suppressNextVisibleRangeChange = false;
+  private suppressedVisibleRange?: TimeRange;
   private waitingForInitialSync = false;
   private readonly group: string;
   private readonly messageHandlers = new Map<
@@ -157,7 +161,7 @@ export class ChartSyncPlugin implements ChartPlugin {
       this.messageHandlers.clear();
       this.initialSyncSource = undefined;
       this.initialSyncApplied = false;
-      this.suppressNextVisibleRangeChange = false;
+      this.suppressedVisibleRange = undefined;
       this.waitingForInitialSync = false;
       const group = chartSyncGroups.get(this.group);
       group?.members.delete(this);
@@ -168,18 +172,19 @@ export class ChartSyncPlugin implements ChartPlugin {
     }
   }
 
-  onVisibleRangeChanged(_range: TimeRange): void {
+  onVisibleRangeChanged(range: TimeRange): void {
     if (!this.isEnabled("visibleRange") || this.applying) return;
-    if (this.suppressNextVisibleRangeChange) {
-      this.suppressNextVisibleRangeChange = false;
-      return;
+    const suppressedRange = this.suppressedVisibleRange;
+    if (suppressedRange) {
+      this.suppressedVisibleRange = undefined;
+      if (rangesEqual(range, suppressedRange)) return;
     }
     if (this.hasPendingInitialSync()) return;
 
-    const range = this.createVisibleRangeSnapshot();
-    if (!range) return;
+    const snapshot = this.createVisibleRangeSnapshot();
+    if (!snapshot) return;
 
-    this.pendingVisibleRange = range;
+    this.pendingVisibleRange = snapshot;
     this.schedulePendingSync();
   }
 
@@ -394,11 +399,12 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   private apply(callback: () => void) {
+    const wasApplying = this.applying;
     this.applying = true;
     try {
       callback();
     } finally {
-      this.applying = false;
+      this.applying = wasApplying;
     }
   }
 
@@ -624,9 +630,6 @@ export class ChartSyncPlugin implements ChartPlugin {
       state = source.createCurrentStateSnapshot();
       this.getGroup().state = cloneSyncState(state);
     }
-    this.suppressNextVisibleRangeChange = Boolean(
-      this.isEnabled("visibleRange") && state.visibleRange,
-    );
     this.apply(() => {
       if (this.isEnabled("visibleRange") && state.visibleRange) {
         this.applyVisibleRange(state.visibleRange);
@@ -651,6 +654,15 @@ export class ChartSyncPlugin implements ChartPlugin {
         this.applyCrosshair(state.crosshair);
       }
     });
+    if (this.isEnabled("visibleRange") && state.visibleRange) {
+      const suppressedRange = this.ctx.getVisibleTimeRange();
+      this.suppressedVisibleRange = suppressedRange;
+      queueMicrotask(() => {
+        if (this.suppressedVisibleRange === suppressedRange) {
+          this.suppressedVisibleRange = undefined;
+        }
+      });
+    }
     this.initialSyncApplied = true;
     this.initialSyncSource = undefined;
     this.waitingForInitialSync = false;
@@ -692,7 +704,7 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   private applyVisibleRange(range: TimeRange) {
-    this.ctx?.setVisibleTimeWindow(range);
+    this.apply(() => this.ctx?.setVisibleTimeWindow(range));
   }
 
   private createPaneHeightSnapshot(): readonly ChartPaneState[] {

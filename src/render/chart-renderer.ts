@@ -170,11 +170,8 @@ export class ChartRenderer {
       this.lastHandledObservedSize ??= this.getObservedSize();
       this.options.onResize();
     });
-    this.resizeObserver = new ResizeObserver((entries) => {
-      const contentRect = entries.at(-1)?.contentRect;
-      const size = contentRect
-        ? { width: contentRect.width, height: contentRect.height }
-        : this.getObservedSize();
+    this.resizeObserver = new ResizeObserver(() => {
+      const size = this.getObservedSize();
       if (sizesEqual(size, this.lastHandledObservedSize)) return;
 
       this.lastHandledObservedSize = size;
@@ -330,7 +327,8 @@ export class ChartRenderer {
   private drawXAxis(): void {
     const ctx = this.getContext("x-label");
     const size = this.getLogicalSize("x-label");
-    const theme = this.model.getOptions().theme.xAxis;
+    const chartTheme = this.model.getOptions().theme;
+    const theme = chartTheme.xAxis;
 
     ctx.fillStyle = theme.backgroundColor;
     ctx.fillRect(0, 0, size.width, size.height);
@@ -344,7 +342,9 @@ export class ChartRenderer {
     ctx.textBaseline = "middle";
 
     const labels = this.getXAxisLabels(ctx);
-    this.lastXGridCoords = labels.map((label) => label.x);
+    this.lastXGridCoords = labels.map((label) =>
+      alignStroke(label.x, chartTheme.grid.width)
+    );
     for (const label of labels) {
       ctx.fillText(label.label, label.start, size.height - 15);
     }
@@ -437,7 +437,7 @@ export class ChartRenderer {
       main.moveTo(lineX, 0);
       main.lineTo(lineX, mainSize.height);
       main.stroke();
-      xGridCoords.push(label.x);
+      xGridCoords.push(lineX);
     }
     this.lastXGridCoords = xGridCoords;
   }

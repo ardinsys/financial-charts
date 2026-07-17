@@ -173,7 +173,7 @@ function createSyncedChart(
   group: string,
   drawingManagerOptions: DrawingManagerOptions = {},
   height = 400,
-  beforeSync?: (chart: FinancialChart) => void
+  beforeSync?: (chart: FinancialChart, syncPlugin: ChartSyncPlugin) => void
 ) {
   const data = createData();
   const container = document.createElement("div");
@@ -200,7 +200,7 @@ function createSyncedChart(
     indicatorResolver
   });
   chart.setData(data);
-  beforeSync?.(chart);
+  beforeSync?.(chart, syncPlugin);
   chart.addPlugin(drawingManager);
   chart.addPlugin(syncPlugin);
   charts.push(chart);
@@ -332,6 +332,31 @@ describe("ChartSyncPlugin", () => {
 
     expect(target.chart.getVisibleTimeRange()).toEqual(
       source.chart.getVisibleTimeRange()
+    );
+  });
+
+  it("broadcasts the first user range after a no-op initial range apply", async () => {
+    const group = createGroup();
+    const source = createSyncedChart(group);
+    let ignoreInitialRangeNotification = true;
+    const target = createSyncedChart(group, {}, 400, (_chart, syncPlugin) => {
+      const onVisibleRangeChanged =
+        syncPlugin.onVisibleRangeChanged.bind(syncPlugin);
+      syncPlugin.onVisibleRangeChanged = (range) => {
+        if (ignoreInitialRangeNotification) return;
+        onVisibleRangeChanged(range);
+      };
+    });
+    ignoreInitialRangeNotification = false;
+
+    target.chart.setVisibleTimeRange({
+      start: target.data[1].time,
+      end: target.data[2].time + 60_000
+    });
+    await nextAnimationFrame();
+
+    expect(source.chart.getVisibleTimeRange()).toEqual(
+      target.chart.getVisibleTimeRange()
     );
   });
 

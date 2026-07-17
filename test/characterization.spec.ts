@@ -253,11 +253,9 @@ describe("current X-axis tick rendering", () => {
     );
 
     expect(getFillTextLabels(chart)).toEqual(["2", "11:00 PM", "1:00 AM"]);
-    expect(
-      getChartRenderer(chart)
-        .getLastXGridCoords()
-        .map((x) => Math.round(x))
-    ).toEqual([360, 120, 600]);
+    expect(getChartRenderer(chart).getLastXGridCoords()).toEqual([
+      360.5, 120.5, 600.5
+    ]);
   });
 
   it("draws long-range ticks prioritized by year, then month, then day", () => {
@@ -274,10 +272,8 @@ describe("current X-axis tick rendering", () => {
     );
 
     expect(getFillTextLabels(chart)).toEqual(["2024", "Feb", "31", "2"]);
-    expect(
-      getChartRenderer(chart)
-        .getLastXGridCoords()
-        .map((x) => Math.round(x))
-    ).toEqual([270, 450, 90, 630]);
+    expect(getChartRenderer(chart).getLastXGridCoords()).toEqual([
+      270.5, 450.5, 90.5, 630.5
+    ]);
   });
 });
