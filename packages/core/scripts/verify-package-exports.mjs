@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 const packageJsonUrl = new URL("../package.json", import.meta.url);
 const packageJson = JSON.parse(await readFile(packageJsonUrl, "utf8"));
 const packageRoot = new URL("../", import.meta.url);
+const documentationRoot = new URL("../../../apps/docs/", import.meta.url);
 
 for (const target of collectExportTargets(packageJson.exports)) {
   await access(fileURLToPath(new URL(target, packageRoot)));
@@ -123,13 +124,13 @@ for (const declarationPath of publicDeclarationPaths) {
 }
 
 const documentationPaths = await readdir(
-  new URL("../docs/", import.meta.url),
+  documentationRoot,
   { recursive: true }
 );
 for (const documentationPath of documentationPaths) {
   if (!documentationPath.endsWith(".md")) continue;
   const documentation = await readFile(
-    new URL(`../docs/${documentationPath}`, import.meta.url),
+    new URL(documentationPath, documentationRoot),
     "utf8"
   );
   if (/\bapplyDrawingAnchors\b/.test(documentation)) {
@@ -154,7 +155,7 @@ const rootDeclaration = await readFile(
   "utf8"
 );
 const exportInventory = await readFile(
-  new URL("../docs/reference/exports.md", import.meta.url),
+  new URL("reference/exports.md", documentationRoot),
   "utf8"
 );
 const rootExports = [...rootDeclaration.matchAll(/export \{([^}]*)\}/gs)]

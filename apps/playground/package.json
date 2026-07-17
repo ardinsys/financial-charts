@@ -1,0 +1,18 @@
+{
+  "name": "@ardinsys/financial-charts-playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ardinsys/financial-charts": "workspace:*",
+    "vue": "^3.3.11"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "vite": "^7.0.4"
+  }
+}

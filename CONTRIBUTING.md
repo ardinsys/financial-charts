@@ -9,6 +9,9 @@ extension lifecycle, panes, interaction, or rendering.
 
 The repo uses `pnpm` as its package manager. We use `fnm` to setup proper node version automatically.
 
+The published chart package lives in `packages/core`. Runnable applications,
+including the playground and documentation, live in `apps`.
+
 ## Commit messages
 
 Try to match this regex (we might generate changelogs from the commit messages later on):

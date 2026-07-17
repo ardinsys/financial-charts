@@ -1,0 +1,90 @@
+{
+  "name": "@ardinsys/financial-charts",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "Apache 2.0",
+  "author": "ARDINSYS Zrt.",
+  "packageManager": "pnpm@10.24.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ardinsys/financial-charts.git",
+    "directory": "packages/core"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "MIGRATION.md",
+    "CHANGELOG.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js"
+    },
+    "./extensions": {
+      "types": "./dist/extensions.d.ts",
+      "import": "./dist/extensions.js"
+    },
+    "./engine": {
+      "types": "./dist/engine.d.ts",
+      "import": "./dist/engine.js"
+    },
+    "./controllers/area": {
+      "types": "./dist/controllers/area.d.ts",
+      "import": "./dist/controllers/area.js"
+    },
+    "./controllers/bar": {
+      "types": "./dist/controllers/bar.d.ts",
+      "import": "./dist/controllers/bar.js"
+    },
+    "./controllers/candle": {
+      "types": "./dist/controllers/candle.d.ts",
+      "import": "./dist/controllers/candle.js"
+    },
+    "./controllers/hlc-area": {
+      "types": "./dist/controllers/hlc-area.d.ts",
+      "import": "./dist/controllers/hlc-area.js"
+    },
+    "./controllers/hollow-candle": {
+      "types": "./dist/controllers/hollow-candle.d.ts",
+      "import": "./dist/controllers/hollow-candle.js"
+    },
+    "./controllers/line": {
+      "types": "./dist/controllers/line.d.ts",
+      "import": "./dist/controllers/line.js"
+    },
+    "./controllers/stepline": {
+      "types": "./dist/controllers/stepline.d.ts",
+      "import": "./dist/controllers/stepline.js"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown && pnpm verify:package",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "verify:package": "node scripts/verify-package-exports.mjs && tsc -p scripts/consumer-fixtures/tsconfig.json && node scripts/verify-tree-shaking.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.4.0",
+    "bumpp": "^10.3.2",
+    "jsdom": "^29.1.1",
+    "tsdown": "^0.21.10",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4",
+    "vitest": "^4.1.10"
+  }
+}

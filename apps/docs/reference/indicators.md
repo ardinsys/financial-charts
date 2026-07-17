@@ -276,4 +276,4 @@ const sma = new MovingAverageIndicator(null, {
 chart.addIndicator(sma);
 ```
 
-For more involved use cases, see [Custom indicators](/guide/custom-indicators) or inspect `src/indicators/simple/moving-average.ts` in the repository. It shows how to cache computed values, honor locales, and render on the shared indicator canvas.
+For more involved use cases, see [Custom indicators](/guide/custom-indicators) or inspect `packages/core/src/indicators/simple/moving-average.ts` in the repository. It shows how to cache computed values, honor locales, and render on the shared indicator canvas.

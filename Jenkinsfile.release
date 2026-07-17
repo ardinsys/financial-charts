@@ -37,7 +37,7 @@ pipeline {
           '''
 
           echo "📦 Running versioning for packages"
-          nsh("pnpm exec bumpp --no-push --yes --no-print-commits --commit \"chore: release v\" ${params.BUMP} --preid ${params.PREID}")
+          nsh("pnpm --dir packages/core exec bumpp --no-push --yes --no-print-commits --commit \"chore: release v\" ${params.BUMP} --preid ${params.PREID}")
         }
       }
     }
@@ -61,7 +61,7 @@ pipeline {
       steps {
         script {
           def dryRunFlag = params.DRY_RUN ? '--dry-run' : ''
-          nsh("pnpm publish --no-git-checks ${dryRunFlag}")
+          nsh("pnpm --dir packages/core publish --no-git-checks ${dryRunFlag}")
         }
         
       }
@@ -83,8 +83,8 @@ pipeline {
                   makeEmptyDirs: true, 
                   noDefaultExcludes: true,
                   remoteDirectory: 'financial-charts',
-                  removePrefix: 'docs/.vitepress/dist', 
-                  sourceFiles: 'docs/.vitepress/dist/**'
+                  removePrefix: 'apps/docs/.vitepress/dist',
+                  sourceFiles: 'apps/docs/.vitepress/dist/**'
                 )
               ]
             ),
@@ -97,8 +97,8 @@ pipeline {
                   makeEmptyDirs: true, 
                   noDefaultExcludes: true,
                   remoteDirectory: 'financial-charts',
-                  removePrefix: 'docs/.vitepress/dist', 
-                  sourceFiles: 'docs/.vitepress/dist/**'
+                  removePrefix: 'apps/docs/.vitepress/dist',
+                  sourceFiles: 'apps/docs/.vitepress/dist/**'
                 )
               ]
             )
