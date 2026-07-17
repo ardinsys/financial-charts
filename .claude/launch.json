@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "docs",
+      "cwd": "apps/docs",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vitepress", "dev", ".", "--port", "5199"],
+      "port": 5199
+    }
+  ]
+}
