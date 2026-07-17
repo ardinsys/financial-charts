@@ -45,15 +45,17 @@ export class CrosshairResolver {
 
   resolveDataPoint(
     x: number,
-    y: number,
+    _y: number,
     scale: "data" | "visible"
   ): ChartData | undefined {
     if (!this.model.hasData()) return undefined;
-    const rawPoint = (
+    const timeScale =
       scale === "data"
-        ? this.model.getDataScale()
-        : this.model.getVisibleScale()
-    ).pixelToPoint(x, y, this.host.getMainCanvas());
+        ? this.model.getTimeScale()
+        : this.model.getVisibleScale().getTimeScale();
+    const rawPoint = {
+      time: timeScale.unproject(x, { canvas: this.host.getMainCanvas() })
+    };
     return this.model.getNearestData(this.host.normalizeTime(rawPoint));
   }
 

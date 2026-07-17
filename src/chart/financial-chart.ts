@@ -800,13 +800,15 @@ export class FinancialChart {
     if (!this.model.hasData()) return;
     const preserveRightEdge = this.isPinnedToRightEdge();
     const span = this.getVisibleIndexSpan();
-    if (this.model.isAutoTimeRange()) this.refreshAutoTimeRange(true);
+    const timeRangeChanged = this.model.isAutoTimeRange()
+      ? this.refreshAutoTimeRange()
+      : false;
     const rangeChanged = this.refreshIndexBounds({
       reset: span === this.getIndexBoundsSpan(),
       preserveRightEdge,
       span
     });
-    if (rangeChanged) this.recalculateVisibleScale();
+    if (rangeChanged || timeRangeChanged) this.recalculateVisibleScale();
     this.changePublisher.commit({
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
       redraw: ALL_REDRAW_PARTS,
@@ -814,14 +816,11 @@ export class FinancialChart {
     });
   }
 
-  private refreshAutoTimeRange(recalculateDataScale = false) {
-    this.model.updateAutoTimeRange(
+  private refreshAutoTimeRange(): boolean {
+    return this.model.updateAutoTimeRange(
       this.options.stepSize,
       this.getMinimumVisibleIndexSlots()
     );
-    if (recalculateDataScale) {
-      this.model.recalculateDataScale();
-    }
   }
 
   private resetViewInteractionState() {
@@ -992,8 +991,6 @@ export class FinancialChart {
       this.refreshAutoTimeRange();
     }
 
-    this.model.rebuildDataScale();
-
     let rangeChanged = this.resetVisibleIndexRange();
     rangeChanged =
       this.stateController.applyPendingVisibleRange() || rangeChanged;
@@ -1021,11 +1018,10 @@ export class FinancialChart {
 
     const preserveRightEdge = this.isPinnedToRightEdge();
     const span = this.getVisibleIndexSpan();
-    const mappedPoint = this.model.appendData(data, this.options.stepSize);
-    this.model.addDataScalePoint(mappedPoint);
+    this.model.appendData(data, this.options.stepSize);
 
     if (this.model.isAutoTimeRange()) {
-      this.refreshAutoTimeRange(true);
+      this.refreshAutoTimeRange();
     }
 
     const rangeChanged = this.refreshIndexBounds({

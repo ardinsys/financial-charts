@@ -176,7 +176,6 @@ describe("ChartModel data ownership", () => {
       60
     );
     model.updateAutoTimeRange(60, 3);
-    model.rebuildDataScale();
     model.refreshIndexBounds({ minimumVisibleSlots: 3, reset: true });
     const visibleData = model.recalculateVisibleScale([]);
 
@@ -203,7 +202,7 @@ describe("ChartModel data ownership", () => {
     expect(visibleScale.getYMin()).toBeGreaterThan(-100);
   });
 
-  it("keeps owned time scales synchronized with logical range changes", () => {
+  it("keeps the owned time scale synchronized with logical range changes", () => {
     const model = new ChartModel();
     model.replaceData(
       [
@@ -224,10 +223,29 @@ describe("ChartModel data ownership", () => {
       to: 2.5,
       rightOffset: 0
     });
-    expect(model.getDataScale().getTimeScale().getRange()).toEqual({
-      from: 0.5,
-      to: 2.5,
-      rightOffset: 0
-    });
+  });
+
+  it("reports only effective auto time range changes", () => {
+    const model = new ChartModel();
+    model.replaceData(
+      [
+        { time: 0, close: 1 },
+        { time: 60, close: 2 }
+      ],
+      60
+    );
+    model.configureTimeRange("auto", 60, 2);
+    const range = model.getTimeRange();
+
+    expect(model.updateAutoTimeRange(60, 2)).toBe(false);
+    expect(model.getTimeRange()).toBe(range);
+
+    model.appendData({ time: 90, close: 3 }, 60);
+    expect(model.updateAutoTimeRange(60, 2)).toBe(false);
+    expect(model.getTimeRange()).toBe(range);
+
+    model.appendData({ time: 120, close: 4 }, 60);
+    expect(model.updateAutoTimeRange(60, 2)).toBe(true);
+    expect(model.getTimeRange()).toEqual({ start: 0, end: 180 });
   });
 });

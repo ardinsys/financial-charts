@@ -66,6 +66,14 @@ describe("CrosshairResolver", () => {
     });
   });
 
+  it("uses the visible time scale for click resolution", () => {
+    const { model, resolver } = createResolver();
+    model.setVisibleIndexRange({ from: 1, to: 3 });
+
+    expect(resolver.resolveDataPoint(0, 100, "data")?.time).toBe(60);
+    expect(resolver.resolveDataPoint(0, 100, "visible")?.time).toBe(60);
+  });
+
   it("projects programmatic price and clamps explicit Y coordinates", () => {
     const { resolver } = createResolver();
 

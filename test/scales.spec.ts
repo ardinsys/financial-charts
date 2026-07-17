@@ -98,6 +98,41 @@ describe("index-based time scales", () => {
     expect(scale.getTimeScale().getRange()).toEqual({ from: 0, to: 1 });
   });
 
+  it("keeps incremental price padding stable for in-range data", () => {
+    const simpleScale = new DataScaleModel(
+      "simple",
+      [
+        { time: 0, close: 10 },
+        { time: 60, close: 20 }
+      ],
+      { start: 0, end: 60 }
+    );
+    const ohlcScale = new DataScaleModel(
+      "ohlc",
+      [
+        { time: 0, low: 10, high: 20 },
+        { time: 60, low: 12, high: 18 }
+      ],
+      { start: 0, end: 60 }
+    );
+    const simpleRange = [simpleScale.getYMin(), simpleScale.getYMax()];
+    const ohlcRange = [ohlcScale.getYMin(), ohlcScale.getYMax()];
+
+    for (let index = 1; index <= 100; index += 1) {
+      simpleScale.addDataPoint({ time: 60 + index, close: 15 });
+      ohlcScale.addDataPoint({
+        time: 60 + index,
+        low: null,
+        high: null
+      });
+    }
+
+    expect([simpleScale.getYMin(), simpleScale.getYMax()]).toEqual(
+      simpleRange
+    );
+    expect([ohlcScale.getYMin(), ohlcScale.getYMax()]).toEqual(ohlcRange);
+  });
+
   it("maps irregular timestamps to contiguous chart slots", () => {
     const day = 24 * 60 * 60_000;
     const friday = Date.UTC(2024, 0, 5);

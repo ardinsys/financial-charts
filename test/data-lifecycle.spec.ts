@@ -77,6 +77,28 @@ describe("chart data lifecycle", () => {
     ).toBeGreaterThanOrEqual(100);
   });
 
+  it("keeps the visible price range stable across in-range updates", () => {
+    const chart = createChart();
+    const start = Date.UTC(2024, 0, 1, 9);
+    chart.setData(
+      Array.from({ length: 200 }, (_, index) => ({
+        time: start + index * 60_000,
+        close: index % 2 === 0 ? 10 : 20
+      }))
+    );
+    const scale = getChartModel(chart).getVisibleScale();
+    const range = [scale.getYMin(), scale.getYMax()];
+
+    for (let index = 200; index < 300; index += 1) {
+      chart.updateData({
+        time: start + index * 60_000,
+        close: 15
+      });
+    }
+
+    expect([scale.getYMin(), scale.getYMax()]).toEqual(range);
+  });
+
   it("clears data-dependent state and rendered chart layers immediately", () => {
     const chart = createChart();
     const start = Date.UTC(2024, 0, 1, 9);

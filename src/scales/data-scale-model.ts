@@ -20,8 +20,8 @@ export interface DataScaleTimeOptions {
 export class DataScaleModel {
   private xMin!: number;
   private xMax!: number;
-  private yMin!: number;
-  private yMax!: number;
+  private rawYMin!: number;
+  private rawYMax!: number;
   private volMax!: number;
   private readonly topOffset = 0.15;
   private readonly bottomOffset = 0.2;
@@ -59,19 +59,23 @@ export class DataScaleModel {
     this.xMin = timeRange.start;
     this.xMax = timeRange.end;
     this.configureTimeScale(timeOptions);
-    this.yMin = Infinity;
-    this.yMax = -Infinity;
+    this.rawYMin = Infinity;
+    this.rawYMax = -Infinity;
     this.volMax = -Infinity;
 
     for (const data of dataset) {
       if (this.source === "simple") {
         if (data.close != null) {
-          this.yMin = Math.min(this.yMin, data.close);
-          this.yMax = Math.max(this.yMax, data.close);
+          this.rawYMin = Math.min(this.rawYMin, data.close);
+          this.rawYMax = Math.max(this.rawYMax, data.close);
         }
       } else {
-        if (data.low != null) this.yMin = Math.min(this.yMin, data.low);
-        if (data.high != null) this.yMax = Math.max(this.yMax, data.high);
+        if (data.low != null) {
+          this.rawYMin = Math.min(this.rawYMin, data.low);
+        }
+        if (data.high != null) {
+          this.rawYMax = Math.max(this.rawYMax, data.high);
+        }
       }
       if (data.volume != null) {
         this.volMax = Math.max(this.volMax, data.volume);
@@ -81,22 +85,21 @@ export class DataScaleModel {
     for (const modifier of this.modifiers.values()) {
       if (!modifier.enabled) continue;
       if (modifier.yMin != null) {
-        this.yMin = Math.min(this.yMin, modifier.yMin);
+        this.rawYMin = Math.min(this.rawYMin, modifier.yMin);
       }
       if (modifier.yMax != null) {
-        this.yMax = Math.max(this.yMax, modifier.yMax);
+        this.rawYMax = Math.max(this.rawYMax, modifier.yMax);
       }
     }
 
-    if (!Number.isFinite(this.yMin) || !Number.isFinite(this.yMax)) {
-      this.yMin = 0;
-      this.yMax = 1;
+    if (!Number.isFinite(this.rawYMin) || !Number.isFinite(this.rawYMax)) {
+      this.rawYMin = 0;
+      this.rawYMax = 1;
     }
     if (!Number.isFinite(this.volMax)) {
       this.volMax = 0;
     }
 
-    this.applyOffsets();
     this.syncScales();
   }
 
@@ -179,11 +182,11 @@ export class DataScaleModel {
   }
 
   getYMin() {
-    return this.yMin;
+    return this.priceScale.getRange().min;
   }
 
   getYMax() {
-    return this.yMax;
+    return this.priceScale.getRange().max;
   }
 
   getXMin() {
@@ -198,22 +201,24 @@ export class DataScaleModel {
     return this.volMax;
   }
 
-  private applyOffsets() {
-    if (this.yMin === this.yMax) {
-      const padding = Math.max(Math.abs(this.yMin) * 0.01, 1);
-      this.yMin -= padding;
-      this.yMax += padding;
+  private getPaddedPriceRange() {
+    let min = this.rawYMin;
+    let max = this.rawYMax;
+    if (min === max) {
+      const padding = Math.max(Math.abs(min) * 0.01, 1);
+      min -= padding;
+      max += padding;
     }
 
-    const yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
-    const yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
-
-    this.yMin = yMin;
-    this.yMax = yMax;
+    const span = max - min;
+    return {
+      min: min - span * this.bottomOffset,
+      max: max + span * this.topOffset
+    };
   }
 
   private syncScales() {
-    this.priceScale.setRange({ min: this.yMin, max: this.yMax });
+    this.priceScale.setRange(this.getPaddedPriceRange());
     this.volumeScale.setRange({ min: 0, max: this.volMax });
   }
 
@@ -233,19 +238,13 @@ export class DataScaleModel {
     this.xMin = Math.min(this.xMin, time);
     this.xMax = Math.max(this.xMax, time);
 
-    let yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
-    let yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
-
-    if (data.close !== null && data.close !== undefined) {
-      changed = changed || data.close < yMin || data.close > yMax;
-      this.yMin = Math.min(yMin, data.close!);
-      this.yMax = Math.max(yMax, data.close!);
-
-      yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
-      yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
-
-      this.yMin = yMin;
-      this.yMax = yMax;
+    if (data.close != null) {
+      changed =
+        changed ||
+        data.close < this.rawYMin ||
+        data.close > this.rawYMax;
+      this.rawYMin = Math.min(this.rawYMin, data.close);
+      this.rawYMax = Math.max(this.rawYMax, data.close);
     }
 
     if (data.volume != null) {
@@ -266,34 +265,20 @@ export class DataScaleModel {
     this.xMin = Math.min(this.xMin, time);
     this.xMax = Math.max(this.xMax, time);
 
-    let yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
-    let yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
-
     const low = data.low;
     const high = data.high;
 
-    if (low != null && data.low !== undefined) {
-      changed = changed || low < yMin;
+    if (low != null) {
+      changed = changed || low < this.rawYMin;
+      this.rawYMin = Math.min(this.rawYMin, low);
     }
-    if (high != null && data.high !== undefined) {
-      changed = changed || high > yMax;
+    if (high != null) {
+      changed = changed || high > this.rawYMax;
+      this.rawYMax = Math.max(this.rawYMax, high);
     }
     if (data.volume != null) {
       changed = changed || data.volume > this.volMax;
     }
-
-    if (low != null) {
-      this.yMin = Math.min(yMin, low);
-    }
-    if (high != null) {
-      this.yMax = Math.max(yMax, high);
-    }
-
-    yMin = this.yMin - (this.yMax - this.yMin) * this.bottomOffset;
-    yMax = this.yMax + (this.yMax - this.yMin) * this.topOffset;
-
-    this.yMin = yMin;
-    this.yMax = yMax;
 
     if (data.volume != null) {
       this.volMax = Math.max(this.volMax, data.volume);
