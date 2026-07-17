@@ -1,12 +1,12 @@
 export type {
   ChartPaneState,
   ChartStateContributor,
-  ChartStateRestoredEvent
+  ChartStateRestoredEvent,
 } from "./chart/chart-state";
 export type {
   ChartOptionsChangeEvent,
   ChartOptionsSnapshot,
-  LocaleValues
+  LocaleValues,
 } from "./chart/chart-options";
 export type { ChartData, TimeRange } from "./chart/types";
 export type {
@@ -17,31 +17,25 @@ export type {
   DrawingFinishedOperation,
   DrawingSelectionEvent,
   IndicatorEvent,
-  IndicatorVisibilityChangedEvent
+  IndicatorVisibilityChangedEvent,
 } from "./chart/event-emitter";
 export type { Formatter } from "./chart/formatter";
 export type {
   ChartCrosshairOptions,
-  ChartCrosshairState
+  ChartCrosshairState,
 } from "./interaction/crosshair";
 export type {
   PriceAxisAnnotation,
-  PriceAxisAnnotationOffscreenBehavior
+  PriceAxisAnnotationOffscreenBehavior,
 } from "./annotations/price-axis-annotation";
 export type {
   ChartCanvasLayer,
-  ChartRedrawPart
+  ChartRedrawPart,
 } from "./render/chart-render-types";
-export type {
-  RenderCallback,
-  RenderStage
-} from "./render/render-pipeline";
+export type { RenderCallback, RenderStage } from "./render/render-pipeline";
 export type { Pane } from "./panes/pane";
 export type { ScaleRangeModifier } from "./scales/data-scale-model";
-export type {
-  BarAlignment,
-  TimeScaleRange
-} from "./scales/time-scale";
+export type { BarAlignment, TimeScaleRange } from "./scales/time-scale";
 
 export * from "./plugin/chart-plugin";
 export * from "./plugin/extension-theme";
@@ -56,13 +50,13 @@ export {
   type DrawingJSON,
   type DrawingOptions,
   type DrawingPoint,
-  type DrawingRenderContext
+  type DrawingRenderContext,
 } from "./drawings/drawing";
 
 export {
   INDICATOR_STATE_VERSION,
   Indicator,
-  restoreIndicator
+  restoreIndicator,
 } from "./indicators/indicator";
 export type {
   DefaultIndicatorOptions,
@@ -78,7 +72,7 @@ export type {
   IndicatorResolver,
   IndicatorState,
   IndicatorStateOptions,
-  IndicatorStateValue
+  IndicatorStateValue,
 } from "./indicators/indicator";
 export * from "./indicators/paneled-indicator";
 

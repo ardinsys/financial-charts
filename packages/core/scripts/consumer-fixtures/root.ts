@@ -12,7 +12,7 @@ import {
   type ChartStateContributor,
   type DrawingMutationOptions,
   type DrawingSelectionOptions,
-  type IndicatorMutationOptions
+  type IndicatorMutationOptions,
 } from "@ardinsys/financial-charts";
 
 // @ts-expect-error Indicator authoring contracts use the extensions entry.
@@ -33,7 +33,7 @@ import type { ChartRedrawPart } from "@ardinsys/financial-charts";
 const data: ChartData[] = [{ time: 0, close: 1 }];
 const options: ChartOptions = {
   type: LineController.ID,
-  stepSize: 60_000
+  stepSize: 60_000,
 };
 const state = {} as ChartState;
 const drawingMutation = {} as DrawingMutationOptions;
@@ -44,7 +44,7 @@ const chart = null as unknown as FinancialChart;
 const contributor: ChartStateContributor<{ symbol: string }> = {
   key: "symbol",
   toJSON: () => ({ symbol: "AAPL" }),
-  fromJSON: (_state) => undefined
+  fromJSON: (_state) => undefined,
 };
 const serializedState = chart.toJSON({ contributors: [contributor] });
 
@@ -91,7 +91,7 @@ void [
   crosshairOptions,
   contributor,
   serializedState,
-  chart
+  chart,
 ];
 void [
   null as unknown as Indicator,
@@ -100,7 +100,7 @@ void [
   null as unknown as DataScaleModel,
   TestIndicator,
   ICON_SHOW,
-  defaultControllers
+  defaultControllers,
 ];
 
 // @ts-expect-error Package internals are not public subpaths.

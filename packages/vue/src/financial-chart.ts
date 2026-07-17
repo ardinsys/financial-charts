@@ -106,7 +106,7 @@ export const FinancialChart = defineComponent({
         () => props.indicatorLabel,
         () => props.paneDivider,
       ],
-      createChart,
+      createChart
     );
 
     watch(
@@ -115,7 +115,7 @@ export const FinancialChart = defineComponent({
         if (rendererMapsEqual(previousIndicatorLabels, next)) return;
         previousIndicatorLabels = next;
         createChart();
-      },
+      }
     );
 
     watch(
@@ -144,14 +144,14 @@ export const FinancialChart = defineComponent({
         if (Object.keys(update).length > 0) {
           chart.value?.updateOptions(update);
         }
-      },
+      }
     );
 
     watch(
       () => props.data,
       (data) => {
         chart.value?.setData(data ?? []);
-      },
+      }
     );
 
     return () => [
@@ -179,7 +179,7 @@ function createVueDOMAdapter(props: {
       indicatorLabel: props.indicatorLabel,
       indicatorLabels: props.indicatorLabels,
       paneDivider: props.paneDivider,
-    }),
+    })
   );
 }
 
@@ -200,7 +200,7 @@ function takeRuntimeOptions(options: ChartOptions): RuntimeOptionsSnapshot {
 
 function diffRuntimeOptions(
   previous: RuntimeOptionsSnapshot,
-  next: RuntimeOptionsSnapshot,
+  next: RuntimeOptionsSnapshot
 ): ChartOptionsUpdate {
   const update: ChartOptionsUpdate = {};
   if (previous.type !== next.type) update.type = next.type;
@@ -222,7 +222,7 @@ function diffRuntimeOptions(
 
 function requiresRecreation(
   previous: RuntimeOptionsSnapshot,
-  next: RuntimeOptionsSnapshot,
+  next: RuntimeOptionsSnapshot
 ): boolean {
   return (
     wasRemoved(previous.type, next.type) ||
@@ -241,20 +241,20 @@ function wasRemoved(previous: unknown, next: unknown): boolean {
 }
 
 function rangeStart(
-  range: TimeRange | "auto" | undefined,
+  range: TimeRange | "auto" | undefined
 ): number | string | undefined {
   return range === "auto" ? range : range?.start;
 }
 
 function rangeEnd(
-  range: TimeRange | "auto" | undefined,
+  range: TimeRange | "auto" | undefined
 ): number | string | undefined {
   return range === "auto" ? range : range?.end;
 }
 
 function timeRangesEqual(
   left: TimeRange | "auto" | undefined,
-  right: TimeRange | "auto" | undefined,
+  right: TimeRange | "auto" | undefined
 ): boolean {
   if (left === undefined || right === undefined) return left === right;
   if (left === "auto" || right === "auto") return left === right;
@@ -263,7 +263,7 @@ function timeRangesEqual(
 
 function rendererMapsEqual(
   left: IndicatorLabelRendererMap | undefined,
-  right: IndicatorLabelRendererMap | undefined,
+  right: IndicatorLabelRendererMap | undefined
 ): boolean {
   if (left === right) return true;
   if (!left || !right) return false;

@@ -1,23 +1,20 @@
 import type {
   ChartOptionsChangeEvent,
   ChartOptionsSnapshot,
-  LocaleValues
+  LocaleValues,
 } from "../chart/chart-options";
 import type { ChartData, TimeRange } from "../chart/types";
 import { mergeObjects } from "../utils/merge";
-import type {
-  ChartExtension,
-  ExtensionContext
-} from "../plugin/chart-plugin";
+import type { ChartExtension, ExtensionContext } from "../plugin/chart-plugin";
 import {
   ExtensionThemeResolver,
   type ExtensionThemeDefaults,
-  type ExtensionThemeMap
+  type ExtensionThemeMap,
 } from "../plugin/extension-theme";
 import type {
   IndicatorLabelHandle,
   IndicatorLabelModel,
-  IndicatorLabelSegment
+  IndicatorLabelSegment,
 } from "../ui/chart-dom-adapter";
 import type { Formatter } from "../chart/formatter";
 import type { ScaleRangeModifier } from "../scales/data-scale-model";
@@ -26,7 +23,7 @@ import {
   cloneJSONStateObject,
   isPlainRecord,
   type JSONStateObject,
-  type JSONStateValue
+  type JSONStateValue,
 } from "../utils/json-state";
 
 const indicatorStateRedrawParts = [
@@ -34,7 +31,7 @@ const indicatorStateRedrawParts = [
   "axes",
   "series",
   "indicators",
-  "crosshair"
+  "crosshair",
 ] as const;
 
 export type { IndicatorLabelSegment };
@@ -77,10 +74,8 @@ export type IndicatorResolver<
   TIndicator extends Indicator<object, DefaultIndicatorOptions> = Indicator<
     object,
     DefaultIndicatorOptions
-  >
-> = (
-  state: IndicatorState
-) => TIndicator | undefined;
+  >,
+> = (state: IndicatorState) => TIndicator | undefined;
 
 /** What a concrete indicator contributes to its label on each update. */
 export interface IndicatorLabelContent {
@@ -157,7 +152,7 @@ export interface IndicatorContext extends Pick<
 
 export abstract class Indicator<
   TTheme extends object,
-  TOptions extends DefaultIndicatorOptions
+  TOptions extends DefaultIndicatorOptions,
 > implements ChartExtension {
   protected themes!: ExtensionThemeMap<TTheme>;
   protected options!: TOptions;
@@ -213,12 +208,12 @@ export abstract class Indicator<
         },
         onOpenSettings: () => {
           this.indicatorContext.emit("indicator-settings-open", {
-            indicator: this
+            indicator: this,
           });
         },
         onRemove: () => {
           this.indicatorContext.remove();
-        }
+        },
       }
     );
 
@@ -243,8 +238,8 @@ export abstract class Indicator<
         show: actions.show,
         hide: actions.hide,
         settings: actions.settings,
-        remove: actions.remove
-      }
+        remove: actions.remove,
+      },
     };
   }
 
@@ -344,7 +339,7 @@ export abstract class Indicator<
     if (updateOptions.emit ?? true) {
       this.indicatorContext.emit("indicator-visibility-changed", {
         indicator: this,
-        visible
+        visible,
       });
     }
   }
@@ -361,7 +356,7 @@ export abstract class Indicator<
     const clonedOptions = cloneIndicatorValue(this.options);
     const clone = new Constructor(cloneIndicatorValue(this.themes), {
       ...clonedOptions,
-      instanceId: createInstanceId(this.getIndicatorType())
+      instanceId: createInstanceId(this.getIndicatorType()),
     });
     clone.visible = this.visible;
     return clone;
@@ -393,7 +388,7 @@ export abstract class Indicator<
       if (wasVisible !== this.visible) {
         this.indicatorContext.emit("indicator-visibility-changed", {
           indicator: this,
-          visible: this.visible
+          visible: this.visible,
         });
       }
     }
@@ -427,7 +422,7 @@ export abstract class Indicator<
         this.serializeStateOptions(),
         "Indicator state options"
       ),
-      visible: this.visible
+      visible: this.visible,
     };
   }
 
@@ -462,26 +457,18 @@ export abstract class Indicator<
 
 /** Restores validated state through an application-owned indicator resolver. */
 export function restoreIndicator<
-  TIndicator extends Indicator<object, DefaultIndicatorOptions>
->(
-  state: unknown,
-  resolver: IndicatorResolver<TIndicator>
-): TIndicator {
+  TIndicator extends Indicator<object, DefaultIndicatorOptions>,
+>(state: unknown, resolver: IndicatorResolver<TIndicator>): TIndicator {
   return restoreValidatedIndicator(validateIndicatorState(state), resolver);
 }
 
 /** @internal Restores an indicator state owned by a validated container. */
 export function restoreValidatedIndicator<
-  TIndicator extends Indicator<object, DefaultIndicatorOptions>
->(
-  state: IndicatorState,
-  resolver: IndicatorResolver<TIndicator>
-): TIndicator {
+  TIndicator extends Indicator<object, DefaultIndicatorOptions>,
+>(state: IndicatorState, resolver: IndicatorResolver<TIndicator>): TIndicator {
   const indicator = resolver(state);
   if (!indicator) {
-    throw new Error(
-      `No indicator resolver matched type "${state.typeId}".`
-    );
+    throw new Error(`No indicator resolver matched type "${state.typeId}".`);
   }
   if (indicator.getIndicatorType() !== state.typeId) {
     throw new Error(
@@ -556,7 +543,7 @@ export function validateIndicatorState(state: unknown): IndicatorState {
     typeId: state.typeId,
     instanceId: state.instanceId,
     options: cloneJSONStateObject(state.options, "Indicator state options"),
-    visible: state.visible
+    visible: state.visible,
   };
 }
 

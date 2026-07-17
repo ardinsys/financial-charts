@@ -5,7 +5,7 @@ import { build } from "vite";
 const rootEntry = fileURLToPath(new URL("../dist/index.js", import.meta.url));
 const coreEntry = fileURLToPath(new URL("../dist/core.js", import.meta.url));
 const lineEntry = fileURLToPath(
-  new URL("../dist/controllers/line.js", import.meta.url),
+  new URL("../dist/controllers/line.js", import.meta.url)
 );
 
 const minimalBundle = await bundle(`
@@ -29,12 +29,12 @@ for (const excludedController of [
   assert.equal(
     minimalBundle.includes(excludedController),
     false,
-    `Core + line bundle unexpectedly contains ${excludedController}`,
+    `Core + line bundle unexpectedly contains ${excludedController}`
   );
   assert.equal(
     convenientBundle.includes(excludedController),
     true,
-    `Convenience bundle is missing ${excludedController}`,
+    `Convenience bundle is missing ${excludedController}`
   );
 }
 

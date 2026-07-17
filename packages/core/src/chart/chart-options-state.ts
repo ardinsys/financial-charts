@@ -16,7 +16,7 @@ import {
   type ControllerConstructor,
   type ControllerType,
   type LocaleValuesMap,
-  type MutableResolvedChartOptions
+  type MutableResolvedChartOptions,
 } from "./chart-options";
 
 /** Owns resolved runtime options and their stable readonly public snapshot. */
@@ -75,8 +75,8 @@ export class ChartOptionsState {
       domAdapter: options.domAdapter ?? new DefaultDOMAdapter(),
       localeValues: cloneOptionValue({
         ...getDefaultLocaleValues(),
-        ...options.localeValues
-      })
+        ...options.localeValues,
+      }),
     };
     this.snapshot = this.createSnapshot();
   }
@@ -114,7 +114,7 @@ export class ChartOptionsState {
     const timeZone = has("timeZone")
       ? update.timeZone
       : hasFormatter
-        ? formatter.getTimeZone?.() ?? this.resolved.timeZone
+        ? (formatter.getTimeZone?.() ?? this.resolved.timeZone)
         : this.resolved.timeZone;
     const themeKey = update.theme ?? this.resolved.theme.key;
     const theme =
@@ -125,7 +125,7 @@ export class ChartOptionsState {
       ? cloneOptionValue({
           ...getDefaultLocaleValues(),
           ...this.resolved.localeValues,
-          ...(update.localeValues ?? {})
+          ...(update.localeValues ?? {}),
         })
       : this.resolved.localeValues;
 
@@ -136,10 +136,7 @@ export class ChartOptionsState {
 
     const changes: Array<[ChartOptionKey, boolean]> = [
       ["type", type !== this.resolved.type],
-      [
-        "timeRange",
-        !timeRangeOptionsEqual(timeRange, this.resolved.timeRange)
-      ],
+      ["timeRange", !timeRangeOptionsEqual(timeRange, this.resolved.timeRange)],
       ["stepSize", stepSize !== this.resolved.stepSize],
       ["maxZoom", maxZoom !== this.resolved.maxZoom],
       ["volume", volume !== this.resolved.volume],
@@ -149,8 +146,8 @@ export class ChartOptionsState {
       ["formatter", formatter !== this.resolved.formatter],
       [
         "localeValues",
-        !optionValuesEqual(localeValues, this.resolved.localeValues)
-      ]
+        !optionValuesEqual(localeValues, this.resolved.localeValues),
+      ],
     ];
     const changedKeys = changes
       .filter(([, changed]) => changed)
@@ -169,8 +166,7 @@ export class ChartOptionsState {
     }
 
     this.resolved.type = type;
-    this.resolved.timeRange =
-      timeRange === "auto" ? "auto" : { ...timeRange };
+    this.resolved.timeRange = timeRange === "auto" ? "auto" : { ...timeRange };
     this.resolved.stepSize = stepSize;
     this.resolved.maxZoom = maxZoom;
     this.resolved.volume = volume;
@@ -184,7 +180,7 @@ export class ChartOptionsState {
     return {
       previous,
       current: this.snapshot,
-      changedKeys
+      changedKeys,
     };
   }
 
@@ -202,7 +198,7 @@ export class ChartOptionsState {
       formatter: this.resolved.formatter,
       theme: this.resolved.theme,
       domAdapter: this.resolved.domAdapter,
-      localeValues: this.resolved.localeValues
+      localeValues: this.resolved.localeValues,
     };
   }
 }
@@ -222,8 +218,8 @@ function getDefaultLocaleValues(): LocaleValuesMap {
           show: "Show",
           hide: "Hide",
           settings: "Settings",
-          remove: "Remove"
-        }
+          remove: "Remove",
+        },
       },
       common: {
         sources: {
@@ -231,10 +227,10 @@ function getDefaultLocaleValues(): LocaleValuesMap {
           high: "high",
           low: "low",
           close: "close",
-          volume: "volume"
-        }
-      }
-    }
+          volume: "volume",
+        },
+      },
+    },
   };
 }
 

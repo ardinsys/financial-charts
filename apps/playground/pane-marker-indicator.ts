@@ -2,7 +2,7 @@ import {
   PaneledIndicator,
   type DefaultIndicatorOptions,
   type IndicatorLabelContent,
-  type PaneledIndicatorDrawingContext
+  type PaneledIndicatorDrawingContext,
 } from "@ardinsys/financial-charts/extensions";
 import { DataScaleModel } from "@ardinsys/financial-charts/engine";
 
@@ -40,7 +40,7 @@ export class PaneMarkerIndicator extends PaneledIndicator<
   getDefaultOptions(): DefaultIndicatorOptions {
     return {
       labelKey: "pane-marker",
-      names: { default: "Pane Markers" }
+      names: { default: "Pane Markers" },
     };
   }
 

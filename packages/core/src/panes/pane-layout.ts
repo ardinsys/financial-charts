@@ -1,12 +1,12 @@
 import type {
   PaneledIndicator,
-  InitParams
+  InitParams,
 } from "../indicators/paneled-indicator";
 import type { TimeScale } from "../scales/time-scale";
 import type {
   ChartDOMAdapter,
   PaneDividerHandle,
-  PaneDividerModel
+  PaneDividerModel,
 } from "../ui/chart-dom-adapter";
 import { DefaultDOMAdapter } from "../ui/default-dom-adapter";
 import { bindEvent, type Dispose } from "../utils/dom";
@@ -89,7 +89,7 @@ export class PaneLayout {
         kind: pane === this.mainPane ? "main" : "indicator",
         ...(indicator
           ? { indicatorInstanceId: indicator.getInstanceId() }
-          : {})
+          : {}),
       };
     });
     return this.paneSnapshot;
@@ -187,7 +187,7 @@ export class PaneLayout {
         x: geometry.width,
         y,
         width: geometry.yAxisWidth,
-        height
+        height,
       });
       y += height;
     }
@@ -214,7 +214,7 @@ export class PaneLayout {
       y: region.y,
       x: region.x,
       devicePixelRatio: pixelRatio(),
-      pane
+      pane,
     };
   }
 
@@ -299,7 +299,7 @@ export class PaneLayout {
       let remaining = -delta;
       const shrinkOrder = [
         this.mainPane,
-        ...this.panes.filter((pane) => pane !== this.mainPane).reverse()
+        ...this.panes.filter((pane) => pane !== this.mainPane).reverse(),
       ];
       for (const pane of shrinkOrder) {
         if (remaining <= 0) break;
@@ -352,7 +352,7 @@ export class PaneLayout {
         y:
           beforeRegion.y + beforeRegion.height - this.options.dividerHeight / 2,
         width: containerWidth,
-        height: this.options.dividerHeight
+        height: this.options.dividerHeight,
       };
 
       let handle = this.dividerHandles[index];
@@ -375,7 +375,7 @@ export class PaneLayout {
       this.domAdapter.createPaneDivider?.bind(this.domAdapter) ??
       fallbackAdapter.createPaneDivider.bind(fallbackAdapter);
     return createPaneDivider(model, {
-      onPointerDown: (event) => this.startResize(dividerIndex, event)
+      onPointerDown: (event) => this.startResize(dividerIndex, event),
     });
   }
 
@@ -393,8 +393,8 @@ export class PaneLayout {
       disposers: [
         bindEvent(window, "pointermove", this.onResizeMove),
         bindEvent(window, "pointerup", this.onResizeEnd),
-        bindEvent(window, "pointercancel", this.onResizeEnd)
-      ]
+        bindEvent(window, "pointercancel", this.onResizeEnd),
+      ],
     };
   }
 

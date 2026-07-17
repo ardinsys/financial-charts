@@ -15,9 +15,7 @@ describe("DefaultFormatter", () => {
 
     expect(formatter.getTimeZone()).toBe("UTC");
     expect(formatter.formatHour(timestamp)).toBe("3:04 AM");
-    expect(formatter.formatTooltipDate(timestamp)).toBe(
-      "Jan 2, 2024, 3:04 AM"
-    );
+    expect(formatter.formatTooltipDate(timestamp)).toBe("Jan 2, 2024, 3:04 AM");
 
     formatter.setTimeZone("America/New_York");
 

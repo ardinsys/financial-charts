@@ -7,7 +7,7 @@ import {
   type DrawingJSON,
   type DrawingOptions,
   type DrawingPoint,
-  type DrawingRenderContext
+  type DrawingRenderContext,
 } from "./drawing";
 
 export interface TextDrawingOptions extends DrawingOptions {
@@ -69,7 +69,7 @@ export class TextDrawing extends Drawing {
       font: data?.font,
       padding: data?.padding,
       selectedColor: data?.selectedColor,
-      text: data?.text
+      text: data?.text,
     });
   }
 
@@ -126,8 +126,8 @@ export class TextDrawing extends Drawing {
     return [
       {
         index: 0,
-        point: this.projectAnchor(anchor, context)
-      }
+        point: this.projectAnchor(anchor, context),
+      },
     ];
   }
 
@@ -138,7 +138,7 @@ export class TextDrawing extends Drawing {
       font: this.font,
       padding: this.padding,
       ...(this.selectedColor ? { selectedColor: this.selectedColor } : {}),
-      text: this.text
+      text: this.text,
     };
   }
 
@@ -153,7 +153,7 @@ export class TextDrawing extends Drawing {
       x: point.x,
       y: point.y,
       width: metrics.width + this.padding * 2,
-      height: metrics.height + this.padding * 2
+      height: metrics.height + this.padding * 2,
     };
   }
 
@@ -166,7 +166,8 @@ export class TextDrawing extends Drawing {
     return {
       width: Math.max(metrics.width, 1),
       height:
-        metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent || 16
+        metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent ||
+        16,
     };
   }
 

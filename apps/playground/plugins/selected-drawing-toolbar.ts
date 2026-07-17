@@ -1,12 +1,12 @@
 import {
   DrawingManager,
   RectangleDrawing,
-  TextDrawing
+  TextDrawing,
 } from "@ardinsys/financial-charts";
 import type {
   ChartContext,
   ChartPlugin,
-  Drawing
+  Drawing,
 } from "@ardinsys/financial-charts/extensions";
 
 export class SelectedDrawingToolbarPlugin implements ChartPlugin {

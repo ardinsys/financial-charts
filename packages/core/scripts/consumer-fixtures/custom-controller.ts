@@ -5,7 +5,7 @@ import {
   type ChartData,
   type ChartDataValueKey,
   type ControllerConstructor,
-  type TimeRange
+  type TimeRange,
 } from "@ardinsys/financial-charts/engine";
 
 class CloseController extends ChartController {
@@ -16,7 +16,7 @@ class CloseController extends ChartController {
     timeRange: TimeRange
   ): DataScaleModel {
     return new DataScaleModel("simple", data, timeRange, {
-      barAlignment: this.getBarAlignment()
+      barAlignment: this.getBarAlignment(),
     });
   }
 
@@ -38,7 +38,7 @@ class CloseController extends ChartController {
       visibleData,
       visibleStartIndex,
       projectIndex,
-      projectPrice
+      projectPrice,
     } = this.context.getDrawingContext();
     let started = false;
 

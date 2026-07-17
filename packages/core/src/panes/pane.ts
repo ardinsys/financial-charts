@@ -4,7 +4,7 @@ import type { DataScaleModel } from "../scales/data-scale-model";
 import { PriceScale } from "../scales/price-scale";
 import {
   calculateStepSize as calculatePriceStepSize,
-  calculateYAxisLabels as calculatePriceYAxisLabels
+  calculateYAxisLabels as calculatePriceYAxisLabels,
 } from "../scales/ticks/price-ticks";
 import type { BarAlignment, TimeScale } from "../scales/time-scale";
 import { alignStroke } from "../utils/dom";
@@ -36,13 +36,13 @@ export class Pane {
     x: 0,
     y: 0,
     width: 0,
-    height: 0
+    height: 0,
   };
   private yAxisRegion: PaneRegion = {
     x: 0,
     y: 0,
     width: 0,
-    height: 0
+    height: 0,
   };
   private readonly priceScale = new PriceScale({ min: 0, max: 1 });
   private timeScale?: TimeScale;
@@ -142,7 +142,7 @@ export class Pane {
       yMax: scale.getYMax(),
       canvasHeight: this.region.height,
       fontSize,
-      labelSpacing
+      labelSpacing,
     });
   }
 
@@ -157,7 +157,7 @@ export class Pane {
     theme,
     formatter,
     pixelRatio,
-    labelSpacing
+    labelSpacing,
   }: PaneYAxisRenderOptions) {
     const yAxisValues = this.calculateYAxisLabels(
       scale,

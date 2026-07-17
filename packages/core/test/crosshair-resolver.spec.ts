@@ -11,14 +11,13 @@ function createResolver() {
     [
       { time: 0, close: 10 },
       { time: 60, close: 20 },
-      { time: 120, close: 15 }
+      { time: 120, close: 15 },
     ],
     60
   );
   model.configureTimeRange("auto", 60, 3);
   model.configureScales(
-    (data, timeRange) =>
-      new DataScaleModel("simple", data, timeRange),
+    (data, timeRange) => new DataScaleModel("simple", data, timeRange),
     "center"
   );
   model.refreshIndexBounds({ minimumVisibleSlots: 3, reset: true });
@@ -33,7 +32,7 @@ function createResolver() {
   const paneLayout = {
     getMainPane: () => mainPane,
     getPaneAtY: (y: number) => (y < 200 ? mainPane : undefined),
-    getPaneById: () => mainPane
+    getPaneById: () => mainPane,
   } as unknown as PaneLayout;
   const canvas = document.createElement("canvas");
   canvas.width = 300;
@@ -43,7 +42,7 @@ function createResolver() {
     getMainCanvas: () => canvas,
     getDrawingWidth: () => 300,
     getPlotHeight: () => 200,
-    getTimeAnchorAlignment: () => "center"
+    getTimeAnchorAlignment: () => "center",
   });
 
   return { model, resolver };
@@ -62,7 +61,7 @@ describe("CrosshairResolver", () => {
       type: "down",
       time: 60,
       y: 200,
-      dataPoint: state.dataPoint
+      dataPoint: state.dataPoint,
     });
   });
 

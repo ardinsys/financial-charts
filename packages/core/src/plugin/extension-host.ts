@@ -1,12 +1,9 @@
 import {
   snapshotPriceAxisAnnotations,
-  type PriceAxisAnnotation
+  type PriceAxisAnnotation,
 } from "../annotations/price-axis-annotation";
 import type { ChartOptionsChangeEvent } from "../chart/chart-options";
-import type {
-  ChartEventMap,
-  EventEmitter
-} from "../chart/event-emitter";
+import type { ChartEventMap, EventEmitter } from "../chart/event-emitter";
 import type { ChartData, TimeRange } from "../chart/types";
 import type { ChartPaneState } from "../chart/chart-state";
 import type { Indicator } from "../indicators/indicator";
@@ -15,7 +12,7 @@ import type { PaneledIndicator } from "../indicators/paneled-indicator";
 import type { ChartRenderer } from "../render/chart-renderer";
 import type {
   ChartCrosshairOptions,
-  ChartCrosshairState
+  ChartCrosshairState,
 } from "../interaction/crosshair";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
 import type { ChartExtensionReadModel } from "./chart-extension-read-model";
@@ -23,7 +20,7 @@ import type {
   ChartExtension,
   ChartPlugin,
   ChartPointerEvent,
-  ExtensionContext
+  ExtensionContext,
 } from "./chart-plugin";
 
 type HostedExtension = ChartPlugin | Indicator<any, any>;
@@ -31,9 +28,7 @@ type HostedExtension = ChartPlugin | Indicator<any, any>;
 export interface ChartExtensionCommands {
   getCrosshairState(): ChartCrosshairState | undefined;
   getPaneHeightRatios(): readonly ChartPaneState[];
-  setCrosshair(
-    options: ChartCrosshairOptions
-  ): ChartCrosshairState | undefined;
+  setCrosshair(options: ChartCrosshairOptions): ChartCrosshairState | undefined;
   clearCrosshair(): void;
   setPaneHeightRatios(panes: readonly ChartPaneState[]): void;
   setVisibleTimeWindow(range: TimeRange): void;
@@ -163,7 +158,7 @@ export class ExtensionHost {
     if (paneled) {
       this.paneledIndicators = [
         ...this.paneledIndicators,
-        indicator as PaneledIndicator<any, any>
+        indicator as PaneledIndicator<any, any>,
       ];
     } else {
       this.indicators = [...this.indicators, indicator];
@@ -313,19 +308,17 @@ export class ExtensionHost {
         extension.attach({
           ...context,
           getCrosshairState: () => this.commands.getCrosshairState(),
-          getVisibleLogicalRange: () =>
-            this.readModel.getVisibleLogicalRange(),
+          getVisibleLogicalRange: () => this.readModel.getVisibleLogicalRange(),
           getPaneHeightRatios: () => this.commands.getPaneHeightRatios(),
           setPaneHeightRatios: (panes) =>
             this.commands.setPaneHeightRatios(panes),
           setVisibleTimeWindow: (range) =>
             this.commands.setVisibleTimeWindow(range),
           getIndicators: () => this.getAllIndicators(),
-          getIndicatorById: (instanceId) =>
-            this.getIndicatorById(instanceId),
+          getIndicatorById: (instanceId) => this.getIndicatorById(instanceId),
           addIndicator: (indicator) => this.commands.addIndicator(indicator),
           removeIndicator: (indicator) =>
-            this.commands.removeIndicator(indicator)
+            this.commands.removeIndicator(indicator),
         });
       }
       attached = true;
@@ -364,9 +357,7 @@ export class ExtensionHost {
           (item) => item !== indicator
         );
       } else {
-        this.indicators = this.indicators.filter(
-          (item) => item !== indicator
-        );
+        this.indicators = this.indicators.filter((item) => item !== indicator);
       }
       this.refreshIndicatorSnapshots();
     } else {
@@ -427,7 +418,7 @@ export class ExtensionHost {
       clearCrosshair: () => this.commands.clearCrosshair(),
       remove: () => {
         if (!signal.aborted) this.commands.removeExtension(extension);
-      }
+      },
     };
   }
 
@@ -495,7 +486,7 @@ export class ExtensionHost {
     return {
       previous: current,
       current,
-      changedKeys: []
+      changedKeys: [],
     };
   }
 
@@ -515,10 +506,7 @@ export class ExtensionHost {
   }
 
   private refreshIndicatorSnapshots(): void {
-    this.allIndicators = [
-      ...this.indicators,
-      ...this.paneledIndicators
-    ];
+    this.allIndicators = [...this.indicators, ...this.paneledIndicators];
     this.refreshOrderSnapshots();
   }
 
@@ -526,7 +514,7 @@ export class ExtensionHost {
     this.lifecycleExtensions = [
       ...this.indicators,
       ...this.paneledIndicators,
-      ...this.plugins
+      ...this.plugins,
     ];
     const pointerExtensions: ChartExtension[] = [];
     appendReversed(pointerExtensions, this.plugins);

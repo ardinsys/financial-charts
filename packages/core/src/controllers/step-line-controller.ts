@@ -7,7 +7,7 @@ export class SteplineController extends OHLCController {
 
   private static readonly steplineCrosshairValues = [
     "close",
-    "volume"
+    "volume",
   ] as const;
 
   getCrosshairValues(): readonly ChartDataValueKey[] {
@@ -19,7 +19,7 @@ export class SteplineController extends OHLCController {
     timeRange: TimeRange
   ): DataScaleModel {
     return new DataScaleModel("simple", data, timeRange, {
-      barAlignment: this.getBarAlignment()
+      barAlignment: this.getBarAlignment(),
     });
   }
 
@@ -29,7 +29,7 @@ export class SteplineController extends OHLCController {
       visibleData,
       visibleStartIndex,
       projectIndex,
-      projectPrice
+      projectPrice,
     } = this.context.getDrawingContext();
 
     ctx.beginPath();

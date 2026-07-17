@@ -4,7 +4,7 @@ import type { ChartModel } from "../src/chart/chart-model";
 import type { ChartRenderer } from "../src/render/chart-renderer";
 import type {
   ChartCanvasLayer,
-  ChartRedrawPart
+  ChartRedrawPart,
 } from "../src/render/chart-render-types";
 import type { ExtensionHost } from "../src/plugin/extension-host";
 

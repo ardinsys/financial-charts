@@ -4,7 +4,7 @@ import type { ChartData, TimeRange } from "../src/chart/types";
 import {
   type DefaultIndicatorOptions,
   Indicator,
-  type IndicatorLabelContent
+  type IndicatorLabelContent,
 } from "../src/indicators/indicator";
 import { getChartModel, getChartRenderer } from "./chart-test-harness";
 import type { ExtensionThemeDefaults } from "../src/plugin/extension-theme";
@@ -29,7 +29,7 @@ class ExternalDataProbeIndicator extends Indicator<
   getDefaultOptions(): DefaultIndicatorOptions {
     return {
       labelKey: "external-data-probe",
-      names: { default: "External data" }
+      names: { default: "External data" },
     };
   }
 
@@ -37,7 +37,7 @@ class ExternalDataProbeIndicator extends Indicator<
     return {
       light: { color: "#ff0000", strokeWidth: 1 },
       dark: { color: "#00ff00", strokeWidth: 2 },
-      night: { color: "#8080ff", strokeWidth: 4 }
+      night: { color: "#8080ff", strokeWidth: 4 },
     };
   }
 
@@ -47,7 +47,7 @@ class ExternalDataProbeIndicator extends Indicator<
       actor: this,
       enabled: true,
       yMin: Math.min(...this.prices),
-      yMax: Math.max(...this.prices)
+      yMax: Math.max(...this.prices),
     };
   }
 
@@ -55,7 +55,7 @@ class ExternalDataProbeIndicator extends Indicator<
     this.labelReads++;
     return {
       detail: String(this.prices.length),
-      segments: [{ text: this.theme.color, color: this.theme.color }]
+      segments: [{ text: this.theme.color, color: this.theme.color }],
     };
   }
 
@@ -126,13 +126,13 @@ function createChart() {
     locale: "en-US",
     themes: {
       night: { base: "dark" },
-      evening: { base: "dark" }
-    }
+      evening: { base: "dark" },
+    },
   });
   const start = Date.UTC(2024, 0, 1, 9);
   const data: ChartData[] = [10, 12, 14].map((close, index) => ({
     time: start + index * 60_000,
-    close
+    close,
   }));
   chart.setData(data);
   charts.push(chart);
@@ -143,7 +143,7 @@ describe("external-data indicators", () => {
   it("uses the shared extension theme resolution for partial custom keys", () => {
     const { chart } = createChart();
     const indicator = new ExternalDataProbeIndicator({
-      night: { color: "#ffaa00" }
+      night: { color: "#ffaa00" },
     });
     chart.addIndicator(indicator);
 
@@ -151,7 +151,7 @@ describe("external-data indicators", () => {
 
     expect(indicator.getResolvedTheme()).toEqual({
       color: "#ffaa00",
-      strokeWidth: 4
+      strokeWidth: 4,
     });
   });
 
@@ -187,11 +187,11 @@ describe("external-data indicators", () => {
     indicator.onOptionsChanged.mockClear();
     chart.updateOptions({
       timeRange: { start: data[0].time, end: data.at(-1)!.time + 60_000 },
-      stepSize: 120_000
+      stepSize: 120_000,
     });
     expect(indicator.onOptionsChanged).toHaveBeenCalledWith(
       expect.objectContaining({
-        changedKeys: ["timeRange", "stepSize"]
+        changedKeys: ["timeRange", "stepSize"],
       })
     );
     expect(getChartModel(chart).getVisibleScale().getYMax()).toBeGreaterThan(

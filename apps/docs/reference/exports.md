@@ -14,25 +14,25 @@ reference pages.
 
 ## Chart construction and data
 
-| Exports | Reference |
-| --- | --- |
-| `FinancialChart`, `CoreChartOptions` | [FinancialChart](/reference/chart) |
-| `ChartData`, `TimeRange` | [Data contracts](/reference/chart#data-contracts) |
-| `ChartOptions`, `ChartOptionsUpdate`, `ChartOptionsSnapshot`, `ChartOptionsChangeEvent`, `ChartOptionKey`, `ChartLocalizationOptions` | [Options](/reference/chart#chartoptions) |
-| `LocaleValues`, `LocaleValuesMap` | [i18n](/guide/i18n) |
-| `ControllerID`, `ControllerType`, `ControllerConstructor` | [Controllers](/reference/engine#custom-controllers) |
-| `ChartPaneSnapshot`, `PaneHeightsInput` | [View and panes](/reference/chart#view-and-styling) |
-| `ChartCrosshairOptions`, `ChartCrosshairState`, `ChartCrosshairChangeEvent` | [View and interactions](/guide/view-and-interactions) |
-| `IndicatorMutationOptions` | [Indicator management](/reference/chart#indicator-management) |
+| Exports                                                                                                                               | Reference                                                     |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `FinancialChart`, `CoreChartOptions`                                                                                                  | [FinancialChart](/reference/chart)                            |
+| `ChartData`, `TimeRange`                                                                                                              | [Data contracts](/reference/chart#data-contracts)             |
+| `ChartOptions`, `ChartOptionsUpdate`, `ChartOptionsSnapshot`, `ChartOptionsChangeEvent`, `ChartOptionKey`, `ChartLocalizationOptions` | [Options](/reference/chart#chartoptions)                      |
+| `LocaleValues`, `LocaleValuesMap`                                                                                                     | [i18n](/guide/i18n)                                           |
+| `ControllerID`, `ControllerType`, `ControllerConstructor`                                                                             | [Controllers](/reference/engine#custom-controllers)           |
+| `ChartPaneSnapshot`, `PaneHeightsInput`                                                                                               | [View and panes](/reference/chart#view-and-styling)           |
+| `ChartCrosshairOptions`, `ChartCrosshairState`, `ChartCrosshairChangeEvent`                                                           | [View and interactions](/guide/view-and-interactions)         |
+| `IndicatorMutationOptions`                                                                                                            | [Indicator management](/reference/chart#indicator-management) |
 
 ## Events, formatting, and themes
 
-| Exports | Reference |
-| --- | --- |
-| `EventEmitter`, `ChartEventMap` | [Events](/reference/chart#events) |
-| `Formatter`, `DefaultFormatter`, `DefaultFormatterOptions` | [Formatting](/guide/styling-and-localization#localization-and-formatter-overrides) |
-| `ChartTheme`, `ChartThemeMap`, `ChartThemeKey`, `BuiltInChartThemeKey`, `ResolvedChartTheme`, `Gradient`, `defaultLightTheme`, `defaultDarkTheme` | [Styling](/guide/styling-and-localization) |
-| `DefaultDOMAdapter` | [DOM adapter](/reference/dom-adapter) |
+| Exports                                                                                                                                           | Reference                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `EventEmitter`, `ChartEventMap`                                                                                                                   | [Events](/reference/chart#events)                                                  |
+| `Formatter`, `DefaultFormatter`, `DefaultFormatterOptions`                                                                                        | [Formatting](/guide/styling-and-localization#localization-and-formatter-overrides) |
+| `ChartTheme`, `ChartThemeMap`, `ChartThemeKey`, `BuiltInChartThemeKey`, `ResolvedChartTheme`, `Gradient`, `defaultLightTheme`, `defaultDarkTheme` | [Styling](/guide/styling-and-localization)                                         |
+| `DefaultDOMAdapter`                                                                                                                               | [DOM adapter](/reference/dom-adapter)                                              |
 
 `ChartThemeMap` registers partial definitions by key. The chart resolves each
 definition from its declared built-in base and exposes the active complete
@@ -40,32 +40,32 @@ definition from its declared built-in base and exposes the active complete
 
 ## Chart and indicator state
 
-| Exports | Reference |
-| --- | --- |
-| `CHART_STATE_VERSION`, `ChartState`, `ChartCoreState`, `ChartPaneState` | [State and persistence](/guide/state-and-persistence) |
-| `ChartStateContributor`, `ChartStateSerializationOptions`, `ChartStateRestoreOptions`, `ChartStateRestoredEvent` | [Custom contributors](/guide/state-and-persistence#custom-contributors) |
+| Exports                                                                                                                                                          | Reference                                                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `CHART_STATE_VERSION`, `ChartState`, `ChartCoreState`, `ChartPaneState`                                                                                          | [State and persistence](/guide/state-and-persistence)                    |
+| `ChartStateContributor`, `ChartStateSerializationOptions`, `ChartStateRestoreOptions`, `ChartStateRestoredEvent`                                                 | [Custom contributors](/guide/state-and-persistence#custom-contributors)  |
 | `INDICATOR_STATE_VERSION`, `IndicatorState`, `IndicatorStateOptions`, `IndicatorStateValue`, `IndicatorIdentityOptions`, `IndicatorResolver`, `restoreIndicator` | [Serializable indicator state](/reference/indicators#serializable-state) |
-| `MovingAverageIndicator`, `MovingAverageOptions`, `MovingAverageTheme` | [Indicators](/reference/indicators) |
+| `MovingAverageIndicator`, `MovingAverageOptions`, `MovingAverageTheme`                                                                                           | [Indicators](/reference/indicators)                                      |
 
 ## Drawings and annotations
 
-| Exports | Reference |
-| --- | --- |
-| `Drawing`, `DrawingOptions`, `DrawingAnchor`, `DrawingJSON` | [Drawing base](/reference/drawings) |
-| `DrawingManager`, `DrawingManagerOptions`, `DrawingManagerJSON`, `DrawingFactory`, `DrawingFactoryDescriptor`, `DrawingCreationFactory`, `DrawingDeserializer`, `DrawingMutationOptions`, `DrawingSelectionOptions` | [DrawingManager](/reference/drawings#manager-state-and-attachment) |
-| `TrendLine`, `TrendLineOptions`, `HorizontalLine`, `HorizontalLineOptions`, `RectangleDrawing`, `RectangleDrawingOptions`, `TextDrawing`, `TextDrawingOptions` | [Built-in drawings](/reference/drawings#built-in-drawings) |
-| `DrawingEvent`, `DrawingFinishedEvent`, `DrawingFinishedOperation`, `DrawingSelectionEvent` | [Drawing events](/reference/drawings#events) |
-| `IndicatorEvent`, `IndicatorVisibilityChangedEvent` | [Indicator events](/reference/indicators#events) |
-| `PriceAxisAnnotation`, `PriceAxisAnnotationOffscreenBehavior` | [Price-axis annotations](/reference/plugins#price-axis-annotations) |
+| Exports                                                                                                                                                                                                             | Reference                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `Drawing`, `DrawingOptions`, `DrawingAnchor`, `DrawingJSON`                                                                                                                                                         | [Drawing base](/reference/drawings)                                 |
+| `DrawingManager`, `DrawingManagerOptions`, `DrawingManagerJSON`, `DrawingFactory`, `DrawingFactoryDescriptor`, `DrawingCreationFactory`, `DrawingDeserializer`, `DrawingMutationOptions`, `DrawingSelectionOptions` | [DrawingManager](/reference/drawings#manager-state-and-attachment)  |
+| `TrendLine`, `TrendLineOptions`, `HorizontalLine`, `HorizontalLineOptions`, `RectangleDrawing`, `RectangleDrawingOptions`, `TextDrawing`, `TextDrawingOptions`                                                      | [Built-in drawings](/reference/drawings#built-in-drawings)          |
+| `DrawingEvent`, `DrawingFinishedEvent`, `DrawingFinishedOperation`, `DrawingSelectionEvent`                                                                                                                         | [Drawing events](/reference/drawings#events)                        |
+| `IndicatorEvent`, `IndicatorVisibilityChangedEvent`                                                                                                                                                                 | [Indicator events](/reference/indicators#events)                    |
+| `PriceAxisAnnotation`, `PriceAxisAnnotationOffscreenBehavior`                                                                                                                                                       | [Price-axis annotations](/reference/plugins#price-axis-annotations) |
 
 ## Plugins included at the root
 
-| Exports | Reference |
-| --- | --- |
-| `ExtensionThemeResolver`, `ExtensionThemeDefaults`, `ExtensionThemeDefinition`, `ExtensionThemeMap` | [Extension themes](/reference/plugins#extension-themes) |
-| `ChartSyncPlugin`, `ChartSyncPluginOptions`, `ChartSyncCrosshairSnapshot`, `ChartSyncIndicatorSnapshot`, `ChartSyncMessage`, `ChartSyncMessageSource`, `ChartSyncMessageHandler`, `ChartSyncPostMessageOptions` | [ChartSyncPlugin](/reference/plugins#chartsyncplugin) |
+| Exports                                                                                                                                                                                                                                                                     | Reference                                                            |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `ExtensionThemeResolver`, `ExtensionThemeDefaults`, `ExtensionThemeDefinition`, `ExtensionThemeMap`                                                                                                                                                                         | [Extension themes](/reference/plugins#extension-themes)              |
+| `ChartSyncPlugin`, `ChartSyncPluginOptions`, `ChartSyncCrosshairSnapshot`, `ChartSyncIndicatorSnapshot`, `ChartSyncMessage`, `ChartSyncMessageSource`, `ChartSyncMessageHandler`, `ChartSyncPostMessageOptions`                                                             | [ChartSyncPlugin](/reference/plugins#chartsyncplugin)                |
 | `DrawingAxisBoundsPlugin`, `DrawingAxisBoundsPluginOptions`, `DrawingAxisBoundKind`, `DrawingAxisBoundsLabels`, `DrawingAxisBoundsLabelOptions`, `DrawingAxisBoundsLabelContext`, `DrawingAxisBoundsValueContext`, `DrawingAxisBoundsTextContext`, `DrawingAxisBoundsTheme` | [Drawing axis bounds](/reference/plugins#drawing-axis-bounds-plugin) |
-| `DrawingSelectionPlugin`, `DrawingSelectionPluginOptions`, `DrawingSelectionCallback` | [Drawing selection](/reference/plugins#drawing-selection-plugin) |
+| `DrawingSelectionPlugin`, `DrawingSelectionPluginOptions`, `DrawingSelectionCallback`                                                                                                                                                                                       | [Drawing selection](/reference/plugins#drawing-selection-plugin)     |
 
 ## Built-in controllers
 

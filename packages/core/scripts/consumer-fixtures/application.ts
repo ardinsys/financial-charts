@@ -1,7 +1,7 @@
 import {
   FinancialChart,
   type ChartData,
-  type ChartOptionsChangeEvent
+  type ChartOptionsChangeEvent,
 } from "@ardinsys/financial-charts";
 
 declare const container: HTMLElement;
@@ -9,7 +9,7 @@ declare const container: HTMLElement;
 const chart = new FinancialChart(container, { stepSize: 60_000 });
 const data: ChartData[] = [
   { time: 0, close: 100 },
-  { time: 60_000, close: 101 }
+  { time: 60_000, close: 101 },
 ];
 
 chart.setData(data);

@@ -39,7 +39,7 @@ export class CrosshairResolver {
       pane: this.paneLayout.getPaneById(state.paneId),
       dataPoint: state.dataPoint,
       button: source?.button,
-      buttons: source?.buttons
+      buttons: source?.buttons,
     };
   }
 
@@ -54,7 +54,7 @@ export class CrosshairResolver {
         ? this.model.getTimeScale()
         : this.model.getVisibleScale().getTimeScale();
     const rawPoint = {
-      time: timeScale.unproject(x, { canvas: this.host.getMainCanvas() })
+      time: timeScale.unproject(x, { canvas: this.host.getMainCanvas() }),
     };
     return this.model.getNearestData(this.host.normalizeTime(rawPoint));
   }
@@ -71,7 +71,7 @@ export class CrosshairResolver {
       y: pointerY,
       paneId: pane.getId(),
       price: this.resolvePrice(pane, pointerY),
-      dataPoint
+      dataPoint,
     };
   }
 
@@ -83,7 +83,7 @@ export class CrosshairResolver {
 
     const x = this.model.getTimeScale().project(dataPoint.time, {
       canvas: this.host.getMainCanvas(),
-      barAlignment: this.host.getTimeAnchorAlignment()
+      barAlignment: this.host.getTimeAnchorAlignment(),
     });
     if (x < 0 || x > this.host.getDrawingWidth()) return undefined;
 
@@ -94,14 +94,14 @@ export class CrosshairResolver {
       y,
       paneId: pane.getId(),
       price: this.resolvePrice(pane, y),
-      dataPoint
+      dataPoint,
     };
   }
 
   private resolvePrice(pane: Pane, y: number): number {
     const region = pane.getRegion();
     return pane.getPriceScale().unproject(pane.getRelativeY(y), {
-      canvas: { width: region.width, height: region.height }
+      canvas: { width: region.width, height: region.height },
     });
   }
 
@@ -124,7 +124,7 @@ export class CrosshairResolver {
     return (
       region.y +
       pane.getPriceScale().project(price, {
-        canvas: { width: region.width, height: region.height }
+        canvas: { width: region.width, height: region.height },
       })
     );
   }

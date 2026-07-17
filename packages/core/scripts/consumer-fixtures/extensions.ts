@@ -30,7 +30,7 @@ import {
   type RenderStage,
   type ScaleRangeModifier,
   type TimeRange,
-  type TimeScaleRange
+  type TimeScaleRange,
 } from "@ardinsys/financial-charts/extensions";
 
 class ExtensionIndicator extends Indicator<{}, DefaultIndicatorOptions> {
@@ -74,9 +74,9 @@ const plugin = {
       ctx.hostElement,
       ctx.getCrosshairState(),
       ctx.getIndicators(),
-      ctx.getVisibleLogicalRange()
+      ctx.getVisibleLogicalRange(),
     ];
-  }
+  },
 } satisfies ChartPlugin;
 const adapter = {} as ChartDOMAdapter;
 const annotation: PriceAxisAnnotation = { id: "fixture", value: 1 };
@@ -100,7 +100,7 @@ type AuthoringContracts = [
   RenderStage,
   ScaleRangeModifier,
   TimeRange,
-  TimeScaleRange
+  TimeScaleRange,
 ];
 
 void [
@@ -111,5 +111,5 @@ void [
   annotation,
   canvasLayer,
   redrawPart,
-  null as unknown as AuthoringContracts
+  null as unknown as AuthoringContracts,
 ];

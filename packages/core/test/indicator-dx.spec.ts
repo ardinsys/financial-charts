@@ -7,18 +7,18 @@ import {
   DefaultIndicatorOptions,
   Indicator,
   type IndicatorDrawingContext,
-  type IndicatorLabelContent
+  type IndicatorLabelContent,
 } from "../src/indicators/indicator";
 import {
   PaneledIndicator,
-  type PaneledIndicatorDrawingContext
+  type PaneledIndicatorDrawingContext,
 } from "../src/indicators/paneled-indicator";
 import { DataScaleModel } from "../src/scales/data-scale-model";
 import type { ExtensionThemeDefaults } from "../src/plugin/extension-theme";
 import {
   getChartContext,
   getChartModel,
-  getInternalPanes
+  getInternalPanes,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -30,7 +30,7 @@ class OverlayProbeIndicator extends Indicator<{}, DefaultIndicatorOptions> {
   public getDefaultOptions(): DefaultIndicatorOptions {
     return {
       labelKey: "overlay-probe",
-      names: { default: "Overlay probe" }
+      names: { default: "Overlay probe" },
     };
   }
 
@@ -69,7 +69,7 @@ class PaneledProbeIndicator extends PaneledIndicator<
   public getDefaultOptions(): DefaultIndicatorOptions {
     return {
       labelKey: "paneled-probe",
-      names: { default: "Paneled probe" }
+      names: { default: "Paneled probe" },
     };
   }
 
@@ -110,14 +110,14 @@ function createChart(data: ChartData[]) {
   const chart = new FinancialChart(container, {
     timeRange: {
       start: data[0].time,
-      end: data.at(-1)!.time + 60_000
+      end: data.at(-1)!.time + 60_000,
     },
     type: "line",
     controllers: [LineController],
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
   });
   chart.setData(data);
   charts.push(chart);
@@ -129,7 +129,7 @@ function createData() {
   return [
     { time: start, close: 10 },
     { time: start + 60_000, close: 12 },
-    { time: start + 120_000, close: 14 }
+    { time: start + 120_000, close: 14 },
   ];
 }
 
@@ -163,7 +163,7 @@ describe("indicator authoring contexts", () => {
     ).toEqual(
       expect.objectContaining({
         x: expect.any(Number),
-        y: expect.any(Number)
+        y: expect.any(Number),
       })
     );
   });
@@ -191,7 +191,7 @@ describe("indicator authoring contexts", () => {
     ).toEqual(
       expect.objectContaining({
         x: expect.any(Number),
-        y: expect.any(Number)
+        y: expect.any(Number),
       })
     );
   });
@@ -211,10 +211,10 @@ describe("indicator identity", () => {
   it("restores caller-provided IDs and rejects duplicates on one chart", () => {
     const chart = createChart(createData());
     const first = new MovingAverageIndicator(null, {
-      instanceId: "primary-sma"
+      instanceId: "primary-sma",
     });
     const duplicate = new MovingAverageIndicator(null, {
-      instanceId: "primary-sma"
+      instanceId: "primary-sma",
     });
 
     chart.addIndicator(first);
@@ -229,11 +229,11 @@ describe("indicator identity", () => {
   it("gives clones new identity while copyFrom preserves target identity", () => {
     const source = new MovingAverageIndicator(null, {
       instanceId: "source-sma",
-      period: 21
+      period: 21,
     });
     const clone = source.clone();
     const target = new MovingAverageIndicator(null, {
-      instanceId: "target-sma"
+      instanceId: "target-sma",
     });
 
     target.copyFrom(source);
@@ -249,7 +249,7 @@ describe("indicator identity", () => {
   it("provides the indicator instance in indicator events", () => {
     const chart = createChart(createData());
     const indicator = new MovingAverageIndicator(null, {
-      instanceId: "event-sma"
+      instanceId: "event-sma",
     });
     const events: Indicator<any, any>[] = [];
     chart.on("indicator-add", ({ indicator: eventIndicator }) => {

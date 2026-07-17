@@ -11,7 +11,7 @@ import {
   type ExtensionThemeDefaults,
   type Formatter,
   type PaneledIndicatorDrawingContext,
-  paletteColor
+  paletteColor,
 } from "@ardinsys/financial-charts/engine";
 
 class ExtensionPane extends PaneledIndicator<{}, DefaultIndicatorOptions> {
@@ -42,7 +42,7 @@ const formatter = {} as Formatter;
 const ticks = new TimeTickGenerator().generate({
   times: [],
   visibleRange: { from: 0, to: 0 },
-  formatter
+  formatter,
 });
 const color = paletteColor(["#0af", "#f80"], 3);
 const canvasLayer: ChartCanvasLayer = "main";
@@ -56,5 +56,5 @@ void [
   createCanvasLayer,
   ticks,
   color,
-  canvasLayer
+  canvasLayer,
 ];

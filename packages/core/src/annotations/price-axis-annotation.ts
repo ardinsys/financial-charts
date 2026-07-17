@@ -73,7 +73,7 @@ export function renderPriceAxisAnnotations({
   panes,
   annotations,
   theme,
-  formatter
+  formatter,
 }: PriceAxisAnnotationRenderOptions): void {
   context.clearRect(0, 0, width, height);
 
@@ -95,7 +95,7 @@ export function renderPriceAxisAnnotations({
     const region = pane.getRegion();
     const relativeY = pane.getPriceScale().project(annotation.value, {
       canvas: { width: region.width, height: region.height },
-      devicePixelRatio: 1
+      devicePixelRatio: 1,
     });
     if (!Number.isFinite(relativeY)) continue;
 
@@ -115,14 +115,12 @@ export function renderPriceAxisAnnotations({
       y: region.y + Math.max(0, Math.min(relativeY, region.height)),
       color: annotation.color ?? annotationTheme.color,
       labelColor:
-        annotation.labelColor ??
-        annotation.color ??
-        annotationTheme.labelColor,
+        annotation.labelColor ?? annotation.color ?? annotationTheme.labelColor,
       textColor: annotation.textColor ?? annotationTheme.textColor,
       lineWidth,
       lineDash: annotation.lineDash ?? annotationTheme.lineDash,
       text: annotation.text ?? formatter.formatPrice(annotation.value),
-      order: annotationOrder
+      order: annotationOrder,
     });
   }
 
@@ -134,7 +132,7 @@ export function renderPriceAxisAnnotations({
     const axisRegion = item.pane.getYAxisRegion();
     const targetY = item.pane.getPriceScale().project(range.to, {
       canvas: { width: paneRegion.width, height: paneRegion.height },
-      devicePixelRatio: 1
+      devicePixelRatio: 1,
     });
     if (!Number.isFinite(targetY)) continue;
 
@@ -214,7 +212,7 @@ export function renderPriceAxisAnnotations({
     );
     const bounds = {
       top: centerY - labelHeight / 2,
-      bottom: centerY + labelHeight / 2
+      bottom: centerY + labelHeight / 2,
     };
     const accepted = acceptedByPane.get(item.pane.getId()) ?? [];
     if (
@@ -252,8 +250,7 @@ export function renderPriceAxisAnnotations({
     }
     context.fillStyle = item.textColor;
     const fontWeight = item.annotation.emphasized ? "600 " : "";
-    const fontSize =
-      labelStyle?.fontSize ?? theme.priceAxisAnnotation.fontSize;
+    const fontSize = labelStyle?.fontSize ?? theme.priceAxisAnnotation.fontSize;
     const font = labelStyle?.font ?? theme.priceAxisAnnotation.font;
     context.font = `${fontWeight}${fontSize}px ${font}, monospace`;
     context.textAlign = "center";
@@ -265,9 +262,7 @@ export function renderPriceAxisAnnotations({
       Math.max(
         0,
         width -
-          (labelStyle?.paddingX ??
-            theme.priceAxisAnnotation.labelPaddingX) *
-            2
+          (labelStyle?.paddingX ?? theme.priceAxisAnnotation.labelPaddingX) * 2
       )
     );
     context.restore();
@@ -303,7 +298,9 @@ export function snapshotPriceAxisAnnotations(
       annotation.range !== undefined &&
       !Number.isFinite(annotation.range.to)
     ) {
-      throw new RangeError("Price axis annotation range values must be finite.");
+      throw new RangeError(
+        "Price axis annotation range values must be finite."
+      );
     }
     if (
       annotation.lineWidth !== undefined &&
@@ -327,7 +324,7 @@ export function snapshotPriceAxisAnnotations(
         ? { ...annotation.labelStyle }
         : undefined,
       range: annotation.range ? { ...annotation.range } : undefined,
-      lineDash: annotation.lineDash ? [...annotation.lineDash] : undefined
+      lineDash: annotation.lineDash ? [...annotation.lineDash] : undefined,
     };
   });
 

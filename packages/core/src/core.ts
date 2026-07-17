@@ -5,7 +5,7 @@ export type {
   ChartStateContributor,
   ChartStateRestoreOptions,
   ChartStateRestoredEvent,
-  ChartStateSerializationOptions
+  ChartStateSerializationOptions,
 } from "./chart/chart-state";
 export { CHART_STATE_VERSION } from "./chart/chart-state";
 export type {
@@ -19,11 +19,11 @@ export type {
   ControllerID,
   ControllerType,
   LocaleValues,
-  LocaleValuesMap
+  LocaleValuesMap,
 } from "./chart/chart-options";
 export type {
   ChartCrosshairOptions,
-  ChartCrosshairState
+  ChartCrosshairState,
 } from "./interaction/crosshair";
 export type { IndicatorMutationOptions } from "./indicators/indicator";
 export type { ChartPaneSnapshot, PaneHeightsInput } from "./panes/pane-layout";
@@ -37,7 +37,7 @@ export * from "./plugin/extension-theme";
 
 export type {
   PriceAxisAnnotation,
-  PriceAxisAnnotationOffscreenBehavior
+  PriceAxisAnnotationOffscreenBehavior,
 } from "./annotations/price-axis-annotation";
 
 export { DefaultDOMAdapter } from "./ui/default-dom-adapter";
@@ -46,7 +46,7 @@ export {
   Drawing,
   type DrawingAnchor,
   type DrawingJSON,
-  type DrawingOptions
+  type DrawingOptions,
 } from "./drawings/drawing";
 export {
   DrawingManager,
@@ -57,15 +57,15 @@ export {
   type DrawingManagerJSON,
   type DrawingManagerOptions,
   type DrawingMutationOptions,
-  type DrawingSelectionOptions
+  type DrawingSelectionOptions,
 } from "./drawings/drawing-manager";
 export {
   HorizontalLine,
-  type HorizontalLineOptions
+  type HorizontalLineOptions,
 } from "./drawings/horizontal-line";
 export {
   RectangleDrawing,
-  type RectangleDrawingOptions
+  type RectangleDrawingOptions,
 } from "./drawings/rectangle";
 export { TextDrawing, type TextDrawingOptions } from "./drawings/text";
 export { TrendLine, type TrendLineOptions } from "./drawings/trendline";
@@ -79,10 +79,10 @@ export {
   type IndicatorResolver,
   type IndicatorState,
   type IndicatorStateOptions,
-  type IndicatorStateValue
+  type IndicatorStateValue,
 } from "./indicators/indicator";
 export {
   MovingAverageIndicator,
   type MovingAverageOptions,
-  type MovingAverageTheme
+  type MovingAverageTheme,
 } from "./indicators/simple/moving-average";

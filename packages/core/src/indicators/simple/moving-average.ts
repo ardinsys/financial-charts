@@ -2,7 +2,7 @@ import {
   DefaultIndicatorOptions,
   Indicator,
   type IndicatorDrawingContext,
-  type IndicatorLabelContent
+  type IndicatorLabelContent,
 } from "../indicator";
 import type { ChartData, TimeRange } from "../../chart/types";
 import type { ExtensionThemeDefaults } from "../../plugin/extension-theme";
@@ -31,8 +31,8 @@ export class MovingAverageIndicator extends Indicator<
       source: "close",
       labelKey: "SMA",
       names: {
-        default: "Simple Moving Average"
-      }
+        default: "Simple Moving Average",
+      },
     };
   }
 
@@ -40,12 +40,12 @@ export class MovingAverageIndicator extends Indicator<
     return {
       light: {
         color: "#2962FF",
-        strokeWidth: 2
+        strokeWidth: 2,
       },
       dark: {
         color: "#2962FF",
-        strokeWidth: 2
-      }
+        strokeWidth: 2,
+      },
     };
   }
 
@@ -67,9 +67,9 @@ export class MovingAverageIndicator extends Indicator<
       segments: [
         {
           text: this.indicatorContext.getOptions().formatter.formatPrice(sma),
-          color: this.theme.color
-        }
-      ]
+          color: this.theme.color,
+        },
+      ],
     };
   }
 
@@ -134,7 +134,7 @@ export class MovingAverageIndicator extends Indicator<
       // Warm-up uses the available values in the growing trailing window.
       movingAveragePoints.push({
         time: data[i].time,
-        movingAverage: sum / valueCount
+        movingAverage: sum / valueCount,
       });
     }
 

@@ -22,7 +22,7 @@ export const renderStageOrder: readonly RenderStage[] = [
   "drawings",
   "annotations",
   "crosshair",
-  "afterDraw"
+  "afterDraw",
 ];
 
 export class RenderPipeline {

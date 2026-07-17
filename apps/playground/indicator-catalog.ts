@@ -8,11 +8,11 @@ export const indicatorCatalog: Array<{
   {
     id: "moving-average",
     name: "Moving Average",
-    detail: "Overlay average with editable period and source"
+    detail: "Overlay average with editable period and source",
   },
   {
     id: "pane-marker",
     name: "Pane Markers",
-    detail: "Separate pane sample that follows the price series"
-  }
+    detail: "Separate pane sample that follows the price series",
+  },
 ];

@@ -2,7 +2,7 @@ import {
   validateIndicatorState,
   type IndicatorResolver,
   type IndicatorState,
-  type IndicatorStateValue
+  type IndicatorStateValue,
 } from "../indicators/indicator";
 import { cloneJSONStateValue, isPlainRecord } from "../utils/json-state";
 import type { ControllerType } from "./chart-options";
@@ -77,7 +77,7 @@ export function createChartState(
   return {
     version: CHART_STATE_VERSION,
     ...snapshot,
-    ...(Object.keys(contributions).length > 0 ? { contributions } : {})
+    ...(Object.keys(contributions).length > 0 ? { contributions } : {}),
   };
 }
 
@@ -193,7 +193,7 @@ export function validateChartState(state: unknown): ChartState {
       heightRatio: pane.heightRatio,
       ...(pane.indicatorInstanceId === undefined
         ? {}
-        : { indicatorInstanceId: pane.indicatorInstanceId })
+        : { indicatorInstanceId: pane.indicatorInstanceId }),
     };
   });
   const paneHeightRatioTotal = panes.reduce(
@@ -234,12 +234,12 @@ export function validateChartState(state: unknown): ChartState {
       timeRange,
       stepSize: state.core.stepSize,
       maxZoom: state.core.maxZoom,
-      volume: state.core.volume
+      volume: state.core.volume,
     },
     visibleRange,
     panes,
     indicators,
-    ...(contributions ? { contributions } : {})
+    ...(contributions ? { contributions } : {}),
   };
 }
 

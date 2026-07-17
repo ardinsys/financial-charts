@@ -8,11 +8,11 @@ import {
   DrawingManager,
   TrendLine,
   RectangleDrawing,
-  TextDrawing
+  TextDrawing,
 } from "@ardinsys/financial-charts";
 
 const manager = new DrawingManager({
-  drawingFactory: ({ anchors, paneId }) => new TrendLine({ anchors, paneId })
+  drawingFactory: ({ anchors, paneId }) => new TrendLine({ anchors, paneId }),
 });
 
 chart.addPlugin(manager);
@@ -27,7 +27,7 @@ Use a `DrawingFactoryDescriptor` when a tool needs another fixed anchor count:
 ```ts
 manager.setDrawingFactory({
   anchorCount: 3,
-  create: ({ anchors, paneId }) => new TriangleDrawing({ anchors, paneId })
+  create: ({ anchors, paneId }) => new TriangleDrawing({ anchors, paneId }),
 });
 ```
 
@@ -70,8 +70,8 @@ manager.addDrawing(
     id: "opening-range",
     anchors: [
       { index: 10, price: 100 },
-      { index: 20, price: 110 }
-    ]
+      { index: 20, price: 110 },
+    ],
   })
 );
 
@@ -84,20 +84,20 @@ therefore be attached again later. One manager cannot be attached to two charts
 at the same time. Detach publishes a cleared chart selection without erasing
 the retained manager selection; reattachment publishes that selection again.
 
-| Method                                      | Result                                                                 |
-| ------------------------------------------- | ---------------------------------------------------------------------- |
-| `getDrawings()`                             | Returns a stable borrowed readonly snapshot until membership changes. |
-| `getDrawingById(id)`                        | Returns one drawing by its unique ID.                                  |
-| `getSelectedDrawing()`                      | Returns the selected drawing, if any.                                  |
-| `addDrawing(drawing, options?)`             | Adds and selects a programmatic drawing with opt-in create emission.   |
-| `upsertDrawing(json, options?)`             | Replaces or inserts serialized state by ID.                            |
-| `selectDrawing(drawing?, options?)`         | Selects a managed drawing or clears selection.                         |
-| `selectDrawingById(id?, options?)`          | Selects by ID; an unknown ID leaves the current selection unchanged.   |
-| `deleteDrawing(drawing)` / `deleteSelected()` | Deletes with history and emits `drawing-delete`.                     |
-| `removeDrawingById(id, options?)`           | Reconciliation-oriented removal with opt-in event emission.            |
-| `clearDrawings(options?)`                   | Clears drawings, selection, interactions, and undo/redo history.       |
-| `setDrawingFactory(factory?)`               | Arms or clears a one-shot function factory or fixed-count descriptor.  |
-| `registerDrawingDeserializer(type, fn)`     | Registers a loader and returns an idempotent unregister function.      |
+| Method                                        | Result                                                                |
+| --------------------------------------------- | --------------------------------------------------------------------- |
+| `getDrawings()`                               | Returns a stable borrowed readonly snapshot until membership changes. |
+| `getDrawingById(id)`                          | Returns one drawing by its unique ID.                                 |
+| `getSelectedDrawing()`                        | Returns the selected drawing, if any.                                 |
+| `addDrawing(drawing, options?)`               | Adds and selects a programmatic drawing with opt-in create emission.  |
+| `upsertDrawing(json, options?)`               | Replaces or inserts serialized state by ID.                           |
+| `selectDrawing(drawing?, options?)`           | Selects a managed drawing or clears selection.                        |
+| `selectDrawingById(id?, options?)`            | Selects by ID; an unknown ID leaves the current selection unchanged.  |
+| `deleteDrawing(drawing)` / `deleteSelected()` | Deletes with history and emits `drawing-delete`.                      |
+| `removeDrawingById(id, options?)`             | Reconciliation-oriented removal with opt-in event emission.           |
+| `clearDrawings(options?)`                     | Clears drawings, selection, interactions, and undo/redo history.      |
+| `setDrawingFactory(factory?)`                 | Arms or clears a one-shot function factory or fixed-count descriptor. |
+| `registerDrawingDeserializer(type, fn)`       | Registers a loader and returns an idempotent unregister function.     |
 
 `emit` on mutation options controls create/change/delete events and defaults to
 `false`. `emitSelection` controls the separate selection event and defaults to
@@ -133,7 +133,7 @@ const state = chart.toJSON({ contributors: [manager] });
 
 chart.restoreState(state, {
   indicatorResolver,
-  contributors: [manager]
+  contributors: [manager],
 });
 ```
 
@@ -149,7 +149,7 @@ const unregister = manager.registerDrawingDeserializer("my-drawing", (json) => {
   return new MyDrawing({
     anchors: json.anchors,
     id: json.id,
-    paneId: json.paneId
+    paneId: json.paneId,
   });
 });
 

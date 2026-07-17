@@ -1,14 +1,14 @@
 import type {
   ChartOptionsChangeEvent,
-  ChartOptionsSnapshot
+  ChartOptionsSnapshot,
 } from "../chart/chart-options";
 import type {
   ChartCrosshairOptions,
-  ChartCrosshairState
+  ChartCrosshairState,
 } from "../interaction/crosshair";
 import type {
   ChartCanvasLayer,
-  ChartRedrawPart
+  ChartRedrawPart,
 } from "../render/chart-render-types";
 import type { PriceAxisAnnotation } from "../annotations/price-axis-annotation";
 import type { ChartEventMap } from "../chart/event-emitter";
@@ -19,7 +19,7 @@ import type { RenderCallback, RenderStage } from "../render/render-pipeline";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
 import type {
   DefaultIndicatorOptions,
-  Indicator
+  Indicator,
 } from "../indicators/indicator";
 import type { TimeScaleRange } from "../scales/time-scale";
 
@@ -92,12 +92,8 @@ export interface ChartContext extends ExtensionContext {
   getIndicatorById(
     instanceId: string
   ): Indicator<object, DefaultIndicatorOptions> | undefined;
-  addIndicator(
-    indicator: Indicator<object, DefaultIndicatorOptions>
-  ): void;
-  removeIndicator(
-    indicator: Indicator<object, DefaultIndicatorOptions>
-  ): void;
+  addIndicator(indicator: Indicator<object, DefaultIndicatorOptions>): void;
+  removeIndicator(indicator: Indicator<object, DefaultIndicatorOptions>): void;
 }
 
 export interface ChartExtension extends Drawable {

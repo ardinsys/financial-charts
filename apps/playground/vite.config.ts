@@ -11,25 +11,25 @@ export default defineConfig({
         find: /^@ardinsys\/financial-charts\/extensions$/,
         replacement: fileURLToPath(
           new URL("../../packages/core/src/extensions.ts", import.meta.url)
-        )
+        ),
       },
       {
         find: /^@ardinsys\/financial-charts\/engine$/,
         replacement: fileURLToPath(
           new URL("../../packages/core/src/engine.ts", import.meta.url)
-        )
+        ),
       },
       {
         find: /^@ardinsys\/financial-charts$/,
         replacement: fileURLToPath(
           new URL("../../packages/core/src/index.ts", import.meta.url)
-        )
-      }
-    ]
+        ),
+      },
+    ],
   },
   server: {
     fs: {
-      allow: [fileURLToPath(new URL("../..", import.meta.url))]
-    }
-  }
+      allow: [fileURLToPath(new URL("../..", import.meta.url))],
+    },
+  },
 });

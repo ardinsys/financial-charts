@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { DefaultDOMAdapter } from "../src/ui/default-dom-adapter";
 import type {
   IndicatorLabelActions,
-  IndicatorLabelModel
+  IndicatorLabelModel,
 } from "../src/ui/chart-dom-adapter";
 
 const titles = {
   show: "Show",
   hide: "Hide",
   settings: "Settings",
-  remove: "Remove"
+  remove: "Remove",
 };
 
 function model(
@@ -26,7 +26,7 @@ function model(
     visible: true,
     actions: { canHide: true, canOpenSettings: true, canRemove: true },
     actionTitles: titles,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -39,7 +39,7 @@ function makeLabel(
     onToggleVisibility: vi.fn(),
     onOpenSettings: vi.fn(),
     onRemove: vi.fn(),
-    ...actions
+    ...actions,
   };
   const handle = adapter.createIndicatorLabel(initial, spies);
   const q = (id: string) =>
@@ -84,8 +84,8 @@ describe("DefaultDOMAdapter indicator label", () => {
         segments: [
           { text: "1", color: "#ff0000" },
           { text: "2" },
-          { text: "3" }
-        ]
+          { text: "3" },
+        ],
       })
     );
     const spans = q("value").querySelectorAll("span");
@@ -96,7 +96,7 @@ describe("DefaultDOMAdapter indicator label", () => {
     const { q } = makeLabel(
       {},
       model({
-        actions: { canHide: true, canOpenSettings: false, canRemove: false }
+        actions: { canHide: true, canOpenSettings: false, canRemove: false },
       })
     );
     expect(q("show")).toBeTruthy();
@@ -123,7 +123,7 @@ describe("DefaultDOMAdapter indicator label", () => {
         instanceId: "ema-2",
         typeId: "exponential-moving-average",
         labelKey: "EMA",
-        themeKey: "dark"
+        themeKey: "dark",
       })
     );
     expect(handle.root.dataset.indicatorInstanceId).toBe("ema-2");
@@ -175,7 +175,7 @@ describe("DefaultDOMAdapter overlay", () => {
     const host = document.createElement("div");
     const overlay = new DefaultDOMAdapter().createOverlay(host, {
       themeKey: "light",
-      labelTopOffset: 40
+      labelTopOffset: 40,
     });
     expect(overlay.indicatorLabelContainer.parentElement).toBe(host);
     expect(overlay.indicatorLabelContainer.style.position).toBe("absolute");
@@ -194,7 +194,7 @@ describe("DefaultDOMAdapter overlay", () => {
     const host = document.createElement("div");
     const overlay = new DefaultDOMAdapter().createOverlay(host, {
       themeKey: "light",
-      labelTopOffset: 40
+      labelTopOffset: 40,
     });
     overlay.update({ themeKey: "dark", labelTopOffset: 60 });
     expect(overlay.indicatorLabelContainer.style.top).toBe("60px");
@@ -217,7 +217,7 @@ describe("DefaultDOMAdapter pane divider", () => {
         x: 0,
         y: 100,
         width: 800,
-        height: 8
+        height: 8,
       },
       { onPointerDown }
     );
@@ -245,7 +245,7 @@ describe("DefaultDOMAdapter pane divider", () => {
       x: 0,
       y: 180,
       width: 640,
-      height: 10
+      height: 10,
     });
     expect(handle.root.dataset.key).toBe("divider");
     expect(handle.root.dataset.themeKey).toBe("dark");

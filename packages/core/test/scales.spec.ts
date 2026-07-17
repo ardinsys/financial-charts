@@ -34,7 +34,7 @@ function createChart(
     maxZoom: 10,
     volume: false,
     locale: "en-US",
-    ...overrides
+    ...overrides,
   });
 
   chart.setData(data);
@@ -88,7 +88,7 @@ describe("index-based time scales", () => {
       data,
       { start: 100, end: 100 },
       {
-        indexRange
+        indexRange,
       }
     );
 
@@ -103,7 +103,7 @@ describe("index-based time scales", () => {
       "simple",
       [
         { time: 0, close: 10 },
-        { time: 60, close: 20 }
+        { time: 60, close: 20 },
       ],
       { start: 0, end: 60 }
     );
@@ -111,7 +111,7 @@ describe("index-based time scales", () => {
       "ohlc",
       [
         { time: 0, low: 10, high: 20 },
-        { time: 60, low: 12, high: 18 }
+        { time: 60, low: 12, high: 18 },
       ],
       { start: 0, end: 60 }
     );
@@ -123,13 +123,11 @@ describe("index-based time scales", () => {
       ohlcScale.addDataPoint({
         time: 60 + index,
         low: null,
-        high: null
+        high: null,
       });
     }
 
-    expect([simpleScale.getYMin(), simpleScale.getYMax()]).toEqual(
-      simpleRange
-    );
+    expect([simpleScale.getYMin(), simpleScale.getYMax()]).toEqual(simpleRange);
     expect([ohlcScale.getYMin(), ohlcScale.getYMax()]).toEqual(ohlcRange);
   });
 
@@ -142,7 +140,7 @@ describe("index-based time scales", () => {
       [
         { time: friday, close: 10 },
         { time: monday, close: 12 },
-        { time: tuesday, close: 11 }
+        { time: tuesday, close: 11 },
       ],
       { start: friday, end: tuesday },
       { stepSize: day }
@@ -159,14 +157,14 @@ describe("index-based time scales", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const data = Array.from({ length: 60 }, (_, index) => ({
       time: start + index * 60_000,
-      close: index
+      close: index,
     }));
     const chart = createChart(data, "auto");
     const fullRange = chart.getVisibleLogicalRange();
     const targetSpan = (fullRange.to - fullRange.from) / 2;
     chart.setVisibleLogicalRange({
       from: fullRange.to - targetSpan,
-      to: fullRange.to
+      to: fullRange.to,
     });
     const beforeUpdate = chart.getVisibleLogicalRange();
     const span = beforeUpdate.to - beforeUpdate.from;
@@ -175,7 +173,7 @@ describe("index-based time scales", () => {
 
     chart.updateData({
       time: start + 60 * 60_000,
-      close: 60
+      close: 60,
     });
 
     const afterUpdate = chart.getVisibleLogicalRange();
@@ -192,7 +190,7 @@ describe("index-based time scales", () => {
         { time: start + 60_000, close: 12 },
         { time: start + 2 * 60_000, close: 9 },
         { time: start + 3 * 60_000, close: 15 },
-        { time: start + 4 * 60_000, close: 11 }
+        { time: start + 4 * 60_000, close: 11 },
       ],
       { start, end }
     );
@@ -202,22 +200,22 @@ describe("index-based time scales", () => {
     const timeScale = new TimeScale(
       {
         from: 0,
-        to: 5
+        to: 5,
       },
       {
         times: chart.getData().map((point) => point.time),
-        barAlignment: "center"
+        barAlignment: "center",
       }
     );
     const priceScale = new PriceScale({
       min: visibleScale.getYMin(),
-      max: visibleScale.getYMax()
+      max: visibleScale.getYMax(),
     });
 
     const options = { canvas };
     const points = [
       { time: start + 60_000, price: 12 },
-      { time: start + 3 * 60_000, price: 15 }
+      { time: start + 3 * 60_000, price: 15 },
     ];
 
     for (const point of points) {
@@ -246,17 +244,17 @@ describe("index-based time scales", () => {
     const canvas = { width: 720, height: 360 };
     const options = {
       canvas,
-      devicePixelRatio: 1
+      devicePixelRatio: 1,
     };
     const times = [1_700_000_000_000, 1_700_001_200_000, 1_700_003_600_000];
     const timeScale = new TimeScale(
       {
         from: 0,
-        to: 3
+        to: 3,
       },
       {
         times,
-        barAlignment: "center"
+        barAlignment: "center",
       }
     );
     const priceScale = new PriceScale({ min: 87.25, max: 105.75 });
@@ -277,11 +275,11 @@ describe("index-based time scales", () => {
     const timeScale = new TimeScale(
       {
         from: 0,
-        to: 3
+        to: 3,
       },
       {
         times,
-        barAlignment: "edge"
+        barAlignment: "edge",
       }
     );
 

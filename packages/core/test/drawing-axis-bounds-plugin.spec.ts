@@ -6,14 +6,14 @@ import {
   Drawing,
   type DrawingHitTestContext,
   type DrawingPoint,
-  type DrawingRenderContext
+  type DrawingRenderContext,
 } from "../src/drawings";
 import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
 import { DrawingAxisBoundsPlugin } from "../src/plugins/drawing-axis-bounds-plugin";
 import {
   getChartRenderer,
   getInternalMainPane,
-  requestChartRedraw
+  requestChartRedraw,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -38,7 +38,7 @@ class SiblingAnnotationPlugin implements ChartPlugin {
 
   show() {
     this.context?.setPriceAxisAnnotations([
-      { id: "sibling", value: 12, text: "sibling" }
+      { id: "sibling", value: 12, text: "sibling" },
     ]);
   }
 }
@@ -53,7 +53,7 @@ function createChart() {
   const data: ChartData[] = [
     { time: start, close: 10 },
     { time: start + 60_000, close: 12 },
-    { time: start + 120_000, close: 14 }
+    { time: start + 120_000, close: 14 },
   ];
   const container = document.createElement("div");
   container.style.width = "800px";
@@ -69,8 +69,8 @@ function createChart() {
     volume: false,
     locale: "en-US",
     themes: {
-      night: { base: "dark" }
-    }
+      night: { base: "dark" },
+    },
   });
   chart.setData(data);
   requestChartRedraw(
@@ -93,7 +93,7 @@ describe("DrawingAxisBoundsPlugin", () => {
   it("contributes Y-axis bounds without accessing the shared Y-axis canvas", () => {
     const { chart, container } = createChart();
     const bounds = new DrawingAxisBoundsPlugin({
-      formatYValue: ({ anchor }) => anchor.price.toFixed(0)
+      formatYValue: ({ anchor }) => anchor.price.toFixed(0),
     });
     const sibling = new SiblingAnnotationPlugin();
     let eventContext: ChartContext | undefined;
@@ -101,7 +101,7 @@ describe("DrawingAxisBoundsPlugin", () => {
       key: "drawing-event-source",
       attach: (context) => {
         eventContext = context;
-      }
+      },
     };
     chart.addPlugin(bounds);
     chart.addPlugin(sibling);
@@ -111,8 +111,8 @@ describe("DrawingAxisBoundsPlugin", () => {
     const drawing = new BoundsDrawing({
       anchors: [
         { index: 0, price: 10 },
-        { index: 2, price: 14 }
-      ]
+        { index: 2, price: 14 },
+      ],
     });
     const getContext = vi.spyOn(getChartRenderer(chart), "getContext");
     const getData = vi.spyOn(chart, "getData");
@@ -153,8 +153,8 @@ describe("DrawingAxisBoundsPlugin", () => {
     const { chart, container } = createChart();
     const bounds = new DrawingAxisBoundsPlugin({
       themes: {
-        night: { strokeColor: "#333333" }
-      }
+        night: { strokeColor: "#333333" },
+      },
     });
     let eventContext: ChartContext | undefined;
     chart.addPlugin(bounds);
@@ -162,15 +162,15 @@ describe("DrawingAxisBoundsPlugin", () => {
       key: "theme-event-source",
       attach: (context) => {
         eventContext = context;
-      }
+      },
     });
     eventContext?.emit("drawing-select", {
       drawing: new BoundsDrawing({
         anchors: [
           { index: 0, price: 10 },
-          { index: 2, price: 14 }
-        ]
-      })
+          { index: 2, price: 14 },
+        ],
+      }),
     });
 
     const context = getAnnotationContext(container);

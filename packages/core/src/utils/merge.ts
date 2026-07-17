@@ -9,7 +9,7 @@ export function mergeObjects<T extends object>(
   const result: Record<string, unknown> = {};
   const keys = new Set([
     ...Object.keys(defaultValues),
-    ...Object.keys(overrideValues)
+    ...Object.keys(overrideValues),
   ]);
 
   for (const key of keys) {
@@ -25,7 +25,7 @@ export function mergeObjects<T extends object>(
       configurable: true,
       enumerable: true,
       value,
-      writable: true
+      writable: true,
     });
   }
 

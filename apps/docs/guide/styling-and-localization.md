@@ -6,17 +6,17 @@ Themes, locales, and formatters let you align the chart with your brand and lang
 
 `ChartTheme` is split into predictable sections:
 
-| Key                                        | Description                                                    |
-| ------------------------------------------ | -------------------------------------------------------------- |
+| Key                                        | Description                                                      |
+| ------------------------------------------ | ---------------------------------------------------------------- |
 | `base`                                     | Built-in `light` or `dark` values used to complete a definition. |
-| `backgroundColor`                          | Canvas background color.                                       |
-| `grid`                                     | `{ color, width }` controlling horizontal and vertical guides. |
-| `candle`, `bar`, `line`, `area`, `hlcArea` | Style specific controller types.                               |
-| `volume`                                   | Up/down fill colors for the histogram.                         |
-| `xAxis`, `yAxis`                           | Typography, colors, and separators for labels.                 |
-| `priceAxisAnnotation`                      | Shared price-line and Y-axis annotation styling.               |
-| `crosshair`                                | Line color/dash plus tooltip styling and info-line labels.     |
-| `randomColors`                             | Palette used when multiple indicators request auto colors.     |
+| `backgroundColor`                          | Canvas background color.                                         |
+| `grid`                                     | `{ color, width }` controlling horizontal and vertical guides.   |
+| `candle`, `bar`, `line`, `area`, `hlcArea` | Style specific controller types.                                 |
+| `volume`                                   | Up/down fill colors for the histogram.                           |
+| `xAxis`, `yAxis`                           | Typography, colors, and separators for labels.                   |
+| `priceAxisAnnotation`                      | Shared price-line and Y-axis annotation styling.                 |
+| `crosshair`                                | Line color/dash plus tooltip styling and info-line labels.       |
+| `randomColors`                             | Palette used when multiple indicators request auto colors.       |
 
 Register theme definitions when the chart is created. Missing values are
 resolved from a built-in base, and runtime changes select a registered key.
@@ -30,22 +30,22 @@ const themes = {
       color: "#2d7dff",
       fill: [
         [0, "rgba(45, 125, 255, 0.35)"],
-        [1, "rgba(45, 125, 255, 0)"]
-      ]
-    }
+        [1, "rgba(45, 125, 255, 0)"],
+      ],
+    },
   },
   dark: {
     backgroundColor: "#0f111b",
     crosshair: {
-      color: "#727cf5"
-    }
-  }
+      color: "#727cf5",
+    },
+  },
 } satisfies ChartThemeMap;
 
 const chart = new FinancialChart(root, {
   stepSize: 15 * 60 * 1000,
   theme: "dark",
-  themes
+  themes,
 });
 ```
 
@@ -57,8 +57,8 @@ Other keys inherit from light unless they declare `base: "dark"`:
 const themes = {
   "brand-night": {
     base: "dark",
-    backgroundColor: "#090b10"
-  }
+    backgroundColor: "#090b10",
+  },
 } satisfies ChartThemeMap;
 ```
 
@@ -73,10 +73,7 @@ indicators can select from it without coupling a utility to the chart:
 ```ts
 import { paletteColor } from "@ardinsys/financial-charts/engine";
 
-const color = paletteColor(
-  chart.getOptions().theme.randomColors,
-  seriesIndex
-);
+const color = paletteColor(chart.getOptions().theme.randomColors, seriesIndex);
 ```
 
 Switch registered themes at runtime by key:
@@ -99,14 +96,14 @@ const chart = new FinancialChart(root, {
   themes,
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
-  volume: true
+  volume: true,
 });
 
 window
   .matchMedia("(prefers-color-scheme: dark)")
   .addEventListener("change", (event) => {
     chart.updateOptions({
-      theme: event.matches ? "dark" : "light"
+      theme: event.matches ? "dark" : "light",
     });
   });
 ```
@@ -132,19 +129,19 @@ const chart = new FinancialChart(root, {
           high: "High",
           low: "Low",
           close: "Close",
-          volume: "Volume"
-        }
+          volume: "Volume",
+        },
       },
       indicators: {
         actions: {
           show: "Show",
           hide: "Hide",
           settings: "Settings",
-          remove: "Remove"
-        }
-      }
-    }
-  }
+          remove: "Remove",
+        },
+      },
+    },
+  },
 });
 
 chart.updateOptions({
@@ -158,19 +155,19 @@ chart.updateOptions({
           high: "Max",
           low: "Min",
           close: "Záró",
-          volume: "Forgalom"
-        }
+          volume: "Forgalom",
+        },
       },
       indicators: {
         actions: {
           show: "Megjelenítés",
           hide: "Elrejtés",
           settings: "Beállítás",
-          remove: "Törlés"
-        }
-      }
-    }
-  }
+          remove: "Törlés",
+        },
+      },
+    },
+  },
 });
 ```
 
@@ -188,15 +185,15 @@ const formatter = new DefaultFormatter({
     subMinute: {
       minute: "2-digit",
       second: "2-digit",
-      fractionalSecondDigits: 3
-    }
+      fractionalSecondDigits: 3,
+    },
   },
   numberFormatOptions: {
-    price: { maximumFractionDigits: 2 }
+    price: { maximumFractionDigits: 2 },
   },
   volumeFormatOptions: {
-    compactThreshold: 10_000
-  }
+    compactThreshold: 10_000,
+  },
 });
 ```
 
@@ -223,7 +220,7 @@ class CustomFormatter extends DefaultFormatter {
 chart.updateOptions({
   locale: "en-US",
   timeZone: "America/New_York",
-  formatter: new CustomFormatter()
+  formatter: new CustomFormatter(),
 });
 ```
 
@@ -246,18 +243,18 @@ const { locale, setLocale, t } = createIntl("en", {
           high: "High",
           low: "Low",
           close: "Close",
-          volume: "Volume"
-        }
+          volume: "Volume",
+        },
       },
       indicators: {
         actions: {
           show: "Show",
           hide: "Hide",
           settings: "Settings",
-          remove: "Remove"
-        }
-      }
-    }
+          remove: "Remove",
+        },
+      },
+    },
   },
   hu: {
     messages: {
@@ -267,19 +264,19 @@ const { locale, setLocale, t } = createIntl("en", {
           high: "Max",
           low: "Min",
           close: "Záró",
-          volume: "Forgalom"
-        }
+          volume: "Forgalom",
+        },
       },
       indicators: {
         actions: {
           show: "Megjelenítés",
           hide: "Elrejtés",
           settings: "Beállítás",
-          remove: "Törlés"
-        }
-      }
-    }
-  }
+          remove: "Törlés",
+        },
+      },
+    },
+  },
 });
 
 const chart = new FinancialChart(root, {
@@ -288,7 +285,7 @@ const chart = new FinancialChart(root, {
   stepSize: 15 * 60 * 1000,
   maxZoom: 150,
   volume: true,
-  locale: "en"
+  locale: "en",
 });
 
 // Keep chart labels in sync with the active app locale
@@ -304,8 +301,8 @@ function switchLocale(nextLocale: string, timeZone?: string) {
             show: t("indicators.actions.show"),
             hide: t("indicators.actions.hide"),
             settings: t("indicators.actions.settings"),
-            remove: t("indicators.actions.remove")
-          }
+            remove: t("indicators.actions.remove"),
+          },
         },
         common: {
           sources: {
@@ -313,11 +310,11 @@ function switchLocale(nextLocale: string, timeZone?: string) {
             high: t("common.sources.high"),
             low: t("common.sources.low"),
             close: t("common.sources.close"),
-            volume: t("common.sources.volume")
-          }
-        }
-      }
-    }
+            volume: t("common.sources.volume"),
+          },
+        },
+      },
+    },
   });
 }
 ```
@@ -344,18 +341,18 @@ const { locale, setLocale, t } = createIntl("en", {
           high: "High",
           low: "Low",
           close: "Close",
-          volume: "Volume"
-        }
+          volume: "Volume",
+        },
       },
       indicators: {
         actions: {
           show: "Show",
           hide: "Hide",
           settings: "Settings",
-          remove: "Remove"
-        }
-      }
-    }
+          remove: "Remove",
+        },
+      },
+    },
   },
   hu: {
     messages: {
@@ -365,19 +362,19 @@ const { locale, setLocale, t } = createIntl("en", {
           high: "Max",
           low: "Min",
           close: "Záró",
-          volume: "Forgalom"
-        }
+          volume: "Forgalom",
+        },
       },
       indicators: {
         actions: {
           show: "Megjelenítés",
           hide: "Elrejtés",
           settings: "Beállítás",
-          remove: "Törlés"
-        }
-      }
-    }
-  }
+          remove: "Törlés",
+        },
+      },
+    },
+  },
 });
 
 const container = ref<HTMLElement | null>(null);
@@ -392,18 +389,18 @@ const chartLocaleBundle = computed(() => ({
         high: t("common.sources.high"),
         low: t("common.sources.low"),
         close: t("common.sources.close"),
-        volume: t("common.sources.volume")
-      }
+        volume: t("common.sources.volume"),
+      },
     },
     indicators: {
       actions: {
         show: t("indicators.actions.show"),
         hide: t("indicators.actions.hide"),
         settings: t("indicators.actions.settings"),
-        remove: t("indicators.actions.remove")
-      }
-    }
-  }
+        remove: t("indicators.actions.remove"),
+      },
+    },
+  },
 }));
 
 onMounted(() => {
@@ -416,7 +413,7 @@ onMounted(() => {
     maxZoom: 150,
     volume: true,
     locale: locale.value.toUpperCase(),
-    timeZone: appTimeZone.value
+    timeZone: appTimeZone.value,
   });
 
   chart.value = instance;
@@ -428,7 +425,7 @@ watchEffect(() => {
   chart.value.updateOptions({
     locale: nextLocale,
     timeZone: appTimeZone.value,
-    localeValues: chartLocaleBundle.value
+    localeValues: chartLocaleBundle.value,
   });
 });
 
@@ -448,7 +445,7 @@ import { createIntl } from "@ardinsys/intl";
 
 const intl = createIntl("en", {
   en: { numberFormats: { money: { style: "currency", currency: "USD" } } },
-  hu: { numberFormats: { money: { style: "currency", currency: "HUF" } } }
+  hu: { numberFormats: { money: { style: "currency", currency: "HUF" } } },
 });
 
 // Example: user formatter (not shipped with the library)
@@ -474,7 +471,7 @@ const chart = new FinancialChart(root, {
   maxZoom: 200,
   formatter: new IntlFormatter(),
   locale: "en",
-  timeZone: "UTC"
+  timeZone: "UTC",
 });
 ```
 

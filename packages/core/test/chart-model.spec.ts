@@ -3,10 +3,8 @@ import { ChartModel } from "../src/chart/chart-model";
 import type { ChartData, TimeRange } from "../src/chart/types";
 import { DataScaleModel } from "../src/scales/data-scale-model";
 
-const createSimpleScale = (
-  data: readonly ChartData[],
-  timeRange: TimeRange
-) => new DataScaleModel("simple", data, timeRange);
+const createSimpleScale = (data: readonly ChartData[], timeRange: TimeRange) =>
+  new DataScaleModel("simple", data, timeRange);
 
 describe("ChartModel data ownership", () => {
   it("owns stable mapped snapshots independently of caller input", () => {
@@ -28,32 +26,25 @@ describe("ChartModel data ownership", () => {
     model.replaceData(
       [
         { time: 30_000, open: 1, close: 2 },
-        { time: 90_000, open: 3, close: 4 }
+        { time: 90_000, open: 3, close: 4 },
       ],
       60_000
     );
 
     model.remapData(120_000);
 
-    expect(model.getData()).toEqual([
-      { time: 0, open: 1, close: 4 }
-    ]);
+    expect(model.getData()).toEqual([{ time: 0, open: 1, close: 4 }]);
   });
 
   it("merges streaming data and rejects backward source timestamps", () => {
     const model = new ChartModel();
     model.replaceData([{ time: 30_000, close: 1 }], 60_000);
 
-    const mappedPoint = model.appendData(
-      { time: 45_000, close: 2 },
-      60_000
-    );
+    const mappedPoint = model.appendData({ time: 45_000, close: 2 }, 60_000);
 
     expect(mappedPoint).toEqual({ time: 0, close: 2 });
     expect(model.getData()).toEqual([{ time: 0, close: 2 }]);
-    expect(() =>
-      model.appendData({ time: 40_000, close: 3 }, 60_000)
-    ).toThrow(
+    expect(() => model.appendData({ time: 40_000, close: 3 }, 60_000)).toThrow(
       "updateData() requires a timestamp at or after the latest point. Use setData() to apply older corrections."
     );
   });
@@ -73,7 +64,7 @@ describe("ChartModel data ownership", () => {
       [
         { time: 100, close: 1 },
         { time: 160, close: 2 },
-        { time: 220, close: 3 }
+        { time: 220, close: 3 },
       ],
       60
     );
@@ -90,7 +81,7 @@ describe("ChartModel data ownership", () => {
     model.replaceData(
       [
         { time: 0, close: 1 },
-        { time: 60, close: 2 }
+        { time: 60, close: 2 },
       ],
       60
     );
@@ -101,7 +92,7 @@ describe("ChartModel data ownership", () => {
     expect(model.getTimeRange()).toEqual({ start: 0, end: 240 });
     expect(model.getVisibleIndexRange()).toEqual({
       from: 0,
-      to: 4
+      to: 4,
     });
     expect(model.isPinnedToRightEdge()).toBe(true);
   });
@@ -112,7 +103,7 @@ describe("ChartModel data ownership", () => {
       [
         { time: 0, close: 1 },
         { time: 60, close: 2 },
-        { time: 120, close: 3 }
+        { time: 120, close: 3 },
       ],
       60
     );
@@ -125,7 +116,7 @@ describe("ChartModel data ownership", () => {
     expect(window).toEqual({ start: 0, end: 120 });
     expect(model.logicalRangeForTimeWindow(window, 60, "center")).toEqual({
       from: 0.5,
-      to: 2.5
+      to: 2.5,
     });
     expect(model.getVisibleTimeRange(60)).toEqual({ start: 0, end: 180 });
   });
@@ -136,7 +127,7 @@ describe("ChartModel data ownership", () => {
       [
         { time: 0, close: 1 },
         { time: 60, close: 2 },
-        { time: 120, close: 3 }
+        { time: 120, close: 3 },
       ],
       60
     );
@@ -146,7 +137,7 @@ describe("ChartModel data ownership", () => {
     model.setVisibleLogicalRange({ from: -10, to: 10 });
     expect(model.getVisibleIndexRange()).toEqual({
       from: 0,
-      to: 3
+      to: 3,
     });
     expect(() =>
       model.setVisibleLogicalRange({ from: Number.NaN, to: 2 })
@@ -154,7 +145,7 @@ describe("ChartModel data ownership", () => {
     expect(() =>
       model.logicalRangeForTimeRange({
         start: 0,
-        end: Number.POSITIVE_INFINITY
+        end: Number.POSITIVE_INFINITY,
       })
     ).toThrow("Visible time range values must be finite.");
   });
@@ -169,7 +160,7 @@ describe("ChartModel data ownership", () => {
       [
         { time: 0, close: 10 },
         { time: 60, close: 20 },
-        { time: 120, close: 15 }
+        { time: 120, close: 15 },
       ],
       60
     );
@@ -186,7 +177,7 @@ describe("ChartModel data ownership", () => {
     visibleScale.addModifier({
       actor: "test",
       enabled: true,
-      yMin: -100
+      yMin: -100,
     });
     model.recalculateVisibleScale([]);
     expect(visibleScale.getYMin()).toBeLessThanOrEqual(-100);
@@ -206,7 +197,7 @@ describe("ChartModel data ownership", () => {
       [
         { time: 0, close: 1 },
         { time: 60, close: 2 },
-        { time: 120, close: 3 }
+        { time: 120, close: 3 },
       ],
       60
     );
@@ -218,7 +209,7 @@ describe("ChartModel data ownership", () => {
 
     expect(model.getTimeScale().getRange()).toEqual({
       from: 0.5,
-      to: 2.5
+      to: 2.5,
     });
   });
 
@@ -227,7 +218,7 @@ describe("ChartModel data ownership", () => {
     model.replaceData(
       [
         { time: 0, close: 1 },
-        { time: 60, close: 2 }
+        { time: 60, close: 2 },
       ],
       60
     );

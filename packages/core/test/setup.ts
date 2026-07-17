@@ -31,7 +31,7 @@ class Path2DMock implements Path2D {
 Object.defineProperty(globalThis, "Path2D", {
   configurable: true,
   writable: true,
-  value: Path2DMock
+  value: Path2DMock,
 });
 
 const createCanvasContext = (
@@ -132,10 +132,7 @@ const canvasContexts = new WeakMap<
 Object.defineProperty(HTMLCanvasElement.prototype, "getContext", {
   configurable: true,
   writable: true,
-  value: vi.fn(function getContext(
-    this: HTMLCanvasElement,
-    contextId: string
-  ) {
+  value: vi.fn(function getContext(this: HTMLCanvasElement, contextId: string) {
     if (contextId !== "2d") return null;
     const existing = canvasContexts.get(this);
     if (existing) return existing;

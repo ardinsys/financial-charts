@@ -1,7 +1,7 @@
 import type { ChartOptions, ControllerConstructor } from "./chart-options";
 
 const defaultControllerConstructorsKey = Symbol(
-  "defaultControllerConstructors",
+  "defaultControllerConstructors"
 );
 
 type ChartOptionsWithDefaultControllers = ChartOptions & {
@@ -10,7 +10,7 @@ type ChartOptionsWithDefaultControllers = ChartOptions & {
 
 export function withDefaultControllerConstructors(
   options: ChartOptions,
-  controllers: readonly ControllerConstructor[],
+  controllers: readonly ControllerConstructor[]
 ): ChartOptions {
   const optionsWithDefaults: ChartOptionsWithDefaultControllers = {
     ...options,
@@ -20,7 +20,7 @@ export function withDefaultControllerConstructors(
 }
 
 export function getDefaultControllerConstructors(
-  options: ChartOptions,
+  options: ChartOptions
 ): readonly ControllerConstructor[] {
   return (
     (options as ChartOptionsWithDefaultControllers)[

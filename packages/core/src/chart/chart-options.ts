@@ -1,13 +1,13 @@
 import type {
   ChartController,
-  ChartControllerContext
+  ChartControllerContext,
 } from "../controllers/controller";
 import type { ChartDOMAdapter } from "../ui/chart-dom-adapter";
 import type { Formatter } from "./formatter";
 import type {
   ChartThemeKey,
   ChartThemeMap,
-  ResolvedChartTheme
+  ResolvedChartTheme,
 } from "./themes";
 import type { TimeRange } from "./types";
 

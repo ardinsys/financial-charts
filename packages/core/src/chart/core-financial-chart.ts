@@ -11,10 +11,7 @@ export type CoreChartOptions = Omit<
 
 /** Controller-neutral financial chart for minimal application bundles. */
 export class FinancialChart extends FinancialChartBase {
-  constructor(
-    container: HTMLElement,
-    options: CoreChartOptions,
-  ) {
+  constructor(container: HTMLElement, options: CoreChartOptions) {
     super(container, options);
   }
 }

@@ -11,7 +11,7 @@ import {
   getChartContext,
   getExtensionHost,
   getInternalMainPane,
-  requestChartRedraw
+  requestChartRedraw,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -81,7 +81,7 @@ function createData(): ChartData[] {
   return [
     { time: start, close: 10 },
     { time: start + 60_000, close: 12 },
-    { time: start + 120_000, close: 14 }
+    { time: start + 120_000, close: 14 },
   ];
 }
 
@@ -95,14 +95,14 @@ function createChart() {
   const chart = new FinancialChart(container, {
     timeRange: {
       start: data[0].time,
-      end: data.at(-1)!.time + 60_000
+      end: data.at(-1)!.time + 60_000,
     },
     type: "line",
     controllers: [LineController],
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
   });
   charts.push(chart);
 
@@ -135,7 +135,7 @@ describe("plugin lifecycle", () => {
   it("renders indicator label content from the data model", () => {
     const { chart, data } = createChart();
     const indicator = new MovingAverageIndicator(null, {
-      names: { default: "Injected SMA" }
+      names: { default: "Injected SMA" },
     });
 
     chart.setData(data);
@@ -157,7 +157,7 @@ describe("plugin lifecycle", () => {
       onData: vi.fn(),
       onVisibleRangeChanged: vi.fn(),
       onPointer: vi.fn(),
-      detach: vi.fn()
+      detach: vi.fn(),
     };
 
     chart.addPlugin(plugin);
@@ -168,7 +168,7 @@ describe("plugin lifecycle", () => {
       new MouseEvent("mousemove", {
         clientX: 360,
         clientY: 120,
-        bubbles: true
+        bubbles: true,
       })
     );
 
@@ -182,7 +182,7 @@ describe("plugin lifecycle", () => {
       expect.objectContaining({
         x: 360,
         y: 120,
-        pane: getInternalMainPane(chart)
+        pane: getInternalMainPane(chart),
       })
     );
 
@@ -200,7 +200,7 @@ describe("plugin lifecycle", () => {
       onData: vi.fn(),
       onVisibleRangeChanged: vi.fn(),
       onOptionsChanged: vi.fn(),
-      onDrawingFinished: vi.fn()
+      onDrawingFinished: vi.fn(),
     };
     let pluginContext: ChartContext | undefined;
     const plugin: ChartPlugin = {
@@ -208,7 +208,7 @@ describe("plugin lifecycle", () => {
       attach: vi.fn((context) => {
         pluginContext = context;
       }),
-      ...pluginHooks
+      ...pluginHooks,
     };
 
     chart.setData(data);
@@ -223,7 +223,7 @@ describe("plugin lifecycle", () => {
     expect(initialOptions.current).toMatchObject({
       type: "line",
       timeRange: expect.any(Object),
-      stepSize: 60_000
+      stepSize: 60_000,
     });
     expect(initialData).toEqual(chart.getData());
     expect(initialData).toBe(chart.getData());
@@ -248,7 +248,7 @@ describe("plugin lifecycle", () => {
 
     chart.updateData({
       time: data.at(-1)!.time + 60_000,
-      close: 16
+      close: 16,
     });
     expect(indicator.onData).toHaveBeenCalledWith(chart.getData());
     expect(pluginHooks.onData).toHaveBeenCalledWith(chart.getData());
@@ -259,7 +259,7 @@ describe("plugin lifecycle", () => {
     expect(indicator.onOptionsChanged).toHaveBeenCalledWith(
       expect.objectContaining({
         changedKeys: ["maxZoom"],
-        current: expect.objectContaining({ maxZoom: 20 })
+        current: expect.objectContaining({ maxZoom: 20 }),
       })
     );
     expect(pluginHooks.onOptionsChanged).toHaveBeenCalledWith(
@@ -267,7 +267,7 @@ describe("plugin lifecycle", () => {
     );
 
     const drawingEvent = {
-      operation: "create"
+      operation: "create",
     } as ChartEventMap["drawing-finished"];
     const publicDrawingFinished = vi.fn();
     chart.on("drawing-finished", publicDrawingFinished);
@@ -294,7 +294,7 @@ describe("plugin lifecycle", () => {
       onOptionsChanged: () => removeSelf(),
       onData,
       onVisibleRangeChanged,
-      detach
+      detach,
     };
 
     const remove = chart.addPlugin(plugin);
@@ -341,7 +341,7 @@ describe("plugin lifecycle", () => {
       },
       onPointer: () => {
         order.push("plugin-1");
-      }
+      },
     };
     const pluginTwo: ChartPlugin = {
       key: "pointer-2",
@@ -352,7 +352,7 @@ describe("plugin lifecycle", () => {
       onPointer: () => {
         order.push("plugin-2");
         return consumeTopPlugin;
-      }
+      },
     };
 
     chart.setData(data);
@@ -365,14 +365,14 @@ describe("plugin lifecycle", () => {
     lifecycleOrder.length = 0;
     chart.updateData({
       time: data.at(-1)!.time + 60_000,
-      close: 16
+      close: 16,
     });
     expect(lifecycleOrder).toEqual([
       "overlay-1",
       "overlay-2",
       "paneled",
       "plugin-1",
-      "plugin-2"
+      "plugin-2",
     ]);
 
     const canvas = getChartContext(chart, "crosshair").canvas;
@@ -383,7 +383,7 @@ describe("plugin lifecycle", () => {
           clientY: 100,
           pointerType: "mouse",
           button: 0,
-          bubbles: true
+          bubbles: true,
         })
       );
 
@@ -393,7 +393,7 @@ describe("plugin lifecycle", () => {
       "plugin-1",
       "paneled",
       "overlay-2",
-      "overlay-1"
+      "overlay-1",
     ]);
 
     order.length = 0;
@@ -424,7 +424,7 @@ describe("plugin lifecycle", () => {
     const paneled = new TestIndicator();
     const plugin: ChartPlugin = {
       key: "snapshot-probe",
-      attach: vi.fn()
+      attach: vi.fn(),
     };
 
     chart.setData(data);
@@ -450,7 +450,7 @@ describe("plugin lifecycle", () => {
     const paneled = new TestIndicator();
     const plugin: ChartPlugin = {
       key: "snapshot-invalidation-probe",
-      attach: vi.fn()
+      attach: vi.fn(),
     };
     const host = getExtensionHost(chart);
     const initialOverlayIndicators = host.getIndicators();
@@ -500,11 +500,11 @@ describe("plugin lifecycle", () => {
     const { chart } = createChart();
     const plugin: ChartPlugin = {
       key: "unique-probe",
-      attach: vi.fn()
+      attach: vi.fn(),
     };
     const duplicateKeyPlugin: ChartPlugin = {
       key: "unique-probe",
-      attach: vi.fn()
+      attach: vi.fn(),
     };
     const indicator = new MovingAverageIndicator();
 
@@ -530,7 +530,7 @@ describe("plugin lifecycle", () => {
     const plugin: ChartPlugin = {
       key: "disposer-probe",
       attach: vi.fn(),
-      detach: vi.fn()
+      detach: vi.fn(),
     };
 
     const removeIndicator = chart.addIndicator(indicator);
@@ -560,7 +560,7 @@ describe("plugin lifecycle", () => {
     const firstPlugin: ChartPlugin = {
       key: "first-dispose-plugin",
       attach: () => undefined,
-      detach: () => order.push("first-plugin")
+      detach: () => order.push("first-plugin"),
     };
     const secondPlugin: ChartPlugin = {
       key: "second-dispose-plugin",
@@ -568,7 +568,7 @@ describe("plugin lifecycle", () => {
       detach: () => {
         order.push("second-plugin");
         chart.removePlugin(firstPlugin);
-      }
+      },
     };
 
     chart.addIndicator(firstIndicator);
@@ -582,7 +582,7 @@ describe("plugin lifecycle", () => {
       "second-indicator",
       "first-indicator",
       "second-plugin",
-      "first-plugin"
+      "first-plugin",
     ]);
   });
 
@@ -591,13 +591,13 @@ describe("plugin lifecycle", () => {
     let attachedContext: Parameters<ChartPlugin["attach"]>[0] | undefined;
     const siblingPlugin: ChartPlugin = {
       key: "sibling-probe",
-      attach: vi.fn()
+      attach: vi.fn(),
     };
     const plugin: ChartPlugin = {
       key: "context-probe",
       attach: (ctx) => {
         attachedContext = ctx;
-      }
+      },
     };
     const selectListener = vi.fn();
     const unsubscribe = chart.on("drawing-select", selectListener);
@@ -618,7 +618,7 @@ describe("plugin lifecycle", () => {
       ),
       height: Number.parseFloat(
         getChartContext(chart, "drawings").canvas.style.height
-      )
+      ),
     });
     expect(attachedContext?.getPlugin("sibling-probe")).toBe(siblingPlugin);
     expect(attachedContext?.getPlugin("context-probe")).toBe(plugin);
@@ -645,7 +645,7 @@ describe("plugin lifecycle", () => {
       attach: (ctx) => {
         stopListening = ctx.on("drawing-select", eventListener);
         ctx.onRenderStage("drawings", renderHook);
-      }
+      },
     };
 
     chart.addPlugin(eventSource);
@@ -677,7 +677,7 @@ describe("plugin lifecycle", () => {
       },
       detach: () => {
         throw new Error("plugin detach failed");
-      }
+      },
     };
 
     chart.addIndicator(indicator);
@@ -710,7 +710,7 @@ describe("plugin lifecycle", () => {
         ctx.on("drawing-select", eventListener);
         ctx.onRenderStage("drawings", renderHook);
         throw new Error("attach failed");
-      }
+      },
     };
 
     chart.addPlugin(eventSource);
@@ -729,7 +729,7 @@ describe("plugin lifecycle", () => {
       key: "crosshair-probe",
       attach: (ctx) => {
         attachedContext = ctx;
-      }
+      },
     };
     chart.setData(data);
     chart.addPlugin(plugin);
@@ -737,14 +737,14 @@ describe("plugin lifecycle", () => {
     chart.on("crosshair-change", onCrosshairChange);
 
     const state = attachedContext?.setCrosshair({
-      time: data[1].time + 10_000
+      time: data[1].time + 10_000,
     });
 
     expect(state).toEqual(
       expect.objectContaining({
         time: data[1].time,
         dataPoint: data[1],
-        paneId: chart.getMainPane().id
+        paneId: chart.getMainPane().id,
       })
     );
     expect(chart.getCrosshairState()).toBe(state);
@@ -785,7 +785,7 @@ describe("plugin lifecycle", () => {
     const plugin: ChartPlugin = {
       key: "dispose-probe",
       attach: vi.fn(),
-      detach: vi.fn()
+      detach: vi.fn(),
     };
 
     chart.setData(data);
@@ -797,7 +797,7 @@ describe("plugin lifecycle", () => {
       new MouseEvent("mousemove", {
         clientX: 360,
         clientY: 120,
-        bubbles: true
+        bubbles: true,
       })
     );
     const finalCrosshair = chart.getCrosshairState();
@@ -810,7 +810,7 @@ describe("plugin lifecycle", () => {
       new MouseEvent("mousemove", {
         clientX: 360,
         clientY: 120,
-        bubbles: true
+        bubbles: true,
       })
     );
 
@@ -857,8 +857,8 @@ describe("plugin lifecycle", () => {
       [
         internals.container as unknown as Record<string, () => void>,
         "remove",
-        "container"
-      ]
+        "container",
+      ],
     ];
     for (const [resource, method, name] of resources) {
       const original = resource[method].bind(resource);
@@ -883,7 +883,7 @@ describe("plugin lifecycle", () => {
       "events",
       "renderer-dispose",
       "overlay",
-      "container"
+      "container",
     ]);
   });
 
@@ -909,10 +909,10 @@ describe("plugin lifecycle", () => {
         finalState.push({
           canvasConnected: canvas.isConnected,
           listenerCount: events.listenerCount("click"),
-          pluginCount: chart.getPlugins().length
+          pluginCount: chart.getPlugins().length,
         });
         throw new Error("dispose detach failed");
-      }
+      },
     };
 
     chart.addPlugin(plugin);
@@ -922,7 +922,7 @@ describe("plugin lifecycle", () => {
     charts.pop();
 
     expect(finalState).toEqual([
-      { canvasConnected: true, listenerCount: 1, pluginCount: 1 }
+      { canvasConnected: true, listenerCount: 1, pluginCount: 1 },
     ]);
     expect(events.listenerCount()).toBe(0);
     expect(canvas.isConnected).toBe(false);

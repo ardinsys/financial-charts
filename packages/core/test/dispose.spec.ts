@@ -17,7 +17,7 @@ describe("disposeInOrder", () => {
           calls.push("panes");
           throw new Error("second");
         },
-        () => calls.push("dom")
+        () => calls.push("dom"),
       ])
     ).toThrow(firstError);
 

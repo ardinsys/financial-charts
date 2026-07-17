@@ -6,7 +6,7 @@ import type { ChartPlugin } from "../src/plugin/chart-plugin";
 import {
   getChartContext,
   getChartModel,
-  getChartRenderer
+  getChartRenderer,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -20,7 +20,7 @@ function createChart(withData = true) {
   const start = Date.UTC(2024, 0, 1, 9);
   const data: ChartData[] = [10, 12, 14, 16, 18, 1_000].map((close, index) => ({
     time: start + index * 60_000,
-    close
+    close,
   }));
   const container = document.createElement("div");
   container.style.width = "800px";
@@ -34,7 +34,7 @@ function createChart(withData = true) {
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
   });
   if (withData) chart.setData(data);
   charts.push(chart);
@@ -46,7 +46,7 @@ function attachRangeProbe(chart: FinancialChart) {
   const plugin: ChartPlugin = {
     key: "range-probe",
     attach: vi.fn(),
-    onVisibleRangeChanged
+    onVisibleRangeChanged,
   };
   chart.addPlugin(plugin);
   onVisibleRangeChanged.mockClear();
@@ -68,7 +68,7 @@ describe("visible range contracts", () => {
 
     expect(chart.getVisibleLogicalRange()).toEqual({
       from: 0,
-      to: 3
+      to: 3,
     });
     expect(getChartModel(chart).getVisibleScale().getYMax()).toBeLessThan(
       fullRangeMax
@@ -86,7 +86,7 @@ describe("visible range contracts", () => {
         "indicators",
         "drawings",
         "annotations",
-        "crosshair"
+        "crosshair",
       ],
       false
     );
@@ -116,14 +116,14 @@ describe("visible range contracts", () => {
       new MouseEvent("mousemove", {
         clientX: 100,
         clientY: 100,
-        bubbles: true
+        bubbles: true,
       })
     );
     canvas.dispatchEvent(
       new MouseEvent("mousemove", {
         clientX: 120,
         clientY: 100,
-        bubbles: true
+        bubbles: true,
       })
     );
     expect(getBounds).toHaveBeenCalledOnce();
@@ -133,7 +133,7 @@ describe("visible range contracts", () => {
       new MouseEvent("mousemove", {
         clientX: 140,
         clientY: 100,
-        bubbles: true
+        bubbles: true,
       })
     );
     expect(getBounds).toHaveBeenCalledTimes(2);
@@ -145,16 +145,16 @@ describe("visible range contracts", () => {
 
     chart.setVisibleTimeRange({
       start: data[1].time,
-      end: data[4].time
+      end: data[4].time,
     });
 
     expect(chart.getVisibleLogicalRange()).toEqual({
       from: 1,
-      to: 4
+      to: 4,
     });
     expect(chart.getVisibleTimeRange()).toEqual({
       start: data[1].time,
-      end: data[3].time + 60_000
+      end: data[3].time + 60_000,
     });
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
 
@@ -186,14 +186,14 @@ describe("visible range contracts", () => {
         clientY: 100,
         pointerType: "mouse",
         button: 0,
-        bubbles: true
+        bubbles: true,
       })
     );
     canvas.dispatchEvent(
       new MouseEvent("mousemove", {
         clientX: 400,
         clientY: 100,
-        bubbles: true
+        bubbles: true,
       })
     );
     canvas.dispatchEvent(
@@ -202,7 +202,7 @@ describe("visible range contracts", () => {
         clientY: 100,
         pointerType: "mouse",
         button: 0,
-        bubbles: true
+        bubbles: true,
       })
     );
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
@@ -216,7 +216,7 @@ describe("visible range contracts", () => {
         clientY: 100,
         deltaY: -1,
         bubbles: true,
-        cancelable: true
+        cancelable: true,
       })
     );
     expect(onVisibleRangeChanged).toHaveBeenCalledOnce();
@@ -236,14 +236,14 @@ describe("visible range contracts", () => {
         pointerId: 4,
         pointerType: "mouse",
         button: 0,
-        bubbles: true
+        bubbles: true,
       })
     );
     canvas.dispatchEvent(
       new MouseEvent("mousemove", {
         clientX: 201,
         clientY: 101,
-        bubbles: true
+        bubbles: true,
       })
     );
     canvas.dispatchEvent(
@@ -253,7 +253,7 @@ describe("visible range contracts", () => {
         pointerId: 4,
         pointerType: "mouse",
         button: 0,
-        bubbles: true
+        bubbles: true,
       })
     );
 
@@ -267,7 +267,7 @@ describe("visible range contracts", () => {
     chart.setVisibleLogicalRange({ from: 3, to: 2 });
     expect(chart.getVisibleLogicalRange()).toEqual({
       from: 3,
-      to: 4
+      to: 4,
     });
 
     chart.setVisibleLogicalRange({ from: -100, to: 100 });

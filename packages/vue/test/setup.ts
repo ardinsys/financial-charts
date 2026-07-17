@@ -35,7 +35,7 @@ Object.defineProperty(globalThis, "Path2D", {
 });
 
 const createCanvasContext = (
-  canvas: HTMLCanvasElement,
+  canvas: HTMLCanvasElement
 ): Partial<CanvasRenderingContext2D> => ({
   canvas,
   fillStyle: "#000",

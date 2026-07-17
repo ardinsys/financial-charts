@@ -12,17 +12,17 @@ import {
   TrendLine,
   HorizontalLine,
   RectangleDrawing,
-  TextDrawing
+  TextDrawing,
 } from "@ardinsys/financial-charts";
 
 const manager = new DrawingManager({
-  drawingFactory: ({ anchors, paneId }) => new TrendLine({ anchors, paneId })
+  drawingFactory: ({ anchors, paneId }) => new TrendLine({ anchors, paneId }),
 });
 
 manager.addDrawing(
   new HorizontalLine({
     id: "previous-close",
-    anchors: [{ index: 0, price: 102.5 }]
+    anchors: [{ index: 0, price: 102.5 }],
   })
 );
 
@@ -53,7 +53,7 @@ clicks. For a different fixed count, pass a descriptor:
 ```ts
 manager.setDrawingFactory({
   anchorCount: 3,
-  create: ({ anchors, paneId }) => new TriangleDrawing({ anchors, paneId })
+  create: ({ anchors, paneId }) => new TriangleDrawing({ anchors, paneId }),
 });
 ```
 
@@ -150,7 +150,7 @@ import {
   type DrawingJSON,
   type DrawingOptions,
   type DrawingPoint,
-  type DrawingRenderContext
+  type DrawingRenderContext,
 } from "@ardinsys/financial-charts/extensions";
 
 interface PriceBandData {
@@ -184,7 +184,7 @@ class PriceBandDrawing extends Drawing {
       id: json.id,
       paneId: json.paneId,
       color: data?.color,
-      label: data?.label
+      label: data?.label,
     });
   }
 
@@ -223,8 +223,8 @@ const manager = new DrawingManager({
   drawingFactory: ({ anchors, paneId }) =>
     new PriceBandDrawing({ anchors, paneId }),
   drawingDeserializers: {
-    [PriceBandDrawing.TYPE]: PriceBandDrawing.fromJSON
-  }
+    [PriceBandDrawing.TYPE]: PriceBandDrawing.fromJSON,
+  },
 });
 
 chart.addPlugin(manager);

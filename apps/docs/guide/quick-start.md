@@ -24,10 +24,7 @@ The container must have a measurable width and height. Construct the chart,
 then replace its complete dataset with `setData()`.
 
 ```ts
-import {
-  FinancialChart,
-  type ChartData
-} from "@ardinsys/financial-charts";
+import { FinancialChart, type ChartData } from "@ardinsys/financial-charts";
 
 const container = document.getElementById("chart-root")!;
 const data: ChartData[] = [
@@ -37,7 +34,7 @@ const data: ChartData[] = [
     high: 15,
     low: 10,
     close: 12,
-    volume: 1_200_000
+    volume: 1_200_000,
   },
   {
     time: Date.UTC(2024, 0, 1, 9, 15),
@@ -45,12 +42,12 @@ const data: ChartData[] = [
     high: 16,
     low: 11,
     close: 15,
-    volume: 1_500_000
-  }
+    volume: 1_500_000,
+  },
 ];
 
 const chart = new FinancialChart(container, {
-  stepSize: 15 * 60 * 1000
+  stepSize: 15 * 60 * 1000,
 });
 
 chart.setData(data);
@@ -74,7 +71,7 @@ chart.updateData({
   high: 17,
   low: 14,
   close: 16,
-  volume: 900_000
+  volume: 900_000,
 });
 ```
 
@@ -89,7 +86,7 @@ event when effective values change.
 chart.updateOptions({
   type: "line",
   theme: "dark",
-  volume: false
+  volume: false,
 });
 ```
 
@@ -122,7 +119,7 @@ import { LineController } from "@ardinsys/financial-charts/controllers/line";
 
 const chart = new FinancialChart(container, {
   controllers: [LineController],
-  stepSize: 60_000
+  stepSize: 60_000,
 });
 ```
 

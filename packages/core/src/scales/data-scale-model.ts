@@ -44,7 +44,7 @@ export class DataScaleModel {
       timeOptions.timeValues ?? dataset.map((data) => data.time);
     this.timeScale = new TimeScale(indexRange, {
       barAlignment,
-      times: timeValues
+      times: timeValues,
     });
     this.priceScale = new PriceScale({ min: 0, max: 1 });
     this.volumeScale = new PriceScale({ min: 0, max: 1 });
@@ -141,7 +141,7 @@ export class DataScaleModel {
     const options = { canvas };
     return {
       x: this.timeScale.project(time, options),
-      y: this.priceScale.project(value, options)
+      y: this.priceScale.project(value, options),
     };
   }
 
@@ -153,7 +153,7 @@ export class DataScaleModel {
     const options = { canvas };
     return {
       time: this.timeScale.unproject(x, options),
-      price: this.priceScale.unproject(y, options)
+      price: this.priceScale.unproject(y, options),
     };
   }
 
@@ -165,7 +165,7 @@ export class DataScaleModel {
     const options = { canvas };
     return {
       x: this.timeScale.project(time, options),
-      y: this.volumeScale.projectVolume(volume, options)
+      y: this.volumeScale.projectVolume(volume, options),
     };
   }
 
@@ -213,7 +213,7 @@ export class DataScaleModel {
     const span = max - min;
     return {
       min: min - span * this.bottomOffset,
-      max: max + span * this.topOffset
+      max: max + span * this.topOffset,
     };
   }
 
@@ -225,7 +225,7 @@ export class DataScaleModel {
   private getDefaultIndexRange(dataset: readonly ChartData[]): TimeScaleRange {
     return {
       from: 0,
-      to: Math.max(dataset.length, 1)
+      to: Math.max(dataset.length, 1),
     };
   }
 
@@ -239,9 +239,7 @@ export class DataScaleModel {
 
     if (data.close != null) {
       changed =
-        changed ||
-        data.close < this.rawYMin ||
-        data.close > this.rawYMax;
+        changed || data.close < this.rawYMin || data.close > this.rawYMax;
       this.rawYMin = Math.min(this.rawYMin, data.close);
       this.rawYMax = Math.max(this.rawYMax, data.close);
     }

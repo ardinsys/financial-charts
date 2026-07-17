@@ -7,7 +7,7 @@ import {
   onBeforeUnmount,
   onMounted,
   ref,
-  watch
+  watch,
 } from "vue";
 import {
   ChartSyncPlugin,
@@ -19,13 +19,13 @@ import {
   type ChartData,
   type ControllerType,
   type IndicatorResolver,
-  type MovingAverageOptions
+  type MovingAverageOptions,
 } from "@ardinsys/financial-charts";
 import type { Indicator } from "@ardinsys/financial-charts/extensions";
 import {
   createDrawingFactory,
   drawingTools,
-  type DrawingTool
+  type DrawingTool,
 } from "./drawing-tools";
 import { indicatorCatalog, type IndicatorKind } from "./indicator-catalog";
 import { PaneMarkerIndicator } from "./pane-marker-indicator";
@@ -36,7 +36,7 @@ import {
   initialData,
   lastPoint,
   previousPoint,
-  stepSize as baseStepSize
+  stepSize as baseStepSize,
 } from "./market-data";
 import { SelectedDrawingToolbarPlugin } from "./plugins/selected-drawing-toolbar";
 import { createProbeOrders, OrdersProbePlugin } from "./plugins/orders-probe";
@@ -45,7 +45,7 @@ const timeframeOptions = [
   { label: "15m", value: baseStepSize },
   { label: "30m", value: 30 * 60 * 1000 },
   { label: "1h", value: 60 * 60 * 1000 },
-  { label: "4h", value: 4 * 60 * 60 * 1000 }
+  { label: "4h", value: 4 * 60 * 60 * 1000 },
 ] as const;
 
 const chartTypeOptions: Array<{ label: string; value: ControllerType }> = [
@@ -55,7 +55,7 @@ const chartTypeOptions: Array<{ label: string; value: ControllerType }> = [
   { label: "Area", value: "area" },
   { label: "Bars", value: "bar" },
   { label: "Hollow", value: "hollow-candle" },
-  { label: "HLC Area", value: "hlc-area" }
+  { label: "HLC Area", value: "hlc-area" },
 ];
 
 type ChartLayoutMode = "single" | "grid" | "stress";
@@ -75,7 +75,7 @@ const layoutOptions: Array<{
 }> = [
   { label: "1", title: "Single chart", value: "single" },
   { label: "9", title: "9 chart grid", value: "grid" },
-  { label: "Sync", title: "Synced chart stress grid", value: "stress" }
+  { label: "Sync", title: "Synced chart stress grid", value: "stress" },
 ];
 
 const chartHosts = new Map<string, HTMLElement>();
@@ -117,7 +117,7 @@ const comparisonData = computed(() =>
     {
       impulseScale: 1.35,
       startPrice: 176.8,
-      trendBias: 0.08
+      trendBias: 0.08,
     }
   )
 );
@@ -125,21 +125,21 @@ const chartSlots = computed<ChartSlot[]>(() => {
   if (chartLayoutMode.value === "stress") {
     return [
       ...createChartSlots("primary", initialData, selectedTimeframeMs.value, {
-        count: stressChartsPerColumn.value
+        count: stressChartsPerColumn.value,
       }),
       ...createChartSlots(
         "comparison",
         comparisonData.value,
         comparisonStepSize.value,
         { count: stressChartsPerColumn.value }
-      )
+      ),
     ];
   }
 
   const count = chartLayoutMode.value === "grid" ? 9 : 1;
   return createChartSlots("primary", initialData, selectedTimeframeMs.value, {
     count,
-    prefix: "standard"
+    prefix: "standard",
   });
 });
 const primaryStressSlots = computed(() =>
@@ -188,7 +188,7 @@ function createChartSlots(
     column,
     data,
     id: `${prefix}-${index}`,
-    stepSize
+    stepSize,
   }));
 }
 
@@ -264,7 +264,7 @@ function applyStressCount() {
 function getChartTimeRange(data: ChartData[], stepSize: number) {
   return {
     start: data[0].time,
-    end: data.at(-1)!.time + stepSize
+    end: data.at(-1)!.time + stepSize,
   };
 }
 
@@ -284,7 +284,7 @@ function applyTimeframe() {
     item.chart.updateOptions({
       timeRange: getChartTimeRange(nextSlot.data, nextSlot.stepSize),
       stepSize: nextSlot.stepSize,
-      maxZoom: 90
+      maxZoom: 90,
     });
     item.chart.setData(nextSlot.data);
   }
@@ -301,14 +301,14 @@ function addIndicator(kind: IndicatorKind) {
         instanceId: `SMA-${indicatorIndex}`,
         names: { default: "Moving Average" },
         period: 9,
-        source: "close"
+        source: "close",
       })
     );
   } else {
     chart.addIndicator(
       new PaneMarkerIndicator(null, {
         instanceId: `MARKERS-${indicatorIndex}`,
-        names: { default: "Pane Markers" }
+        names: { default: "Pane Markers" },
       })
     );
   }
@@ -333,7 +333,7 @@ function applyIndicatorSettings() {
   if (indicator instanceof MovingAverageIndicator) {
     indicator.updateOptions({
       period: Math.max(1, Math.round(movingAveragePeriod.value)),
-      source: movingAverageSource.value
+      source: movingAverageSource.value,
     });
   }
 
@@ -361,7 +361,7 @@ function createChart(root: HTMLElement, slot: ChartSlot): PlaygroundChart {
     locale: "en-US",
     maxZoom: 90,
     stepSize: slot.stepSize,
-    volume: true
+    volume: true,
   });
 
   const drawingManager = new DrawingManager();
@@ -373,7 +373,7 @@ function createChart(root: HTMLElement, slot: ChartSlot): PlaygroundChart {
     new ChartSyncPlugin({
       group: syncGroup,
       drawingManager,
-      indicatorResolver
+      indicatorResolver,
     })
   );
   chart.addPlugin(new DrawingAxisBoundsPlugin());
@@ -622,7 +622,7 @@ onBeforeUnmount(() => {
         :key="`${chartLayoutMode}-${chartStageKey}`"
         :class="[
           'chart-stage',
-          { 'chart-stage--grid': chartLayoutMode === 'grid' }
+          { 'chart-stage--grid': chartLayoutMode === 'grid' },
         ]"
       >
         <div v-for="slot in chartSlots" :key="slot.id" class="chart-cell">

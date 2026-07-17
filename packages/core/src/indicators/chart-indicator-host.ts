@@ -7,7 +7,7 @@ import type {
   Indicator,
   IndicatorContext,
   IndicatorDrawingContext,
-  IndicatorInvalidationOptions
+  IndicatorInvalidationOptions,
 } from "./indicator";
 
 const scaleRedrawParts: readonly ChartRedrawPart[] = [
@@ -16,7 +16,7 @@ const scaleRedrawParts: readonly ChartRedrawPart[] = [
   "series",
   "indicators",
   "annotations",
-  "crosshair"
+  "crosshair",
 ];
 
 interface ChartIndicatorOperations {
@@ -48,7 +48,7 @@ export class ChartIndicatorHost {
         if (!extension.signal.aborted) {
           this.operations.removeIndicator(indicator);
         }
-      }
+      },
     };
   }
 
@@ -76,8 +76,8 @@ export class ChartIndicatorHost {
       projectPrice: (value) => priceScale.project(value, scaleOptions),
       projectPoint: (time, value, alignment = barAlignment) => ({
         x: timeScale.project(time, { canvas, barAlignment: alignment }),
-        y: priceScale.project(value, scaleOptions)
-      })
+        y: priceScale.project(value, scaleOptions),
+      }),
     };
   }
 

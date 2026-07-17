@@ -1,7 +1,4 @@
-import type {
-  BuiltInChartThemeKey,
-  ResolvedChartTheme
-} from "../chart/themes";
+import type { BuiltInChartThemeKey, ResolvedChartTheme } from "../chart/themes";
 import { mergeObjects } from "../utils/merge";
 
 export type ExtensionThemeDefaults<TTheme extends object> = Readonly<
@@ -59,7 +56,7 @@ export class ExtensionThemeResolver<TTheme extends object> {
     this.resolved = {
       key: chartTheme.key,
       base: chartTheme.base,
-      theme
+      theme,
     };
     return theme;
   }

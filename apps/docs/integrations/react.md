@@ -14,9 +14,24 @@ type Props = {
 
 const localeValues = {
   en: {
-    indicators: { actions: { show: "Show", hide: "Hide", settings: "Settings", remove: "Remove" } },
-    common: { sources: { open: "Open", high: "High", low: "Low", close: "Close", volume: "Volume" } }
-  }
+    indicators: {
+      actions: {
+        show: "Show",
+        hide: "Hide",
+        settings: "Settings",
+        remove: "Remove",
+      },
+    },
+    common: {
+      sources: {
+        open: "Open",
+        high: "High",
+        low: "Low",
+        close: "Close",
+        volume: "Volume",
+      },
+    },
+  },
 };
 
 export function Chart({ data, locale }: Props) {
@@ -56,7 +71,7 @@ export function Chart({ data, locale }: Props) {
   useEffect(() => {
     chartRef.current?.updateOptions({
       locale,
-      localeValues
+      localeValues,
     });
   }, [locale]);
 

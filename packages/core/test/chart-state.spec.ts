@@ -14,7 +14,7 @@ function createData(): ChartData[] {
   const start = Date.UTC(2024, 0, 1, 9);
   return Array.from({ length: 8 }, (_, index) => ({
     time: start + index * 60_000,
-    close: 10 + index * 2
+    close: 10 + index * 2,
   }));
 }
 
@@ -24,7 +24,7 @@ function createChart({
   stepSize = 60_000,
   type = "line",
   volume = false,
-  height = 400
+  height = 400,
 }: {
   data?: readonly ChartData[];
   maxZoom?: number;
@@ -42,13 +42,13 @@ function createChart({
   const chart = new FinancialChart(container, {
     timeRange: {
       start: allData[0].time,
-      end: allData.at(-1)!.time + 60_000
+      end: allData.at(-1)!.time + 60_000,
     },
     type,
     stepSize,
     maxZoom,
     volume,
-    locale: "en-US"
+    locale: "en-US",
   });
   if (data.length > 0) chart.setData(data);
   charts.push(chart);
@@ -81,12 +81,12 @@ describe("chart state", () => {
     const fast = new MovingAverageIndicator(null, {
       instanceId: "fast-sma",
       period: 9,
-      source: "close"
+      source: "close",
     });
     const slow = new MovingAverageIndicator(null, {
       instanceId: "slow-sma",
       period: 21,
-      source: "open"
+      source: "open",
     });
     const paneled = new TestIndicator(null, { instanceId: "pane-test" });
     slow.setVisible(false);
@@ -98,16 +98,16 @@ describe("chart state", () => {
     const [mainPane, indicatorPane] = source.getPanes();
     source.setPaneHeights({
       [mainPane.id]: 222,
-      [indicatorPane.id]: 148
+      [indicatorPane.id]: 148,
     });
     sourceDrawings.addDrawing(
       new TrendLine({
         anchors: [
           { index: 1, price: 12 },
-          { index: 4, price: 18 }
+          { index: 4, price: 18 },
         ],
         id: "pane-trend",
-        paneId: indicatorPane.id
+        paneId: indicatorPane.id,
       })
     );
 
@@ -120,7 +120,7 @@ describe("chart state", () => {
       stepSize: 120_000,
       type: "candle",
       volume: true,
-      height: 770
+      height: 770,
     });
     const targetDrawings = new DrawingManager();
     target.addPlugin(targetDrawings);
@@ -136,7 +136,7 @@ describe("chart state", () => {
       attach: vi.fn(),
       onOptionsChanged,
       onData,
-      onVisibleRangeChanged
+      onVisibleRangeChanged,
     };
     target.addPlugin(lifecycleProbe);
     onOptionsChanged.mockClear();
@@ -161,7 +161,7 @@ describe("chart state", () => {
 
     target.restoreState(state, {
       indicatorResolver,
-      contributors: [targetDrawings]
+      contributors: [targetDrawings],
     });
 
     expect(target.toJSON({ contributors: [targetDrawings] })).toEqual(state);
@@ -169,12 +169,14 @@ describe("chart state", () => {
       2
     );
     expect(
-      (target.getIndicatorById("fast-sma") as MovingAverageIndicator)
-        .getOptions().period
+      (
+        target.getIndicatorById("fast-sma") as MovingAverageIndicator
+      ).getOptions().period
     ).toBe(9);
     expect(
-      (target.getIndicatorById("slow-sma") as MovingAverageIndicator)
-        .getOptions().period
+      (
+        target.getIndicatorById("slow-sma") as MovingAverageIndicator
+      ).getOptions().period
     ).toBe(21);
     expect(target.getIndicatorById("slow-sma")?.isIndicatorVisible()).toBe(
       false
@@ -207,7 +209,7 @@ describe("chart state", () => {
     source.addIndicator(
       new MovingAverageIndicator(null, {
         instanceId: "deferred-sma",
-        period: 13
+        period: 13,
       })
     );
     const state = source.toJSON();
@@ -239,7 +241,7 @@ describe("chart state", () => {
       attach: vi.fn(),
       onOptionsChanged,
       onData,
-      onVisibleRangeChanged
+      onVisibleRangeChanged,
     });
     onOptionsChanged.mockClear();
     onData.mockClear();
@@ -251,7 +253,7 @@ describe("chart state", () => {
     expect(onOptionsChanged).toHaveBeenCalledWith({
       previous: target.getOptions(),
       current: target.getOptions(),
-      changedKeys: []
+      changedKeys: [],
     });
     expect(onData).toHaveBeenCalledOnce();
     expect(onData).toHaveBeenCalledWith(target.getData());
@@ -272,7 +274,7 @@ describe("chart state", () => {
 
     const target = createChart();
     const existing = new MovingAverageIndicator(null, {
-      instanceId: "existing-sma"
+      instanceId: "existing-sma",
     });
     target.addIndicator(existing);
 
@@ -285,7 +287,7 @@ describe("chart state", () => {
     expect(() =>
       target.restoreState({
         ...state,
-        panes: state.panes.map((pane) => ({ ...pane, heightRatio: 0.5 }))
+        panes: state.panes.map((pane) => ({ ...pane, heightRatio: 0.5 })),
       })
     ).toThrow("Invalid chart state: pane heightRatio values must sum to 1.");
     expect(() => target.restoreState(state)).toThrow(
@@ -306,7 +308,7 @@ describe("chart state", () => {
       target.restoreState(
         {
           ...state,
-          indicators: [state.indicators[0], state.indicators[0]]
+          indicators: [state.indicators[0], state.indicators[0]],
         },
         { indicatorResolver, contributors: [new DrawingManager()] }
       )
@@ -329,7 +331,7 @@ describe("chart state", () => {
       chart.restoreState(
         {
           ...state,
-          panes: [...state.panes, { ...pane, id: 99, heightRatio: 0 }]
+          panes: [...state.panes, { ...pane, id: 99, heightRatio: 0 }],
         },
         { indicatorResolver }
       )
@@ -340,7 +342,7 @@ describe("chart state", () => {
     const unsafeContributor: ChartStateContributor = {
       key: "unsafe",
       toJSON: () => ({ callback: () => undefined }),
-      fromJSON: () => undefined
+      fromJSON: () => undefined,
     };
     expect(() => chart.toJSON({ contributors: [unsafeContributor] })).toThrow(
       'Chart state contribution "unsafe".callback is not JSON-safe.'
@@ -354,12 +356,12 @@ describe("chart state", () => {
 
     const source = createChart();
     const sourceValue: ContributionState = {
-      nested: { value: "serialized" }
+      nested: { value: "serialized" },
     };
     const sourceContributor: ChartStateContributor<ContributionState> = {
       key: "owned-contribution",
       toJSON: () => sourceValue,
-      fromJSON: () => undefined
+      fromJSON: () => undefined,
     };
     const state = source.toJSON({ contributors: [sourceContributor] });
     const serialized = state.contributions?.[
@@ -378,7 +380,7 @@ describe("chart state", () => {
         if (!value) throw new Error("Expected persisted contributor state.");
         restored = value;
         value.nested.value = "contributor-mutated";
-      }
+      },
     };
 
     target.restoreState(state, { contributors: [targetContributor] });
@@ -396,9 +398,9 @@ describe("chart state", () => {
       new TrendLine({
         anchors: [
           { index: 1, price: 12 },
-          { index: 3, price: 16 }
+          { index: 3, price: 16 },
         ],
-        paneId: target.getMainPane().id
+        paneId: target.getMainPane().id,
       })
     );
 

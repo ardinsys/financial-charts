@@ -10,14 +10,14 @@ import {
   CHART_STATE_VERSION,
   DrawingManager,
   MovingAverageIndicator,
-  type ChartState
+  type ChartState,
 } from "@ardinsys/financial-charts";
 
 const drawingManager = new DrawingManager();
 chart.addPlugin(drawingManager);
 
 const state: ChartState = chart.toJSON({
-  contributors: [drawingManager]
+  contributors: [drawingManager],
 });
 localStorage.setItem("chart", JSON.stringify(state));
 
@@ -68,7 +68,7 @@ const stored = localStorage.getItem("chart");
 if (stored) {
   chart.restoreState(JSON.parse(stored), {
     indicatorResolver,
-    contributors: [drawingManager]
+    contributors: [drawingManager],
   });
 }
 ```
@@ -100,7 +100,7 @@ const watchlistState: ChartStateContributor<WatchlistState> = {
   toJSON: () => ({ comparisonSymbol: selectedComparison }),
   fromJSON: (state) => {
     selectedComparison = state.comparisonSymbol;
-  }
+  },
 };
 ```
 

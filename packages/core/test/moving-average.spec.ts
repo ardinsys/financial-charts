@@ -195,7 +195,7 @@ describe("MovingAverageIndicator", () => {
       { time: start, close: 10 },
       { time: start + 60_000 },
       { time: start + 120_000, close: 20 },
-      { time: start + 180_000, close: 30 }
+      { time: start + 180_000, close: 30 },
     ]);
     const indicator = new MovingAverageIndicator(null, { period: 3 });
     const cache = indicator as unknown as { cache: Map<number, number> };

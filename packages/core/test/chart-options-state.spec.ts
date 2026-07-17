@@ -8,7 +8,7 @@ describe("ChartOptionsState", () => {
   it("owns retained inputs and reuses one public snapshot", () => {
     const timeRange = { start: 100, end: 400 };
     const themes = {
-      owned: { randomColors: ["#123456"] }
+      owned: { randomColors: ["#123456"] },
     };
     const state = new ChartOptionsState(
       {
@@ -16,7 +16,7 @@ describe("ChartOptionsState", () => {
         timeRange,
         stepSize: 60,
         theme: "owned",
-        themes
+        themes,
       },
       [LineController],
       false
@@ -39,7 +39,7 @@ describe("ChartOptionsState", () => {
         timeRange: "auto",
         stepSize: 60,
         volume: true,
-        locale: "en-US"
+        locale: "en-US",
       },
       [LineController, CandlestickController],
       false
@@ -67,7 +67,7 @@ describe("ChartOptionsState", () => {
     expect(state.getResolved()).toMatchObject({
       type: "candle",
       volume: false,
-      locale: "hu-HU"
+      locale: "hu-HU",
     });
   });
 
@@ -85,7 +85,7 @@ describe("ChartOptionsState", () => {
 
     const replacements: ControllerConstructor[] = [
       LineController,
-      CandlestickController
+      CandlestickController,
     ];
     state.setControllers(replacements);
     replacements.pop();
@@ -93,7 +93,7 @@ describe("ChartOptionsState", () => {
     expect(state.getSnapshot()).not.toBe(previous);
     expect(state.getSnapshot().controllers).toEqual([
       LineController,
-      CandlestickController
+      CandlestickController,
     ]);
   });
 });

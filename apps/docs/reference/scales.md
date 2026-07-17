@@ -32,7 +32,7 @@ outside the chart.
 ```ts
 const point = priceScale.project(125.5, {
   canvas: { width: 1600, height: 800 },
-  devicePixelRatio: 2
+  devicePixelRatio: 2,
 });
 // `point` is within a logical height of 400.
 ```
@@ -114,7 +114,7 @@ const ticks = generateTimeTicks({
   times: data.map((point) => point.time),
   visibleRange: { from: 20, to: 80 },
   formatter,
-  targetTickCount: 8
+  targetTickCount: 8,
 });
 ```
 

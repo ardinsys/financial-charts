@@ -21,36 +21,36 @@ export const chartThemes = {
       upColor: "#22ab94",
       upWickColor: "#22ab94",
       downColor: "#f23645",
-      downWickColor: "#f23645"
+      downWickColor: "#f23645",
     },
     grid: {
       color: "rgba(120, 123, 134, 0.18)",
-      width: 1
+      width: 1,
     },
     xAxis: {
       backgroundColor: "#131722",
       color: "#9aa4b2",
-      separatorColor: "#2a2e39"
+      separatorColor: "#2a2e39",
     },
     yAxis: {
       backgroundColor: "#131722",
-      color: "#9aa4b2"
+      color: "#9aa4b2",
     },
     crosshair: {
       color: "#75808f",
       tooltip: {
         backgroundColor: "#1f2937",
-        color: "#f8fafc"
+        color: "#f8fafc",
       },
       infoLine: {
         color: "#cbd5e1",
         labels: {
           "en-US": ["O ", "H ", "L ", "C ", "V "],
-          "*": ["O ", "H ", "L ", "C ", "V "]
-        }
-      }
-    }
-  }
+          "*": ["O ", "H ", "L ", "C ", "V "],
+        },
+      },
+    },
+  },
 } satisfies ChartThemeMap;
 
 export interface SessionDataOptions {
@@ -87,7 +87,7 @@ export function createSessionData(
       low: roundPrice(low),
       close: roundPrice(close),
       volume:
-        850_000 + Math.round(Math.abs(close - open) * 420_000) + index * 4500
+        850_000 + Math.round(Math.abs(close - open) * 420_000) + index * 4500,
     });
 
     previousClose = close;
@@ -103,6 +103,6 @@ function roundPrice(value: number) {
 export function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   }).format(value);
 }

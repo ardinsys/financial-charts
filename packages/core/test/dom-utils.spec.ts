@@ -3,7 +3,7 @@ import {
   bindEvent,
   createCanvasLayer,
   createPositionedContainer,
-  resizeCanvasLayer
+  resizeCanvasLayer,
 } from "../src/utils/dom";
 
 describe("DOM utilities", () => {
@@ -17,7 +17,7 @@ describe("DOM utilities", () => {
       width: "100%",
       height: 240,
       zIndex: 5,
-      backgroundColor: "#fff"
+      backgroundColor: "#fff",
     });
 
     expect(container.tagName).toBe("DIV");
@@ -43,7 +43,7 @@ describe("DOM utilities", () => {
       width: 200,
       height: 120,
       pixelRatio: 2,
-      context
+      context,
     });
 
     expect(canvas.style.position).toBe("absolute");

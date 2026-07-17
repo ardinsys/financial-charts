@@ -12,7 +12,7 @@ export class CandlestickController extends OHLCController {
       visibleData,
       visibleStartIndex,
       projectIndex,
-      projectPrice
+      projectPrice,
     } = this.context.getDrawingContext();
 
     const candleSpacing = pixelsPerBar * this.spacing;
@@ -47,20 +47,10 @@ export class CandlestickController extends OHLCController {
 
       wickPath.moveTo(wickX, high);
       wickPath.lineTo(wickX, low);
-      bodyPath.rect(
-        x + candleSpacing / 2,
-        bodyTop,
-        candleWidth,
-        bodyHeight
-      );
+      bodyPath.rect(x + candleSpacing / 2, bodyTop, candleWidth, bodyHeight);
     }
 
-    this.drawPaths(
-      ctx,
-      upWicks,
-      upBodies,
-      this.options.theme.candle.upColor
-    );
+    this.drawPaths(ctx, upWicks, upBodies, this.options.theme.candle.upColor);
     this.drawPaths(
       ctx,
       downWicks,

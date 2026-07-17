@@ -222,7 +222,7 @@ export class TimeTickGenerator {
         index,
         time,
         kind,
-        priority: priorityByKind[kind]
+        priority: priorityByKind[kind],
       });
       if (ticks.length > acceptanceThreshold) return undefined;
       usedIndices.add(index);
@@ -237,7 +237,7 @@ export class TimeTickGenerator {
   ): TimeTick[] {
     return ticks.map((tick) => ({
       ...tick,
-      label: formatTickLabel(formatter, tick.kind, tick.time)
+      label: formatTickLabel(formatter, tick.kind, tick.time),
     }));
   }
 
@@ -252,8 +252,10 @@ export class TimeTickGenerator {
       candidate.granularity === "minute"
     ) {
       if (!previous) return true;
-      return getSmallUnitBucket(current, candidate) !==
-        getSmallUnitBucket(previous, candidate);
+      return (
+        getSmallUnitBucket(current, candidate) !==
+        getSmallUnitBucket(previous, candidate)
+      );
     }
 
     if (!isAligned(current, candidate)) return false;
@@ -311,7 +313,8 @@ function isAligned(parts: CalendarParts, candidate: TickCandidate) {
 }
 
 function getSmallUnitBucket(parts: CalendarParts, candidate: TickCandidate) {
-  const minuteNumber = parts.dayNumber * 24 * 60 + parts.hour * 60 + parts.minute;
+  const minuteNumber =
+    parts.dayNumber * 24 * 60 + parts.hour * 60 + parts.minute;
   if (candidate.granularity === "minute") {
     return Math.floor(minuteNumber / candidate.step);
   }
@@ -321,7 +324,9 @@ function getSmallUnitBucket(parts: CalendarParts, candidate: TickCandidate) {
     return Math.floor(secondNumber / candidate.step);
   }
 
-  return Math.floor((secondNumber * 1_000 + parts.millisecond) / candidate.step);
+  return Math.floor(
+    (secondNumber * 1_000 + parts.millisecond) / candidate.step
+  );
 }
 
 function classifyBoundary(
@@ -344,9 +349,7 @@ function classifyBoundary(
   if (current.dayNumber !== previous.dayNumber) return "day";
   if (current.hour !== previous.hour) return "hour";
   if (current.minute !== previous.minute) return "minute";
-  if (
-    current.second !== previous.second
-  ) {
+  if (current.second !== previous.second) {
     return "second";
   }
   if (current.millisecond !== previous.millisecond) return "subMinute";

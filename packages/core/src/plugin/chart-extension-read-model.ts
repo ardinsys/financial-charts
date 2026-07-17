@@ -1,7 +1,7 @@
 import type { ChartModel } from "../chart/chart-model";
 import type {
   ChartOptionsSnapshot,
-  LocaleValues
+  LocaleValues,
 } from "../chart/chart-options";
 import type { ChartOptionsState } from "../chart/chart-options-state";
 import type { ChartData, TimeRange } from "../chart/types";

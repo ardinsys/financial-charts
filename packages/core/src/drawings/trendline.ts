@@ -5,7 +5,7 @@ import {
   type DrawingJSON,
   type DrawingOptions,
   type DrawingPoint,
-  type DrawingRenderContext
+  type DrawingRenderContext,
 } from "./drawing";
 
 export interface TrendLineOptions extends DrawingOptions {
@@ -49,7 +49,7 @@ export class TrendLine extends Drawing {
       paneId: json.paneId,
       color: data?.color,
       lineWidth: data?.lineWidth,
-      selectedColor: data?.selectedColor
+      selectedColor: data?.selectedColor,
     });
   }
 
@@ -83,7 +83,7 @@ export class TrendLine extends Drawing {
     return {
       color: this.color,
       lineWidth: this.lineWidth,
-      ...(this.selectedColor ? { selectedColor: this.selectedColor } : {})
+      ...(this.selectedColor ? { selectedColor: this.selectedColor } : {}),
     };
   }
 }

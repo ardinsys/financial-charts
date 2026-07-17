@@ -13,14 +13,18 @@ describe("mergeObjects", () => {
 
   it("owns null-prototype records without changing the result prototype", () => {
     const nested = Object.assign(Object.create(null), { value: 2 });
-    const overrides = JSON.parse(
-      '{"__proto__":{"polluted":true}}'
-    ) as Record<string, unknown>;
+    const overrides = JSON.parse('{"__proto__":{"polluted":true}}') as Record<
+      string,
+      unknown
+    >;
 
-    const result = mergeObjects({ nested: { value: 1 } }, {
-      nested,
-      ...overrides
-    }) as Record<string, unknown>;
+    const result = mergeObjects(
+      { nested: { value: 1 } },
+      {
+        nested,
+        ...overrides,
+      }
+    ) as Record<string, unknown>;
 
     expect(result.nested).toEqual({ value: 2 });
     expect(result.nested).not.toBe(nested);
@@ -34,7 +38,7 @@ describe("mergeObjects", () => {
     const overrides = Object.create({ value: "inherited" }) as object;
 
     expect(mergeObjects({ value: "default" }, overrides)).toEqual({
-      value: "default"
+      value: "default",
     });
   });
 });

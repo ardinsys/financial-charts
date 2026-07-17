@@ -12,14 +12,14 @@ import {
   TextDrawing,
   TrendLine,
   type DrawingPoint,
-  type DrawingRenderContext
+  type DrawingRenderContext,
 } from "../src/drawings";
 import type { ChartPointerEvent } from "../src/plugin/chart-plugin";
 import {
   getChartContext,
   getChartRenderer,
   getInternalMainPane,
-  requestChartRedraw
+  requestChartRedraw,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -38,7 +38,7 @@ function createData(): ChartData[] {
     { time: start, close: 10 },
     { time: start + 60_000, close: 12 },
     { time: start + 120_000, close: 14 },
-    { time: start + 180_000, close: 16 }
+    { time: start + 180_000, close: 16 },
   ];
 }
 
@@ -52,14 +52,14 @@ function createChart() {
   const chart = new FinancialChart(container, {
     timeRange: {
       start: data[0].time,
-      end: data.at(-1)!.time + 60_000
+      end: data.at(-1)!.time + 60_000,
     },
     type: "line",
     controllers: [LineController],
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
   });
   chart.setData(data);
   charts.push(chart);
@@ -78,14 +78,14 @@ function pointerEvent(
     ...point,
     time: dataPoint.time,
     pane: getInternalMainPane(chart),
-    dataPoint
+    dataPoint,
   };
 }
 
 function createManager(chart: FinancialChart, factory: DrawingFactory) {
   const manager = new DrawingManager({
     drawingFactory: factory,
-    hitTestTolerance: 8
+    hitTestTolerance: 8,
   });
   chart.addPlugin(manager);
   return manager;
@@ -113,8 +113,8 @@ function drawingContext(chart: FinancialChart): DrawingRenderContext {
     handleTheme: {
       centerColor: theme.yAxis.color,
       fillColor: theme.backgroundColor,
-      strokeColor: theme.crosshair.color
-    }
+      strokeColor: theme.crosshair.color,
+    },
   };
 }
 
@@ -170,8 +170,8 @@ describe("drawing tools", () => {
       new TrendLine({
         anchors: [
           { index: 0, price: 10 },
-          { index: 2, price: 14 }
-        ]
+          { index: 2, price: 14 },
+        ],
       })
     );
     const context = getChartContext(chart, "drawings");
@@ -314,19 +314,19 @@ describe("drawing tools", () => {
     manager.onPointer(
       pointerEvent(chart, data[1], "down", {
         x: textAnchorPoint.x + 8,
-        y: textAnchorPoint.y + 8
+        y: textAnchorPoint.y + 8,
       })
     );
     manager.onPointer(
       pointerEvent(chart, data[2], "move", {
         x: textAnchorPoint.x + 220,
-        y: textAnchorPoint.y + 48
+        y: textAnchorPoint.y + 48,
       })
     );
     manager.onPointer(
       pointerEvent(chart, data[2], "up", {
         x: textAnchorPoint.x + 220,
-        y: textAnchorPoint.y + 48
+        y: textAnchorPoint.y + 48,
       })
     );
 
@@ -356,37 +356,37 @@ describe("drawing tools", () => {
     const paneId = getInternalMainPane(chart).getId();
     const originalAnchors: DrawingAnchor[] = [
       { index: 0.25, price: 10.5 },
-      { index: 2.5, price: 14.25 }
+      { index: 2.5, price: 14.25 },
     ];
     const selected = new TextDrawing({
       anchors: [{ index: 1.5, price: 12.75 }],
       id: "text-1",
       paneId,
-      text: "Reloaded"
+      text: "Reloaded",
     });
     manager.addDrawing(
       new TrendLine({
         anchors: originalAnchors,
         id: "trend-1",
         paneId,
-        color: "#abcdef"
+        color: "#abcdef",
       })
     );
     manager.addDrawing(
       new HorizontalLine({
         anchors: [{ index: 1, price: 11 }],
         id: "horizontal-1",
-        paneId
+        paneId,
       })
     );
     manager.addDrawing(
       new RectangleDrawing({
         anchors: [
           { index: 0.5, price: 10.75 },
-          { index: 3, price: 13.5 }
+          { index: 3, price: 13.5 },
         ],
         id: "rectangle-1",
-        paneId
+        paneId,
       })
     );
     manager.addDrawing(selected);
@@ -418,7 +418,7 @@ describe("drawing tools", () => {
       "trendline",
       "horizontal-line",
       "rectangle",
-      "text"
+      "text",
     ]);
     expect(reloadedDrawings).toHaveLength(4);
     expect(reloadedTrend.getAnchors()).toEqual(originalAnchors);
@@ -432,7 +432,7 @@ describe("drawing tools", () => {
 function drawingHitContext(chart: FinancialChart) {
   return {
     ...drawingContext(chart),
-    tolerance: 8
+    tolerance: 8,
   };
 }
 
@@ -443,8 +443,8 @@ function projectAnchor(chart: FinancialChart, anchor: DrawingAnchor) {
   return {
     x: pane.getTimeScale()!.projectIndex(anchor.index, {
       canvas,
-      barAlignment: pane.getTimeAnchorAlignment()
+      barAlignment: pane.getTimeAnchorAlignment(),
     }),
-    y: pane.getPriceScale().project(anchor.price, { canvas })
+    y: pane.getPriceScale().project(anchor.price, { canvas }),
   };
 }

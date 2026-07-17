@@ -15,7 +15,7 @@ export class AreaController extends SimpleController {
       visibleStartIndex,
       timeRange,
       projectIndex,
-      projectPrice
+      projectPrice,
     } = this.context.getDrawingContext();
 
     ctx.lineWidth = this.options.theme.area.width;

@@ -23,7 +23,7 @@ import {
   type BarAlignment,
   type ChartData,
   type ChartDataValueKey,
-  type TimeRange
+  type TimeRange,
 } from "@ardinsys/financial-charts/engine";
 
 class CloseController extends ChartController {
@@ -34,7 +34,7 @@ class CloseController extends ChartController {
     timeRange: TimeRange
   ): DataScaleModel {
     return new DataScaleModel("simple", data, timeRange, {
-      barAlignment: this.getBarAlignment()
+      barAlignment: this.getBarAlignment(),
     });
   }
 
@@ -56,7 +56,7 @@ class CloseController extends ChartController {
       visibleData,
       visibleStartIndex,
       projectIndex,
-      projectPrice
+      projectPrice,
     } = this.context.getDrawingContext();
     let started = false;
 
@@ -80,7 +80,7 @@ const chart = new FinancialChart(container, {
   type: CloseController.ID,
   controllers: [CloseController],
   includeDefaultControllers: false,
-  stepSize: 60_000
+  stepSize: 60_000,
 });
 ```
 
@@ -93,7 +93,7 @@ const chart = new FinancialChart(container, {
 | `getCrosshairValues()`             | Returns named `ChartData` value keys in the order they should appear. Volume is still omitted when chart volume is disabled. |
 | `getBarAlignment()`                | Returns `"center"` for point/line series or `"edge"` when a bar body begins at its timestamp.                                |
 | `getTimeAnchorAlignment()`         | Optionally gives drawings and X-axis anchors an alignment different from bar bodies. Defaults to `"center"`.                 |
-| `getTimeFromRawDataPoint(point)`   | Maps a raw timestamp to the controller's bucket timestamp. Use `this.bucketTime(time, "round" | "floor")` to make the alignment policy explicit. |
+| `getTimeFromRawDataPoint(point)`   | Maps a raw timestamp to the controller's bucket timestamp. Use `this.bucketTime(time, "round"                                | "floor")` to make the alignment policy explicit. |
 | `draw()`                           | Draws the series into the main context. Chart contexts use logical coordinates.                                              |
 
 Controllers receive a `ChartControllerContext`, not the chart instance.

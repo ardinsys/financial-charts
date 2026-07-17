@@ -1,7 +1,7 @@
 import type {
   ChartContext,
   ChartPlugin,
-  ChartPointerEvent
+  ChartPointerEvent,
 } from "../plugin/chart-plugin";
 import type { Pane } from "../panes/pane";
 import { bindEvent, type Dispose } from "../utils/dom";
@@ -11,7 +11,7 @@ import {
   type DrawingAnchor,
   type DrawingHitTestContext,
   type DrawingJSON,
-  type DrawingPoint
+  type DrawingPoint,
 } from "./drawing";
 import { HorizontalLine } from "./horizontal-line";
 import { RectangleDrawing } from "./rectangle";
@@ -30,9 +30,7 @@ export interface DrawingFactoryDescriptor {
   readonly create: DrawingFactory;
 }
 
-export type DrawingCreationFactory =
-  | DrawingFactory
-  | DrawingFactoryDescriptor;
+export type DrawingCreationFactory = DrawingFactory | DrawingFactoryDescriptor;
 
 export type DrawingDeserializer = (json: DrawingJSON) => Drawing;
 
@@ -42,9 +40,7 @@ export interface DrawingManagerJSON {
 }
 
 export interface DrawingManagerOptions {
-  readonly drawingDeserializers?: Readonly<
-    Record<string, DrawingDeserializer>
-  >;
+  readonly drawingDeserializers?: Readonly<Record<string, DrawingDeserializer>>;
   readonly drawingFactory?: DrawingCreationFactory;
   readonly hitTestTolerance?: number;
 }
@@ -53,7 +49,7 @@ const builtInDrawingDeserializers: Record<string, DrawingDeserializer> = {
   [HorizontalLine.type]: HorizontalLine.fromJSON,
   [RectangleDrawing.type]: RectangleDrawing.fromJSON,
   [TextDrawing.type]: TextDrawing.fromJSON,
-  [TrendLine.type]: TrendLine.fromJSON
+  [TrendLine.type]: TrendLine.fromJSON,
 };
 
 type Interaction =
@@ -328,7 +324,7 @@ export class DrawingManager implements ChartPlugin {
     if (!drawing) return false;
 
     const removed = this.removeDrawing(drawing, {
-      emit: options.emitSelection ?? true
+      emit: options.emitSelection ?? true,
     });
     if (removed === undefined) return false;
 
@@ -411,7 +407,7 @@ export class DrawingManager implements ChartPlugin {
     this.drawings = [
       ...this.drawings.slice(0, insertionIndex),
       drawing,
-      ...this.drawings.slice(insertionIndex)
+      ...this.drawings.slice(insertionIndex),
     ];
     this.ctx?.requestRedraw("drawings");
     return true;
@@ -460,7 +456,7 @@ export class DrawingManager implements ChartPlugin {
       drawings: this.drawings.map((drawing) => drawing.toJSON()),
       ...(this.selectedDrawing
         ? { selectedDrawingId: this.selectedDrawing.id }
-        : {})
+        : {}),
     };
   }
 
@@ -600,7 +596,7 @@ export class DrawingManager implements ChartPlugin {
         drawing: selectedAnchor.drawing,
         index: selectedAnchor.index,
         anchors: selectedAnchor.drawing.getAnchors(),
-        pane: event.pane
+        pane: event.pane,
       };
       return true;
     }
@@ -613,7 +609,7 @@ export class DrawingManager implements ChartPlugin {
         drawing: hitDrawing,
         start: anchor,
         anchors: hitDrawing.getAnchors(),
-        pane: event.pane
+        pane: event.pane,
       };
       return true;
     }
@@ -626,7 +622,7 @@ export class DrawingManager implements ChartPlugin {
     const { anchorCount, create } = this.drawingFactory;
     const drawing = create({
       anchors: Array.from({ length: anchorCount }, () => anchor),
-      paneId: event.pane.getId()
+      paneId: event.pane.getId(),
     });
     this.assertDrawingType(drawing.type);
     this.assertUniqueDrawingId(drawing.id);
@@ -641,7 +637,7 @@ export class DrawingManager implements ChartPlugin {
       pointerActive: true,
       commitOnUp: false,
       pointerStart: anchor,
-      pane: event.pane
+      pane: event.pane,
     };
     this.ctx?.requestRedraw("drawings");
     return true;
@@ -670,12 +666,12 @@ export class DrawingManager implements ChartPlugin {
 
     const delta = {
       index: anchor.index - this.interaction.start.index,
-      price: anchor.price - this.interaction.start.price
+      price: anchor.price - this.interaction.start.price,
     };
     this.interaction.drawing.setAnchors(
       this.interaction.anchors.map((originalAnchor) => ({
         index: originalAnchor.index + delta.index,
-        price: originalAnchor.price + delta.price
+        price: originalAnchor.price + delta.price,
       }))
     );
     this.emitDrawingChange(this.interaction.drawing);
@@ -745,9 +741,7 @@ export class DrawingManager implements ChartPlugin {
     this.ctx?.requestRedraw("drawings");
   }
 
-  private finishCreation(
-    creation: Extract<Interaction, { type: "creating" }>
-  ) {
+  private finishCreation(creation: Extract<Interaction, { type: "creating" }>) {
     const drawing = creation.drawing;
     const index = this.drawings.indexOf(drawing);
     if (index !== -1) {
@@ -768,7 +762,7 @@ export class DrawingManager implements ChartPlugin {
       type: drawing.type,
       paneId: drawing.getPaneId(),
       anchors: drawing.getAnchors(),
-      json: drawing.toJSON()
+      json: drawing.toJSON(),
     });
   }
 
@@ -782,7 +776,7 @@ export class DrawingManager implements ChartPlugin {
             type: drawing.type,
             paneId: drawing.getPaneId(),
             anchors: drawing.getAnchors(),
-            json: drawing.toJSON()
+            json: drawing.toJSON(),
           }
         : { drawing: undefined }
     );
@@ -801,7 +795,7 @@ export class DrawingManager implements ChartPlugin {
   private getHitTestContext(pane: Pane): DrawingHitTestContext {
     return {
       ...this.getDrawingContext(pane),
-      tolerance: this.hitTestTolerance
+      tolerance: this.hitTestTolerance,
     };
   }
 
@@ -814,8 +808,8 @@ export class DrawingManager implements ChartPlugin {
       handleTheme: {
         centerColor: theme.yAxis.color,
         fillColor: theme.backgroundColor,
-        strokeColor: theme.crosshair.color
-      }
+        strokeColor: theme.crosshair.color,
+      },
     };
   }
 
@@ -909,7 +903,7 @@ export class DrawingManager implements ChartPlugin {
     const region = pane.getRegion();
     return {
       x: event.x,
-      y: Math.max(region.y, Math.min(event.y, region.y + region.height))
+      y: Math.max(region.y, Math.min(event.y, region.y + region.height)),
     };
   }
 

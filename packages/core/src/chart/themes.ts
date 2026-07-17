@@ -118,62 +118,62 @@ export const defaultLightTheme: ResolvedChartTheme = {
     "#FF6B6B",
     "#FF9047",
     "#FFBC2D",
-    "#2BFF3E"
+    "#2BFF3E",
   ],
   volume: {
     upColor: "rgba(8, 153, 129, 0.35)",
-    downColor: "rgba(242, 54, 69, 0.35)"
+    downColor: "rgba(242, 54, 69, 0.35)",
   },
   grid: {
     color: "#F2F3F3",
-    width: 1
+    width: 1,
   },
   candle: {
     upColor: "#609895",
     downColor: "#F23645",
     upWickColor: "#609895",
-    downWickColor: "#F23645"
+    downWickColor: "#F23645",
   },
   line: {
     color: "#2962FF",
-    width: 1
+    width: 1,
   },
   area: {
     color: "#2962FF",
     width: 1,
     fill: [
       [0, "rgba(41, 98, 254, 0.4)"],
-      [1, "rgba(41, 98, 254, 0)"]
-    ]
+      [1, "rgba(41, 98, 254, 0)"],
+    ],
   },
   hlcArea: {
     width: 1,
     closeColor: "#2962FF",
     high: {
       color: "#609895",
-      fill: "rgba(96, 152, 149, 0.1)"
+      fill: "rgba(96, 152, 149, 0.1)",
     },
     low: {
       color: "#F23645",
-      fill: "rgba(242, 54, 69, 0.1)"
-    }
+      fill: "rgba(242, 54, 69, 0.1)",
+    },
   },
   bar: {
     upColor: "#609895",
-    downColor: "#F23645"
+    downColor: "#F23645",
   },
   xAxis: {
     color: "#000000",
     fontSize: 12,
     font: "Roboto Mono",
     backgroundColor: "#FFFFFF",
-    separatorColor: "#FFFFFF"
+    separatorColor: "#FFFFFF",
   },
   yAxis: {
     color: "#000000",
     fontSize: 12,
     font: "Roboto Mono",
-    backgroundColor: "#FFFFFF"
+    backgroundColor: "#FFFFFF",
   },
   priceAxisAnnotation: {
     color: "#2962FF",
@@ -185,7 +185,7 @@ export const defaultLightTheme: ResolvedChartTheme = {
     fontSize: 12,
     font: "Roboto Mono",
     labelHeight: 18,
-    labelPaddingX: 4
+    labelPaddingX: 4,
   },
   crosshair: {
     color: "#9598A1",
@@ -197,15 +197,15 @@ export const defaultLightTheme: ResolvedChartTheme = {
       fontSize: 12,
       font: "Roboto Mono",
       color: "#000000",
-      labels: { "*": ["O: ", "H: ", "L: ", "C: ", "V: "] }
+      labels: { "*": ["O: ", "H: ", "L: ", "C: ", "V: "] },
     },
     tooltip: {
       backgroundColor: "#131722",
       color: "#FFFFFF",
       fontSize: 12,
-      font: "Roboto Mono"
-    }
-  }
+      font: "Roboto Mono",
+    },
+  },
 };
 
 export const defaultDarkTheme: ResolvedChartTheme = {
@@ -220,62 +220,62 @@ export const defaultDarkTheme: ResolvedChartTheme = {
     "#FF6B6B",
     "#FF9047",
     "#FFBC2D",
-    "#2BFF3E"
+    "#2BFF3E",
   ],
   volume: {
     upColor: "rgba(8, 153, 129, 0.35)",
-    downColor: "rgba(242, 54, 69, 0.35)"
+    downColor: "rgba(242, 54, 69, 0.35)",
   },
   grid: {
     color: "#232632",
-    width: 1
+    width: 1,
   },
   candle: {
     upColor: "#089981",
     downColor: "#F23645",
     upWickColor: "#089981",
-    downWickColor: "#F23645"
+    downWickColor: "#F23645",
   },
   line: {
     color: "#2962FE",
-    width: 1
+    width: 1,
   },
   area: {
     color: "#2962FE",
     width: 1,
     fill: [
       [0, "rgba(41, 98, 254, 0.4)"],
-      [1, "rgba(41, 98, 254, 0)"]
-    ]
+      [1, "rgba(41, 98, 254, 0)"],
+    ],
   },
   hlcArea: {
     width: 1,
     closeColor: "#2962FF",
     high: {
       color: "#609895",
-      fill: "rgba(96, 152, 149, 0.1)"
+      fill: "rgba(96, 152, 149, 0.1)",
     },
     low: {
       color: "#F23645",
-      fill: "rgba(242, 54, 69, 0.1)"
-    }
+      fill: "rgba(242, 54, 69, 0.1)",
+    },
   },
   bar: {
     upColor: "#089981",
-    downColor: "#F23645"
+    downColor: "#F23645",
   },
   xAxis: {
     color: "#B2B5BE",
     fontSize: 12,
     font: "Roboto",
     separatorColor: "#161A25",
-    backgroundColor: "#161A25"
+    backgroundColor: "#161A25",
   },
   yAxis: {
     color: "#B2B5BE",
     fontSize: 12,
     font: "Roboto",
-    backgroundColor: "#161A25"
+    backgroundColor: "#161A25",
   },
   priceAxisAnnotation: {
     color: "#FFA726",
@@ -287,7 +287,7 @@ export const defaultDarkTheme: ResolvedChartTheme = {
     fontSize: 12,
     font: "Roboto Mono",
     labelHeight: 18,
-    labelPaddingX: 4
+    labelPaddingX: 4,
   },
   crosshair: {
     color: "#9598A1",
@@ -299,13 +299,13 @@ export const defaultDarkTheme: ResolvedChartTheme = {
       fontSize: 12,
       font: "Roboto Mono",
       color: "#FFFFFF",
-      labels: { "*": ["O: ", "H: ", "L: ", "C: ", "V: "] }
+      labels: { "*": ["O: ", "H: ", "L: ", "C: ", "V: "] },
     },
     tooltip: {
       backgroundColor: "#363A45",
       color: "#FFFFFF",
       fontSize: 12,
-      font: "Roboto Mono"
-    }
-  }
+      font: "Roboto Mono",
+    },
+  },
 };

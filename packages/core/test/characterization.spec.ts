@@ -5,13 +5,13 @@ import type { AxisLabel, ChartData, TimeRange } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import {
   calculateStepSize,
-  calculateYAxisLabels
+  calculateYAxisLabels,
 } from "../src/scales/ticks/price-ticks";
 import {
   getChartContext,
   getChartModel,
   getChartRenderer,
-  requestChartRedraw
+  requestChartRedraw,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -41,7 +41,7 @@ function createChart(
     maxZoom: 10,
     volume: false,
     locale: "en-US",
-    ...overrides
+    ...overrides,
   });
 
   chart.setData(data);
@@ -52,7 +52,7 @@ function createChart(
 function roundedLabels(labels: AxisLabel[]) {
   return labels.map((label) => ({
     value: label.value,
-    position: Number(label.position.toFixed(6))
+    position: Number(label.position.toFixed(6)),
   }));
 }
 
@@ -97,7 +97,7 @@ describe("current price tick calculations", () => {
         { time: start + 60_000, close: 12 },
         { time: start + 120_000, close: 9 },
         { time: start + 180_000, close: 15 },
-        { time: start + 240_000, close: 11 }
+        { time: start + 240_000, close: 11 },
       ],
       { start, end: start + 240_000 }
     );
@@ -112,7 +112,7 @@ describe("current price tick calculations", () => {
             getChartContext(chart, "y-label").canvas.style.height
           ),
           fontSize: chart.getOptions().theme.yAxis.fontSize,
-          labelSpacing: 30
+          labelSpacing: 30,
         })
       )
     ).toEqual([
@@ -123,7 +123,7 @@ describe("current price tick calculations", () => {
       { value: 12, position: 178.148148 },
       { value: 13, position: 132.469136 },
       { value: 14, position: 86.790123 },
-      { value: 15, position: 41.111111 }
+      { value: 15, position: 41.111111 },
     ]);
   });
 
@@ -133,7 +133,7 @@ describe("current price tick calculations", () => {
     const largeRangeChart = createChart(
       [
         { time: start, close: 10 },
-        { time: start + 60_000, close: 1_000 }
+        { time: start + 60_000, close: 1_000 },
       ],
       { start, end: start + 60_000 }
     );
@@ -142,7 +142,7 @@ describe("current price tick calculations", () => {
     const mediumRangeChart = createChart(
       [
         { time: start, close: 10 },
-        { time: start + 60_000, close: 15 }
+        { time: start + 60_000, close: 15 },
       ],
       { start, end: start + 60_000 }
     );
@@ -151,7 +151,7 @@ describe("current price tick calculations", () => {
     const tinyRangeChart = createChart(
       [
         { time: start, close: 1.00001 },
-        { time: start + 60_000, close: 1.00002 }
+        { time: start + 60_000, close: 1.00002 },
       ],
       { start, end: start + 60_000 }
     );
@@ -166,7 +166,7 @@ describe("current price tick calculations", () => {
       yMax: 0.00000005,
       canvasHeight: 400,
       fontSize: 12,
-      labelSpacing: 30
+      labelSpacing: 30,
     });
     expect(labels.at(-1)?.value).toBe(0.00000005);
 
@@ -174,7 +174,7 @@ describe("current price tick calculations", () => {
     const chart = createChart(
       [
         { time: start, close: 0.00000001 },
-        { time: start + 60_000, close: 0.00000002 }
+        { time: start + 60_000, close: 0.00000002 },
       ],
       { start, end: start + 60_000 }
     );
@@ -186,9 +186,7 @@ describe("current price tick calculations", () => {
     expect(scale.getYMin()).toBe(8e-9);
     expect(renderer.calculateYAxisLabels(30)).toHaveLength(7);
     expect(renderer.estimatePriceLabelDecimalPlaces(30)).toBe(8);
-    expect(getCrosshairPriceLabel(chart, start, 0.00000001)).toBe(
-      "0.00000001"
-    );
+    expect(getCrosshairPriceLabel(chart, start, 0.00000001)).toBe("0.00000001");
   });
 });
 
@@ -201,7 +199,7 @@ describe("current scale coordinate mapping", () => {
         { time: start + 60_000, close: 12 },
         { time: start + 120_000, close: 9 },
         { time: start + 180_000, close: 15 },
-        { time: start + 240_000, close: 11 }
+        { time: start + 240_000, close: 11 },
       ],
       { start, end: start + 240_000 }
     );
@@ -211,7 +209,7 @@ describe("current scale coordinate mapping", () => {
     const pixel = visibleScale.mapToPixel(start + 60_000, 12, canvas);
     expect({
       x: Number(pixel.x.toFixed(6)),
-      y: Number(pixel.y.toFixed(6))
+      y: Number(pixel.y.toFixed(6)),
     }).toEqual({ x: 216, y: 178.148148 });
 
     const point = visibleScale.pixelToPoint(pixel.x, pixel.y, canvas);
@@ -246,7 +244,7 @@ describe("current X-axis tick rendering", () => {
       [
         { time: start, close: 10 },
         { time: start + 60 * 60_000, close: 11 },
-        { time: start + 2 * 60 * 60_000, close: 12 }
+        { time: start + 2 * 60 * 60_000, close: 12 },
       ],
       { start, end: start + 2 * 60 * 60_000 },
       { stepSize: 60 * 60_000 }
@@ -254,7 +252,7 @@ describe("current X-axis tick rendering", () => {
 
     expect(getFillTextLabels(chart)).toEqual(["2", "11:00 PM", "1:00 AM"]);
     expect(getChartRenderer(chart).getLastXGridCoords()).toEqual([
-      360.5, 120.5, 600.5
+      360.5, 120.5, 600.5,
     ]);
   });
 
@@ -265,7 +263,7 @@ describe("current X-axis tick rendering", () => {
         { time: start, close: 10 },
         { time: Date.UTC(2024, 0, 1), close: 11 },
         { time: Date.UTC(2024, 1, 1), close: 12 },
-        { time: Date.UTC(2024, 1, 2), close: 13 }
+        { time: Date.UTC(2024, 1, 2), close: 13 },
       ],
       { start, end: Date.UTC(2025, 6, 1) },
       { stepSize: 24 * 60 * 60_000 }
@@ -273,7 +271,7 @@ describe("current X-axis tick rendering", () => {
 
     expect(getFillTextLabels(chart)).toEqual(["2024", "Feb", "31", "2"]);
     expect(getChartRenderer(chart).getLastXGridCoords()).toEqual([
-      270.5, 450.5, 90.5, 630.5
+      270.5, 450.5, 90.5, 630.5,
     ]);
   });
 });

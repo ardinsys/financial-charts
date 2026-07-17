@@ -78,13 +78,13 @@ What to update:
 
 The chart no longer carries convenience aliases for individual option groups:
 
-| Removed | Replacement |
-| --- | --- |
-| `changeType(type)` | `updateOptions({ type })` |
-| `updateTheme(theme)` | Register `themes` at construction, then call `updateOptions({ theme: key })` |
-| `setVolumeDraw(volume)` | `updateOptions({ volume })` |
-| `updateLocalization(options)` | `updateOptions(options)` |
-| `updateLocale(locale, localeValues)` | `updateOptions({ locale, localeValues })` |
+| Removed                              | Replacement                                                                  |
+| ------------------------------------ | ---------------------------------------------------------------------------- |
+| `changeType(type)`                   | `updateOptions({ type })`                                                    |
+| `updateTheme(theme)`                 | Register `themes` at construction, then call `updateOptions({ theme: key })` |
+| `setVolumeDraw(volume)`              | `updateOptions({ volume })`                                                  |
+| `updateLocalization(options)`        | `updateOptions(options)`                                                     |
+| `updateLocale(locale, localeValues)` | `updateOptions({ locale, localeValues })`                                    |
 
 One patch validates and publishes related option changes as one transaction.
 
@@ -101,13 +101,13 @@ const chart = new FinancialChart(root, {
   themes: {
     "brand-light": {
       base: "light",
-      backgroundColor: "#ffffff"
+      backgroundColor: "#ffffff",
     },
     "brand-dark": {
       base: "dark",
-      backgroundColor: "#10131a"
-    }
-  }
+      backgroundColor: "#10131a",
+    },
+  },
 });
 
 chart.updateOptions({ theme: "brand-dark" });
@@ -128,8 +128,8 @@ from a single `theme` option to a `themes` map:
 new DrawingAxisBoundsPlugin({
   themes: {
     light: { strokeColor: "#B7791F" },
-    dark: { strokeColor: "#F6C344" }
-  }
+    dark: { strokeColor: "#F6C344" },
+  },
 });
 ```
 
@@ -145,7 +145,7 @@ ctx.requestRedraw([
   "series",
   "indicators",
   "drawings",
-  "annotations"
+  "annotations",
 ]);
 ```
 
@@ -168,7 +168,7 @@ const plugin = {
   },
   detach() {
     // release external resources
-  }
+  },
 };
 
 chart.addPlugin(plugin);
@@ -238,7 +238,7 @@ const stored = chart.toJSON({ contributors: [drawingManager] });
 
 chart.restoreState(stored, {
   indicatorResolver,
-  contributors: [drawingManager]
+  contributors: [drawingManager],
 });
 ```
 
@@ -278,11 +278,11 @@ const formatter = new DefaultFormatter({
   locale: "en-US",
   timeZone: "UTC",
   dateTimeFormatOptions: {
-    tooltipDate: { dateStyle: "medium", timeStyle: "short" }
+    tooltipDate: { dateStyle: "medium", timeStyle: "short" },
   },
   numberFormatOptions: {
-    price: { maximumFractionDigits: 2 }
-  }
+    price: { maximumFractionDigits: 2 },
+  },
 });
 ```
 
@@ -334,7 +334,7 @@ const chart = new FinancialChart(root, {
   type: "candle",
   stepSize: 15 * 60 * 1000,
   maxZoom: 100,
-  volume: true
+  volume: true,
 });
 
 chart.registerController(CustomController);
@@ -430,25 +430,28 @@ formatting, and common events. Import extension-authoring contracts from
 `@ardinsys/financial-charts/engine`:
 
 ```ts
-import { FinancialChart, MovingAverageIndicator } from "@ardinsys/financial-charts";
+import {
+  FinancialChart,
+  MovingAverageIndicator,
+} from "@ardinsys/financial-charts";
 import {
   Indicator,
   PaneledIndicator,
-  type ChartPlugin
+  type ChartPlugin,
 } from "@ardinsys/financial-charts/extensions";
 import {
   DataScaleModel,
   Pane,
-  TimeScale
+  TimeScale,
 } from "@ardinsys/financial-charts/engine";
 ```
 
-| Previously imported from the root | v1 entry point |
-| --------------------------------- | -------------- |
-| `Indicator`, `PaneledIndicator`, indicator drawing/label contracts | `./extensions` |
-| `ChartPlugin`, `ChartContext`, pointer and drawing authoring contracts | `./extensions` |
-| `ChartDOMAdapter` and adapter model/handle contracts | `./extensions` |
-| `ChartController`, scales, panes, render stages, ticks, DOM/canvas helpers | `./engine` |
+| Previously imported from the root                                          | v1 entry point |
+| -------------------------------------------------------------------------- | -------------- |
+| `Indicator`, `PaneledIndicator`, indicator drawing/label contracts         | `./extensions` |
+| `ChartPlugin`, `ChartContext`, pointer and drawing authoring contracts     | `./extensions` |
+| `ChartDOMAdapter` and adapter model/handle contracts                       | `./extensions` |
+| `ChartController`, scales, panes, render stages, ticks, DOM/canvas helpers | `./engine`     |
 
 The extensions entry now contains authoring contracts and the abstract
 `Indicator`, `PaneledIndicator`, and `Drawing` bases only. Import bundled

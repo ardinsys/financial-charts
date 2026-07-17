@@ -69,7 +69,7 @@ describe("VueDOMAdapter", () => {
               class: "order-label",
               onClick: props.actions.onRemove,
             },
-            `${props.model.name} ${props.model.detail}`,
+            `${props.model.name} ${props.model.detail}`
           );
       },
     });
@@ -114,7 +114,7 @@ describe("VueDOMAdapter", () => {
 
     expect(adapter.indicatorLabelEntries).toHaveLength(0);
     expect(handle.root.querySelector('[data-id="name"]')?.textContent).toBe(
-      "Orders",
+      "Orders"
     );
     handle.destroy();
   });
@@ -145,7 +145,7 @@ describe("VueDOMAdapter", () => {
     expect(handle.root.querySelector(".divider")?.textContent).toBe("light");
     expect(handle.root.style.top).toBe("100px");
     handle.root.dispatchEvent(
-      new PointerEvent("pointerdown", { bubbles: true, cancelable: true }),
+      new PointerEvent("pointerdown", { bubbles: true, cancelable: true })
     );
     expect(onPointerDown).toHaveBeenCalledOnce();
 

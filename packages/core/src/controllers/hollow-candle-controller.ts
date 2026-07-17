@@ -12,7 +12,7 @@ export class HollowCandleController extends OHLCController {
       visibleData,
       visibleStartIndex,
       projectIndex,
-      projectPrice
+      projectPrice,
     } = this.context.getDrawingContext();
 
     const candleSpacing = pixelsPerBar * this.spacing;
@@ -43,8 +43,7 @@ export class HollowCandleController extends OHLCController {
       const topWickY = Math.min(open, close);
       const bottomWickY = Math.max(open, close);
       const bodyHeight = Math.max(1, bottomWickY - topWickY);
-      const bodyTop =
-        open === close ? topWickY - bodyHeight / 2 : topWickY;
+      const bodyTop = open === close ? topWickY - bodyHeight / 2 : topWickY;
       const wickPath = isHollow ? upWicks : downWicks;
       const bodyPath = isHollow ? upBodies : downBodies;
 
@@ -52,12 +51,7 @@ export class HollowCandleController extends OHLCController {
       wickPath.lineTo(wickX, topWickY);
       wickPath.moveTo(wickX, low);
       wickPath.lineTo(wickX, bottomWickY);
-      bodyPath.rect(
-        x + candleSpacing / 2,
-        bodyTop,
-        candleWidth,
-        bodyHeight
-      );
+      bodyPath.rect(x + candleSpacing / 2, bodyTop, candleWidth, bodyHeight);
     }
 
     ctx.strokeStyle = this.options.theme.candle.upWickColor;

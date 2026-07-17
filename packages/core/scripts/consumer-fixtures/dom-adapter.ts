@@ -5,7 +5,7 @@ import {
   type IndicatorLabelModel,
   type PaneDividerActions,
   type PaneDividerHandle,
-  type PaneDividerModel
+  type PaneDividerModel,
 } from "@ardinsys/financial-charts/extensions";
 import { bindEvent } from "@ardinsys/financial-charts/engine";
 
@@ -47,7 +47,7 @@ class DesignSystemAdapter extends DefaultDOMAdapter {
     return {
       root,
       update,
-      destroy: dispose
+      destroy: dispose,
     };
   }
 
@@ -63,7 +63,7 @@ class DesignSystemAdapter extends DefaultDOMAdapter {
         left: `${next.x}px`,
         top: `${next.y}px`,
         width: `${next.width}px`,
-        height: `${next.height}px`
+        height: `${next.height}px`,
       });
     };
     const dispose = bindEvent(root, "pointerdown", (event) => {
@@ -77,7 +77,7 @@ class DesignSystemAdapter extends DefaultDOMAdapter {
       destroy: () => {
         dispose();
         root.remove();
-      }
+      },
     };
   }
 }

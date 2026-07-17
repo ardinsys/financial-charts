@@ -23,21 +23,18 @@ function createChart(data: ChartData[]) {
   document.body.appendChild(container);
 
   const start = data[0].time;
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: {
-        start,
-        end: data.at(-1)!.time
-      },
-      type: "line",
-      controllers: [LineController],
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US"
-    }
-  );
+  const chart = new FinancialChart(container, {
+    timeRange: {
+      start,
+      end: data.at(-1)!.time,
+    },
+    type: "line",
+    controllers: [LineController],
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US",
+  });
 
   chart.setData(data);
   charts.push(chart);
@@ -50,7 +47,7 @@ function attachRenderContext(chart: FinancialChart): ChartContext {
     key: `render-probe-${charts.length}`,
     attach: (ctx) => {
       context = ctx;
-    }
+    },
   };
   chart.addPlugin(plugin);
   return context!;
@@ -79,7 +76,7 @@ describe("RenderPipeline", () => {
       "series",
       "annotations",
       "crosshair",
-      "afterDraw"
+      "afterDraw",
     ]);
   });
 
@@ -87,7 +84,7 @@ describe("RenderPipeline", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 11 }
+      { time: start + 60_000, close: 11 },
     ]);
     const context = attachRenderContext(chart);
     const beforeDraw = vi.fn();
@@ -113,7 +110,7 @@ describe("RenderPipeline", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 11 }
+      { time: start + 60_000, close: 11 },
     ]);
     const context = attachRenderContext(chart);
     context.requestRedraw(["grid", "axes"], true);
@@ -141,7 +138,7 @@ describe("RenderPipeline", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 11 }
+      { time: start + 60_000, close: 11 },
     ]);
     const context = attachRenderContext(chart);
     const generator = (
@@ -160,7 +157,7 @@ describe("RenderPipeline", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 11 }
+      { time: start + 60_000, close: 11 },
     ]);
     const context = attachRenderContext(chart);
     const main = getChartRenderer(chart).getContext("main");
@@ -177,7 +174,7 @@ describe("RenderPipeline", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 11 }
+      { time: start + 60_000, close: 11 },
     ]);
     const context = attachRenderContext(chart);
     const renderer = getChartRenderer(chart);
@@ -197,12 +194,11 @@ describe("RenderPipeline", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 11 }
+      { time: start + 60_000, close: 11 },
     ]);
     const renderer = getChartRenderer(chart);
     const resizeCanvases = vi.spyOn(renderer, "resizeCanvases");
-    const container =
-      renderer.getCanvas("main").parentElement!.parentElement!;
+    const container = renderer.getCanvas("main").parentElement!.parentElement!;
     const observer = (
       renderer as unknown as {
         resizeObserver: ResizeObserver & {
@@ -215,7 +211,7 @@ describe("RenderPipeline", () => {
     try {
       Object.defineProperty(window, "devicePixelRatio", {
         configurable: true,
-        value: devicePixelRatio + 1
+        value: devicePixelRatio + 1,
       });
       window.dispatchEvent(new Event("resize"));
 
@@ -244,7 +240,7 @@ describe("RenderPipeline", () => {
     } finally {
       Object.defineProperty(window, "devicePixelRatio", {
         configurable: true,
-        value: devicePixelRatio
+        value: devicePixelRatio,
       });
     }
   });
@@ -253,7 +249,7 @@ describe("RenderPipeline", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 11 }
+      { time: start + 60_000, close: 11 },
     ]);
     const context = attachRenderContext(chart);
     context.requestRedraw("grid", true);
@@ -275,7 +271,7 @@ describe("RenderPipeline", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 11 }
+      { time: start + 60_000, close: 11 },
     ]);
     const context = attachRenderContext(chart);
     context.requestRedraw("grid", true);

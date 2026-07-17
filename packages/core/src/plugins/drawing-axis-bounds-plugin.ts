@@ -5,7 +5,7 @@ import type { Drawing, DrawingAnchor } from "../drawings/drawing";
 import {
   ExtensionThemeResolver,
   type ExtensionThemeDefaults,
-  type ExtensionThemeMap
+  type ExtensionThemeMap,
 } from "../plugin/extension-theme";
 
 export type DrawingAxisBoundKind = "single" | "start" | "end";
@@ -80,7 +80,7 @@ const defaultOptions = {
   blacklist: ["text"] as const,
   showRange: true,
   showXAxis: true,
-  showYAxis: true
+  showYAxis: true,
 } satisfies Required<
   Pick<
     DrawingAxisBoundsPluginOptions,
@@ -91,7 +91,7 @@ const defaultOptions = {
 const defaultLabels: DrawingAxisBoundsLabels = {
   start: "S",
   end: "E",
-  single: ""
+  single: "",
 };
 
 const defaultThemes = {
@@ -105,7 +105,7 @@ const defaultThemes = {
     lineWidth: 1,
     borderRadius: 5,
     labelHeight: 22,
-    labelPaddingX: 8
+    labelPaddingX: 8,
   },
   dark: {
     strokeColor: "rgba(234, 179, 8, 0.9)",
@@ -117,8 +117,8 @@ const defaultThemes = {
     lineWidth: 1,
     borderRadius: 5,
     labelHeight: 22,
-    labelPaddingX: 8
-  }
+    labelPaddingX: 8,
+  },
 } satisfies ExtensionThemeDefaults<DrawingAxisBoundsTheme>;
 
 export class DrawingAxisBoundsPlugin implements ChartPlugin {
@@ -154,7 +154,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
           this.selectedDrawing = undefined;
           this.requestAxisRedraw();
         }
-      })
+      }),
     ];
   }
 
@@ -202,8 +202,8 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       handleTheme: {
         centerColor: chartOptions.theme.yAxis.color,
         fillColor: chartOptions.theme.backgroundColor,
-        strokeColor: chartOptions.theme.crosshair.color
-      }
+        strokeColor: chartOptions.theme.crosshair.color,
+      },
     });
     const theme = this.themeResolver.resolve(chartOptions.theme);
 
@@ -218,12 +218,12 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       ).map((mark) => {
         const position = timeScale.projectIndex(mark.anchor.index, {
           canvas: drawingCanvas,
-          barAlignment: pane.getTimeAnchorAlignment()
+          barAlignment: pane.getTimeAnchorAlignment(),
         });
         return {
           ...mark,
           position,
-          value: this.formatXValue(mark, locale)
+          value: this.formatXValue(mark, locale),
         };
       });
 
@@ -252,8 +252,8 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
           anchor,
           chartData: data[Math.max(0, Math.round(anchor.index))],
           kind: "single",
-          label: labels.single
-        }
+          label: labels.single,
+        },
       ];
     }
 
@@ -263,7 +263,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
         anchor,
         chartData: data[Math.max(0, Math.round(anchor.index))],
         kind,
-        label: labels[kind]
+        label: labels[kind],
       };
     });
   }
@@ -305,8 +305,8 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       handleTheme: {
         centerColor: chartOptions.theme.yAxis.color,
         fillColor: chartOptions.theme.backgroundColor,
-        strokeColor: chartOptions.theme.crosshair.color
-      }
+        strokeColor: chartOptions.theme.crosshair.color,
+      },
     });
     const marks: FormattedAxisMark[] = this.createAxisMarks(
       axisBounds.y ?? [],
@@ -315,45 +315,47 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       labels
     ).map((mark) => ({
       ...mark,
-      value: this.formatYValue(mark, locale)
+      value: this.formatYValue(mark, locale),
     }));
     const theme = this.themeResolver.resolve(chartOptions.theme);
     const showRange = this.options.showRange ?? defaultOptions.showRange;
 
     ctx.setPriceAxisAnnotations(
-      marks.map((mark, index): PriceAxisAnnotation => ({
-        id: `${drawing.id}:y:${index}`,
-        paneId: pane.getId(),
-        value: mark.anchor.price,
-        text: this.formatText(mark),
-        color: theme.strokeColor,
-        labelColor: theme.labelBackgroundColor,
-        textColor: theme.textColor,
-        line: "axis",
-        lineWidth: theme.lineWidth,
-        lineDash: [],
-        offscreen: "clamp",
-        collision: "allow",
-        range:
-          showRange && index === 0 && marks.length > 1
-            ? {
-                to: marks[1].anchor.price,
-                color: theme.rangeBackgroundColor,
-                inset: 5
-              }
-            : undefined,
-        labelStyle: {
-          borderColor: theme.strokeColor,
-          borderWidth: theme.lineWidth,
-          edgeInset: 4,
-          font: theme.font,
-          fontSize: theme.fontSize,
-          height: theme.labelHeight,
-          inset: 5,
-          paddingX: 2,
-          radius: theme.borderRadius
-        }
-      }))
+      marks.map(
+        (mark, index): PriceAxisAnnotation => ({
+          id: `${drawing.id}:y:${index}`,
+          paneId: pane.getId(),
+          value: mark.anchor.price,
+          text: this.formatText(mark),
+          color: theme.strokeColor,
+          labelColor: theme.labelBackgroundColor,
+          textColor: theme.textColor,
+          line: "axis",
+          lineWidth: theme.lineWidth,
+          lineDash: [],
+          offscreen: "clamp",
+          collision: "allow",
+          range:
+            showRange && index === 0 && marks.length > 1
+              ? {
+                  to: marks[1].anchor.price,
+                  color: theme.rangeBackgroundColor,
+                  inset: 5,
+                }
+              : undefined,
+          labelStyle: {
+            borderColor: theme.strokeColor,
+            borderWidth: theme.lineWidth,
+            edgeInset: 4,
+            font: theme.font,
+            fontSize: theme.fontSize,
+            height: theme.labelHeight,
+            inset: 5,
+            paddingX: 2,
+            radius: theme.borderRadius,
+          },
+        })
+      )
     );
   }
 
@@ -445,7 +447,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
   private resolveLabels(locale: string): DrawingAxisBoundsLabels {
     return {
       ...defaultLabels,
-      ...this.getLocalizedLabels(locale)
+      ...this.getLocalizedLabels(locale),
     };
   }
 
@@ -466,7 +468,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       return this.options.formatXValue({
         ...mark,
         drawing: this.selectedDrawing!,
-        locale
+        locale,
       });
     }
 
@@ -480,7 +482,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       return this.options.formatYValue({
         ...mark,
         drawing: this.selectedDrawing!,
-        locale
+        locale,
       });
     }
 
@@ -494,7 +496,7 @@ export class DrawingAxisBoundsPlugin implements ChartPlugin {
       return this.options.formatText({
         ...mark,
         drawing,
-        locale
+        locale,
       });
     }
 

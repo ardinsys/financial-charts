@@ -12,7 +12,7 @@ Control how the chart looks and behaves at runtime: zoom, pan, swap controllers,
 chart.updateOptions({
   timeRange: "auto",
   stepSize: 15 * 60 * 1000,
-  maxZoom: 150
+  maxZoom: 150,
 });
 ```
 
@@ -48,17 +48,17 @@ const moveBy = (current.end - current.start) * 0.25;
 
 chart.setVisibleTimeRange({
   start: current.start + moveBy,
-  end: current.end + moveBy
+  end: current.end + moveBy,
 });
 ```
 
 Choose the representation based on the required precision:
 
-| API | Meaning | Typical use |
-| --- | --- | --- |
-| `getVisibleLogicalRange()` / `setVisibleLogicalRange()` | Fractional ordinal bar indexes. | Chart-native persistence and index-aware navigation. |
-| `getVisibleTimeWindow()` / `setVisibleTimeWindow()` | Interpolated timestamps that preserve fractional indexes. | Lossless synchronization between charts. |
-| `getVisibleTimeRange()` / `setVisibleTimeRange()` | Whole selected bars as `[start, end)`. | Date controls and application UI. |
+| API                                                     | Meaning                                                   | Typical use                                          |
+| ------------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------- |
+| `getVisibleLogicalRange()` / `setVisibleLogicalRange()` | Fractional ordinal bar indexes.                           | Chart-native persistence and index-aware navigation. |
+| `getVisibleTimeWindow()` / `setVisibleTimeWindow()`     | Interpolated timestamps that preserve fractional indexes. | Lossless synchronization between charts.             |
+| `getVisibleTimeRange()` / `setVisibleTimeRange()`       | Whole selected bars as `[start, end)`.                    | Date controls and application UI.                    |
 
 All setters clamp to the configured index bounds with a minimum one-bar span,
 then synchronously rescale, notify extensions once, and redraw dependent layers.

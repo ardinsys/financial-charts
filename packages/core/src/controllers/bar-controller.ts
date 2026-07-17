@@ -12,7 +12,7 @@ export class BarController extends OHLCController {
       visibleData,
       visibleStartIndex,
       projectIndex,
-      projectPrice
+      projectPrice,
     } = this.context.getDrawingContext();
 
     const barSpacing = pixelsPerBar * this.spacing;

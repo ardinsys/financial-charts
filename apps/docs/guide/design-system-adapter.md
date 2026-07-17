@@ -74,12 +74,9 @@ import {
   type IndicatorLabelModel,
   type PaneDividerActions,
   type PaneDividerHandle,
-  type PaneDividerModel
+  type PaneDividerModel,
 } from "@ardinsys/financial-charts/extensions";
-import {
-  DefaultDOMAdapter,
-  FinancialChart
-} from "@ardinsys/financial-charts";
+import { DefaultDOMAdapter, FinancialChart } from "@ardinsys/financial-charts";
 import { bindEvent } from "@ardinsys/financial-charts/engine";
 
 class DesignSystemAdapter extends DefaultDOMAdapter {
@@ -126,7 +123,7 @@ class DesignSystemAdapter extends DefaultDOMAdapter {
     const disposers = [
       bindEvent(toggle, "click", () => actions.onToggleVisibility(!visible)),
       bindEvent(settings, "click", () => actions.onOpenSettings()),
-      bindEvent(remove, "click", () => actions.onRemove())
+      bindEvent(remove, "click", () => actions.onRemove()),
     ];
 
     render(model);
@@ -134,7 +131,7 @@ class DesignSystemAdapter extends DefaultDOMAdapter {
     return {
       root,
       update: render,
-      destroy: () => disposers.forEach((dispose) => dispose())
+      destroy: () => disposers.forEach((dispose) => dispose()),
     };
   }
 
@@ -153,7 +150,7 @@ class DesignSystemAdapter extends DefaultDOMAdapter {
         left: next.x + "px",
         top: next.y + "px",
         width: next.width + "px",
-        height: next.height + "px"
+        height: next.height + "px",
       });
     };
 
@@ -170,7 +167,7 @@ class DesignSystemAdapter extends DefaultDOMAdapter {
       destroy: () => {
         dispose();
         root.remove();
-      }
+      },
     };
   }
 }
@@ -181,7 +178,7 @@ const chart = new FinancialChart(root, {
   stepSize: 15 * 60 * 1000,
   maxZoom: 100,
   volume: true,
-  domAdapter: new DesignSystemAdapter()
+  domAdapter: new DesignSystemAdapter(),
 });
 ```
 

@@ -107,7 +107,7 @@ describe("FinancialChart Vue component", () => {
     await nextTick();
 
     expect(appHost.querySelector(".custom-sma")?.textContent).toBe(
-      "Simple Moving Average",
+      "Simple Moving Average"
     );
     renderCount.value++;
     await nextTick();

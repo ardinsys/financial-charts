@@ -51,10 +51,10 @@ export const VueDOMPortals = defineComponent({
   setup(props) {
     return () => [
       ...props.adapter.indicatorLabelEntries.map((entry) =>
-        h(IndicatorLabelPortal, { key: `label-${entry.key}`, entry }),
+        h(IndicatorLabelPortal, { key: `label-${entry.key}`, entry })
       ),
       ...props.adapter.paneDividerEntries.map((entry) =>
-        h(PaneDividerPortal, { key: `divider-${entry.key}`, entry }),
+        h(PaneDividerPortal, { key: `divider-${entry.key}`, entry })
       ),
     ];
   },

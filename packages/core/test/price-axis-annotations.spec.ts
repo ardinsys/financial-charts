@@ -10,7 +10,7 @@ import {
   getChartRenderer,
   getInternalMainPane,
   getInternalPanes,
-  requestChartRedraw
+  requestChartRedraw,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -46,7 +46,7 @@ function createChart() {
   const data: ChartData[] = [
     { time: start, close: 10 },
     { time: start + 60_000, close: 12 },
-    { time: start + 120_000, close: 14 }
+    { time: start + 120_000, close: 14 },
   ];
   const container = document.createElement("div");
   container.style.width = "800px";
@@ -65,10 +65,10 @@ function createChart() {
       annotations: {
         priceAxisAnnotation: {
           color: "#123456",
-          textColor: "#fedcba"
-        }
-      }
-    }
+          textColor: "#fedcba",
+        },
+      },
+    },
   });
   chart.setData(data);
   requestChartRedraw(
@@ -113,7 +113,7 @@ describe("price axis annotations", () => {
       text: "owned",
       lineDash: [2, 4],
       range: { to: 13, color: "#123456" },
-      labelStyle: { font: "Owned Font", radius: 1 }
+      labelStyle: { font: "Owned Font", radius: 1 },
     };
     const annotations = [annotation];
 
@@ -207,8 +207,8 @@ describe("price axis annotations", () => {
         value: 12,
         text: "emphasized",
         color: "blue",
-        emphasized: true
-      }
+        emphasized: true,
+      },
     ]);
     requestChartRedraw(chart, "annotations", true);
 
@@ -239,9 +239,9 @@ describe("price axis annotations", () => {
         id: "pane",
         paneId: panes[1].getId(),
         value: 12,
-        text: "pane"
+        text: "pane",
       },
-      { id: "missing", paneId: 999, value: 12, text: "missing" }
+      { id: "missing", paneId: 999, value: 12, text: "missing" },
     ]);
     requestChartRedraw(chart, "annotations", true);
 
@@ -275,8 +275,8 @@ describe("price axis annotations", () => {
         id: "clamped",
         value: 100,
         text: "clamped",
-        offscreen: "clamp"
-      }
+        offscreen: "clamp",
+      },
     ]);
     requestChartRedraw(chart, "annotations", true);
 
@@ -300,7 +300,7 @@ describe("price axis annotations", () => {
     probe.set([
       { id: "hidden", value: 12, visible: false },
       { id: "label", value: 11, text: "label", line: false },
-      { id: "line", value: 13, text: "line", label: false }
+      { id: "line", value: 13, text: "line", label: false },
     ]);
     requestChartRedraw(chart, "annotations", true);
 
@@ -340,16 +340,16 @@ describe("price axis annotations", () => {
           height: 22,
           inset: 5,
           paddingX: 8,
-          radius: 5
-        }
+          radius: 5,
+        },
       },
       {
         id: "end",
         value: 11,
         text: "end",
         line: "axis",
-        collision: "allow"
-      }
+        collision: "allow",
+      },
     ]);
     requestChartRedraw(chart, "annotations", true);
 
@@ -392,7 +392,7 @@ describe("price axis annotations", () => {
     const canvases = [
       ...getChartContext(chart, "main")
         .canvas.closest(".financial-charts")!
-        .querySelectorAll("canvas")
+        .querySelectorAll("canvas"),
     ];
 
     expect(canvases.some((canvas) => canvas.style.zIndex === "60")).toBe(true);
@@ -408,7 +408,7 @@ describe("price axis annotations", () => {
     expect(() =>
       probe.set([
         { id: "duplicate", value: 10 },
-        { id: "duplicate", value: 12 }
+        { id: "duplicate", value: 12 },
       ])
     ).toThrow(/Duplicate price axis annotation id/);
     expect(() => probe.set([{ id: "invalid", value: Number.NaN }])).toThrow(

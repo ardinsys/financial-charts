@@ -15,15 +15,15 @@ function createController(visibleData: readonly ChartData[]) {
     timeRange: { start: 0, end: 1 },
     pixelsPerBar: 10,
     projectIndex: (index) => index * 10,
-    projectPrice: (price) => price
+    projectPrice: (price) => price,
   };
   const options = {
     theme: {
       candle: {
         upColor: "green",
-        downColor: "red"
-      }
-    }
+        downColor: "red",
+      },
+    },
   } as ResolvedChartOptions;
 
   return {
@@ -31,7 +31,7 @@ function createController(visibleData: readonly ChartData[]) {
     controller: new CandlestickController(
       { getDrawingContext: () => drawingContext },
       options
-    )
+    ),
   };
 }
 
@@ -45,7 +45,7 @@ describe("CandlestickController", () => {
   it("fills candle bodies and only strokes wick paths", () => {
     const { canvasContext, controller } = createController([
       { time: 0, open: 10, high: 14, low: 8, close: 12 },
-      { time: 1, open: 12, high: 13, low: 7, close: 9 }
+      { time: 1, open: 12, high: 13, low: 7, close: 9 },
     ]);
 
     controller.draw();
@@ -67,7 +67,7 @@ describe("CandlestickController", () => {
 
   it("renders a doji with a one-pixel filled body", () => {
     const { canvasContext, controller } = createController([
-      { time: 0, open: 10, high: 12, low: 8, close: 10 }
+      { time: 0, open: 10, high: 12, low: 8, close: 10 },
     ]);
 
     controller.draw();
@@ -76,12 +76,7 @@ describe("CandlestickController", () => {
       (path) => vi.mocked(path.rect).mock.calls.length > 0
     );
     expect(bodyPath).toBeDefined();
-    expect(vi.mocked(bodyPath!.rect)).toHaveBeenCalledWith(
-      0.5,
-      9.5,
-      9,
-      1
-    );
+    expect(vi.mocked(bodyPath!.rect)).toHaveBeenCalledWith(0.5, 9.5, 9, 1);
     expect(pathsPassedTo(canvasContext.stroke)).not.toContain(bodyPath);
   });
 });

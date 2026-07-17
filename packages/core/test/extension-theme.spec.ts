@@ -7,22 +7,22 @@ describe("ExtensionThemeResolver", () => {
       light: {
         color: "black",
         width: 1,
-        nested: { opacity: 0.2, visible: true }
+        nested: { opacity: 0.2, visible: true },
       },
       dark: {
         color: "white",
         width: 1,
-        nested: { opacity: 0.6, visible: true }
+        nested: { opacity: 0.6, visible: true },
       },
       contrast: {
         color: "cyan",
         width: 3,
-        nested: { opacity: 1, visible: true }
-      }
+        nested: { opacity: 1, visible: true },
+      },
     };
     const themes = {
       dark: { width: 2, nested: { opacity: 0.8 } },
-      night: { color: "gold" }
+      night: { color: "gold" },
     };
     const resolver = new ExtensionThemeResolver(defaults, themes);
 
@@ -34,7 +34,7 @@ describe("ExtensionThemeResolver", () => {
     expect(dark).toEqual({
       color: "white",
       width: 2,
-      nested: { opacity: 0.8, visible: true }
+      nested: { opacity: 0.8, visible: true },
     });
     expect(resolver.resolve({ key: "dark", base: "dark" })).toBe(dark);
 
@@ -42,7 +42,7 @@ describe("ExtensionThemeResolver", () => {
     expect(night).toEqual({
       color: "gold",
       width: 2,
-      nested: { opacity: 0.8, visible: true }
+      nested: { opacity: 0.8, visible: true },
     });
     expect(night).not.toBe(dark);
 
@@ -50,7 +50,7 @@ describe("ExtensionThemeResolver", () => {
     expect(contrast).toEqual({
       color: "cyan",
       width: 3,
-      nested: { opacity: 1, visible: true }
+      nested: { opacity: 1, visible: true },
     });
   });
 });

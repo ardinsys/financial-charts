@@ -31,7 +31,7 @@ export interface ChartSyncMessage<TPayload = unknown> {
 }
 
 export type ChartSyncMessageHandler<TPayload = unknown> = (
-  message: ChartSyncMessage<TPayload>,
+  message: ChartSyncMessage<TPayload>
 ) => void;
 
 export interface ChartSyncPostMessageOptions {
@@ -210,7 +210,7 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   onMessage<TPayload = unknown>(
     channel: string,
-    handler: ChartSyncMessageHandler<TPayload>,
+    handler: ChartSyncMessageHandler<TPayload>
   ) {
     const normalizedChannel = this.normalizeMessageChannel(channel);
     const handlers =
@@ -231,7 +231,7 @@ export class ChartSyncPlugin implements ChartPlugin {
   postMessage<TPayload = unknown>(
     channel: string,
     payload: TPayload,
-    options: ChartSyncPostMessageOptions = {},
+    options: ChartSyncPostMessageOptions = {}
   ) {
     if (!this.isEnabled("messages")) return;
     if (this.applying || this.deliveringMessage) return;
@@ -261,7 +261,7 @@ export class ChartSyncPlugin implements ChartPlugin {
           if (this.applying) return;
           this.storeCrosshair(undefined);
           this.broadcast((peer) => peer.applyCrosshair(undefined));
-        }),
+        })
       );
     }
 
@@ -293,7 +293,7 @@ export class ChartSyncPlugin implements ChartPlugin {
           if (this.hasStoredDrawingSelection(id)) return;
           this.storeDrawingSelection(id);
           this.broadcast((peer) => peer.applyDrawingSelection(id));
-        }),
+        })
       );
     }
 
@@ -322,7 +322,7 @@ export class ChartSyncPlugin implements ChartPlugin {
           const instanceId = indicator.getInstanceId();
           this.removeStoredIndicator(instanceId);
           this.broadcast((peer) => peer.applyIndicatorRemove(instanceId));
-        }),
+        })
       );
     }
 
@@ -342,7 +342,7 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   private getPeers() {
     return [...(chartSyncGroups.get(this.group)?.members ?? [])].filter(
-      (plugin) => plugin !== this && plugin.ctx,
+      (plugin) => plugin !== this && plugin.ctx
     );
   }
 
@@ -410,7 +410,7 @@ export class ChartSyncPlugin implements ChartPlugin {
 
   private createMessage<TPayload>(
     channel: string,
-    payload: TPayload,
+    payload: TPayload
   ): ChartSyncMessage<TPayload> | undefined {
     if (!this.ctx) return undefined;
 
@@ -490,7 +490,7 @@ export class ChartSyncPlugin implements ChartPlugin {
     if (this.isEnabled("crosshair")) {
       const state = this.ctx.getCrosshairState();
       this.storeCrosshair(
-        state ? this.createCrosshairSnapshot(state) : undefined,
+        state ? this.createCrosshairSnapshot(state) : undefined
       );
     }
   }
@@ -525,18 +525,18 @@ export class ChartSyncPlugin implements ChartPlugin {
     }
 
     const index = state.drawings.findIndex(
-      (drawing) => drawing.id === snapshot.id,
+      (drawing) => drawing.id === snapshot.id
     );
     const drawings =
       index === -1
         ? [...state.drawings, snapshot]
         : state.drawings.map((drawing, drawingIndex) =>
-            drawingIndex === index ? snapshot : drawing,
+            drawingIndex === index ? snapshot : drawing
           );
 
     group.state.drawings = createDrawingState(
       drawings,
-      state.selectedDrawingId,
+      state.selectedDrawingId
     );
   }
 
@@ -550,7 +550,7 @@ export class ChartSyncPlugin implements ChartPlugin {
 
     group.state.drawings = createDrawingState(
       state.drawings.filter((drawing) => drawing.id !== id),
-      state.selectedDrawingId === id ? undefined : state.selectedDrawingId,
+      state.selectedDrawingId === id ? undefined : state.selectedDrawingId
     );
   }
 
@@ -587,13 +587,13 @@ export class ChartSyncPlugin implements ChartPlugin {
     }
 
     const index = state.findIndex(
-      (indicator) => indicator.instanceId === snapshot.instanceId,
+      (indicator) => indicator.instanceId === snapshot.instanceId
     );
     group.state.indicators =
       index === -1
         ? [...state, snapshot]
         : state.map((indicator, indicatorIndex) =>
-            indicatorIndex === index ? snapshot : indicator,
+            indicatorIndex === index ? snapshot : indicator
           );
   }
 
@@ -606,7 +606,7 @@ export class ChartSyncPlugin implements ChartPlugin {
     }
 
     group.state.indicators = state.filter(
-      (indicator) => indicator.instanceId !== instanceId,
+      (indicator) => indicator.instanceId !== instanceId
     );
   }
 
@@ -716,7 +716,7 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   private createCrosshairSnapshot(
-    event: ChartCrosshairChangeEvent,
+    event: ChartCrosshairChangeEvent
   ): ChartSyncCrosshairSnapshot {
     return {
       paneId: event.paneId,
@@ -783,16 +783,16 @@ export class ChartSyncPlugin implements ChartPlugin {
   }
 
   private createIndicatorSnapshot(
-    indicator: Indicator<any, any>,
+    indicator: Indicator<any, any>
   ): ChartSyncIndicatorSnapshot {
     return indicator.toJSON();
   }
 
   private applyIndicatorState(
-    snapshots: readonly ChartSyncIndicatorSnapshot[],
+    snapshots: readonly ChartSyncIndicatorSnapshot[]
   ) {
     const instanceIds = new Set(
-      snapshots.map((snapshot) => snapshot.instanceId),
+      snapshots.map((snapshot) => snapshot.instanceId)
     );
     for (const indicator of this.ctx?.getIndicators() ?? []) {
       if (!instanceIds.has(indicator.getInstanceId())) {
@@ -810,7 +810,7 @@ export class ChartSyncPlugin implements ChartPlugin {
     const resolver = this.options.indicatorResolver;
     if (!resolver) {
       throw new Error(
-        "ChartSyncPlugin requires indicatorResolver to synchronize indicators.",
+        "ChartSyncPlugin requires indicatorResolver to synchronize indicators."
       );
     }
 
@@ -850,8 +850,7 @@ export class ChartSyncPlugin implements ChartPlugin {
       this.ctx
         ?.getPlugins()
         .find(
-          (plugin): plugin is DrawingManager =>
-            plugin instanceof DrawingManager,
+          (plugin): plugin is DrawingManager => plugin instanceof DrawingManager
         ) ??
       undefined
     );
@@ -864,7 +863,7 @@ export class ChartSyncPlugin implements ChartPlugin {
       | "indicators"
       | "messages"
       | "paneHeights"
-      | "visibleRange",
+      | "visibleRange"
   ) {
     return this.options[key] ?? defaultOptions[key];
   }
@@ -902,7 +901,7 @@ function cloneSyncState(state: ChartSyncGroupState): ChartSyncGroupState {
 
 function createDrawingState(
   drawings: readonly DrawingJSON[],
-  selectedDrawingId?: string,
+  selectedDrawingId?: string
 ): DrawingManagerJSON {
   return {
     drawings,
@@ -922,7 +921,7 @@ function scheduleSyncFrame(callback: () => void): () => void {
 
 function hasMatchingDrawingMetadata(
   current: DrawingJSON,
-  incoming: DrawingJSON,
+  incoming: DrawingJSON
 ): boolean {
   return (
     current.id === incoming.id &&
@@ -959,7 +958,7 @@ function areJSONValuesEqual(left: unknown, right: unknown): boolean {
     keys.every(
       (key) =>
         Object.prototype.hasOwnProperty.call(rightRecord, key) &&
-        areJSONValuesEqual(leftRecord[key], rightRecord[key]),
+        areJSONValuesEqual(leftRecord[key], rightRecord[key])
     )
   );
 }

@@ -128,7 +128,7 @@ export class DataStore {
 
     return {
       from: clampedStart,
-      to: Math.max(endIndex, clampedStart + 1)
+      to: Math.max(endIndex, clampedStart + 1),
     };
   }
 

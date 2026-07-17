@@ -5,13 +5,10 @@ import { withDefaultControllerConstructors } from "./internal-default-controller
 
 /** Financial chart configured with every built-in controller. */
 export class FinancialChart extends FinancialChartBase {
-  constructor(
-    container: HTMLElement,
-    options: ChartOptions,
-  ) {
+  constructor(container: HTMLElement, options: ChartOptions) {
     super(
       container,
-      withDefaultControllerConstructors(options, defaultControllers),
+      withDefaultControllerConstructors(options, defaultControllers)
     );
   }
 }

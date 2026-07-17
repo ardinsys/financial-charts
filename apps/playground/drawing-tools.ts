@@ -3,7 +3,7 @@ import {
   RectangleDrawing,
   TextDrawing,
   TrendLine,
-  type DrawingFactory
+  type DrawingFactory,
 } from "@ardinsys/financial-charts";
 
 export type DrawingTool =
@@ -20,7 +20,7 @@ export const drawingTools: Array<{
   { id: "trendline", label: "Trend line", icon: "trendline" },
   { id: "horizontal-line", label: "Horizontal line", icon: "horizontal" },
   { id: "rectangle", label: "Rectangle", icon: "rectangle" },
-  { id: "text", label: "Text", icon: "text" }
+  { id: "text", label: "Text", icon: "text" },
 ];
 
 export function createDrawingFactory(tool: DrawingTool): DrawingFactory {
@@ -29,7 +29,7 @@ export function createDrawingFactory(tool: DrawingTool): DrawingFactory {
       return new HorizontalLine({
         anchors,
         paneId,
-        color: "#22ab94"
+        color: "#22ab94",
       });
     }
 
@@ -38,7 +38,7 @@ export function createDrawingFactory(tool: DrawingTool): DrawingFactory {
         anchors,
         paneId,
         strokeColor: "#f0b90b",
-        fillColor: "rgba(240, 185, 11, 0.12)"
+        fillColor: "rgba(240, 185, 11, 0.12)",
       });
     }
 
@@ -48,14 +48,14 @@ export function createDrawingFactory(tool: DrawingTool): DrawingFactory {
         paneId,
         text: "Text",
         color: "#fde68a",
-        backgroundColor: "rgba(15, 23, 42, 0.88)"
+        backgroundColor: "rgba(15, 23, 42, 0.88)",
       });
     }
 
     return new TrendLine({
       anchors,
       paneId,
-      color: "#4ea1ff"
+      color: "#4ea1ff",
     });
   };
 }

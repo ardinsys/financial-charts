@@ -53,7 +53,7 @@ export abstract class SimpleController extends ChartController {
     timeRange: TimeRange
   ): DataScaleModel {
     return new DataScaleModel("simple", data, timeRange, {
-      barAlignment: this.getBarAlignment()
+      barAlignment: this.getBarAlignment(),
     });
   }
 
@@ -76,7 +76,7 @@ export abstract class OHLCController extends ChartController {
     "high",
     "low",
     "close",
-    "volume"
+    "volume",
   ] as const;
 
   createDataScale(
@@ -84,7 +84,7 @@ export abstract class OHLCController extends ChartController {
     timeRange: TimeRange
   ): DataScaleModel {
     return new DataScaleModel("ohlc", data, timeRange, {
-      barAlignment: this.getBarAlignment()
+      barAlignment: this.getBarAlignment(),
     });
   }
 

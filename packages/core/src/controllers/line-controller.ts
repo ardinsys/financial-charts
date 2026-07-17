@@ -9,7 +9,7 @@ export class LineController extends SimpleController {
       visibleData,
       visibleStartIndex,
       projectIndex,
-      projectPrice
+      projectPrice,
     } = this.context.getDrawingContext();
 
     ctx.beginPath();

@@ -2,7 +2,7 @@ import { DataStore } from "../data/data-store";
 import {
   DataScaleModel,
   type DataScaleTimeOptions,
-  type ScaleRangeModifier
+  type ScaleRangeModifier,
 } from "../scales/data-scale-model";
 import type { BarAlignment, TimeScaleRange } from "../scales/time-scale";
 import type { ChartData, TimeRange } from "./types";
@@ -29,7 +29,7 @@ export class ChartModel {
   private timeRange: TimeRange = { start: 0, end: 0 };
   private indexBounds: TimeScaleRange = {
     from: 0,
-    to: 1
+    to: 1,
   };
   private visibleLogicalRange = this.indexBounds;
   private barAlignment: BarAlignment = "center";
@@ -64,7 +64,9 @@ export class ChartModel {
   }
 
   appendData(data: ChartData, stepSize: number): ChartData {
-    const latestTime = this.originalData.get(this.originalData.length - 1)?.time;
+    const latestTime = this.originalData.get(
+      this.originalData.length - 1
+    )?.time;
     if (latestTime !== undefined && data.time < latestTime) {
       throw new RangeError(
         "updateData() requires a timestamp at or after the latest point. Use setData() to apply older corrections."
@@ -99,11 +101,7 @@ export class ChartModel {
   clearScaleData(): void {
     const visibleScale = this.getVisibleScale();
     visibleScale.clearModifiers();
-    visibleScale.recalculate(
-      [],
-      this.timeRange,
-      this.getTimeScaleOptions()
-    );
+    visibleScale.recalculate([], this.timeRange, this.getTimeScaleOptions());
     this.visibleDataPoints = [];
     this.syncTimeScales();
   }
@@ -169,10 +167,7 @@ export class ChartModel {
     }
   }
 
-  updateAutoTimeRange(
-    stepSize: number,
-    minimumVisibleSlots: number
-  ): boolean {
+  updateAutoTimeRange(stepSize: number, minimumVisibleSlots: number): boolean {
     if (!this.autoTimeRange || !this.hasData()) {
       if (this.autoTimeRange) {
         return this.updateTimeRange({ start: 0, end: 0 });
@@ -187,7 +182,7 @@ export class ChartModel {
       end: Math.max(
         lastPoint.time + stepSize,
         firstPoint.time + minimumVisibleSlots * stepSize
-      )
+      ),
     });
   }
 
@@ -207,9 +202,7 @@ export class ChartModel {
   }
 
   isPinnedToRightEdge(): boolean {
-    return (
-      Math.abs(this.visibleLogicalRange.to - this.indexBounds.to) < 1e-6
-    );
+    return Math.abs(this.visibleLogicalRange.to - this.indexBounds.to) < 1e-6;
   }
 
   resetViewInteractionState(): void {
@@ -223,7 +216,7 @@ export class ChartModel {
     }
     this.indexBounds = {
       from: 0,
-      to: 1
+      to: 1,
     };
     this.visibleLogicalRange = this.indexBounds;
   }
@@ -242,7 +235,7 @@ export class ChartModel {
       const clampedSpan = Math.min(span, this.getIndexBoundsSpan());
       range = {
         from: this.indexBounds.to - clampedSpan,
-        to: this.indexBounds.to
+        to: this.indexBounds.to,
       };
     }
 
@@ -306,14 +299,11 @@ export class ChartModel {
 
     return {
       start: startPoint.time,
-      end: endPoint.time + stepSize
+      end: endPoint.time + stepSize,
     };
   }
 
-  getVisibleTimeWindow(
-    stepSize: number,
-    alignment: BarAlignment
-  ): TimeRange {
+  getVisibleTimeWindow(stepSize: number, alignment: BarAlignment): TimeRange {
     if (!this.hasData()) return this.timeRange;
 
     const alignmentOffset = alignment === "center" ? 0.5 : 0;
@@ -325,7 +315,7 @@ export class ChartModel {
       end: this.mappedData.timeAtLogicalIndex(
         this.visibleLogicalRange.to - alignmentOffset,
         stepSize
-      )
+      ),
     };
   }
 
@@ -336,9 +326,7 @@ export class ChartModel {
     );
   }
 
-  private calculateIndexBounds(
-    minimumVisibleSlots: number
-  ): TimeScaleRange {
+  private calculateIndexBounds(minimumVisibleSlots: number): TimeScaleRange {
     if (!this.hasData()) {
       return { from: 0, to: 1 };
     }
@@ -347,7 +335,7 @@ export class ChartModel {
       const slotCount = Math.max(this.mappedData.length, minimumVisibleSlots);
       return {
         from: 0,
-        to: slotCount
+        to: slotCount,
       };
     }
 
@@ -357,7 +345,7 @@ export class ChartModel {
     );
     return {
       from: range.from,
-      to: range.to
+      to: range.to,
     };
   }
 
@@ -384,7 +372,7 @@ export class ChartModel {
 
     return {
       from,
-      to
+      to,
     };
   }
 
@@ -403,7 +391,7 @@ export class ChartModel {
     return {
       barAlignment: this.barAlignment,
       indexRange: this.visibleLogicalRange,
-      timeValues: this.getTimes()
+      timeValues: this.getTimes(),
     };
   }
 
@@ -424,8 +412,5 @@ function indexRangesEqual(
   left: TimeScaleRange,
   right: TimeScaleRange
 ): boolean {
-  return (
-    left.from === right.from &&
-    left.to === right.to
-  );
+  return left.from === right.from && left.to === right.to;
 }

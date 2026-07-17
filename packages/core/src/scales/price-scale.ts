@@ -1,8 +1,4 @@
-import {
-  Scale,
-  ScaleProjectOptions,
-  resolveDevicePixelRatio,
-} from "./scale";
+import { Scale, ScaleProjectOptions, resolveDevicePixelRatio } from "./scale";
 
 export interface PriceScaleRange {
   readonly min: number;
@@ -40,8 +36,7 @@ export class PriceScale implements Scale {
     const height = options.canvas.height / ratio;
 
     return (
-      (1 - pixel / height) * (this.range.max - this.range.min) +
-      this.range.min
+      (1 - pixel / height) * (this.range.max - this.range.min) + this.range.min
     );
   }
 

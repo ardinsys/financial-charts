@@ -1,7 +1,4 @@
-import type {
-  ControllerConstructor,
-  ControllerType
-} from "./chart-options";
+import type { ControllerConstructor, ControllerType } from "./chart-options";
 
 /** Owns chart-scoped controller registration and lookup. */
 export class ControllerRegistry {

@@ -18,14 +18,14 @@ describe("ControllerRegistry", () => {
     expect(registry.getSnapshot()).not.toBe(snapshot);
     expect(registry.getSnapshot()).toEqual([
       LineController,
-      CandlestickController
+      CandlestickController,
     ]);
   });
 
   it("restores chart-class defaults without duplicating registrations", () => {
     const defaults: ControllerConstructor[] = [
       LineController,
-      CandlestickController
+      CandlestickController,
     ];
     const registry = new ControllerRegistry(defaults);
     defaults.length = 0;

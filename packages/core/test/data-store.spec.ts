@@ -38,14 +38,14 @@ describe("DataStore", () => {
     const store = new DataStore([
       { time: 100, close: 10 },
       { time: 100, close: 11 },
-      { time: 160, close: 12 }
+      { time: 160, close: 12 },
     ]);
 
     expect(store.indexOfTime(100)).toBe(0);
     expect(store.nearestIndex(100)).toBe(0);
     expect(store.visibleSlice(100, 100)).toEqual([
       { time: 100, close: 10 },
-      { time: 100, close: 11 }
+      { time: 100, close: 11 },
     ]);
   });
 
@@ -53,7 +53,7 @@ describe("DataStore", () => {
     const store = new DataStore(
       Array.from({ length: 4096 }, (_, index) => ({
         time: index * 60_000,
-        close: index
+        close: index,
       }))
     );
 
@@ -68,7 +68,7 @@ describe("DataStore", () => {
       { time: 100, close: 10 },
       { time: 500, close: 11 },
       { time: 900, close: 12 },
-      { time: 1_300, close: 13 }
+      { time: 1_300, close: 13 },
     ]);
 
     expect(store.times()).toEqual([100, 500, 900, 1_300]);
@@ -77,7 +77,7 @@ describe("DataStore", () => {
     expect(store.visibleIndexSlice(0.5, 2.1)).toEqual([
       { time: 100, close: 10 },
       { time: 500, close: 11 },
-      { time: 900, close: 12 }
+      { time: 900, close: 12 },
     ]);
   });
 
@@ -97,11 +97,11 @@ describe("DataStore", () => {
     expect(afterReplacement).not.toBe(afterAppend);
     expect(afterAppend).toEqual([
       { time: 60, close: 10 },
-      { time: 120, close: 11 }
+      { time: 120, close: 11 },
     ]);
     expect(afterReplacement).toEqual([
       { time: 60, close: 10 },
-      { time: 120, close: 12 }
+      { time: 120, close: 12 },
     ]);
 
     store.merge({ time: 180, close: 13 }, 60);
@@ -145,7 +145,7 @@ describe("DataStore", () => {
 
     expect(store.snapshot()).toEqual([
       { time: 60, open: 10, high: 14, low: 8, close: 13, volume: 150 },
-      { time: 120, open: 13, high: 15, low: 12, close: 14, volume: 80 }
+      { time: 120, open: 13, high: 15, low: 12, close: 14, volume: 80 },
     ]);
   });
 
@@ -155,13 +155,13 @@ describe("DataStore", () => {
         [
           { time: 65, open: 10, high: 12, low: 9, close: 11, volume: 100 },
           { time: 119, open: 11, high: 14, low: 8, close: 13, volume: 50 },
-          { time: 120, open: 13, high: 15, low: 12, close: 14, volume: 80 }
+          { time: 120, open: 13, high: 15, low: 12, close: 14, volume: 80 },
         ],
         60
       )
     ).toEqual([
       { time: 60, open: 10, high: 14, low: 8, close: 13, volume: 150 },
-      { time: 120, open: 13, high: 15, low: 12, close: 14, volume: 80 }
+      { time: 120, open: 13, high: 15, low: 12, close: 14, volume: 80 },
     ]);
   });
 
@@ -182,11 +182,11 @@ describe("DataStore", () => {
     const input = [
       { time: 119, high: null, close: 0, volume: null },
       { time: 65, open: 0, high: 2, low: 0, close: 1, volume: 0 },
-      { time: 90, open: null, high: 3, low: null, close: null }
+      { time: 90, open: null, high: 3, low: null, close: null },
     ];
 
     expect(DataStore.merge(input, 60)).toEqual([
-      { time: 60, open: 0, high: 3, low: 0, close: 0, volume: 0 }
+      { time: 60, open: 0, high: 3, low: 0, close: 0, volume: 0 },
     ]);
     expect(input.map((point) => point.time)).toEqual([119, 65, 90]);
   });
@@ -197,7 +197,7 @@ describe("DataStore", () => {
         [
           { time: 60, close: 1 },
           { time: 60, open: 0, close: null },
-          { time: 60, open: 2, close: 0 }
+          { time: 60, open: 2, close: 0 },
         ],
         60
       )

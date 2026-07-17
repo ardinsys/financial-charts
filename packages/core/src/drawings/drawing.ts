@@ -46,7 +46,7 @@ export interface DrawingOptions {
 
 export interface DrawingJSON<
   TType extends string = string,
-  TData extends object = object
+  TData extends object = object,
 > {
   readonly anchors: readonly DrawingAnchor[];
   readonly data?: TData;
@@ -99,7 +99,7 @@ export abstract class Drawing {
   moveBy(delta: DrawingAnchor) {
     this.anchors = this.anchors.map((anchor) => ({
       index: anchor.index + delta.index,
-      price: anchor.price + delta.price
+      price: anchor.price + delta.price,
     }));
   }
 
@@ -111,7 +111,7 @@ export abstract class Drawing {
   getAnchorHandles(context: DrawingRenderContext): DrawingAnchorHandle[] {
     return this.projectAnchors(context).map((point, index) => ({
       index,
-      point
+      point,
     }));
   }
 
@@ -120,7 +120,7 @@ export abstract class Drawing {
 
     return {
       x: anchors,
-      y: anchors
+      y: anchors,
     };
   }
 
@@ -159,7 +159,7 @@ export abstract class Drawing {
       id: this.id,
       paneId: this.paneId,
       type: this.type,
-      ...(data === undefined ? {} : { data })
+      ...(data === undefined ? {} : { data }),
     };
   }
 
@@ -181,12 +181,12 @@ export abstract class Drawing {
     const scaleOptions = {
       canvas: { width: region.width, height: region.height },
       devicePixelRatio: 1,
-      barAlignment: pane.getTimeAnchorAlignment()
+      barAlignment: pane.getTimeAnchorAlignment(),
     };
 
     return {
       x: region.x + timeScale.projectIndex(anchor.index, scaleOptions),
-      y: region.y + pane.getPriceScale().project(anchor.price, scaleOptions)
+      y: region.y + pane.getPriceScale().project(anchor.price, scaleOptions),
     };
   }
 
@@ -251,21 +251,21 @@ export function anchorFromPoint(
   const region = pane.getRegion();
   const canvas = {
     width: region.width,
-    height: region.height
+    height: region.height,
   };
 
   const index = timeScale.unprojectIndex(point.x - region.x, {
     canvas,
     devicePixelRatio: 1,
-    barAlignment: pane.getTimeAnchorAlignment()
+    barAlignment: pane.getTimeAnchorAlignment(),
   });
 
   return {
     index: Math.round(index),
     price: pane.getPriceScale().unproject(point.y - region.y, {
       canvas,
-      devicePixelRatio: 1
-    })
+      devicePixelRatio: 1,
+    }),
   };
 }
 

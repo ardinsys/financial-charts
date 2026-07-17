@@ -12,7 +12,7 @@ the chart.
 ```ts
 import type {
   ChartContext,
-  ChartPlugin
+  ChartPlugin,
 } from "@ardinsys/financial-charts/extensions";
 
 class WatermarkPlugin implements ChartPlugin {
@@ -41,20 +41,20 @@ chart.addPlugin(new WatermarkPlugin());
 
 ## ChartPlugin
 
-| Member                         | Description                                                                                                                        |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `key`                          | Stable plugin id for debugging and application bookkeeping.                                                                        |
-| `attach(ctx)`                  | Called once when the plugin is added. Store the context here.                                                                      |
-| `beforeDraw()`                 | Optional draw hook before the render pipeline starts.                                                                              |
-| `draw()`                       | Optional draw hook on the plugin draw pass.                                                                                        |
-| `afterDraw()`                  | Optional draw hook after the render pipeline finishes.                                                                             |
+| Member                         | Description                                                                                                                                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key`                          | Stable plugin id for debugging and application bookkeeping.                                                                                  |
+| `attach(ctx)`                  | Called once when the plugin is added. Store the context here.                                                                                |
+| `beforeDraw()`                 | Optional draw hook before the render pipeline starts.                                                                                        |
+| `draw()`                       | Optional draw hook on the plugin draw pass.                                                                                                  |
+| `afterDraw()`                  | Optional draw hook after the render pipeline finishes.                                                                                       |
 | `onData(data)`                 | Current borrowed readonly data after attach and whenever `setData()`, `updateData()`, clearing, or `stepSize` remapping changes mapped data. |
-| `onVisibleRangeChanged(range)` | Current whole-bar range after attach and once after each effective programmatic, pan, zoom, resize, or core-options view change.  |
-| `onPaneHeightsChanged(panes)`  | Portable pane-height ratios after an explicit `setPaneHeights()` call or interactive divider resize.                            |
-| `onOptionsChanged(event)`      | Optional notification containing previous/current resolved options and changed keys. Empty `changedKeys` means initial delivery.  |
-| `onPointer(event)`             | Optional notification for pointer down/move/up events mapped to data and pane space. Return `true` to consume the pointer gesture. |
-| `onDrawingFinished(event)`     | Optional notification when a drawing create or drag operation completes.                                                           |
-| `detach()`                     | Optional cleanup hook called after the attachment signal is aborted and context subscriptions/annotations are removed.            |
+| `onVisibleRangeChanged(range)` | Current whole-bar range after attach and once after each effective programmatic, pan, zoom, resize, or core-options view change.             |
+| `onPaneHeightsChanged(panes)`  | Portable pane-height ratios after an explicit `setPaneHeights()` call or interactive divider resize.                                         |
+| `onOptionsChanged(event)`      | Optional notification containing previous/current resolved options and changed keys. Empty `changedKeys` means initial delivery.             |
+| `onPointer(event)`             | Optional notification for pointer down/move/up events mapped to data and pane space. Return `true` to consume the pointer gesture.           |
+| `onDrawingFinished(event)`     | Optional notification when a drawing create or drag operation completes.                                                                     |
+| `detach()`                     | Optional cleanup hook called after the attachment signal is aborted and context subscriptions/annotations are removed.                       |
 
 Indicators use the same lifecycle hooks. Data, range, options, and drawing
 notifications run through overlay indicators, paneled indicators, then ordinary
@@ -77,7 +77,7 @@ keyed like chart themes:
 ```ts
 import {
   ExtensionThemeResolver,
-  type ExtensionThemeMap
+  type ExtensionThemeMap,
 } from "@ardinsys/financial-charts/extensions";
 
 interface WatermarkTheme {
@@ -88,7 +88,7 @@ interface WatermarkTheme {
 const defaults = {
   light: { color: "#111827", opacity: 0.08 },
   dark: { color: "#f9fafb", opacity: 0.12 },
-  "brand-night": { color: "#dbeafe", opacity: 0.1 }
+  "brand-night": { color: "#dbeafe", opacity: 0.1 },
 };
 
 class WatermarkPlugin implements ChartPlugin {
@@ -124,38 +124,38 @@ unchanged.
 
 ## ChartContext
 
-| Helper                            | Description                                                                                                    |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `domAdapter`                      | Active `ChartDOMAdapter`, useful when plugins need app-owned overlay UI.                                      |
-| `hostElement`                     | The element passed to the chart constructor, for scoped keyboard or focus handling.                           |
-| `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()`, on failed attachment, and on chart disposal.      |
-| `emit(event, data)`               | Emits a chart event.                                                                                           |
-| `getData()`                       | Returns the chart's current stable mapped-data snapshot.                                                       |
-| `getOptions()`                    | Returns the stable borrowed readonly options snapshot.                                                        |
-| `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`.         |
-| `getLogicalCanvas(layer)`         | Returns logical pixel size for the layer.                                                                      |
-| `getPanes()`                      | Returns a readonly pane snapshot, including the main pane and paneled indicators.                             |
-| `getPaneHeightRatios()`           | Returns portable pane ratios keyed by main-pane or paneled-indicator identity.                                |
-| `getPlugin(key)`                  | Returns the attached plugin with the matching unique `key`, useful for plugin-to-plugin integration.          |
-| `getPlugins()`                    | Returns a readonly snapshot of currently attached plugins.                                                     |
-| `getVisibleTimeWindow()`          | Returns the precise fractional visible timestamp window for pan/zoom replication.                              |
-| `getVisibleTimeRange()`           | Returns the current visible timestamp range.                                                                   |
-| `getVisibleLogicalRange()`        | Returns the precise fractional logical-index range.                                                            |
-| `setVisibleTimeWindow(range)`     | Applies a precise fractional timestamp window.                                                                 |
-| `setPaneHeightRatios(panes)`      | Resolves portable pane ratios against this chart's available height.                                          |
-| `getCrosshairState()`             | Returns the current resolved native crosshair state.                                                           |
-| `on(event, listener)`             | Subscribes for the lifetime of this attachment and returns an early disposer.                                 |
-| `onRenderStage(stage, callback)`  | Registers an attachment-scoped render-pipeline hook and returns an early disposer.                            |
-| `requestRedraw(part, immediate?)` | Schedules one or more redraw parts.                                                                            |
-| `setPriceAxisAnnotations(items)`  | Replaces this extension's price lines and Y-axis labels and schedules their layer.                            |
-| `clearPriceAxisAnnotations()`     | Removes this extension's price-axis annotations.                                                               |
-| `setCrosshair(options)`           | Sets the native crosshair from plugin code and returns the resolved state.                                     |
-| `clearCrosshair()`                | Clears the native crosshair and pointer-aware indicator labels.                                                |
-| `getIndicators()`                 | Returns every attached indicator as a readonly snapshot.                                                       |
-| `getIndicatorById(instanceId)`    | Returns an attached indicator by its unique instance identity.                                                 |
-| `addIndicator(indicator)`         | Attaches an indicator with normal chart lifecycle and event semantics.                                         |
-| `removeIndicator(indicator)`      | Detaches an indicator with normal chart lifecycle and event semantics.                                         |
-| `remove()`                        | Detaches the owning extension with normal chart removal semantics.                                             |
+| Helper                            | Description                                                                                              |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `domAdapter`                      | Active `ChartDOMAdapter`, useful when plugins need app-owned overlay UI.                                 |
+| `hostElement`                     | The element passed to the chart constructor, for scoped keyboard or focus handling.                      |
+| `signal`                          | Attachment-scoped `AbortSignal`, aborted before `detach()`, on failed attachment, and on chart disposal. |
+| `emit(event, data)`               | Emits a chart event.                                                                                     |
+| `getData()`                       | Returns the chart's current stable mapped-data snapshot.                                                 |
+| `getOptions()`                    | Returns the stable borrowed readonly options snapshot.                                                   |
+| `getCanvasContext(layer)`         | Returns a scaled 2D context for `main`, `indicator`, `drawings`, `crosshair`, `x-label`, or `y-label`.   |
+| `getLogicalCanvas(layer)`         | Returns logical pixel size for the layer.                                                                |
+| `getPanes()`                      | Returns a readonly pane snapshot, including the main pane and paneled indicators.                        |
+| `getPaneHeightRatios()`           | Returns portable pane ratios keyed by main-pane or paneled-indicator identity.                           |
+| `getPlugin(key)`                  | Returns the attached plugin with the matching unique `key`, useful for plugin-to-plugin integration.     |
+| `getPlugins()`                    | Returns a readonly snapshot of currently attached plugins.                                               |
+| `getVisibleTimeWindow()`          | Returns the precise fractional visible timestamp window for pan/zoom replication.                        |
+| `getVisibleTimeRange()`           | Returns the current visible timestamp range.                                                             |
+| `getVisibleLogicalRange()`        | Returns the precise fractional logical-index range.                                                      |
+| `setVisibleTimeWindow(range)`     | Applies a precise fractional timestamp window.                                                           |
+| `setPaneHeightRatios(panes)`      | Resolves portable pane ratios against this chart's available height.                                     |
+| `getCrosshairState()`             | Returns the current resolved native crosshair state.                                                     |
+| `on(event, listener)`             | Subscribes for the lifetime of this attachment and returns an early disposer.                            |
+| `onRenderStage(stage, callback)`  | Registers an attachment-scoped render-pipeline hook and returns an early disposer.                       |
+| `requestRedraw(part, immediate?)` | Schedules one or more redraw parts.                                                                      |
+| `setPriceAxisAnnotations(items)`  | Replaces this extension's price lines and Y-axis labels and schedules their layer.                       |
+| `clearPriceAxisAnnotations()`     | Removes this extension's price-axis annotations.                                                         |
+| `setCrosshair(options)`           | Sets the native crosshair from plugin code and returns the resolved state.                               |
+| `clearCrosshair()`                | Clears the native crosshair and pointer-aware indicator labels.                                          |
+| `getIndicators()`                 | Returns every attached indicator as a readonly snapshot.                                                 |
+| `getIndicatorById(instanceId)`    | Returns an attached indicator by its unique instance identity.                                           |
+| `addIndicator(indicator)`         | Attaches an indicator with normal chart lifecycle and event semantics.                                   |
+| `removeIndicator(indicator)`      | Detaches an indicator with normal chart lifecycle and event semantics.                                   |
+| `remove()`                        | Detaches the owning extension with normal chart removal semantics.                                       |
 
 ### Attachment-scoped cleanup
 
@@ -258,7 +258,7 @@ import {
   ChartSyncPlugin,
   DrawingManager,
   FinancialChart,
-  MovingAverageIndicator
+  MovingAverageIndicator,
 } from "@ardinsys/financial-charts";
 import { OrdersIndicator } from "./orders-indicator";
 
@@ -279,7 +279,7 @@ chart.addPlugin(
   new ChartSyncPlugin({
     group: "watchlist",
     drawingManager,
-    indicatorResolver
+    indicatorResolver,
   })
 );
 ```
@@ -295,7 +295,7 @@ new ChartSyncPlugin({
   indicators: true,
   paneHeights: true,
   indicatorResolver,
-  messages: true
+  messages: true,
 });
 ```
 
@@ -384,7 +384,7 @@ styles.
 ```ts
 import {
   DrawingSelectionPlugin,
-  type Drawing
+  type Drawing,
 } from "@ardinsys/financial-charts";
 
 chart.addPlugin(
@@ -406,7 +406,7 @@ chart.addPlugin(
   new DrawingSelectionPlugin({
     onSelect: (drawing, event) => {
       updateDrawingToolbar({ drawing, id: event.id, anchors: event.anchors });
-    }
+    },
   })
 );
 ```
@@ -419,7 +419,7 @@ the X and Y axes. It works with `DrawingManager` events and is optional:
 ```ts
 import {
   DrawingAxisBoundsPlugin,
-  DrawingManager
+  DrawingManager,
 } from "@ardinsys/financial-charts";
 
 chart.addPlugin(new DrawingManager());
@@ -448,8 +448,8 @@ chart.addPlugin(
     labels: {
       "en-US": { start: "S", end: "E" },
       "hu-HU": { start: "K", end: "V" },
-      "*": { start: "S", end: "E" }
-    }
+      "*": { start: "S", end: "E" },
+    },
   })
 );
 ```
@@ -462,22 +462,22 @@ chart.addPlugin(
   new DrawingAxisBoundsPlugin({
     themes: {
       light: {
-        strokeColor: "#B7791F"
+        strokeColor: "#B7791F",
       },
       dark: {
         strokeColor: "#F6C344",
         labelBackgroundColor: "#3A2E0F",
-        textColor: "#FDE68A"
+        textColor: "#FDE68A",
       },
       "brand-night": {
-        rangeBackgroundColor: "rgba(246, 195, 68, 0.22)"
-      }
+        rangeBackgroundColor: "rgba(246, 195, 68, 0.22)",
+      },
     },
     blacklist: ["text"],
     showXAxis: true,
     showYAxis: true,
     showRange: true,
-    formatText: ({ label, value }) => (label ? `${label} ${value}` : value)
+    formatText: ({ label, value }) => (label ? `${label} ${value}` : value),
   })
 );
 ```

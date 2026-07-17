@@ -1,6 +1,6 @@
 import {
   restoreValidatedIndicator,
-  type Indicator
+  type Indicator,
 } from "../indicators/indicator";
 import { PaneledIndicator } from "../indicators/paneled-indicator";
 import {
@@ -10,7 +10,7 @@ import {
   type ChartState,
   type ChartStateContributor,
   type ChartStateRestoreOptions,
-  type ChartStateSerializationOptions
+  type ChartStateSerializationOptions,
 } from "./chart-state";
 import type { TimeRange } from "./types";
 
@@ -46,17 +46,14 @@ export class ChartStateController {
       {
         ...snapshot,
         visibleRange: {
-          ...(this.pendingVisibleRange ?? snapshot.visibleRange)
-        }
+          ...(this.pendingVisibleRange ?? snapshot.visibleRange),
+        },
       },
       options.contributors ?? []
     );
   }
 
-  restore(
-    state: unknown,
-    options: ChartStateRestoreOptions = {}
-  ): ChartState {
+  restore(state: unknown, options: ChartStateRestoreOptions = {}): ChartState {
     const validatedState = validateChartState(state);
     const runtime = this.capture();
     if (!runtime.controllerTypes.includes(validatedState.core.type)) {
@@ -89,7 +86,7 @@ export class ChartStateController {
       state: validatedState,
       indicators: restoredIndicators,
       paneIdsByIndicator,
-      contributors
+      contributors,
     });
     this.pendingVisibleRange = visibleRangeDeferred
       ? validatedState.visibleRange

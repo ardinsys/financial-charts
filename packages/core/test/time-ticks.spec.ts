@@ -81,9 +81,7 @@ describe("TimeTickGenerator", () => {
       expect(ticks.length).toBeGreaterThanOrEqual(3);
       expect(ticks.length).toBeLessThanOrEqual(9);
       expect(
-        ticks.every((tick) =>
-          ["minute", "hour", "day"].includes(tick.kind)
-        )
+        ticks.every((tick) => ["minute", "hour", "day"].includes(tick.kind))
       ).toBe(true);
     }
   );
@@ -125,14 +123,14 @@ describe("TimeTickGenerator", () => {
       times,
       visibleRange: { from: 0, to: times.length },
       formatter,
-      targetTickCount: 8
+      targetTickCount: 8,
     });
     const callsAfterFirstGeneration = formatToParts.mock.calls.length;
     const cached = generator.generate({
       times,
       visibleRange: { from: 0, to: times.length },
       formatter,
-      targetTickCount: 8
+      targetTickCount: 8,
     });
 
     expect(cached).toEqual(first);
@@ -142,7 +140,7 @@ describe("TimeTickGenerator", () => {
         times,
         visibleRange: { from: 0, to: times.length },
         formatter,
-        targetTickCount: 8
+        targetTickCount: 8,
       })
     );
   });
@@ -160,14 +158,14 @@ describe("TimeTickGenerator", () => {
       vi.spyOn(formatter, "formatDay"),
       vi.spyOn(formatter, "formatHour"),
       vi.spyOn(formatter, "formatSecond"),
-      vi.spyOn(formatter, "formatSubMinute")
+      vi.spyOn(formatter, "formatSubMinute"),
     ];
 
     const ticks = new TimeTickGenerator().generate({
       times,
       visibleRange: { from: 0, to: times.length },
       formatter,
-      targetTickCount: 8
+      targetTickCount: 8,
     });
     const formatCallCount = formatters.reduce(
       (total, spy) => total + spy.mock.calls.length,
@@ -248,11 +246,7 @@ describe("TimeTickGenerator", () => {
 
   it("keeps indices unique and increasing when one bar crosses many boundaries", () => {
     const ticks = generateTicks(
-      [
-        Date.UTC(2024, 0, 31),
-        Date.UTC(2024, 2, 1),
-        Date.UTC(2024, 2, 4),
-      ],
+      [Date.UTC(2024, 0, 31), Date.UTC(2024, 2, 1), Date.UTC(2024, 2, 4)],
       10
     );
 

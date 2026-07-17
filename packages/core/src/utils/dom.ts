@@ -94,7 +94,7 @@ export function createPositionedContainer(
   const element = document.createElement("div");
   configurePositionedElement(element, {
     position: "absolute",
-    ...options
+    ...options,
   });
 
   if (options.className) {

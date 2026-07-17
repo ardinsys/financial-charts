@@ -6,7 +6,7 @@ import {
   type ChartTheme,
   type ChartThemeKey,
   type ChartThemeMap,
-  type ResolvedChartTheme
+  type ResolvedChartTheme,
 } from "./themes";
 
 export function ownThemeRegistry(themes?: ChartThemeMap): ChartThemeMap {
@@ -29,7 +29,7 @@ export function resolveChartTheme(
   return {
     ...mergeObjects(base, values),
     key,
-    base: baseKey
+    base: baseKey,
   };
 }
 

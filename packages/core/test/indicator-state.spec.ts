@@ -5,7 +5,7 @@ import {
   type IndicatorLabelContent,
   type IndicatorOptionsInput,
   type IndicatorStateOptions,
-  restoreIndicator
+  restoreIndicator,
 } from "../src/indicators/indicator";
 import { TestIndicator } from "./fixtures/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
@@ -35,7 +35,7 @@ class RuntimeIndicator extends Indicator<{}, RuntimeIndicatorOptions> {
       labelKey: "runtime",
       names: { default: "Runtime indicator" },
       symbol: "AAPL",
-      transform: (value) => value * 2
+      transform: (value) => value * 2,
     };
   }
 
@@ -78,12 +78,12 @@ describe("indicator state", () => {
     const fast = new MovingAverageIndicator(null, {
       instanceId: "fast-sma",
       period: 9,
-      source: "close"
+      source: "close",
     });
     const slow = new MovingAverageIndicator(null, {
       instanceId: "slow-sma",
       period: 21,
-      source: "open"
+      source: "open",
     });
     slow.setVisible(false);
 
@@ -99,19 +99,18 @@ describe("indicator state", () => {
 
     expect(restored.map((indicator) => indicator.getInstanceId())).toEqual([
       "fast-sma",
-      "slow-sma"
+      "slow-sma",
     ]);
     expect(restored.map((indicator) => indicator.getOptions().period)).toEqual([
-      9, 21
+      9, 21,
     ]);
     expect(restored.map((indicator) => indicator.getOptions().source)).toEqual([
       "close",
-      "open"
+      "open",
     ]);
-    expect(restored.map((indicator) => indicator.isIndicatorVisible())).toEqual([
-      true,
-      false
-    ]);
+    expect(restored.map((indicator) => indicator.isIndicatorVisible())).toEqual(
+      [true, false]
+    );
   });
 
   it("omits label metadata and restores through injected runtime dependencies", () => {
@@ -120,7 +119,7 @@ describe("indicator state", () => {
     const indicator = new RuntimeIndicator(originalService, {
       instanceId: "runtime-1",
       symbol: "MSFT",
-      transform: (value) => value + 1
+      transform: (value) => value + 1,
     });
 
     const state = indicator.toJSON();
@@ -156,7 +155,7 @@ describe("indicator state", () => {
   it("serializes state independently from subsequent mutations", () => {
     const indicator = new MovingAverageIndicator(null, {
       instanceId: "independent-sma",
-      period: 9
+      period: 9,
     });
     const state = indicator.toJSON();
 
@@ -169,19 +168,19 @@ describe("indicator state", () => {
 
   it("rejects malformed, unsupported, unknown, and mismatched state", () => {
     const state = new MovingAverageIndicator(null, {
-      instanceId: "validated-sma"
+      instanceId: "validated-sma",
     }).toJSON();
     const resolver = () => new MovingAverageIndicator();
 
     expect(() => restoreIndicator(null, resolver)).toThrow(
       "Invalid indicator state: expected an object."
     );
-    expect(() =>
-      restoreIndicator({ ...state, version: 2 }, resolver)
-    ).toThrow('Unsupported indicator state version "2"; expected 1.');
-    expect(() =>
-      restoreIndicator({ ...state, options: [] }, resolver)
-    ).toThrow("Invalid indicator state: options must be an object.");
+    expect(() => restoreIndicator({ ...state, version: 2 }, resolver)).toThrow(
+      'Unsupported indicator state version "2"; expected 1.'
+    );
+    expect(() => restoreIndicator({ ...state, options: [] }, resolver)).toThrow(
+      "Invalid indicator state: options must be an object."
+    );
     expect(() =>
       restoreIndicator(
         { ...state, options: { names: { default: "UI value" } } },

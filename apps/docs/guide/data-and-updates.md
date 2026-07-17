@@ -81,7 +81,7 @@ reset.
 chart.updateOptions({
   timeRange: { start: Date.UTC(2024, 0, 2), end: Date.UTC(2024, 0, 6) },
   stepSize: 30 * 60 * 1000,
-  maxZoom: 120
+  maxZoom: 120,
 });
 ```
 

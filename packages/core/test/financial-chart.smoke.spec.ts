@@ -27,18 +27,18 @@ describe("FinancialChart test harness", () => {
     const chart = new FinancialChart(container, {
       timeRange: {
         start,
-        end: start + 2 * 60_000
+        end: start + 2 * 60_000,
       },
       type: "line",
       stepSize: 60_000,
       maxZoom: 10,
-      volume: false
+      volume: false,
     });
 
     chart.setData([
       { time: start, close: 10 },
       { time: start + 60_000, close: 11 },
-      { time: start + 120_000, close: 9 }
+      { time: start + 120_000, close: 9 },
     ]);
 
     await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -64,26 +64,26 @@ describe("FinancialChart test harness", () => {
     const lineChart = new FinancialChart(lineContainer, {
       timeRange: {
         start,
-        end: start + 60_000
+        end: start + 60_000,
       },
       type: "line",
       controllers: [LineController],
       includeDefaultControllers: false,
       stepSize: 60_000,
       maxZoom: 10,
-      volume: false
+      volume: false,
     });
     const alternateChart = new FinancialChart(alternateContainer, {
       timeRange: {
         start,
-        end: start + 60_000
+        end: start + 60_000,
       },
       type: "alternate-line",
       controllers: [AlternateLineController],
       includeDefaultControllers: false,
       stepSize: 60_000,
       maxZoom: 10,
-      volume: false
+      volume: false,
     });
 
     expect(() => lineChart.updateOptions({ type: "alternate-line" })).toThrow(
@@ -114,7 +114,7 @@ describe("FinancialChart test harness", () => {
       controllers: [AlternateLineController],
       stepSize: 60_000,
       maxZoom: 10,
-      volume: false
+      volume: false,
     });
 
     expect(() => chart.updateOptions({ type: "line" })).not.toThrow();
@@ -128,7 +128,7 @@ describe("FinancialChart test harness", () => {
       theme: expect.objectContaining({ backgroundColor: expect.any(String) }),
       localeValues: expect.any(Object),
       formatter: expect.any(Object),
-      domAdapter: expect.any(Object)
+      domAdapter: expect.any(Object),
     });
 
     chart.dispose();
@@ -146,12 +146,12 @@ describe("FinancialChart test harness", () => {
       controllers: [LineController],
       stepSize: 60_000,
       maxZoom: 10,
-      volume: false
+      volume: false,
     });
 
     expect(chart.getOptions().includeDefaultControllers).toBe(false);
     expect(chart.getOptions().controllers.map(({ ID }) => ID)).toEqual([
-      "line"
+      "line",
     ]);
     expect(() => chart.updateOptions({ type: "candle" })).toThrow(
       "Controller: candle is not registered!"
@@ -171,7 +171,7 @@ describe("FinancialChart test harness", () => {
       type: "line",
       stepSize: 60_000,
       maxZoom: 10,
-      volume: false
+      volume: false,
     });
     const initial = chart.getOptions();
 

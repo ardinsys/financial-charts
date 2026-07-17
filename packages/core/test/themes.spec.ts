@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   ownThemeRegistry,
-  resolveChartTheme
+  resolveChartTheme,
 } from "../src/chart/theme-registry";
 import {
   defaultDarkTheme,
   defaultLightTheme,
-  type ChartThemeMap
+  type ChartThemeMap,
 } from "../src/chart/themes";
 
 describe("theme registry", () => {
@@ -14,15 +14,15 @@ describe("theme registry", () => {
     const randomColors = ["#123456"];
     const fill: Array<[number, string]> = [
       [0, "#abcdef"],
-      [1, "#fedcba"]
+      [1, "#fedcba"],
     ];
     const themes = ownThemeRegistry({
       custom: {
         base: "dark",
         grid: { width: 0 },
         randomColors,
-        area: { fill }
-      }
+        area: { fill },
+      },
     });
     const theme = resolveChartTheme("custom", themes);
 
@@ -33,12 +33,12 @@ describe("theme registry", () => {
     expect(theme.base).toBe("dark");
     expect(theme.grid).toEqual({
       color: defaultDarkTheme.grid.color,
-      width: 0
+      width: 0,
     });
     expect(theme.randomColors).toEqual(["#123456"]);
     expect(theme.area.fill).toEqual([
       [0, "#abcdef"],
-      [1, "#fedcba"]
+      [1, "#fedcba"],
     ]);
     expect(theme.crosshair.lineDash).not.toBe(
       defaultLightTheme.crosshair.lineDash
@@ -50,7 +50,7 @@ describe("theme registry", () => {
   it("resolves each key independently instead of merging into the active theme", () => {
     const themes: ChartThemeMap = {
       dark: { grid: { width: 4 } },
-      light: { line: { width: 3 } }
+      light: { line: { width: 3 } },
     };
 
     const dark = resolveChartTheme("dark", themes);

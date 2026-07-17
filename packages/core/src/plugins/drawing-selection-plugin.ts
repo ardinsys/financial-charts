@@ -40,7 +40,7 @@ export class DrawingSelectionPlugin implements ChartPlugin {
         type: drawing.type,
         paneId: drawing.getPaneId(),
         anchors: drawing.getAnchors(),
-        json: drawing.toJSON()
+        json: drawing.toJSON(),
       });
     }
   }

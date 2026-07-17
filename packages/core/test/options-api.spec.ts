@@ -30,14 +30,14 @@ function createChart() {
     volume: true,
     locale: "en-US",
     themes: {
-      custom: { base: "dark", backgroundColor: "#123456" }
-    }
+      custom: { base: "dark", backgroundColor: "#123456" },
+    },
   });
   const start = Date.UTC(2024, 0, 1, 9);
   chart.setData(
     Array.from({ length: 6 }, (_, index) => ({
       time: start + index * 60_000,
-      close: 10 + index
+      close: 10 + index,
     }))
   );
   charts.push(chart);
@@ -68,11 +68,11 @@ describe("chart options API", () => {
 
   it("provides convenient root defaults and core controller inference", () => {
     const root = new FinancialChart(createContainer(), {
-      stepSize: 60_000
+      stepSize: 60_000,
     });
     const core = new CoreFinancialChart(createContainer(), {
       controllers: [LineController],
-      stepSize: 60_000
+      stepSize: 60_000,
     });
     charts.push(root, core);
 
@@ -80,14 +80,14 @@ describe("chart options API", () => {
       type: "candle",
       timeRange: "auto",
       maxZoom: 100,
-      volume: true
+      volume: true,
     });
     expect(core.getOptions()).toMatchObject({
       type: "line",
       timeRange: "auto",
       maxZoom: 100,
       volume: true,
-      includeDefaultControllers: false
+      includeDefaultControllers: false,
     });
   });
 
@@ -104,7 +104,7 @@ describe("chart options API", () => {
       stepSize: 60_000,
       maxZoom: 10,
       volume: true,
-      locale: "en-US"
+      locale: "en-US",
     });
 
     expect(redraw).not.toHaveBeenCalled();
@@ -123,7 +123,7 @@ describe("chart options API", () => {
       type: "candle",
       theme: "custom",
       locale: "hu-HU",
-      volume: false
+      volume: false,
     });
 
     expect(redraw).toHaveBeenCalledTimes(1);
@@ -132,7 +132,7 @@ describe("chart options API", () => {
       "type",
       "volume",
       "theme",
-      "locale"
+      "locale",
     ]);
     expect(events[0].previous).toBe(previousOptions);
     expect(events[0].current).toBe(chart.getOptions());
@@ -140,13 +140,13 @@ describe("chart options API", () => {
     expect(events[0].previous).toMatchObject({
       type: "line",
       volume: true,
-      locale: "en-US"
+      locale: "en-US",
     });
     expect(events[0].current).toMatchObject({
       type: "candle",
       volume: false,
       locale: "hu-HU",
-      theme: { key: "custom", backgroundColor: "#123456" }
+      theme: { key: "custom", backgroundColor: "#123456" },
     });
     expect(
       getChartContext(chart, "main").canvas.closest(".financial-charts-custom")
@@ -158,8 +158,8 @@ describe("chart options API", () => {
       stepSize: 60_000,
       theme: "light",
       themes: {
-        custom: { backgroundColor: "#123456" }
-      }
+        custom: { backgroundColor: "#123456" },
+      },
     });
     charts.push(chart);
     const main = getChartContext(chart, "main");
@@ -198,9 +198,9 @@ describe("chart options API", () => {
     const themes = {
       owned: {
         randomColors: ["#123456"],
-        line: { color: "#abcdef" }
+        line: { color: "#abcdef" },
       },
-      updated: { randomColors: ["#fedcba"] }
+      updated: { randomColors: ["#fedcba"] },
     };
     const localeValues = {
       "en-US": {
@@ -209,8 +209,8 @@ describe("chart options API", () => {
             show: "Show",
             hide: "Hide",
             settings: "Settings",
-            remove: "Remove"
-          }
+            remove: "Remove",
+          },
         },
         common: {
           sources: {
@@ -218,10 +218,10 @@ describe("chart options API", () => {
             high: "high",
             low: "low",
             close: "closing",
-            volume: "volume"
-          }
-        }
-      }
+            volume: "volume",
+          },
+        },
+      },
     };
     const chart = new FinancialChart(createContainer(), {
       type: "line",
@@ -230,7 +230,7 @@ describe("chart options API", () => {
       locale: "en-US",
       theme: "owned",
       themes,
-      localeValues
+      localeValues,
     });
     charts.push(chart);
     const initial = chart.getOptions();
@@ -263,7 +263,7 @@ describe("chart options API", () => {
       key: "options-probe",
       attach: vi.fn(),
       onData,
-      onVisibleRangeChanged
+      onVisibleRangeChanged,
     };
     chart.addPlugin(plugin);
     chart.setVisibleLogicalRange({ from: 1.25, to: 4.25 });
@@ -275,7 +275,7 @@ describe("chart options API", () => {
     expect(chart.getData()).toHaveLength(3);
     expect(chart.getVisibleLogicalRange()).not.toEqual({
       from: 1.25,
-      to: 4.25
+      to: 4.25,
     });
     expect(onData).toHaveBeenCalledTimes(1);
     expect(onVisibleRangeChanged).toHaveBeenCalledTimes(1);
@@ -304,7 +304,7 @@ describe("chart options API", () => {
       attach: vi.fn(),
       onOptionsChanged: () => order.push("extension-options"),
       onData: () => order.push("data"),
-      onVisibleRangeChanged: () => order.push("range")
+      onVisibleRangeChanged: () => order.push("range"),
     };
     chart.addPlugin(plugin);
     chart.on("options-change", () => order.push("public-options"));
@@ -320,7 +320,7 @@ describe("chart options API", () => {
       "data",
       "range",
       "public-options",
-      "redraw"
+      "redraw",
     ]);
 
     redraw.mockRestore();
@@ -333,7 +333,7 @@ describe("chart options API", () => {
       key: "data-change-order-probe",
       attach: vi.fn(),
       onData: () => order.push("data"),
-      onVisibleRangeChanged: () => order.push("range")
+      onVisibleRangeChanged: () => order.push("range"),
     };
     chart.addPlugin(plugin);
     chart.setVisibleLogicalRange({ from: 1, to: 3 });
@@ -346,7 +346,7 @@ describe("chart options API", () => {
     chart.setData(
       Array.from({ length: 8 }, (_, index) => ({
         time: start + index * 60_000,
-        close: 20 + index
+        close: 20 + index,
       }))
     );
 
@@ -364,7 +364,7 @@ describe("chart options API", () => {
     expect(() =>
       chart.updateOptions({
         stepSize: 0,
-        volume: false
+        volume: false,
       })
     ).toThrow("stepSize must be a finite number greater than zero.");
     expect(chart.getOptions()).toBe(initial);

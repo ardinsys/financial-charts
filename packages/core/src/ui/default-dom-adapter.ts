@@ -7,7 +7,7 @@ import {
   IndicatorLabelModel,
   PaneDividerActions,
   PaneDividerHandle,
-  PaneDividerModel
+  PaneDividerModel,
 } from "./chart-dom-adapter";
 import { ICON_HIDE, ICON_REMOVE, ICON_SETTINGS, ICON_SHOW } from "./icons";
 import { bindEvent, createPositionedContainer } from "../utils/dom";
@@ -27,7 +27,7 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       overflow: "auto",
       top: context.labelTopOffset,
       left: 10,
-      width: "fit-content"
+      width: "fit-content",
     });
     indicatorLabelContainer.classList.add(
       "fci-overlay",
@@ -45,7 +45,7 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       },
       destroy: () => {
         indicatorLabelContainer.remove();
-      }
+      },
     };
   }
 
@@ -56,7 +56,7 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
     const root = createPositionedContainer({
       position: "relative",
       zIndex: 101,
-      width: "fit-content"
+      width: "fit-content",
     });
     root.classList.add("financial-indicator", "fci-indicator");
     root.dataset.id = "indicator-label";
@@ -72,7 +72,7 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       model.actions.canHide ? button("show", ICON_SHOW) : "",
       model.actions.canHide ? button("hide", ICON_HIDE, "fci-hide") : "",
       model.actions.canOpenSettings ? button("settings", ICON_SETTINGS) : "",
-      model.actions.canRemove ? button("remove", ICON_REMOVE) : ""
+      model.actions.canRemove ? button("remove", ICON_REMOVE) : "",
     ].join("");
 
     root.innerHTML = /* html */ `
@@ -167,7 +167,7 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       destroy: () => {
         for (const dispose of disposers.splice(0)) dispose();
         root.remove();
-      }
+      },
     };
   }
 
@@ -180,7 +180,7 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       left: model.x,
       top: model.y,
       width: model.width,
-      height: model.height
+      height: model.height,
     });
     root.classList.add("fci-pane-divider");
     root.dataset.id = "pane-divider";
@@ -220,7 +220,7 @@ export class DefaultDOMAdapter implements ChartDOMAdapter {
       destroy: () => {
         dispose();
         root.remove();
-      }
+      },
     };
   }
 }

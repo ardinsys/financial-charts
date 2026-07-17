@@ -34,12 +34,12 @@ import "@ardinsys/financial-charts/style.css";
 import { FinancialChart } from "@ardinsys/financial-charts";
 
 const chart = new FinancialChart(document.getElementById("chart")!, {
-  stepSize: 60_000
+  stepSize: 60_000,
 });
 
 chart.setData([
   { time: Date.UTC(2024, 0, 1, 9), close: 100 },
-  { time: Date.UTC(2024, 0, 1, 9, 1), close: 101 }
+  { time: Date.UTC(2024, 0, 1, 9, 1), close: 101 },
 ]);
 
 // Call when the host is unmounted.

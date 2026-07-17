@@ -1,8 +1,4 @@
-import {
-  Scale,
-  ScaleProjectOptions,
-  resolveDevicePixelRatio
-} from "./scale";
+import { Scale, ScaleProjectOptions, resolveDevicePixelRatio } from "./scale";
 
 export interface TimeScaleRange {
   readonly from: number;
@@ -21,20 +17,14 @@ export class TimeScale implements Scale {
   private times: readonly number[];
   private barAlignment: BarAlignment;
 
-  constructor(
-    range: TimeScaleRange,
-    options: TimeScaleOptions = {}
-  ) {
+  constructor(range: TimeScaleRange, options: TimeScaleOptions = {}) {
     this.range = copyRange(range);
     this.times = options.times ?? [];
     this.barAlignment = options.barAlignment ?? "center";
   }
 
   setRange(range: TimeScaleRange): void {
-    if (
-      this.range.from === range.from &&
-      this.range.to === range.to
-    ) {
+    if (this.range.from === range.from && this.range.to === range.to) {
       return;
     }
     this.range = copyRange(range);

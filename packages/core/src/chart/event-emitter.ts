@@ -1,6 +1,6 @@
 import type {
   DefaultIndicatorOptions,
-  Indicator
+  Indicator,
 } from "../indicators/indicator";
 import type { Drawing, DrawingAnchor, DrawingJSON } from "../drawings/drawing";
 import type { ChartData, TimeRange } from "./types";

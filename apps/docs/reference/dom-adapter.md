@@ -10,7 +10,7 @@ import { DefaultDOMAdapter } from "@ardinsys/financial-charts";
 import type {
   ChartDOMAdapter,
   IndicatorLabelModel,
-  PaneDividerModel
+  PaneDividerModel,
 } from "@ardinsys/financial-charts/extensions";
 ```
 

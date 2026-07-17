@@ -47,10 +47,10 @@ export class VueDOMAdapter implements ChartDOMAdapter {
   >;
   private readonly paneDivider?: PaneDividerRenderer;
   private readonly labels = shallowReactive(
-    new Map<number, VueIndicatorLabelEntry>(),
+    new Map<number, VueIndicatorLabelEntry>()
   );
   private readonly dividers = shallowReactive(
-    new Map<number, VuePaneDividerEntry>(),
+    new Map<number, VuePaneDividerEntry>()
   );
   private nextKey = 0;
 
@@ -71,14 +71,14 @@ export class VueDOMAdapter implements ChartDOMAdapter {
 
   createOverlay(
     host: HTMLElement,
-    context: ChartDOMOverlayContext,
+    context: ChartDOMOverlayContext
   ): ChartDOMOverlay {
     return this.fallback.createOverlay(host, context);
   }
 
   createIndicatorLabel(
     model: IndicatorLabelModel,
-    actions: IndicatorLabelActions,
+    actions: IndicatorLabelActions
   ): IndicatorLabelHandle {
     const component = this.resolveIndicatorLabel(model.labelKey);
     if (!component) {
@@ -122,7 +122,7 @@ export class VueDOMAdapter implements ChartDOMAdapter {
 
   createPaneDivider(
     model: PaneDividerModel,
-    actions: PaneDividerActions,
+    actions: PaneDividerActions
   ): PaneDividerHandle {
     if (!this.paneDivider) {
       return (
@@ -178,7 +178,7 @@ export class VueDOMAdapter implements ChartDOMAdapter {
   }
 
   private resolveIndicatorLabel(
-    labelKey: string,
+    labelKey: string
   ): IndicatorLabelRenderer | undefined {
     return (
       unwrapComponent(this.indicatorLabels?.[labelKey]) ??
@@ -188,7 +188,7 @@ export class VueDOMAdapter implements ChartDOMAdapter {
 }
 
 function unwrapComponent<T extends Component>(
-  component: T | undefined,
+  component: T | undefined
 ): T | undefined {
   if (!component || typeof component !== "object") return component;
   return toRaw(component) as T;
@@ -196,7 +196,7 @@ function unwrapComponent<T extends Component>(
 
 function applyIndicatorLabelModel(
   root: HTMLElement,
-  model: IndicatorLabelModel,
+  model: IndicatorLabelModel
 ): void {
   root.dataset.indicatorInstanceId = model.instanceId;
   root.dataset.indicatorType = model.typeId;
@@ -206,7 +206,7 @@ function applyIndicatorLabelModel(
 
 function applyPaneDividerModel(
   root: HTMLElement,
-  model: PaneDividerModel,
+  model: PaneDividerModel
 ): void {
   root.style.left = `${model.x}px`;
   root.style.top = `${model.y}px`;

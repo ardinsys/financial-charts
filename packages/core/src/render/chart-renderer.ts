@@ -5,11 +5,11 @@ import type {
   AxisLabel,
   ChartData,
   ChartDataValueKey,
-  TimeRange
+  TimeRange,
 } from "../chart/types";
 import type {
   ChartController,
-  ChartControllerDrawingContext
+  ChartControllerDrawingContext,
 } from "../controllers/controller";
 import type { Indicator } from "../indicators/indicator";
 import type { PaneledIndicator } from "../indicators/paneled-indicator";
@@ -19,7 +19,7 @@ import type { DataScaleModel } from "../scales/data-scale-model";
 import type {
   BarAlignment,
   TimeScale,
-  TimeScaleRange
+  TimeScaleRange,
 } from "../scales/time-scale";
 import { calculateYAxisLabels as calculatePriceYAxisLabels } from "../scales/ticks/price-ticks";
 import { TimeTickGenerator } from "../scales/ticks/time-ticks";
@@ -28,14 +28,14 @@ import {
   bindEvent,
   createCanvasLayer,
   resizeCanvasLayer,
-  scaleCanvasContext
+  scaleCanvasContext,
 } from "../utils/dom";
 import { pixelRatio } from "../utils/screen";
 import {
   RenderPipeline,
   type RenderCallback,
   type RenderLayer,
-  type RenderStage
+  type RenderStage,
 } from "./render-pipeline";
 import type { ChartCanvasLayer, ChartRedrawPart } from "./chart-render-types";
 
@@ -119,7 +119,7 @@ const canvasLayers: readonly ChartOwnedCanvasLayer[] = [
   "y-label",
   "indicator",
   "drawings",
-  "annotations"
+  "annotations",
 ];
 
 const crosshairLabelIndex: Record<ChartDataValueKey, number> = {
@@ -127,7 +127,7 @@ const crosshairLabelIndex: Record<ChartDataValueKey, number> = {
   high: 1,
   low: 2,
   close: 3,
-  volume: 4
+  volume: 4,
 };
 
 export class ChartRenderer {
@@ -215,7 +215,7 @@ export class ChartRenderer {
       timeRange: this.model.getTimeRange(),
       pixelsPerBar: this.model.getPixelsPerBar(),
       projectIndex: (index) => timeScale.projectIndex(index, scaleOptions),
-      projectPrice: (price) => priceScale.project(price, scaleOptions)
+      projectPrice: (price) => priceScale.project(price, scaleOptions),
     };
   }
 
@@ -291,7 +291,7 @@ export class ChartRenderer {
       yMax,
       canvasHeight: height,
       fontSize,
-      labelSpacing
+      labelSpacing,
     });
     this.yAxisLabelCache = {
       yMin,
@@ -299,7 +299,7 @@ export class ChartRenderer {
       height,
       fontSize,
       labelSpacing,
-      labels
+      labels,
     };
     return labels;
   }
@@ -472,7 +472,7 @@ export class ChartRenderer {
     const volumeScale = this.model.getVisibleScale().getVolumeScale();
     const scaleOptions = {
       canvas: ctx.canvas,
-      barAlignment: "edge" as const
+      barAlignment: "edge" as const,
     };
     const visibleData = this.model.getVisibleData();
     const visibleStartIndex = Math.max(
@@ -485,10 +485,7 @@ export class ChartRenderer {
       const point = visibleData[index];
       if (point.time < timeRange.start) continue;
       if (point.time > timeRange.end) break;
-      const x = timeScale.projectIndex(
-        visibleStartIndex + index,
-        scaleOptions
-      );
+      const x = timeScale.projectIndex(visibleStartIndex + index, scaleOptions);
       const height = volumeScale.projectVolume(point.volume!, scaleOptions);
       ctx.beginPath();
       ctx.fillStyle =
@@ -531,7 +528,7 @@ export class ChartRenderer {
       panes: this.model.getPanes(),
       annotations: this.model.getPriceAxisAnnotations(),
       theme: options.theme,
-      formatter: options.formatter
+      formatter: options.formatter,
     });
   }
 
@@ -548,7 +545,7 @@ export class ChartRenderer {
     const options = this.model.getOptions();
     const x = this.model.getTimeScale().project(state.time, {
       canvas: this.getContext("main").canvas,
-      barAlignment: this.model.getTimeAnchorAlignment()
+      barAlignment: this.model.getTimeAnchorAlignment(),
     });
     context.strokeStyle = options.theme.crosshair.color;
     context.lineWidth = options.theme.crosshair.width;
@@ -682,7 +679,7 @@ export class ChartRenderer {
       times,
       visibleRange,
       formatter: options.formatter,
-      targetTickCount: Math.max(2, Math.floor(logicalCanvasWidth / 90))
+      targetTickCount: Math.max(2, Math.floor(logicalCanvasWidth / 90)),
     });
     const occupied: { start: number; end: number }[] = [];
     const visible: Array<{ label: string; x: number; start: number }> = [];
@@ -691,7 +688,7 @@ export class ChartRenderer {
     for (const label of labels) {
       const x = this.model.getTimeScale().project(label.time, {
         canvas: { width: canvasWidth, height: 0 },
-        barAlignment: this.model.getTimeAnchorAlignment()
+        barAlignment: this.model.getTimeAnchorAlignment(),
       });
       const textWidth = ctx.measureText(label.label).width;
       const bounds = { start: x - textWidth / 2, end: x + textWidth / 2 };
@@ -711,7 +708,7 @@ export class ChartRenderer {
       from: visibleRange.from,
       to: visibleRange.to,
       width: logicalCanvasWidth,
-      labels: visible
+      labels: visible,
     };
     return visible;
   }
@@ -753,7 +750,7 @@ export class ChartRenderer {
     const canvas = this.getOwnedContext(layer).canvas;
     return {
       width: this.toLogical(canvas.width),
-      height: this.toLogical(canvas.height)
+      height: this.toLogical(canvas.height),
     };
   }
 
@@ -786,7 +783,7 @@ export class ChartRenderer {
       width,
       height,
       pixelRatio: this.devicePixelRatio,
-      context: this.contexts.get(layer)
+      context: this.contexts.get(layer),
     });
   }
 
@@ -797,7 +794,7 @@ export class ChartRenderer {
   private getObservedSize(): ObservedSize {
     return {
       width: this.container.offsetWidth,
-      height: this.container.offsetHeight
+      height: this.container.offsetHeight,
     };
   }
 

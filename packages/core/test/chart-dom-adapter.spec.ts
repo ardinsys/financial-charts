@@ -12,7 +12,7 @@ import type {
   IndicatorLabelModel,
   PaneDividerActions,
   PaneDividerHandle,
-  PaneDividerModel
+  PaneDividerModel,
 } from "../src/ui/chart-dom-adapter";
 
 const charts: FinancialChart[] = [];
@@ -32,7 +32,7 @@ class CustomDOMAdapter implements ChartDOMAdapter {
       update: (next) => {
         indicatorLabelContainer.dataset.themeKey = next.themeKey;
       },
-      destroy: () => indicatorLabelContainer.remove()
+      destroy: () => indicatorLabelContainer.remove(),
     };
   }
 
@@ -56,7 +56,7 @@ class CustomDOMAdapter implements ChartDOMAdapter {
     return {
       root,
       update,
-      destroy: () => undefined
+      destroy: () => undefined,
     };
   }
 
@@ -84,7 +84,7 @@ class CustomDOMAdapter implements ChartDOMAdapter {
     return {
       root,
       update,
-      destroy: () => root.remove()
+      destroy: () => root.remove(),
     };
   }
 }
@@ -96,23 +96,20 @@ function createChart(adapter: ChartDOMAdapter) {
   document.body.appendChild(container);
 
   const start = Date.UTC(2024, 0, 1, 9);
-  const chart = new FinancialChart(
-    container,
-    {
-      timeRange: { start, end: start + 60_000 },
-      type: "line",
-      controllers: [LineController],
-      stepSize: 60_000,
-      maxZoom: 10,
-      volume: false,
-      locale: "en-US",
-      domAdapter: adapter
-    }
-  );
+  const chart = new FinancialChart(container, {
+    timeRange: { start, end: start + 60_000 },
+    type: "line",
+    controllers: [LineController],
+    stepSize: 60_000,
+    maxZoom: 10,
+    volume: false,
+    locale: "en-US",
+    domAdapter: adapter,
+  });
 
   chart.setData([
     { time: start, close: 10 },
-    { time: start + 60_000, close: 12 }
+    { time: start + 60_000, close: 12 },
   ]);
   charts.push(chart);
 

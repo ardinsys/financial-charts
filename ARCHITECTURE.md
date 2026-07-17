@@ -29,12 +29,12 @@ components listed below.
 
 Four capability surfaces keep each audience at its intended boundary:
 
-| Audience | Capability surface | Responsibility |
-|---|---|---|
-| Application code | `FinancialChart` | Data, options, visible range, extension attachment, pane snapshots, crosshair commands, persistence, subscriptions, and disposal |
-| Series controllers | `ChartControllerContext` | Precomputed frame input and main-series projection/drawing |
-| Plugins and drawings | `ChartContext` | Attachment-scoped data/options reads, pane projection, rendering, invalidation, events, synchronization commands, and cleanup |
-| Indicators | `IndicatorContext` | Attachment-scoped extension services plus indicator drawing, localization, invalidation, pane behavior, and self-removal |
+| Audience             | Capability surface       | Responsibility                                                                                                                   |
+| -------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Application code     | `FinancialChart`         | Data, options, visible range, extension attachment, pane snapshots, crosshair commands, persistence, subscriptions, and disposal |
+| Series controllers   | `ChartControllerContext` | Precomputed frame input and main-series projection/drawing                                                                       |
+| Plugins and drawings | `ChartContext`           | Attachment-scoped data/options reads, pane projection, rendering, invalidation, events, synchronization commands, and cleanup    |
+| Indicators           | `IndicatorContext`       | Attachment-scoped extension services plus indicator drawing, localization, invalidation, pane behavior, and self-removal         |
 
 Application code does not receive canvases, scales, render caches, invalidation
 commands, raw panes, or publication rights. Authoring contexts expose only the
@@ -68,42 +68,42 @@ region.
 
 ## Module ownership
 
-| Area | Current owner | Responsibility |
-|---|---|---|
-| Public coordination | `FinancialChart` | Validates commands and coordinates model, lifecycle, layout, interaction, and rendering effects |
-| Public option contracts | `chart-options.ts` | Constructor/update options, resolved controller options, locale values, and immutable option snapshots |
-| Resolved option state | `ChartOptionsState` | Input isolation, runtime option ownership, effective update detection, controller snapshot reuse, and public snapshot identity |
-| Controller registration | `ControllerRegistry` | Chart-scoped constructor identity, class defaults, lookup, and stable frozen registration snapshots |
-| Chart model | `ChartModel` | Retained source bars, step-size remapping, streaming updates, logical/time view ranges, the visible scale, and derived snapshots |
-| Bar storage | `DataStore` | Sorted immutable points, binary-search lookup, bucketing, merging, and stable data/time snapshots |
-| Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and numeric scale ranges |
-| Series behavior | `ChartController`, `ChartControllerContext` | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing through a projection-only context |
-| Extension lifecycle | `ExtensionHost` | Plugin/indicator registries, attachment scopes, state delivery, pointer order, annotations, and detachment |
-| Extension contract | `ChartPlugin`, `ChartContext`, `IndicatorContext` | Attachment-scoped services and optional lifecycle/render callbacks |
-| Change publication | `ChartChangePublisher` | Ordered extension delivery, public model-change events, and render invalidation after completed mutations |
-| Indicator behavior | `Indicator`, `PaneledIndicator` | Indicator state, labels, drawing, and optional pane-specific scale/container behavior |
-| Pane layout | `PaneLayout`, `Pane` | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales |
-| Browser interaction | `InteractionController`, `CrosshairResolver`, `interaction/crosshair.ts` | Listener lifetime, gesture state, pointer normalization, shared coordinate resolution, and the public crosshair contract |
-| Rendering | `ChartRenderer`, `RenderPipeline`, `chart-render-types.ts` | Canvas/context ownership, authoring layer contracts, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
-| Overlay DOM | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
-| Public events | private `EventEmitter<ChartEventMap>` | Application subscription through `FinancialChart.on()` and `off()`; internal and extension-originated publication |
-| Chart persistence | `ChartStateController`, `chart-state.ts` | Serialization, restoration preparation, deferred restored views, versioned state contracts, validation, and contributor indexing |
-| Extension persistence | indicator and drawing state helpers | Versioned JSON-safe indicator and drawing state plus reconstruction contracts |
+| Area                    | Current owner                                                            | Responsibility                                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public coordination     | `FinancialChart`                                                         | Validates commands and coordinates model, lifecycle, layout, interaction, and rendering effects                                                |
+| Public option contracts | `chart-options.ts`                                                       | Constructor/update options, resolved controller options, locale values, and immutable option snapshots                                         |
+| Resolved option state   | `ChartOptionsState`                                                      | Input isolation, runtime option ownership, effective update detection, controller snapshot reuse, and public snapshot identity                 |
+| Controller registration | `ControllerRegistry`                                                     | Chart-scoped constructor identity, class defaults, lookup, and stable frozen registration snapshots                                            |
+| Chart model             | `ChartModel`                                                             | Retained source bars, step-size remapping, streaming updates, logical/time view ranges, the visible scale, and derived snapshots               |
+| Bar storage             | `DataStore`                                                              | Sorted immutable points, binary-search lookup, bucketing, merging, and stable data/time snapshots                                              |
+| Coordinate systems      | `DataScaleModel`, `TimeScale`, `PriceScale`                              | Logical/time/price projection and numeric scale ranges                                                                                         |
+| Series behavior         | `ChartController`, `ChartControllerContext`                              | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing through a projection-only context                 |
+| Extension lifecycle     | `ExtensionHost`                                                          | Plugin/indicator registries, attachment scopes, state delivery, pointer order, annotations, and detachment                                     |
+| Extension contract      | `ChartPlugin`, `ChartContext`, `IndicatorContext`                        | Attachment-scoped services and optional lifecycle/render callbacks                                                                             |
+| Change publication      | `ChartChangePublisher`                                                   | Ordered extension delivery, public model-change events, and render invalidation after completed mutations                                      |
+| Indicator behavior      | `Indicator`, `PaneledIndicator`                                          | Indicator state, labels, drawing, and optional pane-specific scale/container behavior                                                          |
+| Pane layout             | `PaneLayout`, `Pane`                                                     | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales                                            |
+| Browser interaction     | `InteractionController`, `CrosshairResolver`, `interaction/crosshair.ts` | Listener lifetime, gesture state, pointer normalization, shared coordinate resolution, and the public crosshair contract                       |
+| Rendering               | `ChartRenderer`, `RenderPipeline`, `chart-render-types.ts`               | Canvas/context ownership, authoring layer contracts, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
+| Overlay DOM             | `ChartDOMAdapter`                                                        | Overlay, indicator labels/actions, and pane divider elements                                                                                   |
+| Public events           | private `EventEmitter<ChartEventMap>`                                    | Application subscription through `FinancialChart.on()` and `off()`; internal and extension-originated publication                              |
+| Chart persistence       | `ChartStateController`, `chart-state.ts`                                 | Serialization, restoration preparation, deferred restored views, versioned state contracts, validation, and contributor indexing               |
+| Extension persistence   | indicator and drawing state helpers                                      | Versioned JSON-safe indicator and drawing state plus reconstruction contracts                                                                  |
 
 ## Tracing common flows
 
 Use the public method or browser event as the entry point, then follow the owner
 column rather than searching the entire facade:
 
-| Flow | Trace |
-|---|---|
-| Replace or stream data | `FinancialChart.setData()` / `updateData()` → `ChartModel` → scale and pane synchronization → `ChartChangePublisher` → `ChartRenderer` |
-| Pan or zoom | browser event → `InteractionController` → facade view command → `ChartModel` → `ChartChangePublisher` |
-| Resolve a crosshair | browser or public crosshair command → `CrosshairResolver` → `InteractionController` state → `ChartChangePublisher` |
-| Attach an extension | facade add method → `ExtensionHost` attach scope → current options, data, and visible-range delivery |
-| Render a frame | change publication or authoring-context invalidation → `ChartRenderer` layer set → `RenderPipeline` stages |
-| Restore state | `ChartStateController` validation and reconstruction → `FinancialChart.applyChartStateRestoration()` → one extension refresh, redraw, and public completion event |
-| Dispose the chart | `FinancialChart.dispose()` → interaction → renderer stop → extensions → panes → events → renderer → DOM |
+| Flow                   | Trace                                                                                                                                                             |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Replace or stream data | `FinancialChart.setData()` / `updateData()` → `ChartModel` → scale and pane synchronization → `ChartChangePublisher` → `ChartRenderer`                            |
+| Pan or zoom            | browser event → `InteractionController` → facade view command → `ChartModel` → `ChartChangePublisher`                                                             |
+| Resolve a crosshair    | browser or public crosshair command → `CrosshairResolver` → `InteractionController` state → `ChartChangePublisher`                                                |
+| Attach an extension    | facade add method → `ExtensionHost` attach scope → current options, data, and visible-range delivery                                                              |
+| Render a frame         | change publication or authoring-context invalidation → `ChartRenderer` layer set → `RenderPipeline` stages                                                        |
+| Restore state          | `ChartStateController` validation and reconstruction → `FinancialChart.applyChartStateRestoration()` → one extension refresh, redraw, and public completion event |
+| Dispose the chart      | `FinancialChart.dispose()` → interaction → renderer stop → extensions → panes → events → renderer → DOM                                                           |
 
 ## Ownership and snapshot rules
 
@@ -252,17 +252,17 @@ the event and stops dispatch.
 Data, view, option, and crosshair notification paths are coordinated by
 `ChartChangePublisher`:
 
-| Trigger | Extension callbacks | Public event | Render effect |
-|---|---|---|---|
-| `setData` / `updateData` | Data, then visible range when changed | `visible-range-change` when changed | All dependent layers |
-| Visible-range setter or interaction | Visible range | `visible-range-change` | View-dependent layers |
-| `updateOptions` | Options, remapped data when changed, then visible range | `options-change`, then `visible-range-change` when changed | Layers classified by changed keys |
-| Pane resize or explicit pane heights | Pane heights | `pane-heights-change` | Pane-dependent layers |
-| Crosshair movement or command | None | `crosshair-change` or `crosshair-clear` | Crosshair layer |
-| Add indicator | Initial options, data, range | `indicator-add` after initial delivery | Indicator/all layers as required |
-| Remove indicator | Detach and release resources | `indicator-remove` after cleanup | Indicator/all layers as required |
-| Drawing completion | Drawing callback | `drawing-finished` after extension callback | Drawing-dependent layers |
-| State restore | Recreated indicators receive initial state; existing plugins receive one final refresh | `state-restored` after restoration | One final full redraw |
+| Trigger                              | Extension callbacks                                                                    | Public event                                               | Render effect                     |
+| ------------------------------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------- |
+| `setData` / `updateData`             | Data, then visible range when changed                                                  | `visible-range-change` when changed                        | All dependent layers              |
+| Visible-range setter or interaction  | Visible range                                                                          | `visible-range-change`                                     | View-dependent layers             |
+| `updateOptions`                      | Options, remapped data when changed, then visible range                                | `options-change`, then `visible-range-change` when changed | Layers classified by changed keys |
+| Pane resize or explicit pane heights | Pane heights                                                                           | `pane-heights-change`                                      | Pane-dependent layers             |
+| Crosshair movement or command        | None                                                                                   | `crosshair-change` or `crosshair-clear`                    | Crosshair layer                   |
+| Add indicator                        | Initial options, data, range                                                           | `indicator-add` after initial delivery                     | Indicator/all layers as required  |
+| Remove indicator                     | Detach and release resources                                                           | `indicator-remove` after cleanup                           | Indicator/all layers as required  |
+| Drawing completion                   | Drawing callback                                                                       | `drawing-finished` after extension callback                | Drawing-dependent layers          |
+| State restore                        | Recreated indicators receive initial state; existing plugins receive one final refresh | `state-restored` after restoration                         | One final full redraw             |
 
 Ordinary model mutations produce one internal change description. The publisher
 delivers extension callbacks, emits public completion events, and requests

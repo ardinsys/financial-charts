@@ -8,7 +8,7 @@ import { LineController } from "../src/controllers/line-controller";
 import {
   getChartContext,
   getChartModel,
-  requestChartRedraw
+  requestChartRedraw,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -31,13 +31,13 @@ function createChart(type: ControllerType) {
       LineController,
       AreaController,
       CandlestickController,
-      HLCAreaController
+      HLCAreaController,
     ],
     includeDefaultControllers: false,
     stepSize: 60_000,
     maxZoom: 10,
     volume: true,
-    locale: "en-US"
+    locale: "en-US",
   });
   charts.push(chart);
   return chart;
@@ -50,7 +50,7 @@ describe("chart data contracts", () => {
 
     chart.setData([
       { time: start + 60_000, close: null },
-      { time: start, close: 0, volume: 0 }
+      { time: start, close: 0, volume: 0 },
     ]);
 
     const context = getChartContext(chart, "main");
@@ -59,7 +59,7 @@ describe("chart data contracts", () => {
 
     expect(chart.getData()).toEqual([
       { time: start, close: 0, volume: 0 },
-      { time: start + 60_000, close: null }
+      { time: start + 60_000, close: null },
     ]);
     expect(context.moveTo).toHaveBeenCalled();
     expect(
@@ -79,7 +79,7 @@ describe("chart data contracts", () => {
 
     chart.setData([
       { time: start, open: 0, high: 0, low: 0, close: 0, volume: 0 },
-      { time: start + 60_000, open: null, high: null, low: null, close: null }
+      { time: start + 60_000, open: null, high: null, low: null, close: null },
     ]);
 
     const context = getChartContext(chart, "main");
@@ -102,7 +102,7 @@ describe("chart data contracts", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     chart.setData([
       { time: start, high: 2, low: 0, close: null },
-      { time: start + 60_000, close: 1 }
+      { time: start + 60_000, close: 1 },
     ]);
 
     expect(() => requestChartRedraw(chart, "series", true)).not.toThrow();
@@ -113,7 +113,7 @@ describe("chart data contracts", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     chart.setData([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 12 }
+      { time: start + 60_000, close: 12 },
     ]);
     const context = getChartContext(chart, "main");
     vi.mocked(context.createLinearGradient).mockClear();
@@ -129,7 +129,7 @@ describe("chart data contracts", () => {
     const start = Date.UTC(2024, 0, 1, 9);
     chart.setData([
       { time: start, close: 1 },
-      { time: start + 2 * 60_000, close: 3 }
+      { time: start + 2 * 60_000, close: 3 },
     ]);
 
     expect(() => chart.updateData({ time: start + 60_000, close: 2 })).toThrow(
@@ -137,7 +137,7 @@ describe("chart data contracts", () => {
     );
     expect(chart.getData()).toEqual([
       { time: start, close: 1 },
-      { time: start + 2 * 60_000, close: 3 }
+      { time: start + 2 * 60_000, close: 3 },
     ]);
   });
 

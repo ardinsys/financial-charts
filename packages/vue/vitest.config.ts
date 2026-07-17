@@ -7,13 +7,13 @@ export default defineConfig({
       {
         find: /^@ardinsys\/financial-charts\/extensions$/,
         replacement: fileURLToPath(
-          new URL("../core/src/extensions.ts", import.meta.url),
+          new URL("../core/src/extensions.ts", import.meta.url)
         ),
       },
       {
         find: /^@ardinsys\/financial-charts$/,
         replacement: fileURLToPath(
-          new URL("../core/src/index.ts", import.meta.url),
+          new URL("../core/src/index.ts", import.meta.url)
         ),
       },
     ],

@@ -2,7 +2,7 @@ import { ChartController } from "../controllers/controller";
 import { PaneledIndicator } from "../indicators/paneled-indicator";
 import {
   Indicator,
-  type DefaultIndicatorOptions
+  type DefaultIndicatorOptions,
 } from "../indicators/indicator";
 import { ChartIndicatorHost } from "../indicators/chart-indicator-host";
 import type { ScaleRangeModifier } from "../scales/data-scale-model";
@@ -23,7 +23,7 @@ import { InteractionController } from "../interaction/interaction-controller";
 import { CrosshairResolver } from "../interaction/crosshair-resolver";
 import type {
   ChartCrosshairOptions,
-  ChartCrosshairState
+  ChartCrosshairState,
 } from "../interaction/crosshair";
 import { getDefaultControllerConstructors } from "./internal-default-controllers";
 import { ChartModel } from "./chart-model";
@@ -31,7 +31,7 @@ import { ChartOptionsState } from "./chart-options-state";
 import { ControllerRegistry } from "./controller-registry";
 import {
   ChartChangePublisher,
-  type ChartChange
+  type ChartChange,
 } from "./chart-change-publisher";
 import {
   type ChartOptions,
@@ -40,18 +40,18 @@ import {
   type ChartOptionsUpdate,
   type ControllerConstructor,
   type ControllerType,
-  type MutableResolvedChartOptions
+  type MutableResolvedChartOptions,
 } from "./chart-options";
 import {
   type ChartPaneState,
   type ChartState,
   type ChartStateRestoreOptions,
-  type ChartStateSerializationOptions
+  type ChartStateSerializationOptions,
 } from "./chart-state";
 import {
   ChartStateController,
   type ChartStateRuntimeSnapshot,
-  type PreparedChartStateRestoration
+  type PreparedChartStateRestoration,
 } from "./chart-state-controller";
 
 export type {
@@ -66,7 +66,7 @@ export type {
   ControllerType,
   LocaleValues,
   LocaleValuesMap,
-  ResolvedChartOptions
+  ResolvedChartOptions,
 } from "./chart-options";
 export {
   CHART_STATE_VERSION,
@@ -76,11 +76,11 @@ export {
   type ChartStateContributor,
   type ChartStateRestoreOptions,
   type ChartStateRestoredEvent,
-  type ChartStateSerializationOptions
+  type ChartStateSerializationOptions,
 } from "./chart-state";
 export type {
   ChartCrosshairOptions,
-  ChartCrosshairState
+  ChartCrosshairState,
 } from "../interaction/crosshair";
 export type { ChartPaneSnapshot, PaneHeightsInput } from "../panes/pane-layout";
 
@@ -91,7 +91,7 @@ const ALL_REDRAW_PARTS = [
   "indicators",
   "drawings",
   "annotations",
-  "crosshair"
+  "crosshair",
 ] as const;
 
 function getThemeClassNames(theme: ChartOptionsSnapshot["theme"]): string[] {
@@ -265,7 +265,7 @@ export class FinancialChartBase {
   ) {
     const changed = this.model.refreshIndexBounds({
       ...options,
-      minimumVisibleSlots: this.getMinimumVisibleIndexSlots()
+      minimumVisibleSlots: this.getMinimumVisibleIndexSlots(),
     });
     this.syncPaneTimeScales();
     return changed;
@@ -321,7 +321,7 @@ export class FinancialChartBase {
     this.recalculateVisibleScale();
     this.changePublisher.commit({
       visibleRange: this.getVisibleTimeRange(),
-      redraw: ALL_REDRAW_PARTS
+      redraw: ALL_REDRAW_PARTS,
     });
     return true;
   }
@@ -340,7 +340,7 @@ export class FinancialChartBase {
     const visibleRange = this.model.getVisibleIndexRange();
     this.setVisibleLogicalRange({
       from: visibleRange.from - delta,
-      to: visibleRange.to - delta
+      to: visibleRange.to - delta,
     });
   }
 
@@ -434,7 +434,7 @@ export class FinancialChartBase {
     resizeCanvases = true,
     resizeIndicators = true,
     redraw = false,
-    immediate = false
+    immediate = false,
   }: {
     resizeCanvases?: boolean;
     resizeIndicators?: boolean;
@@ -448,7 +448,7 @@ export class FinancialChartBase {
       height: this.getPaneLayoutHeight(),
       yAxisWidth: this.yLabelWidth,
       containerWidth: this.containerWidth,
-      themeKey: this.options.theme.key
+      themeKey: this.options.theme.key,
     });
 
     if (resizeCanvases && this.renderer) this.renderer.resizeCanvases();
@@ -486,7 +486,7 @@ export class FinancialChartBase {
       overflow: "hidden",
       width: "100%",
       height: "100%",
-      backgroundColor: this.options.theme.backgroundColor
+      backgroundColor: this.options.theme.backgroundColor,
     });
     this.container.classList.add(
       "financial-charts",
@@ -502,12 +502,12 @@ export class FinancialChartBase {
       onInteractiveResize: () => {
         this.applyPaneLayout({ redraw: true, immediate: true });
         this.notifyPaneHeightsChanged();
-      }
+      },
     });
 
     this.overlay = domAdapter.createOverlay(this.container, {
       themeKey: this.options.theme.key,
-      labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20
+      labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20,
     });
     this.indicatorLabelContainer = this.overlay.indicatorLabelContainer;
 
@@ -545,7 +545,7 @@ export class FinancialChartBase {
         refreshIndicatorLabels: (time) => this.refreshIndicatorLabels(time),
         beforeDraw: () => this.extensionHost.beforeDrawPlugins(),
         drawPlugins: () => this.extensionHost.drawPlugins(),
-        afterDraw: () => this.extensionHost.afterDrawPlugins()
+        afterDraw: () => this.extensionHost.afterDrawPlugins(),
       },
       {
         getLayout: () => {
@@ -559,10 +559,10 @@ export class FinancialChartBase {
             yAxisHeight: yAxisRegion.height,
             fullWidth: this.containerWidth,
             fullHeight: this.containerHeight,
-            xAxisHeight: this.xLabelHeight
+            xAxisHeight: this.xLabelHeight,
           };
         },
-        onResize: () => this.handleRendererResize()
+        onResize: () => this.handleRendererResize(),
       }
     );
     const extensionReadModel = new ChartExtensionReadModel(
@@ -579,7 +579,7 @@ export class FinancialChartBase {
         recalculateVisibleScale: () => this.recalculateVisibleScale(),
         removeIndicator: (indicator) => {
           this.removeIndicator(indicator);
-        }
+        },
       }
     );
     this.extensionHost = new ExtensionHost(
@@ -607,7 +607,7 @@ export class FinancialChartBase {
           } else {
             this.removePlugin(extension as ChartPlugin);
           }
-        }
+        },
       },
       domAdapter,
       this.renderer,
@@ -634,7 +634,7 @@ export class FinancialChartBase {
     );
     this.applyPaneLayout({
       resizeCanvases: false,
-      resizeIndicators: false
+      resizeIndicators: false,
     });
     this.crosshairResolver = new CrosshairResolver(
       this.model,
@@ -645,7 +645,7 @@ export class FinancialChartBase {
         getMainCanvas: () => this.renderer.getCanvas("main"),
         getDrawingWidth: () => this.renderer.getDrawingSize().width,
         getPlotHeight: () => this.getPaneLayoutHeight(),
-        getTimeAnchorAlignment: () => this.controller.getTimeAnchorAlignment()
+        getTimeAnchorAlignment: () => this.controller.getTimeAnchorAlignment(),
       }
     );
     const topCanvas = this.renderer.getCanvas("crosshair");
@@ -666,12 +666,12 @@ export class FinancialChartBase {
         crosshairChanged: (state) => {
           this.changePublisher.commit({
             crosshairChanged: state,
-            redraw: "crosshair"
+            redraw: "crosshair",
           });
         },
         click: (event, point) => this.events.emit("click", { event, point }),
         touchClick: (event, point) =>
-          this.events.emit("touch-click", { event, point })
+          this.events.emit("touch-click", { event, point }),
       },
       topCanvas
     );
@@ -695,18 +695,18 @@ export class FinancialChartBase {
               : { ...configuredTimeRange },
           stepSize: this.options.stepSize,
           maxZoom: this.options.maxZoom,
-          volume: this.options.volume
+          volume: this.options.volume,
         },
         visibleRange: this.getVisibleTimeWindow(),
         panes: this.capturePaneHeightRatios(),
         indicators: this.extensionHost
           .getAllIndicators()
-          .map((indicator) => indicator.toJSON())
+          .map((indicator) => indicator.toJSON()),
       },
       mainPaneId: this.paneLayout.getMainPane().getId(),
       controllerTypes: this.options.controllers.map(
         (controller) => controller.ID
-      )
+      ),
     };
   }
 
@@ -727,14 +727,12 @@ export class FinancialChartBase {
             : fallbackPaneRatio,
         ...(indicator
           ? { indicatorInstanceId: indicator.getInstanceId() }
-          : {})
+          : {}),
       };
     });
   }
 
-  private applyPaneHeightRatios(
-    panes: readonly ChartPaneState[]
-  ): boolean {
+  private applyPaneHeightRatios(panes: readonly ChartPaneState[]): boolean {
     const localPanes = this.capturePaneHeightRatios();
     if (panes.length !== localPanes.length) return false;
     const mainPaneId = localPanes.find(
@@ -760,7 +758,7 @@ export class FinancialChartBase {
 
   private notifyPaneHeightsChanged(): void {
     this.changePublisher.commit({
-      paneHeights: this.capturePaneHeightRatios()
+      paneHeights: this.capturePaneHeightRatios(),
     });
   }
 
@@ -768,7 +766,7 @@ export class FinancialChartBase {
     state,
     indicators,
     paneIdsByIndicator,
-    contributors
+    contributors,
   }: PreparedChartStateRestoration): boolean {
     let optionsEvent: ChartOptionsChangeEvent | undefined;
     let visibleRangeDeferred = false;
@@ -828,13 +826,13 @@ export class FinancialChartBase {
     const rangeChanged = this.refreshIndexBounds({
       reset: span === this.getIndexBoundsSpan(),
       preserveRightEdge,
-      span
+      span,
     });
     if (rangeChanged || timeRangeChanged) this.recalculateVisibleScale();
     this.changePublisher.commit({
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
       redraw: ALL_REDRAW_PARTS,
-      immediate: true
+      immediate: true,
     });
   }
 
@@ -874,7 +872,7 @@ export class FinancialChartBase {
     this.container.style.backgroundColor = this.options.theme.backgroundColor;
     this.overlay.update({
       themeKey: this.options.theme.key,
-      labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20
+      labelTopOffset: this.options.theme.crosshair.infoLine.fontSize + 20,
     });
     this.paneLayout.updatePaneDividers(this.options.theme.key);
   }
@@ -965,7 +963,7 @@ export class FinancialChartBase {
         hasData && (coreChanged || typeChanged)
           ? this.getVisibleTimeRange()
           : undefined,
-      redraw: [...redrawParts]
+      redraw: [...redrawParts],
     };
   }
 
@@ -1008,7 +1006,7 @@ export class FinancialChartBase {
         data: this.model.getData(),
         crosshairCleared,
         redraw: ALL_REDRAW_PARTS,
-        immediate: true
+        immediate: true,
       });
       return;
     }
@@ -1026,7 +1024,7 @@ export class FinancialChartBase {
       data: this.model.getData(),
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
       crosshairCleared,
-      redraw: ALL_REDRAW_PARTS
+      redraw: ALL_REDRAW_PARTS,
     });
   }
 
@@ -1053,13 +1051,13 @@ export class FinancialChartBase {
 
     const rangeChanged = this.refreshIndexBounds({
       preserveRightEdge,
-      span
+      span,
     });
     this.recalculateVisibleScale();
     this.changePublisher.commit({
       data: this.model.getData(),
       visibleRange: rangeChanged ? this.getVisibleTimeRange() : undefined,
-      redraw: ALL_REDRAW_PARTS
+      redraw: ALL_REDRAW_PARTS,
     });
   }
 
@@ -1105,7 +1103,7 @@ export class FinancialChartBase {
             );
             this.applyPaneLayout({
               resizeCanvases: false,
-              resizeIndicators: false
+              resizeIndicators: false,
             });
             indicator.init(this.paneLayout.getPaneInitParams(pane));
             this.container.appendChild(indicator.getContainer());
@@ -1140,7 +1138,7 @@ export class FinancialChartBase {
             }
           }
         },
-        release: () => indicator.releaseAttachment()
+        release: () => indicator.releaseAttachment(),
       });
     } finally {
       if (this.model.hasData()) this.recalculateVisibleScale();
@@ -1212,7 +1210,7 @@ export class FinancialChartBase {
     this.interactionController.setProgrammaticCrosshair(state);
     this.changePublisher.commit({
       crosshairChanged: state,
-      redraw: "crosshair"
+      redraw: "crosshair",
     });
 
     return state;
@@ -1222,7 +1220,7 @@ export class FinancialChartBase {
     const crosshairCleared = this.clearCrosshairModel();
     this.changePublisher.commit({
       crosshairCleared,
-      redraw: "crosshair"
+      redraw: "crosshair",
     });
   }
 
@@ -1244,7 +1242,7 @@ export class FinancialChartBase {
       () => this.events.removeAllListeners(),
       () => this.renderer.dispose(),
       () => this.overlay.destroy(),
-      () => this.container.remove()
+      () => this.container.remove(),
     ]);
   }
 

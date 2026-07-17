@@ -66,7 +66,7 @@ export function cloneJSONStateValue(
           `${path}.${key}`,
           ancestors
         ),
-        writable: true
+        writable: true,
       });
     }
     return clone;

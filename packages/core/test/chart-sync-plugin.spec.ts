@@ -9,7 +9,7 @@ import {
   TrendLine,
   type DrawingJSON,
   type DrawingManagerOptions,
-  type DrawingOptions
+  type DrawingOptions,
 } from "../src/drawings";
 import type { IndicatorResolver } from "../src/indicators/indicator";
 import { TestIndicator } from "./fixtures/test-indicator";
@@ -18,7 +18,7 @@ import type { ChartPlugin } from "../src/plugin/chart-plugin";
 import {
   ChartSyncPlugin,
   type ChartSyncCrosshairSnapshot,
-  type ChartSyncPostMessageOptions
+  type ChartSyncPostMessageOptions,
 } from "../src/plugins";
 import { DrawingAxisBoundsPlugin } from "../src/plugins/drawing-axis-bounds-plugin";
 import { getChartContext, getExtensionHost } from "./chart-test-harness";
@@ -50,7 +50,7 @@ class CustomDataDrawing extends Drawing {
     super(options);
     this.metadata = {
       label: options.metadata.label,
-      tags: [...options.metadata.tags]
+      tags: [...options.metadata.tags],
     };
   }
 
@@ -64,7 +64,7 @@ class CustomDataDrawing extends Drawing {
       anchors: json.anchors,
       id: json.id,
       metadata: data.metadata,
-      paneId: json.paneId
+      paneId: json.paneId,
     });
   }
 
@@ -78,8 +78,8 @@ class CustomDataDrawing extends Drawing {
     return {
       metadata: {
         label: this.metadata.label,
-        tags: [...this.metadata.tags]
-      }
+        tags: [...this.metadata.tags],
+      },
     };
   }
 }
@@ -132,7 +132,7 @@ class SyncMessageProbePlugin implements ChartPlugin {
         this.received.push({
           group: message.source.group,
           payload: message.payload,
-          sourcePlugin: message.source.plugin
+          sourcePlugin: message.source.plugin,
         });
       }
     );
@@ -165,7 +165,7 @@ function createData(): ChartData[] {
     { time: start, close: 10 },
     { time: start + 60_000, close: 12 },
     { time: start + 120_000, close: 14 },
-    { time: start + 180_000, close: 16 }
+    { time: start + 180_000, close: 16 },
   ];
 }
 
@@ -184,20 +184,20 @@ function createSyncedChart(
   const chart = new FinancialChart(container, {
     timeRange: {
       start: data[0].time,
-      end: data.at(-1)!.time + 60_000
+      end: data.at(-1)!.time + 60_000,
     },
     type: "line",
     controllers: [LineController],
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
   });
   const drawingManager = new DrawingManager(drawingManagerOptions);
   const syncPlugin = new ChartSyncPlugin({
     group,
     drawingManager,
-    indicatorResolver
+    indicatorResolver,
   });
   chart.setData(data);
   beforeSync?.(chart, syncPlugin);
@@ -218,20 +218,20 @@ function createSyncedChartWithDeferredData(group: string) {
   const chart = new FinancialChart(container, {
     timeRange: {
       start: data[0].time,
-      end: data.at(-1)!.time + 60_000
+      end: data.at(-1)!.time + 60_000,
     },
     type: "line",
     controllers: [LineController],
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
   });
   const drawingManager = new DrawingManager();
   const syncPlugin = new ChartSyncPlugin({
     group,
     drawingManager,
-    indicatorResolver
+    indicatorResolver,
   });
   chart.addPlugin(drawingManager);
   chart.addPlugin(syncPlugin);
@@ -253,21 +253,21 @@ function createDeferredChartWithSync(
   const chart = new FinancialChart(container, {
     timeRange: {
       start: data[0].time,
-      end: data.at(-1)!.time + 60_000
+      end: data.at(-1)!.time + 60_000,
     },
     type: "line",
     controllers: [LineController],
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
   });
   const drawingManager = new DrawingManager();
   const syncPlugin = new ChartSyncPlugin({
     indicatorResolver,
     ...syncOptions,
     group,
-    drawingManager
+    drawingManager,
   });
   chart.addPlugin(drawingManager);
   chart.addPlugin(syncPlugin);
@@ -303,7 +303,7 @@ describe("ChartSyncPlugin", () => {
     const source = createSyncedChart(group);
     source.chart.setVisibleTimeRange({
       start: source.data[1].time,
-      end: source.data[2].time + 60_000
+      end: source.data[2].time + 60_000,
     });
     const retainedRange = source.chart.getVisibleTimeRange();
     source.chart.dispose();
@@ -314,9 +314,7 @@ describe("ChartSyncPlugin", () => {
     const target = createSyncedChartWithDeferredData(group);
     target.chart.setData(target.data);
 
-    expect(target.chart.getVisibleTimeRange()).not.toEqual(
-      retainedRange
-    );
+    expect(target.chart.getVisibleTimeRange()).not.toEqual(retainedRange);
   });
 
   it("syncs visible ranges by time", async () => {
@@ -326,7 +324,7 @@ describe("ChartSyncPlugin", () => {
 
     source.chart.setVisibleTimeRange({
       start: source.data[1].time,
-      end: source.data[2].time + 60_000
+      end: source.data[2].time + 60_000,
     });
     await nextAnimationFrame();
 
@@ -351,7 +349,7 @@ describe("ChartSyncPlugin", () => {
 
     target.chart.setVisibleTimeRange({
       start: target.data[1].time,
-      end: target.data[2].time + 60_000
+      end: target.data[2].time + 60_000,
     });
     await nextAnimationFrame();
 
@@ -368,7 +366,7 @@ describe("ChartSyncPlugin", () => {
     target.chart.removePlugin(target.syncPlugin);
     source.chart.setVisibleTimeRange({
       start: source.data[2].time,
-      end: source.data[3].time + 60_000
+      end: source.data[3].time + 60_000,
     });
     await nextAnimationFrame();
     target.chart.addPlugin(target.syncPlugin);
@@ -379,7 +377,7 @@ describe("ChartSyncPlugin", () => {
 
     target.chart.setVisibleTimeRange({
       start: target.data[0].time,
-      end: target.data[1].time + 60_000
+      end: target.data[1].time + 60_000,
     });
     await nextAnimationFrame();
 
@@ -393,7 +391,7 @@ describe("ChartSyncPlugin", () => {
     const source = createSyncedChart(group);
     source.chart.setVisibleTimeRange({
       start: source.data[2].time,
-      end: source.data[3].time + 60_000
+      end: source.data[3].time + 60_000,
     });
     const sourceRange = source.chart.getVisibleTimeRange();
 
@@ -409,7 +407,7 @@ describe("ChartSyncPlugin", () => {
     const source = createSyncedChart(group);
     const target = createSyncedChart(group, {}, 770, (chart) => {
       const placeholder = new TestIndicator(null, {
-        instanceId: "consumed-pane-id"
+        instanceId: "consumed-pane-id",
       });
       chart.addIndicator(placeholder);
       chart.removeIndicator(placeholder);
@@ -421,11 +419,11 @@ describe("ChartSyncPlugin", () => {
     const [mainPane, indicatorPane] = source.chart.getPanes();
     source.chart.setPaneHeights({
       [mainPane.id]: 222,
-      [indicatorPane.id]: 148
+      [indicatorPane.id]: 148,
     });
     await nextAnimationFrame();
     expect(target.chart.getPanes().map(({ height }) => height)).toEqual([
-      444, 296
+      444, 296,
     ]);
 
     const divider = source.container.querySelector(
@@ -434,23 +432,23 @@ describe("ChartSyncPlugin", () => {
     divider.dispatchEvent(
       new MouseEvent("pointerdown", {
         bubbles: true,
-        clientY: 222
+        clientY: 222,
       })
     );
     window.dispatchEvent(
       new MouseEvent("pointermove", {
         bubbles: true,
-        clientY: 252
+        clientY: 252,
       })
     );
     window.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
     await nextAnimationFrame();
 
     expect(source.chart.getPanes().map(({ height }) => height)).toEqual([
-      252, 118
+      252, 118,
     ]);
     expect(target.chart.getPanes().map(({ height }) => height)).toEqual([
-      504, 236
+      504, 236,
     ]);
     expect(target.chart.getPanes()[1].id).not.toBe(
       source.chart.getPanes()[1].id
@@ -460,20 +458,20 @@ describe("ChartSyncPlugin", () => {
         .toJSON()
         .panes.map(({ heightRatio, indicatorInstanceId }) => ({
           heightRatio,
-          indicatorInstanceId
+          indicatorInstanceId,
         }))
     ).toEqual(
       source.chart
         .toJSON()
         .panes.map(({ heightRatio, indicatorInstanceId }) => ({
           heightRatio,
-          indicatorInstanceId
+          indicatorInstanceId,
         }))
     );
 
     const late = createSyncedChart(group, {}, 770);
     expect(late.chart.getPanes().map(({ height }) => height)).toEqual([
-      504, 236
+      504, 236,
     ]);
   });
 
@@ -517,7 +515,7 @@ describe("ChartSyncPlugin", () => {
     source.chart.setVisibleLogicalRange({ from: 0.25, to: 2.25 });
     source.chart.setCrosshair({
       time: source.data[1].time,
-      price: source.data[1].close ?? undefined
+      price: source.data[1].close ?? undefined,
     });
     await nextAnimationFrame();
 
@@ -538,18 +536,18 @@ describe("ChartSyncPlugin", () => {
     let drawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 1, price: 12 }
+        { index: 1, price: 12 },
       ],
       id: "coalesced-drawing",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
     const selected = new TrendLine({
       anchors: [
         { index: 2, price: 14 },
-        { index: 3, price: 16 }
+        { index: 3, price: 16 },
       ],
       id: "selected-drawing",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
     source.drawingManager.addDrawing(drawing, { emit: true });
     source.drawingManager.addDrawing(selected, { emit: true });
@@ -562,17 +560,17 @@ describe("ChartSyncPlugin", () => {
     source.chart.setVisibleLogicalRange({ from: 0.4, to: 2.4 });
     drawing.setAnchors([
       { index: 0, price: 11 },
-      { index: 2, price: 15 }
+      { index: 2, price: 15 },
     ]);
     drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
-      emit: true
+      emit: true,
     }) as TrendLine;
     drawing.setAnchors([
       { index: 1, price: 13 },
-      { index: 3, price: 17 }
+      { index: 3, price: 17 },
     ]);
     drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
-      emit: true
+      emit: true,
     }) as TrendLine;
 
     sourceSync.flushPendingSync();
@@ -599,18 +597,18 @@ describe("ChartSyncPlugin", () => {
     let drawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 1, price: 12 }
+        { index: 1, price: 12 },
       ],
       id: "deleted-before-flush",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
     const selected = new TrendLine({
       anchors: [
         { index: 2, price: 14 },
-        { index: 3, price: 16 }
+        { index: 3, price: 16 },
       ],
       id: "delete-selected-drawing",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
     source.drawingManager.addDrawing(drawing, { emit: true });
     source.drawingManager.addDrawing(selected, { emit: true });
@@ -619,10 +617,10 @@ describe("ChartSyncPlugin", () => {
 
     drawing.setAnchors([
       { index: 1, price: 11 },
-      { index: 2, price: 15 }
+      { index: 2, price: 15 },
     ]);
     drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
-      emit: true
+      emit: true,
     }) as TrendLine;
     source.drawingManager.deleteDrawing(drawing);
 
@@ -640,18 +638,18 @@ describe("ChartSyncPlugin", () => {
     let drawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 1, price: 12 }
+        { index: 1, price: 12 },
       ],
       id: "ordered-drawing",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
     const selected = new TrendLine({
       anchors: [
         { index: 2, price: 14 },
-        { index: 3, price: 16 }
+        { index: 3, price: 16 },
       ],
       id: "ordered-selected-drawing",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
     source.drawingManager.addDrawing(drawing, { emit: true });
     source.drawingManager.addDrawing(selected, { emit: true });
@@ -669,10 +667,10 @@ describe("ChartSyncPlugin", () => {
 
     drawing.setAnchors([
       { index: 1, price: 11 },
-      { index: 2, price: 15 }
+      { index: 2, price: 15 },
     ]);
     drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
-      emit: true
+      emit: true,
     }) as TrendLine;
     source.drawingManager.selectDrawing(drawing);
 
@@ -682,7 +680,7 @@ describe("ChartSyncPlugin", () => {
     order.length = 0;
     drawing.setAnchors([
       { index: 1, price: 12 },
-      { index: 3, price: 16 }
+      { index: 3, price: 16 },
     ]);
     source.drawingManager.upsertDrawing(drawing.toJSON(), { emit: true });
     sourceSync.onDrawingFinished();
@@ -694,10 +692,7 @@ describe("ChartSyncPlugin", () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const target = createSyncedChart(group);
-    const cancelAnimationFrame = vi.spyOn(
-      globalThis,
-      "cancelAnimationFrame"
-    );
+    const cancelAnimationFrame = vi.spyOn(globalThis, "cancelAnimationFrame");
 
     source.chart.setVisibleLogicalRange({ from: 0.3, to: 2.3 });
     source.chart.removePlugin(source.syncPlugin);
@@ -745,27 +740,27 @@ describe("ChartSyncPlugin", () => {
     const sourceDrawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 2, price: 14 }
+        { index: 2, price: 14 },
       ],
       id: "deferred-data-trend",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
     const sourceIndicator = new CustomMovingAverageIndicator(null, {
       instanceId: "deferred-data-sma",
       names: { default: "Deferred Data SMA" },
       period: 7,
-      source: "close"
+      source: "close",
     });
 
     source.chart.setVisibleTimeRange({
       start: source.data[1].time,
-      end: source.data[2].time + 60_000
+      end: source.data[2].time + 60_000,
     });
     source.drawingManager.addDrawing(sourceDrawing, { emit: true });
     source.chart.addIndicator(sourceIndicator);
     source.chart.setCrosshair({
       time: source.data[2].time,
-      price: source.data[2].close ?? undefined
+      price: source.data[2].close ?? undefined,
     });
 
     const target = createSyncedChartWithDeferredData(group);
@@ -794,27 +789,27 @@ describe("ChartSyncPlugin", () => {
     const sourceDrawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 2, price: 14 }
+        { index: 2, price: 14 },
       ],
       id: "retained-trend",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
     const sourceIndicator = new CustomMovingAverageIndicator(null, {
       instanceId: "retained-sma",
       names: { default: "Retained SMA" },
       period: 13,
-      source: "close"
+      source: "close",
     });
 
     source.chart.setVisibleTimeRange({
       start: source.data[1].time,
-      end: source.data[2].time + 60_000
+      end: source.data[2].time + 60_000,
     });
     source.drawingManager.addDrawing(sourceDrawing, { emit: true });
     source.chart.addIndicator(sourceIndicator);
     source.chart.setCrosshair({
       time: source.data[2].time,
-      price: source.data[2].close ?? undefined
+      price: source.data[2].close ?? undefined,
     });
 
     const retainedVisibleRange = source.chart.getVisibleTimeRange();
@@ -829,9 +824,7 @@ describe("ChartSyncPlugin", () => {
     expect(target.chart.getIndicators()[0]).toBeInstanceOf(
       CustomMovingAverageIndicator
     );
-    expect(getFirstCustomIndicator(target.chart)?.getOptions().period).toBe(
-      13
-    );
+    expect(getFirstCustomIndicator(target.chart)?.getOptions().period).toBe(13);
     expect(target.chart.getCrosshairState()?.time).toBe(source.data[2].time);
   });
 
@@ -844,7 +837,7 @@ describe("ChartSyncPlugin", () => {
         instanceId: "initial-sync-disabled-sma",
         names: { default: "Disabled Initial Sync SMA" },
         period: 11,
-        source: "close"
+        source: "close",
       })
     );
 
@@ -861,7 +854,7 @@ describe("ChartSyncPlugin", () => {
 
     source.chart.setCrosshair({
       time: source.data[1].time,
-      price: source.data[1].close ?? undefined
+      price: source.data[1].close ?? undefined,
     });
 
     expect(target.chart.getCrosshairState()?.time).toBe(source.data[1].time);
@@ -878,7 +871,7 @@ describe("ChartSyncPlugin", () => {
     const group = createGroup();
     const source = createSyncedChart(group, {
       drawingFactory: ({ anchors, paneId }) =>
-        new TrendLine({ anchors, paneId })
+        new TrendLine({ anchors, paneId }),
     });
     const target = createSyncedChart(group);
     const canvas = getChartContext(source.chart, "crosshair").canvas;
@@ -889,14 +882,14 @@ describe("ChartSyncPlugin", () => {
         clientX: 120,
         clientY: 120,
         pointerId: 7,
-        pointerType: "mouse"
+        pointerType: "mouse",
       })
     );
     canvas.dispatchEvent(
       new MouseEvent("mousemove", {
         bubbles: true,
         clientX: 280,
-        clientY: 220
+        clientY: 220,
       })
     );
     await nextAnimationFrame();
@@ -908,14 +901,14 @@ describe("ChartSyncPlugin", () => {
       new MouseEvent("mousemove", {
         bubbles: true,
         clientX: 360,
-        clientY: 180
+        clientY: 180,
       })
     );
     source.container.dispatchEvent(
       new KeyboardEvent("keydown", {
         bubbles: true,
         cancelable: true,
-        key: "Escape"
+        key: "Escape",
       })
     );
 
@@ -937,10 +930,10 @@ describe("ChartSyncPlugin", () => {
     let drawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 2, price: 14 }
+        { index: 2, price: 14 },
       ],
       id: "trend-sync",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
 
     source.drawingManager.addDrawing(drawing, { emit: true });
@@ -950,10 +943,10 @@ describe("ChartSyncPlugin", () => {
 
     drawing.setAnchors([
       { index: 1, price: 11 },
-      { index: 3, price: 16 }
+      { index: 3, price: 16 },
     ]);
     drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
-      emit: true
+      emit: true,
     }) as TrendLine;
 
     expect(target.drawingManager.getDrawings()[0]?.getAnchors()).toEqual(
@@ -979,10 +972,10 @@ describe("ChartSyncPlugin", () => {
     let drawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 2, price: 14 }
+        { index: 2, price: 14 },
       ],
       id: "identity-preserved",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
     source.drawingManager.addDrawing(drawing, { emit: true });
     const targetDrawing = target.drawingManager.getDrawingById(drawing.id);
@@ -992,16 +985,16 @@ describe("ChartSyncPlugin", () => {
     for (const anchors of [
       [
         { index: 1, price: 11 },
-        { index: 2, price: 15 }
+        { index: 2, price: 15 },
       ],
       [
         { index: 1, price: 12 },
-        { index: 3, price: 16 }
-      ]
+        { index: 3, price: 16 },
+      ],
     ]) {
       drawing.setAnchors(anchors);
       drawing = source.drawingManager.upsertDrawing(drawing.toJSON(), {
-        emit: true
+        emit: true,
       }) as TrendLine;
     }
 
@@ -1013,9 +1006,9 @@ describe("ChartSyncPlugin", () => {
     expect(replaceDrawing).not.toHaveBeenCalled();
     expect(applySelection).not.toHaveBeenCalled();
     expect(
-      Array.from(
-        getExtensionHost(target.chart).getPriceAxisAnnotations()
-      ).map(({ value }) => value)
+      Array.from(getExtensionHost(target.chart).getPriceAxisAnnotations()).map(
+        ({ value }) => value
+      )
     ).toEqual([12, 16]);
   });
 
@@ -1027,7 +1020,7 @@ describe("ChartSyncPlugin", () => {
       anchors: [{ index: 1, price: 12 }],
       id: "synced-text",
       paneId: source.chart.getMainPane().id,
-      text: "Before"
+      text: "Before",
     });
     source.drawingManager.addDrawing(drawing, { emit: true });
     const originalTargetDrawing = target.drawingManager.getDrawingById(
@@ -1053,10 +1046,10 @@ describe("ChartSyncPlugin", () => {
     const drawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 2, price: 14 }
+        { index: 2, price: 14 },
       ],
       id: "unknown-on-peer",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
 
     source.drawingManager.addDrawing(drawing, { emit: true });
@@ -1072,18 +1065,18 @@ describe("ChartSyncPlugin", () => {
     let first = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 1, price: 12 }
+        { index: 1, price: 12 },
       ],
       id: "incremental-first",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
     const second = new TrendLine({
       anchors: [
         { index: 2, price: 14 },
-        { index: 3, price: 16 }
+        { index: 3, price: 16 },
       ],
       id: "incremental-second",
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
 
     source.drawingManager.addDrawing(first, { emit: true });
@@ -1092,10 +1085,10 @@ describe("ChartSyncPlugin", () => {
     const serializeSecond = vi.spyOn(second, "toJSON");
     first.setAnchors([
       { index: 0, price: 11 },
-      { index: 2, price: 15 }
+      { index: 2, price: 15 },
     ]);
     first = source.drawingManager.upsertDrawing(first.toJSON(), {
-      emit: true
+      emit: true,
     }) as TrendLine;
     await nextAnimationFrame();
 
@@ -1116,13 +1109,13 @@ describe("ChartSyncPlugin", () => {
 
     expect(serializeFirst).not.toHaveBeenCalled();
     expect(target.drawingManager.getDrawings().map(({ id }) => id)).toEqual([
-      first.id
+      first.id,
     ]);
 
     const late = createSyncedChart(group);
     expect(serializeFirst).not.toHaveBeenCalled();
     expect(late.drawingManager.getDrawings().map(({ id }) => id)).toEqual([
-      first.id
+      first.id,
     ]);
     expect(late.drawingManager.getDrawings()[0]?.getAnchors()).toEqual(
       first.getAnchors()
@@ -1134,8 +1127,8 @@ describe("ChartSyncPlugin", () => {
     const group = createGroup();
     const drawingManagerOptions: DrawingManagerOptions = {
       drawingDeserializers: {
-        [CustomDataDrawing.type]: CustomDataDrawing.fromJSON
-      }
+        [CustomDataDrawing.type]: CustomDataDrawing.fromJSON,
+      },
     };
     const source = createSyncedChart(group, drawingManagerOptions);
     const target = createSyncedChart(group, drawingManagerOptions);
@@ -1144,9 +1137,9 @@ describe("ChartSyncPlugin", () => {
       id: "custom-data-drawing",
       metadata: {
         label: "Earnings",
-        tags: ["event", "quarterly"]
+        tags: ["event", "quarterly"],
       },
-      paneId: source.chart.getMainPane().id
+      paneId: source.chart.getMainPane().id,
     });
 
     source.drawingManager.addDrawing(drawing, { emit: true });
@@ -1182,13 +1175,13 @@ describe("ChartSyncPlugin", () => {
       instanceId: "fast-sma",
       names: { default: "Fast SMA" },
       period: 9,
-      source: "close"
+      source: "close",
     });
     const slow = new CustomMovingAverageIndicator(null, {
       instanceId: "slow-sma",
       names: { default: "Slow SMA" },
       period: 21,
-      source: "close"
+      source: "close",
     });
     const serializeFast = vi.spyOn(fast, "toJSON");
     const serializeSlow = vi.spyOn(slow, "toJSON");
@@ -1202,12 +1195,12 @@ describe("ChartSyncPlugin", () => {
     expect(target.chart.getIndicatorById("fast-sma")).toBeInstanceOf(
       CustomMovingAverageIndicator
     );
-    expect(getCustomIndicator(target.chart, "fast-sma")?.getOptions().period).toBe(
-      9
-    );
-    expect(getCustomIndicator(target.chart, "slow-sma")?.getOptions().period).toBe(
-      21
-    );
+    expect(
+      getCustomIndicator(target.chart, "fast-sma")?.getOptions().period
+    ).toBe(9);
+    expect(
+      getCustomIndicator(target.chart, "slow-sma")?.getOptions().period
+    ).toBe(21);
     expect(
       target.chart.getIndicatorsByType("custom-moving-average")
     ).toHaveLength(2);
@@ -1219,12 +1212,12 @@ describe("ChartSyncPlugin", () => {
     expect(serializeFast).toHaveBeenCalledTimes(1);
     expect(serializeSlow).not.toHaveBeenCalled();
     expect(targetEvents.at(-1)).toBe("change:fast-sma");
-    expect(getCustomIndicator(target.chart, "fast-sma")?.getOptions().period).toBe(
-      12
-    );
-    expect(getCustomIndicator(target.chart, "slow-sma")?.getOptions().period).toBe(
-      21
-    );
+    expect(
+      getCustomIndicator(target.chart, "fast-sma")?.getOptions().period
+    ).toBe(12);
+    expect(
+      getCustomIndicator(target.chart, "slow-sma")?.getOptions().period
+    ).toBe(21);
 
     serializeFast.mockClear();
     serializeSlow.mockClear();
@@ -1234,7 +1227,7 @@ describe("ChartSyncPlugin", () => {
     expect(serializeSlow).toHaveBeenCalledTimes(1);
     expect(targetEvents.slice(-2)).toEqual([
       "change:slow-sma",
-      "visibility:slow-sma"
+      "visibility:slow-sma",
     ]);
     expect(
       target.chart.getIndicatorById("slow-sma")?.isIndicatorVisible()
@@ -1261,12 +1254,12 @@ describe("ChartSyncPlugin", () => {
     expect(late.chart.getIndicatorById("slow-sma")).toBeInstanceOf(
       CustomMovingAverageIndicator
     );
-    expect(getCustomIndicator(late.chart, "slow-sma")?.getOptions().period).toBe(
-      21
-    );
     expect(
-      late.chart.getIndicatorById("slow-sma")?.isIndicatorVisible()
-    ).toBe(false);
+      getCustomIndicator(late.chart, "slow-sma")?.getOptions().period
+    ).toBe(21);
+    expect(late.chart.getIndicatorById("slow-sma")?.isIndicatorVisible()).toBe(
+      false
+    );
   });
 
   it("lets third-party plugins exchange custom messages through context lookup", () => {
@@ -1289,8 +1282,8 @@ describe("ChartSyncPlugin", () => {
       {
         group,
         payload: { value: "compare-series:MSFT" },
-        sourcePlugin: source.syncPlugin
-      }
+        sourcePlugin: source.syncPlugin,
+      },
     ]);
     expect(otherProbe.received).toEqual([]);
 
@@ -1300,20 +1293,20 @@ describe("ChartSyncPlugin", () => {
       {
         group,
         payload: { value: "ack" },
-        sourcePlugin: target.syncPlugin
-      }
+        sourcePlugin: target.syncPlugin,
+      },
     ]);
     expect(targetProbe.received).toEqual([
       {
         group,
         payload: { value: "compare-series:MSFT" },
-        sourcePlugin: source.syncPlugin
+        sourcePlugin: source.syncPlugin,
       },
       {
         group,
         payload: { value: "ack" },
-        sourcePlugin: target.syncPlugin
-      }
+        sourcePlugin: target.syncPlugin,
+      },
     ]);
     expect(otherProbe.received).toEqual([]);
   });

@@ -2,7 +2,7 @@ import type { ChartData } from "@ardinsys/financial-charts";
 import type {
   ChartContext,
   ChartPlugin,
-  ChartPointerEvent
+  ChartPointerEvent,
 } from "@ardinsys/financial-charts/extensions";
 
 export interface ProbeOrder {
@@ -37,7 +37,7 @@ export class OrdersProbePlugin implements ChartPlugin {
     this.context = context;
     this.disposers = [
       context.onRenderStage("indicators", () => this.drawMarkers()),
-      context.on("crosshair-clear", () => this.setHoveredOrder(undefined))
+      context.on("crosshair-clear", () => this.setHoveredOrder(undefined)),
     ];
     this.syncAnnotations();
   }
@@ -124,7 +124,7 @@ export class OrdersProbePlugin implements ChartPlugin {
             textColor: "#ffffff",
             lineDash: [4, 3],
             lineWidth: hovered ? 3 : 1.5,
-            emphasized: hovered
+            emphasized: hovered,
           };
         })
     );
@@ -166,14 +166,14 @@ export class OrdersProbePlugin implements ChartPlugin {
       visible: this.isTimeVisible(order.time),
       x: timeScale.project(order.time, {
         canvas,
-        barAlignment: pane.getTimeAnchorAlignment()
+        barAlignment: pane.getTimeAnchorAlignment(),
       }),
       y:
         region.y +
         pane.getPriceScale().project(order.price, {
           canvas: { width: region.width, height: region.height },
-          devicePixelRatio: 1
-        })
+          devicePixelRatio: 1,
+        }),
     }));
   }
 
@@ -196,7 +196,7 @@ export function createProbeOrders(
     { id: "before-session", point: at(8), side: "buy" as const },
     { id: "visible-buy", point: at(22), side: "buy" as const },
     { id: "visible-sell", point: at(46), side: "sell" as const },
-    { id: "after-session", point: at(62), side: "sell" as const }
+    { id: "after-session", point: at(62), side: "sell" as const },
   ];
 
   return candidates.flatMap(({ id, point, side }) => {

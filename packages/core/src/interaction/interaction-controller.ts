@@ -71,7 +71,7 @@ export class InteractionController {
       bindEvent(window, "resize", this.invalidateBounds),
       bindEvent(window, "scroll", this.invalidateBounds, {
         capture: true,
-        passive: true
+        passive: true,
       })
     );
   }
@@ -113,11 +113,12 @@ export class InteractionController {
       state: {
         ...this.crosshair.state,
         paneId: replacement.getId(),
-        price: replacement.getPriceScale().unproject(
-          replacement.getRelativeY(this.crosshair.state.y),
-          { canvas: { width: region.width, height: region.height } }
-        )
-      }
+        price: replacement
+          .getPriceScale()
+          .unproject(replacement.getRelativeY(this.crosshair.state.y), {
+            canvas: { width: region.width, height: region.height },
+          }),
+      },
     };
   }
 
@@ -382,7 +383,7 @@ export class InteractionController {
       y: state.y,
       time: state.time,
       pane: this.host.getPaneById(state.paneId),
-      dataPoint: state.dataPoint
+      dataPoint: state.dataPoint,
     };
     this.host.dispatchPointer(pointerEvent);
     this.host.crosshairChanged(state);

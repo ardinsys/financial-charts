@@ -13,7 +13,7 @@ export class HLCAreaController extends OHLCController {
   private static readonly hlcAreaCrosshairValues = [
     "high",
     "low",
-    "close"
+    "close",
   ] as const;
 
   getCrosshairValues(): readonly ChartDataValueKey[] {
@@ -34,7 +34,7 @@ export class HLCAreaController extends OHLCController {
       visibleData,
       visibleStartIndex,
       projectIndex,
-      projectPrice
+      projectPrice,
     } = this.context.getDrawingContext();
     if (visibleData.length === 0) return;
     if (
@@ -53,9 +53,7 @@ export class HLCAreaController extends OHLCController {
     const highCloseArea = new Path2D();
     const closeLowArea = new Path2D();
 
-    let firstHigh!: Point,
-      firstClose!: Point,
-      firstLow!: Point;
+    let firstHigh!: Point, firstClose!: Point, firstLow!: Point;
 
     let foundFirst = false;
     for (let i = 0; i < visibleData.length; i++) {
@@ -70,11 +68,11 @@ export class HLCAreaController extends OHLCController {
 
       const high = {
         x: projectIndex(visibleStartIndex + i),
-        y: projectPrice(point.high!)
+        y: projectPrice(point.high!),
       };
       const low = {
         x: projectIndex(visibleStartIndex + i),
-        y: projectPrice(point.low!)
+        y: projectPrice(point.low!),
       };
 
       if (!foundFirst) {
@@ -88,7 +86,6 @@ export class HLCAreaController extends OHLCController {
         highPath.lineTo(high.x, high.y);
         lowPath.lineTo(low.x, low.y);
       }
-
     }
 
     foundFirst = false;
@@ -104,7 +101,7 @@ export class HLCAreaController extends OHLCController {
 
       const close = {
         x: projectIndex(visibleStartIndex + i),
-        y: projectPrice(point.close!)
+        y: projectPrice(point.close!),
       };
 
       if (!foundFirst) {
@@ -115,7 +112,6 @@ export class HLCAreaController extends OHLCController {
       } else {
         closePath.lineTo(close.x, close.y);
       }
-
     }
 
     ctx.lineWidth = this.options.theme.hlcArea.width;

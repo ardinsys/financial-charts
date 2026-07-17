@@ -66,22 +66,22 @@ type ChartOptions = {
 };
 ```
 
-| Option                      | Description                                                                                                                             |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `type`                      | Identifier for an instance-registered controller. Defaults to `"candle"` on the root chart and the first supplied controller on the core chart. |
-| `timeRange`                 | Initial visible span. Defaults to `"auto"`, which derives the range from incoming data.                                                 |
-| `stepSize`                  | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                                                      |
-| `maxZoom`                   | Highest zoom factor before clamping user input. Defaults to `100`.                                                                      |
-| `volume`                    | Enables a histogram below the price chart. Defaults to `true`.                                                                          |
-| `controllers`               | Additional controller classes registered after the built-ins.                                                                          |
-| `includeDefaultControllers` | Controls class-provided defaults. The root chart defaults to `true`; the controller-neutral core defaults to `false`.                   |
-| `theme`                     | Active registered theme key. The built-in `"light"` and `"dark"` keys are always available; defaults to `"light"`.                 |
-| `themes`                    | Theme definitions registered for the chart lifetime. Custom keys inherit from light unless their definition sets `base: "dark"`.     |
-| `domAdapter`                | `ChartDOMAdapter` implementation for overlay UI, indicator labels/actions, and pane dividers. Defaults to `DefaultDOMAdapter`. |
-| `locale`                    | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`.                                    |
-| `timeZone`                  | IANA timezone forwarded to formatters that support `setTimeZone()`.                                                                     |
+| Option                      | Description                                                                                                                                              |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`                      | Identifier for an instance-registered controller. Defaults to `"candle"` on the root chart and the first supplied controller on the core chart.          |
+| `timeRange`                 | Initial visible span. Defaults to `"auto"`, which derives the range from incoming data.                                                                  |
+| `stepSize`                  | Time frame granularity in milliseconds. Incoming candles are snapped to this size.                                                                       |
+| `maxZoom`                   | Highest zoom factor before clamping user input. Defaults to `100`.                                                                                       |
+| `volume`                    | Enables a histogram below the price chart. Defaults to `true`.                                                                                           |
+| `controllers`               | Additional controller classes registered after the built-ins.                                                                                            |
+| `includeDefaultControllers` | Controls class-provided defaults. The root chart defaults to `true`; the controller-neutral core defaults to `false`.                                    |
+| `theme`                     | Active registered theme key. The built-in `"light"` and `"dark"` keys are always available; defaults to `"light"`.                                       |
+| `themes`                    | Theme definitions registered for the chart lifetime. Custom keys inherit from light unless their definition sets `base: "dark"`.                         |
+| `domAdapter`                | `ChartDOMAdapter` implementation for overlay UI, indicator labels/actions, and pane dividers. Defaults to `DefaultDOMAdapter`.                           |
+| `locale`                    | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`.                                                     |
+| `timeZone`                  | IANA timezone forwarded to formatters that support `setTimeZone()`.                                                                                      |
 | `formatter`                 | Chart-owned implementation of the `Formatter` interface. Defaults to a new `DefaultFormatter`. Do not share a mutable formatter instance between charts. |
-| `localeValues`              | Localized indicator labels keyed by locale. Merged with built-in English strings.                                                       |
+| `localeValues`              | Localized indicator labels keyed by locale. Merged with built-in English strings.                                                                        |
 
 `stepSize` and `maxZoom` must be finite and greater than zero. Explicit
 `timeRange` boundaries must be finite with `end >= start`. Invalid constructor
@@ -110,7 +110,7 @@ Built-in controllers are registered on each chart by default:
 ```ts
 const chart = new FinancialChart(root, {
   timeRange: "auto",
-  stepSize: 15 * 60 * 1000
+  stepSize: 15 * 60 * 1000,
 });
 ```
 
@@ -176,12 +176,12 @@ type LocaleValues = {
 
 ### Data lifecycle
 
-| Method                 | Description                                                                                                                                             |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setData(data)`        | Copies, sorts, buckets, and replaces the full dataset. Passing `[]` clears all data-dependent state immediately.                                       |
-| `updateData(point)`    | Streams a monotonic point: appends or merges it into the newest `stepSize` bucket while preserving zoom/pan where possible.                            |
-| `clearData()`          | Convenience equivalent of `setData([])`.                                                                                                                |
-| `getData()`            | Returns a stable borrowed readonly snapshot of the dataset after it has been mapped to the active `stepSize`.                                           |
+| Method              | Description                                                                                                                 |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `setData(data)`     | Copies, sorts, buckets, and replaces the full dataset. Passing `[]` clears all data-dependent state immediately.            |
+| `updateData(point)` | Streams a monotonic point: appends or merges it into the newest `stepSize` bucket while preserving zoom/pan where possible. |
+| `clearData()`       | Convenience equivalent of `setData([])`.                                                                                    |
+| `getData()`         | Returns a stable borrowed readonly snapshot of the dataset after it has been mapped to the active `stepSize`.               |
 
 Repeated `getData()` calls return the same readonly snapshot until mapped data
 changes. The chart owns retained input points, so later mutation of the input
@@ -210,7 +210,7 @@ array or its objects cannot alter chart state.
 chart.updateOptions({
   type: "line",
   theme: "dark",
-  locale: "hu-HU"
+  locale: "hu-HU",
 });
 ```
 
@@ -233,9 +233,9 @@ crosshair changes.
 
 ### Extension registration
 
-| Method                                | Description                                      |
-| ------------------------------------- | ------------------------------------------------ |
-| `registerController(ControllerClass)` | Adds a controller class to this chart instance.  |
+| Method                                | Description                                                                                                 |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `registerController(ControllerClass)` | Adds a controller class to this chart instance.                                                             |
 | `registerDefaults()`                  | Re-registers the defaults provided by this chart class. It is a no-op on the controller-neutral core chart. |
 
 Built-ins are registered before `options.controllers`, so custom controllers are
@@ -260,7 +260,7 @@ import { LineController } from "@ardinsys/financial-charts/controllers/line";
 
 const chart = new FinancialChart(container, {
   controllers: [LineController],
-  stepSize: 60_000
+  stepSize: 60_000,
 });
 ```
 
@@ -273,23 +273,23 @@ entry.
 
 ### Query helpers
 
-| Method                                 | Description                                                                                             |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `getVisibleLogicalRange()`             | Returns the precise fractional logical-index window.                                                    |
-| `setVisibleLogicalRange(range)`          | Sets, clamps, rescales, notifies, and redraws a fractional logical-index window.                         |
-| `getPixelsPerBar()`                    | Returns the current logical plot width allocated to one visible bar.                                    |
-| `getVisibleTimeRange()`                | Returns the whole-bar window as an end-exclusive timestamp range.                                        |
-| `setVisibleTimeRange(range)`           | Selects whole bars with timestamps in the end-exclusive range.                                           |
-| `getVisibleTimeWindow()`               | Returns interpolated timestamps that preserve the fractional logical window.                             |
-| `setVisibleTimeWindow(range)`          | Restores an interpolated fractional window, primarily for pan/zoom synchronization.                      |
-| `getTimeRange()`                       | Returns the configured base time range before zoom and pan.                                              |
-| `getOptions()`                         | Returns the stable borrowed readonly snapshot of the resolved chart configuration.                       |
-| `getPanes()` / `getMainPane()`         | Returns stable borrowed readonly descriptors with `id`, `height`, `kind`, and optional `indicatorInstanceId`. |
-| `getPlugins()`                         | Returns a readonly snapshot of attached plugins.                                                         |
-| `getIndicators()`                      | Returns every attached overlay and paneled indicator as one readonly snapshot.                           |
-| `getIndicatorById(instanceId)`         | Returns the indicator with that unique instance ID, if attached.                                         |
-| `getIndicatorsByType(typeId)`          | Returns a readonly snapshot of every indicator with the stable type ID.                                  |
-| `getCrosshairState()`                  | Returns the current crosshair state, or `undefined` when hidden.                                         |
+| Method                          | Description                                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `getVisibleLogicalRange()`      | Returns the precise fractional logical-index window.                                                          |
+| `setVisibleLogicalRange(range)` | Sets, clamps, rescales, notifies, and redraws a fractional logical-index window.                              |
+| `getPixelsPerBar()`             | Returns the current logical plot width allocated to one visible bar.                                          |
+| `getVisibleTimeRange()`         | Returns the whole-bar window as an end-exclusive timestamp range.                                             |
+| `setVisibleTimeRange(range)`    | Selects whole bars with timestamps in the end-exclusive range.                                                |
+| `getVisibleTimeWindow()`        | Returns interpolated timestamps that preserve the fractional logical window.                                  |
+| `setVisibleTimeWindow(range)`   | Restores an interpolated fractional window, primarily for pan/zoom synchronization.                           |
+| `getTimeRange()`                | Returns the configured base time range before zoom and pan.                                                   |
+| `getOptions()`                  | Returns the stable borrowed readonly snapshot of the resolved chart configuration.                            |
+| `getPanes()` / `getMainPane()`  | Returns stable borrowed readonly descriptors with `id`, `height`, `kind`, and optional `indicatorInstanceId`. |
+| `getPlugins()`                  | Returns a readonly snapshot of attached plugins.                                                              |
+| `getIndicators()`               | Returns every attached overlay and paneled indicator as one readonly snapshot.                                |
+| `getIndicatorById(instanceId)`  | Returns the indicator with that unique instance ID, if attached.                                              |
+| `getIndicatorsByType(typeId)`   | Returns a readonly snapshot of every indicator with the stable type ID.                                       |
+| `getCrosshairState()`           | Returns the current crosshair state, or `undefined` when hidden.                                              |
 
 `getOptions()` returns the complete resolved configuration. Its time range,
 theme, locale values, and controller collection are chart-owned readonly
@@ -336,7 +336,7 @@ if (stored) {
           return undefined;
       }
     },
-    contributors: [drawingManager]
+    contributors: [drawingManager],
   });
 }
 ```
@@ -442,8 +442,8 @@ Subscribe with `chart.on(...)`. Each call returns an unsubscribe function.
 | `crosshair-change`             | `{ time, y, paneId, price, dataPoint }`                   | Native or programmatic crosshair moves.       |
 | `crosshair-clear`              | `{}`                                                      | Native or programmatic crosshair clears.      |
 | `options-change`               | `{ previous, current, changedKeys }`                      | Effective runtime options change.             |
-| `visible-range-change`         | `{ start, end }`                                         | Effective visible range changes.               |
-| `pane-heights-change`          | `ChartPaneState[]`                                       | Explicit or interactive pane heights change.  |
+| `visible-range-change`         | `{ start, end }`                                          | Effective visible range changes.              |
+| `pane-heights-change`          | `ChartPaneState[]`                                        | Explicit or interactive pane heights change.  |
 | `state-restored`               | `{ state }`                                               | Complete chart state has been restored.       |
 | `indicator-add`                | `{ indicator }`                                           | Indicator is added to the chart.              |
 | `indicator-change`             | `{ indicator }`                                           | Indicator options are updated.                |

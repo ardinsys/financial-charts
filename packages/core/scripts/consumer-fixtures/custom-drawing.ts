@@ -5,7 +5,7 @@ import {
   type DrawingJSON,
   type DrawingOptions,
   type DrawingPoint,
-  type DrawingRenderContext
+  type DrawingRenderContext,
 } from "@ardinsys/financial-charts/extensions";
 
 interface PriceBandData {
@@ -38,7 +38,7 @@ class PriceBandDrawing extends Drawing {
       id: json.id,
       paneId: json.paneId,
       color: data?.color,
-      label: data?.label
+      label: data?.label,
     });
   }
 
@@ -78,8 +78,8 @@ const drawing = manager.addDrawing(
   new PriceBandDrawing({
     anchors: [
       { index: 10, price: 100 },
-      { index: 20, price: 110 }
-    ]
+      { index: 20, price: 110 },
+    ],
   })
 );
 

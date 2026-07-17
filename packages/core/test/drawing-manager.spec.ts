@@ -14,18 +14,18 @@ import {
   DrawingManager,
   type DrawingPoint,
   type DrawingRenderContext,
-  TrendLine
+  TrendLine,
 } from "../src/drawings";
 import type {
   ChartPlugin,
-  ChartPointerEvent
+  ChartPointerEvent,
 } from "../src/plugin/chart-plugin";
 import {
   getChartModel,
   getChartContext,
   getInternalMainPane,
   getInternalPanes,
-  requestChartRedraw
+  requestChartRedraw,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -67,19 +67,13 @@ class TriangleDrawing extends Drawing {
     return new TriangleDrawing({
       anchors: json.anchors,
       id: json.id,
-      paneId: json.paneId
+      paneId: json.paneId,
     });
   }
 
-  draw(
-    _ctx: CanvasRenderingContext2D,
-    _context: DrawingRenderContext
-  ): void {}
+  draw(_ctx: CanvasRenderingContext2D, _context: DrawingRenderContext): void {}
 
-  hitTest(
-    _point: DrawingPoint,
-    _context: DrawingHitTestContext
-  ): boolean {
+  hitTest(_point: DrawingPoint, _context: DrawingHitTestContext): boolean {
     return false;
   }
 }
@@ -106,13 +100,13 @@ function createData(): ChartData[] {
     { time: start, close: 10 },
     { time: start + 60_000, close: 12 },
     { time: start + 120_000, close: 14 },
-    { time: start + 180_000, close: 16 }
+    { time: start + 180_000, close: 16 },
   ];
 }
 
 function createChart({
   controllers = [LineController],
-  type = "line"
+  type = "line",
 }: {
   controllers?: (typeof LineController)[];
   type?: string;
@@ -126,14 +120,14 @@ function createChart({
   const chart = new FinancialChart(container, {
     timeRange: {
       start: data[0].time,
-      end: data.at(-1)!.time + 60_000
+      end: data.at(-1)!.time + 60_000,
     },
     type,
     controllers,
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
   });
   chart.setData(data);
   charts.push(chart);
@@ -154,7 +148,7 @@ function pointerEvent(
     time: dataPoint.time,
     pane: getInternalMainPane(chart),
     dataPoint,
-    ...options
+    ...options,
   };
 }
 
@@ -164,7 +158,7 @@ const stubDrawingFactory: DrawingFactory = ({ anchors, paneId }) =>
 function createManager(chart: FinancialChart) {
   const manager = new DrawingManager({
     drawingFactory: stubDrawingFactory,
-    hitTestTolerance: 10
+    hitTestTolerance: 10,
   });
   chart.addPlugin(manager);
   return manager;
@@ -182,8 +176,8 @@ function drawingContext(chart: FinancialChart): DrawingRenderContext {
     handleTheme: {
       centerColor: theme.yAxis.color,
       fillColor: theme.backgroundColor,
-      strokeColor: theme.crosshair.color
-    }
+      strokeColor: theme.crosshair.color,
+    },
   };
 }
 
@@ -196,7 +190,7 @@ function keyDown(
     key,
     bubbles: true,
     cancelable: true,
-    ...options
+    ...options,
   });
   return host.dispatchEvent(event);
 }
@@ -214,14 +208,14 @@ function dragChart(
       clientY: start.y,
       pointerType: "mouse",
       button: options.button ?? 0,
-      bubbles: true
+      bubbles: true,
     })
   );
   canvas.dispatchEvent(
     new MouseEvent("mousemove", {
       clientX: end.x,
       clientY: end.y,
-      bubbles: true
+      bubbles: true,
     })
   );
   canvas.dispatchEvent(
@@ -230,7 +224,7 @@ function dragChart(
       clientY: end.y,
       pointerType: "mouse",
       button: options.button ?? 0,
-      bubbles: true
+      bubbles: true,
     })
   );
 }
@@ -249,7 +243,7 @@ function dispatchTouchPointer(
       pointerType: "touch",
       button: 0,
       bubbles: true,
-      cancelable: true
+      cancelable: true,
     })
   );
 }
@@ -275,11 +269,11 @@ describe("DrawingManager", () => {
     const empty = manager.getDrawings();
     const first = new TrendLine({
       anchors: [{ index: 0, price: 10 }],
-      id: "first"
+      id: "first",
     });
     const second = new TrendLine({
       anchors: [{ index: 1, price: 12 }],
-      id: "second"
+      id: "second",
     });
 
     expect(manager.getDrawings()).toBe(empty);
@@ -319,9 +313,9 @@ describe("DrawingManager", () => {
     const drawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 1, price: 12 }
+        { index: 1, price: 12 },
       ],
-      id: "preloaded-trend"
+      id: "preloaded-trend",
     });
 
     manager.addDrawing(drawing);
@@ -345,9 +339,9 @@ describe("DrawingManager", () => {
     const drawing = new TrendLine({
       anchors: [
         { index: 0, price: 10 },
-        { index: 1, price: 12 }
+        { index: 1, price: 12 },
       ],
-      id: "trend"
+      id: "trend",
     });
     manager.addDrawing(drawing);
 
@@ -355,7 +349,7 @@ describe("DrawingManager", () => {
       manager.addDrawing(
         new TrendLine({
           anchors: [{ index: 2, price: 14 }],
-          id: drawing.id
+          id: drawing.id,
         })
       )
     ).toThrow('Drawing id "trend" is already registered.');
@@ -367,7 +361,7 @@ describe("DrawingManager", () => {
     expect(() =>
       manager.fromJSON({
         drawings: [json],
-        selectedDrawingId: "missing"
+        selectedDrawingId: "missing",
       })
     ).toThrow('Selected drawing "missing" was not found.');
 
@@ -382,16 +376,16 @@ describe("DrawingManager", () => {
     const { chart, data } = createChart();
     const manager = new DrawingManager({
       drawingFactory: ({ anchors, paneId }) =>
-        new TrendLine({ anchors, paneId })
+        new TrendLine({ anchors, paneId }),
     });
     chart.addPlugin(manager);
     manager.fromJSON({
       drawings: [
         new TrendLine({
           anchors: [{ index: 0, price: 10 }],
-          id: "drawing-1"
-        }).toJSON()
-      ]
+          id: "drawing-1",
+        }).toJSON(),
+      ],
     });
 
     manager.onPointer(pointerEvent(chart, data[0], "down", { x: 120, y: 120 }));
@@ -399,9 +393,9 @@ describe("DrawingManager", () => {
     manager.onPointer(pointerEvent(chart, data[1], "up", { x: 280, y: 220 }));
 
     expect(manager.getDrawings()).toHaveLength(2);
-    expect(new Set(manager.getDrawings().map((drawing) => drawing.id)).size).toBe(
-      2
-    );
+    expect(
+      new Set(manager.getDrawings().map((drawing) => drawing.id)).size
+    ).toBe(2);
   });
 
   it("synchronizes retained selection with selection plugins", () => {
@@ -410,7 +404,7 @@ describe("DrawingManager", () => {
     const drawing = manager.addDrawing(
       new TrendLine({
         anchors: [{ index: 0, price: 10 }],
-        id: "selected"
+        id: "selected",
       })
     );
     const onSelect = vi.fn();
@@ -425,7 +419,7 @@ describe("DrawingManager", () => {
 
     chart.removePlugin(manager);
     expect(onSelect).toHaveBeenLastCalledWith(undefined, {
-      drawing: undefined
+      drawing: undefined,
     });
     expect(manager.getSelectedDrawing()).toBe(drawing);
 
@@ -437,7 +431,7 @@ describe("DrawingManager", () => {
 
     manager.clearDrawings();
     expect(onSelect).toHaveBeenLastCalledWith(undefined, {
-      drawing: undefined
+      drawing: undefined,
     });
   });
 
@@ -456,7 +450,7 @@ describe("DrawingManager", () => {
   it("owns anchor inputs and borrows stable anchor snapshots", () => {
     const input = [
       { index: 1, price: 10 },
-      { index: 2, price: 20 }
+      { index: 2, price: 20 },
     ];
     const drawing = new StubDrawing({ anchors: input });
     const first = drawing.getAnchors();
@@ -465,7 +459,7 @@ describe("DrawingManager", () => {
 
     expect(first).toEqual([
       { index: 1, price: 10 },
-      { index: 2, price: 20 }
+      { index: 2, price: 20 },
     ]);
     expect(drawing.getAnchors()).toBe(first);
 
@@ -479,11 +473,11 @@ describe("DrawingManager", () => {
     expect(drawing.getAnchors()).not.toBe(first);
     expect(first).toEqual([
       { index: 1, price: 10 },
-      { index: 2, price: 20 }
+      { index: 2, price: 20 },
     ]);
     expect(drawing.getAnchors()).toEqual([
       { index: 2, price: 15 },
-      { index: 3, price: 25 }
+      { index: 3, price: 25 },
     ]);
   });
 
@@ -498,7 +492,7 @@ describe("DrawingManager", () => {
     const plugin: ChartPlugin = {
       key: "drawing-finished-probe",
       attach: vi.fn(),
-      onDrawingFinished: vi.fn()
+      onDrawingFinished: vi.fn(),
     };
     chart.addPlugin(plugin);
     chart.on("drawing-create", created);
@@ -525,7 +519,7 @@ describe("DrawingManager", () => {
       type: drawing.type,
       paneId: drawing.getPaneId(),
       anchors: drawing.getAnchors(),
-      json: drawing.toJSON()
+      json: drawing.toJSON(),
     });
     expect(selected).not.toHaveBeenCalledWith({ drawing: undefined });
     expect(finished).toHaveBeenCalledWith({
@@ -535,7 +529,7 @@ describe("DrawingManager", () => {
       type: drawing.type,
       paneId: drawing.getPaneId(),
       anchors: drawing.getAnchors(),
-      json: drawing.toJSON()
+      json: drawing.toJSON(),
     });
     expect(plugin.onDrawingFinished).toHaveBeenCalledWith(
       expect.objectContaining({ drawing, operation: "create" })
@@ -553,13 +547,13 @@ describe("DrawingManager", () => {
     manager.onPointer(
       pointerEvent(chart, data[1], "move", {
         x: firstProjectedAnchor.x + 90,
-        y: firstProjectedAnchor.y + 30
+        y: firstProjectedAnchor.y + 30,
       })
     );
     manager.onPointer(
       pointerEvent(chart, data[1], "up", {
         x: firstProjectedAnchor.x + 90,
-        y: firstProjectedAnchor.y + 30
+        y: firstProjectedAnchor.y + 30,
       })
     );
 
@@ -691,14 +685,13 @@ describe("DrawingManager", () => {
     const { chart, container, data } = createChart();
     const factory: DrawingFactoryDescriptor = {
       anchorCount: 3,
-      create: ({ anchors, paneId }) =>
-        new TriangleDrawing({ anchors, paneId })
+      create: ({ anchors, paneId }) => new TriangleDrawing({ anchors, paneId }),
     };
     const manager = new DrawingManager({
       drawingFactory: factory,
       drawingDeserializers: {
-        [TriangleDrawing.type]: TriangleDrawing.fromJSON
-      }
+        [TriangleDrawing.type]: TriangleDrawing.fromJSON,
+      },
     });
     chart.addPlugin(manager);
     const created = vi.fn();
@@ -727,8 +720,8 @@ describe("DrawingManager", () => {
     const snapshot = manager.toJSON();
     const restored = new DrawingManager({
       drawingDeserializers: {
-        [TriangleDrawing.type]: TriangleDrawing.fromJSON
-      }
+        [TriangleDrawing.type]: TriangleDrawing.fromJSON,
+      },
     });
     restored.fromJSON(snapshot);
 
@@ -746,7 +739,7 @@ describe("DrawingManager", () => {
       const setPointerCapture = vi.fn();
       Object.defineProperty(canvas, "setPointerCapture", {
         configurable: true,
-        value: setPointerCapture
+        value: setPointerCapture,
       });
       chart.on("drawing-create", created);
 
@@ -757,14 +750,14 @@ describe("DrawingManager", () => {
           pointerId: 7,
           pointerType: "mouse",
           button: 0,
-          bubbles: true
+          bubbles: true,
         })
       );
       canvas.dispatchEvent(
         new MouseEvent("mousemove", {
           clientX: 280,
           clientY: 220,
-          bubbles: true
+          bubbles: true,
         })
       );
       canvas.dispatchEvent(
@@ -774,7 +767,7 @@ describe("DrawingManager", () => {
           pointerId: 7,
           pointerType: "mouse",
           button: 0,
-          bubbles: true
+          bubbles: true,
         })
       );
 
@@ -807,11 +800,11 @@ describe("DrawingManager", () => {
     dispatchTouchPointer(canvas, "pointerdown", anchor);
     dispatchTouchPointer(canvas, "pointermove", {
       x: anchor.x + 40,
-      y: anchor.y + 20
+      y: anchor.y + 20,
     });
     dispatchTouchPointer(canvas, "pointerup", {
       x: anchor.x + 40,
-      y: anchor.y + 20
+      y: anchor.y + 20,
     });
 
     expect(drawing.getAnchors()).not.toEqual(before);
@@ -845,11 +838,11 @@ describe("DrawingManager", () => {
     dispatchTouchPointer(canvas, "pointerdown", anchor);
     dispatchTouchPointer(canvas, "pointermove", {
       x: anchor.x + 40,
-      y: anchor.y + 20
+      y: anchor.y + 20,
     });
     dispatchTouchPointer(canvas, "pointercancel", {
       x: anchor.x + 40,
-      y: anchor.y + 20
+      y: anchor.y + 20,
     });
 
     expect(drawing.getAnchors()).toEqual(before);
@@ -873,11 +866,11 @@ describe("DrawingManager", () => {
     const before = chart.getVisibleLogicalRange();
     dispatchTouchEvent(canvas, "touchstart", [
       { clientX: 120, clientY: 120 },
-      { clientX: 320, clientY: 120 }
+      { clientX: 320, clientY: 120 },
     ]);
     dispatchTouchEvent(canvas, "touchmove", [
       { clientX: 100, clientY: 120 },
-      { clientX: 340, clientY: 120 }
+      { clientX: 340, clientY: 120 },
     ]);
 
     const after = chart.getVisibleLogicalRange();
@@ -934,13 +927,13 @@ describe("DrawingManager", () => {
     manager.onPointer(
       pointerEvent(chart, data[1], "move", {
         x: firstProjectedAnchor.x + 47,
-        y: firstProjectedAnchor.y + 30
+        y: firstProjectedAnchor.y + 30,
       })
     );
     manager.onPointer(
       pointerEvent(chart, data[1], "up", {
         x: firstProjectedAnchor.x + 47,
-        y: firstProjectedAnchor.y + 30
+        y: firstProjectedAnchor.y + 30,
       })
     );
 
@@ -952,7 +945,7 @@ describe("DrawingManager", () => {
   it("projects drawing anchors with the controller time-anchor alignment", () => {
     const { chart, data } = createChart({
       controllers: [EdgeAnchorLineController],
-      type: "edge-line"
+      type: "edge-line",
     });
     const manager = createManager(chart);
 
@@ -969,13 +962,13 @@ describe("DrawingManager", () => {
     expect(projectedAnchor.x).toBeCloseTo(
       getChartModel(chart).getTimeScale().projectIndex(anchor.index, {
         canvas,
-        barAlignment: "edge"
+        barAlignment: "edge",
       })
     );
     expect(projectedAnchor.x).not.toBeCloseTo(
       getChartModel(chart).getTimeScale().projectIndex(anchor.index, {
         canvas,
-        barAlignment: "center"
+        barAlignment: "center",
       })
     );
   });
@@ -1002,13 +995,13 @@ describe("DrawingManager", () => {
     manager.onPointer(
       pointerEvent(chart, data[1], "move", {
         x: firstProjectedAnchor.x + 90,
-        y: firstProjectedAnchor.y + 30
+        y: firstProjectedAnchor.y + 30,
       })
     );
     manager.onPointer(
       pointerEvent(chart, data[1], "up", {
         x: firstProjectedAnchor.x + 90,
-        y: firstProjectedAnchor.y + 30
+        y: firstProjectedAnchor.y + 30,
       })
     );
 
@@ -1068,8 +1061,8 @@ describe("DrawingManager", () => {
         id: "replace-active",
         anchors: [
           { index: 0, price: 10 },
-          { index: 1, price: 12 }
-        ]
+          { index: 1, price: 12 },
+        ],
       })
     );
     const [firstAnchor] = drawing.getAnchorHandles(drawingContext(chart));
@@ -1084,19 +1077,19 @@ describe("DrawingManager", () => {
       ...drawing.toJSON(),
       anchors: [
         { index: 1, price: 11 },
-        { index: 2, price: 13 }
-      ]
+        { index: 2, price: 13 },
+      ],
     });
     manager.onPointer(pointerEvent(chart, data[2], "move", { x: 600, y: 300 }));
     manager.onPointer(pointerEvent(chart, data[2], "up", { x: 600, y: 300 }));
 
     expect(replacement.getAnchors()).toEqual([
       { index: 1, price: 11 },
-      { index: 2, price: 13 }
+      { index: 2, price: 13 },
     ]);
     expect(drawing.getAnchors()).toEqual([
       { index: 0, price: 10 },
-      { index: 1, price: 12 }
+      { index: 1, price: 12 },
     ]);
     expect(changed).not.toHaveBeenCalled();
     expect(finished).not.toHaveBeenCalled();
@@ -1118,13 +1111,13 @@ describe("DrawingManager", () => {
     manager.onPointer(
       pointerEvent(chart, data[1], "move", {
         x: firstAnchor.x + 90,
-        y: firstAnchor.y + 30
+        y: firstAnchor.y + 30,
       })
     );
     manager.onPointer(
       pointerEvent(chart, data[1], "up", {
         x: firstAnchor.x + 90,
-        y: firstAnchor.y + 30
+        y: firstAnchor.y + 30,
       })
     );
     manager.removeDrawingById(drawing.id);
@@ -1248,7 +1241,7 @@ describe("DrawingManager", () => {
     const priceRange = pane.getPriceScale().getRange();
     const drawing = new StubDrawing({
       anchors: [{ index: 1, price: (priceRange.min + priceRange.max) / 2 }],
-      paneId: pane.getId()
+      paneId: pane.getId(),
     });
     manager.addDrawing(drawing);
 
@@ -1256,7 +1249,7 @@ describe("DrawingManager", () => {
     const [point] = drawing.projectForTest({
       ...drawingContext(chart),
       pane,
-      canvas: context.canvas
+      canvas: context.canvas,
     });
     const region = pane.getRegion();
 

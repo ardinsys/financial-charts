@@ -3,11 +3,11 @@ export * from "./chart/types";
 
 export type {
   ChartCanvasLayer,
-  ChartRedrawPart
+  ChartRedrawPart,
 } from "./render/chart-render-types";
 export type {
   ControllerConstructor,
-  ResolvedChartOptions
+  ResolvedChartOptions,
 } from "./chart/chart-options";
 export type { Formatter } from "./chart/formatter";
 export type { ResolvedChartTheme } from "./chart/themes";

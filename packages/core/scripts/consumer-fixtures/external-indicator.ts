@@ -8,7 +8,7 @@ import {
   type IndicatorLabelContent,
   type IndicatorOptionsInput,
   type ScaleRangeModifier,
-  type TimeRange
+  type TimeRange,
 } from "@ardinsys/financial-charts/extensions";
 
 interface Order {
@@ -51,21 +51,21 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
     // @ts-expect-error Indicators cannot issue application commands.
     ctx.chart;
     this.source.subscribe((orders) => this.setOrders(orders), {
-      signal: ctx.signal
+      signal: ctx.signal,
     });
   }
 
   getDefaultOptions(): OrdersOptions {
     return {
       labelKey: "orders",
-      names: { default: "Orders" }
+      names: { default: "Orders" },
     };
   }
 
   getDefaultThemes(): ExtensionThemeDefaults<OrdersTheme> {
     return {
       light: { buyColor: "#00897b", sellColor: "#d81b60" },
-      dark: { buyColor: "#4db6ac", sellColor: "#f06292" }
+      dark: { buyColor: "#4db6ac", sellColor: "#f06292" },
     };
   }
 
@@ -95,7 +95,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
       actor: this,
       enabled: true,
       yMin: Math.min(...prices),
-      yMax: Math.max(...prices)
+      yMax: Math.max(...prices),
     };
   }
 
@@ -131,10 +131,10 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
               text: this.indicatorContext
                 .getOptions()
                 .formatter.formatPrice(hovered.price),
-              color: this.getColor(hovered)
-            }
+              color: this.getColor(hovered),
+            },
           ]
-        : []
+        : [],
     };
   }
 
@@ -177,7 +177,7 @@ class OrdersIndicator extends Indicator<OrdersTheme, OrdersOptions> {
           .formatter.formatPrice(order.price),
         color: this.getColor(order),
         emphasized: order.id === this.hoveredId,
-        lineDash: [4, 3]
+        lineDash: [4, 3],
       }))
     );
   }

@@ -10,7 +10,7 @@ describe("ChartChangePublisher", () => {
     const extensions = {
       notifyOptionsChanged: vi.fn(() => order.push("extension-options")),
       notifyData: vi.fn(() => order.push("data")),
-      notifyVisibleRangeChanged: vi.fn(() => order.push("range"))
+      notifyVisibleRangeChanged: vi.fn(() => order.push("range")),
     } as unknown as ExtensionHost;
     const events = new EventEmitter();
     events.on("options-change", () => order.push("public-options"));
@@ -30,10 +30,10 @@ describe("ChartChangePublisher", () => {
         y: 10,
         paneId: 0,
         price: 1,
-        dataPoint: data[0]
+        dataPoint: data[0],
       },
       crosshairCleared: true,
-      redraw: ["series", "crosshair"]
+      redraw: ["series", "crosshair"],
     });
 
     expect(order).toEqual([
@@ -43,7 +43,7 @@ describe("ChartChangePublisher", () => {
       "public-options",
       "crosshair-change",
       "crosshair-clear",
-      "redraw"
+      "redraw",
     ]);
     expect(redraw).toHaveBeenCalledWith(["series", "crosshair"]);
   });
@@ -52,7 +52,7 @@ describe("ChartChangePublisher", () => {
     const extensions = {
       notifyOptionsChanged: vi.fn(),
       notifyData: vi.fn(),
-      notifyVisibleRangeChanged: vi.fn()
+      notifyVisibleRangeChanged: vi.fn(),
     } as unknown as ExtensionHost;
     const redraw = vi.fn();
     const publisher = new ChartChangePublisher(

@@ -7,7 +7,7 @@ import {
   type DrawingJSON,
   type DrawingOptions,
   type DrawingPoint,
-  type DrawingRenderContext
+  type DrawingRenderContext,
 } from "./drawing";
 
 export interface RectangleDrawingOptions extends DrawingOptions {
@@ -57,7 +57,7 @@ export class RectangleDrawing extends Drawing {
       fillColor: data?.fillColor,
       lineWidth: data?.lineWidth,
       selectedColor: data?.selectedColor,
-      strokeColor: data?.strokeColor
+      strokeColor: data?.strokeColor,
     });
   }
 
@@ -105,7 +105,7 @@ export class RectangleDrawing extends Drawing {
       fillColor: this.fillColor,
       lineWidth: this.lineWidth,
       ...(this.selectedColor ? { selectedColor: this.selectedColor } : {}),
-      strokeColor: this.strokeColor
+      strokeColor: this.strokeColor,
     };
   }
 
@@ -117,7 +117,7 @@ export class RectangleDrawing extends Drawing {
       { index: 0, point: start },
       { index: 1, point: { x: end.x, y: start.y } },
       { index: 2, point: end },
-      { index: 3, point: { x: start.x, y: end.y } }
+      { index: 3, point: { x: start.x, y: end.y } },
     ];
   }
 
@@ -130,14 +130,14 @@ export class RectangleDrawing extends Drawing {
     } else if (index === 1) {
       this.setAnchors([
         { ...start, price: anchor.price },
-        { ...end, index: anchor.index }
+        { ...end, index: anchor.index },
       ]);
     } else if (index === 2) {
       this.setAnchors([start, anchor]);
     } else if (index === 3) {
       this.setAnchors([
         { ...start, index: anchor.index },
-        { ...end, price: anchor.price }
+        { ...end, price: anchor.price },
       ]);
     }
   }
@@ -153,7 +153,7 @@ export class RectangleDrawing extends Drawing {
       x,
       y,
       width: Math.abs(end.x - start.x),
-      height: Math.abs(end.y - start.y)
+      height: Math.abs(end.y - start.y),
     };
   }
 }

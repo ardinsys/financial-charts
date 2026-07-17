@@ -9,7 +9,7 @@ import {
   getInternalMainPane,
   getInternalPanes,
   getPaneLayout,
-  requestChartRedraw
+  requestChartRedraw,
 } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
@@ -43,12 +43,12 @@ function createPaneChart() {
     stepSize: 60_000,
     maxZoom: 10,
     volume: false,
-    locale: "en-US"
+    locale: "en-US",
   });
 
   chart.setData([
     { time: start, close: 10 },
-    { time: start + 60_000, close: 12 }
+    { time: start + 60_000, close: 12 },
   ]);
   charts.push(chart);
 
@@ -101,7 +101,7 @@ describe("Pane", () => {
       x: 301,
       y: 2,
       width: 80,
-      height: 200
+      height: 200,
     });
     expect(pane.getPriceScale().getRange()).toEqual({ min: 10, max: 20 });
     expect(pane.getDrawables()).toEqual([second, first]);
@@ -124,12 +124,12 @@ describe("Pane", () => {
       stepSize: 60_000,
       maxZoom: 10,
       volume: false,
-      locale: "en-US"
+      locale: "en-US",
     });
 
     chart.setData([
       { time: start, close: 10 },
-      { time: start + 60_000, close: 12 }
+      { time: start + 60_000, close: 12 },
     ]);
     charts.push(chart);
 
@@ -140,25 +140,25 @@ describe("Pane", () => {
     expect(mainPaneSnapshot).toEqual({
       id: 0,
       height: 370,
-      kind: "main"
+      kind: "main",
     });
     expect(chart.getMainPane()).toBe(mainPaneSnapshot);
     expect(mainPane.getRegion()).toEqual({
       x: 0,
       y: 0,
       width: 720,
-      height: 370
+      height: 370,
     });
     expect(mainPane.getYAxisRegion()).toEqual({
       x: 720,
       y: 0,
       width: 80,
-      height: 370
+      height: 370,
     });
     expect(mainPane.getTimeScale()).toBe(getChartModel(chart).getTimeScale());
     expect(mainPane.getPriceScale().getRange()).toEqual({
       min: getChartModel(chart).getVisibleScale().getYMin(),
-      max: getChartModel(chart).getVisibleScale().getYMax()
+      max: getChartModel(chart).getVisibleScale().getYMax(),
     });
   });
 
@@ -178,19 +178,19 @@ describe("Pane", () => {
       id: indicatorPane.getId(),
       height: 92.5,
       kind: "indicator",
-      indicatorInstanceId: indicator.getInstanceId()
+      indicatorInstanceId: indicator.getInstanceId(),
     });
     expect(indicatorPane.getRegion()).toEqual({
       x: 0,
       y: 277.5,
       width: 720,
-      height: 92.5
+      height: 92.5,
     });
     expect(indicatorPane.getYAxisRegion()).toEqual({
       x: 720,
       y: 277.5,
       width: 80,
-      height: 92.5
+      height: 92.5,
     });
     expect(indicatorPane.getTimeScale()).toBe(
       getChartModel(chart).getTimeScale()
@@ -202,7 +202,7 @@ describe("Pane", () => {
       new MouseEvent("mousemove", {
         clientX: 360,
         clientY: 300,
-        bubbles: true
+        bubbles: true,
       })
     );
     requestChartRedraw(chart, "crosshair", true);
@@ -225,17 +225,17 @@ describe("Pane", () => {
     const [internalMainPane, internalIndicatorPane] = getInternalPanes(chart);
     expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 277.5,
-      [indicatorPane.id]: 92.5
+      [indicatorPane.id]: 92.5,
     });
 
     chart.setPaneHeights({
       [mainPane.id]: 220,
-      [indicatorPane.id]: 150
+      [indicatorPane.id]: 150,
     });
 
     expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 220,
-      [indicatorPane.id]: 150
+      [indicatorPane.id]: 150,
     });
     expect(chart.getPanes()).not.toBe(initialPanes);
     expect(chart.getPanes().map((pane) => pane.height)).toEqual([220, 150]);
@@ -244,14 +244,12 @@ describe("Pane", () => {
       x: 0,
       y: 220,
       width: 720,
-      height: 150
+      height: 150,
     });
     expect(indicator.getContainer().style.top).toBe("220px");
     expect(indicator.getContainer().style.height).toBe("150px");
     expect(onPaneHeightsChange).toHaveBeenCalledOnce();
-    expect(onPaneHeightsChange).toHaveBeenCalledWith(
-      chart.toJSON().panes
-    );
+    expect(onPaneHeightsChange).toHaveBeenCalledWith(chart.toJSON().panes);
   });
 
   it("clamps explicit pane heights to the pane minimums", () => {
@@ -264,19 +262,19 @@ describe("Pane", () => {
     const [internalMainPane, internalIndicatorPane] = getInternalPanes(chart);
     chart.setPaneHeights({
       [mainPane.id]: 10,
-      [indicatorPane.id]: 360
+      [indicatorPane.id]: 360,
     });
 
     expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 80,
-      [indicatorPane.id]: 290
+      [indicatorPane.id]: 290,
     });
     expect(internalMainPane.getRegion().height).toBe(80);
     expect(internalIndicatorPane.getRegion()).toEqual({
       x: 0,
       y: 80,
       width: 720,
-      height: 290
+      height: 290,
     });
   });
 
@@ -302,46 +300,46 @@ describe("Pane", () => {
     divider.dispatchEvent(
       new MouseEvent("pointerdown", {
         bubbles: true,
-        clientY: 277.5
+        clientY: 277.5,
       })
     );
     expect(layout.paneHeightsCustomized).toBe(false);
     window.dispatchEvent(
       new MouseEvent("pointermove", {
         bubbles: true,
-        clientY: 277.5
+        clientY: 277.5,
       })
     );
     expect(layout.paneHeightsCustomized).toBe(false);
     window.dispatchEvent(
       new MouseEvent("pointermove", {
         bubbles: true,
-        clientY: 307.5
+        clientY: 307.5,
       })
     );
     expect(layout.paneHeightsCustomized).toBe(true);
 
     expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 307.5,
-      [indicatorPane.id]: 62.5
+      [indicatorPane.id]: 62.5,
     });
 
     window.dispatchEvent(
       new MouseEvent("pointermove", {
         bubbles: true,
-        clientY: 477.5
+        clientY: 477.5,
       })
     );
     window.dispatchEvent(
       new MouseEvent("pointerup", {
         bubbles: true,
-        clientY: 477.5
+        clientY: 477.5,
       })
     );
 
     expect(getPaneHeights(chart)).toEqual({
       [mainPane.id]: 320,
-      [indicatorPane.id]: 50
+      [indicatorPane.id]: 50,
     });
     expect(indicator.getContainer().style.top).toBe("320px");
     expect(indicator.getContainer().style.height).toBe("50px");
