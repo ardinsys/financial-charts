@@ -54,7 +54,8 @@ definition from its declared built-in base and exposes the active complete
 | `Drawing`, `DrawingOptions`, `DrawingAnchor`, `DrawingJSON` | [Drawing base](/reference/drawings) |
 | `DrawingManager`, `DrawingManagerOptions`, `DrawingManagerJSON`, `DrawingFactory`, `DrawingFactoryDescriptor`, `DrawingCreationFactory`, `DrawingDeserializer`, `DrawingMutationOptions`, `DrawingSelectionOptions` | [DrawingManager](/reference/drawings#manager-state-and-attachment) |
 | `TrendLine`, `TrendLineOptions`, `HorizontalLine`, `HorizontalLineOptions`, `RectangleDrawing`, `RectangleDrawingOptions`, `TextDrawing`, `TextDrawingOptions` | [Built-in drawings](/reference/drawings#built-in-drawings) |
-| `DrawingFinishedEvent`, `DrawingFinishedOperation`, `DrawingSelectionEvent` | [Drawing events](/reference/drawings#events) |
+| `DrawingEvent`, `DrawingFinishedEvent`, `DrawingFinishedOperation`, `DrawingSelectionEvent` | [Drawing events](/reference/drawings#events) |
+| `IndicatorEvent`, `IndicatorVisibilityChangedEvent` | [Indicator events](/reference/indicators#events) |
 | `PriceAxisAnnotation`, `PriceAxisAnnotationOffscreenBehavior` | [Price-axis annotations](/reference/plugins#price-axis-annotations) |
 
 ## Plugins included at the root

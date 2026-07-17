@@ -311,7 +311,9 @@ instance ID, so each peer resolves the same proportions against its own
 container height.
 Visible-range and drawing changes are coalesced to one sync flush per animation
 frame. A detaching chart flushes its pending sync state before leaving the
-group.
+group. A chart that joins while a frame flush is pending may initially receive
+the previous retained snapshot, then receive the pending state when that frame
+flushes.
 Freshly mounted charts also perform their initial sync after their first
 `setData()` if the sync plugin was attached before data was available. The group
 keeps the latest state as detached snapshots, so virtualized rows can all

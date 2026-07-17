@@ -8,15 +8,15 @@ import type { ChartOptionsChangeEvent } from "./chart-options";
 import type { ChartPaneState, ChartStateRestoredEvent } from "./chart-state";
 import type { ChartCrosshairState } from "../interaction/crosshair";
 
-interface IndicatorEvent {
+export interface IndicatorEvent {
   readonly indicator: Indicator<object, DefaultIndicatorOptions>;
 }
 
-interface IndicatorVisibilityChangedEvent extends IndicatorEvent {
+export interface IndicatorVisibilityChangedEvent extends IndicatorEvent {
   readonly visible: boolean;
 }
 
-interface DrawingEvent {
+export interface DrawingEvent {
   readonly drawing: Drawing;
 }
 

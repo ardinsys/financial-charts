@@ -529,7 +529,7 @@ describe("ChartSyncPlugin", () => {
     expect(appliedCrosshairs[1]).toBe(storedCrosshair);
   });
 
-  it("coalesces range and drawing changes to their final frame values without echo", () => {
+  it("coalesces range and drawing changes to their final frame values without echo", async () => {
     const group = createGroup();
     const source = createSyncedChart(group);
     const target = createSyncedChart(group);
@@ -576,6 +576,7 @@ describe("ChartSyncPlugin", () => {
     }) as TrendLine;
 
     sourceSync.flushPendingSync();
+    await nextAnimationFrame();
 
     expect(applyRange).toHaveBeenCalledOnce();
     expect(applyDrawing).toHaveBeenCalledOnce();

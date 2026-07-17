@@ -29,4 +29,12 @@ describe("mergeObjects", () => {
     expect((result.__proto__ as { polluted: boolean }).polluted).toBe(true);
     expect(({} as { polluted?: boolean }).polluted).toBeUndefined();
   });
+
+  it("ignores inherited override values", () => {
+    const overrides = Object.create({ value: "inherited" }) as object;
+
+    expect(mergeObjects({ value: "default" }, overrides)).toEqual({
+      value: "default"
+    });
+  });
 });

@@ -275,7 +275,7 @@ describe("visible range contracts", () => {
 
     expect(() =>
       chart.setVisibleLogicalRange({ from: Number.NaN, to: 4 })
-    ).toThrow("Visible index range values must be finite.");
+    ).toThrow("Visible logical range values must be finite.");
     expect(() =>
       chart.setVisibleTimeRange({ start: 0, end: Number.POSITIVE_INFINITY })
     ).toThrow("Visible time range values must be finite.");

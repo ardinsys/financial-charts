@@ -277,9 +277,6 @@ export class DataScaleModel {
     }
     if (data.volume != null) {
       changed = changed || data.volume > this.volMax;
-    }
-
-    if (data.volume != null) {
       this.volMax = Math.max(this.volMax, data.volume);
     }
     this.syncScales();

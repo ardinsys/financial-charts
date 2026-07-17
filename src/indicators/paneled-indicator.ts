@@ -65,6 +65,7 @@ export abstract class PaneledIndicator<
   private logicalHeight = 0;
   private logicalAxisWidth = 0;
   private devicePixelRatio = 1;
+  private paneBorderColor?: string;
   private scaleData?: readonly ChartData[];
   private scaleRange?: TimeRange;
 
@@ -107,6 +108,7 @@ export abstract class PaneledIndicator<
     this.scale = this.createScale();
     this.scaleData = undefined;
     this.scaleRange = undefined;
+    this.paneBorderColor = undefined;
     this.container = createPositionedContainer({
       overflow: "hidden",
       userSelect: "none",
@@ -198,10 +200,13 @@ export abstract class PaneledIndicator<
 
     const ctx = this.context;
     const theme = this.indicatorContext.getOptions().theme;
-    this.container.style.setProperty(
-      "--fci-pane-border-color",
-      theme.grid.color
-    );
+    if (this.paneBorderColor !== theme.grid.color) {
+      this.paneBorderColor = theme.grid.color;
+      this.container.style.setProperty(
+        "--fci-pane-border-color",
+        theme.grid.color
+      );
+    }
     ctx.clearRect(0, 0, this.width(), this.height());
     ctx.fillStyle = theme.backgroundColor;
     ctx.fillRect(0, 0, this.width(), this.height());
@@ -324,7 +329,7 @@ export abstract class PaneledIndicator<
     const ratio = this.devicePixelRatio;
 
     ctx.fillStyle = theme.yAxis.color;
-    ctx.font = `${theme.yAxis.fontSize}px ${theme.xAxis.font}, monospace`;
+    ctx.font = `${theme.yAxis.fontSize}px ${theme.yAxis.font}, monospace`;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 

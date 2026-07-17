@@ -170,7 +170,7 @@ export class Pane {
     axisContext.fillRect(0, 0, this.yAxisRegion.width, this.region.height);
 
     axisContext.fillStyle = theme.yAxis.color;
-    axisContext.font = `${theme.yAxis.fontSize}px ${theme.xAxis.font}, monospace`;
+    axisContext.font = `${theme.yAxis.fontSize}px ${theme.yAxis.font}, monospace`;
     axisContext.textAlign = "right";
     axisContext.textBaseline = "middle";
 

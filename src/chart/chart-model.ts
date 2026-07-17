@@ -31,7 +31,7 @@ export class ChartModel {
     from: 0,
     to: 1
   };
-  private visibleIndexRange = this.indexBounds;
+  private visibleLogicalRange = this.indexBounds;
   private barAlignment: BarAlignment = "center";
   private visibleScale?: DataScaleModel;
   private visibleDataPoints: readonly ChartData[] = [];
@@ -192,12 +192,12 @@ export class ChartModel {
   }
 
   getVisibleIndexRange(): TimeScaleRange {
-    return this.visibleIndexRange;
+    return this.visibleLogicalRange;
   }
 
   getVisibleIndexSpan(): number {
     return Math.max(
-      this.visibleIndexRange.to - this.visibleIndexRange.from,
+      this.visibleLogicalRange.to - this.visibleLogicalRange.from,
       1
     );
   }
@@ -208,13 +208,13 @@ export class ChartModel {
 
   isPinnedToRightEdge(): boolean {
     return (
-      Math.abs(this.visibleIndexRange.to - this.indexBounds.to) < 1e-6
+      Math.abs(this.visibleLogicalRange.to - this.indexBounds.to) < 1e-6
     );
   }
 
   resetViewInteractionState(): void {
     this.indexBounds = { from: 0, to: 1 };
-    this.visibleIndexRange = this.indexBounds;
+    this.visibleLogicalRange = this.indexBounds;
   }
 
   resetEmptyView(): void {
@@ -225,7 +225,7 @@ export class ChartModel {
       from: 0,
       to: 1
     };
-    this.visibleIndexRange = this.indexBounds;
+    this.visibleLogicalRange = this.indexBounds;
   }
 
   refreshIndexBounds(options: RefreshIndexBoundsOptions): boolean {
@@ -235,7 +235,7 @@ export class ChartModel {
       this.indexBounds = nextBounds;
     }
 
-    let range = this.visibleIndexRange;
+    let range = this.visibleLogicalRange;
     if (options.reset) {
       range = this.indexBounds;
     } else if (options.preserveRightEdge) {
@@ -250,13 +250,13 @@ export class ChartModel {
   }
 
   setVisibleLogicalRange(range: TimeScaleRange): boolean {
-    const previous = this.visibleIndexRange;
-    const next = this.clampVisibleIndexRange(range);
+    const previous = this.visibleLogicalRange;
+    const next = this.clampVisibleLogicalRange(range);
     const changed =
       Math.abs(previous.from - next.from) > logicalRangeEpsilon ||
       Math.abs(previous.to - next.to) > logicalRangeEpsilon;
 
-    if (changed) this.visibleIndexRange = next;
+    if (changed) this.visibleLogicalRange = next;
     this.syncTimeScales();
     return changed;
   }
@@ -290,14 +290,14 @@ export class ChartModel {
     const startIndex = Math.max(
       0,
       Math.min(
-        Math.floor(this.visibleIndexRange.from),
+        Math.floor(this.visibleLogicalRange.from),
         this.mappedData.length - 1
       )
     );
     const endIndex = Math.max(
       startIndex,
       Math.min(
-        Math.ceil(this.visibleIndexRange.to) - 1,
+        Math.ceil(this.visibleLogicalRange.to) - 1,
         this.mappedData.length - 1
       )
     );
@@ -319,11 +319,11 @@ export class ChartModel {
     const alignmentOffset = alignment === "center" ? 0.5 : 0;
     return {
       start: this.mappedData.timeAtLogicalIndex(
-        this.visibleIndexRange.from - alignmentOffset,
+        this.visibleLogicalRange.from - alignmentOffset,
         stepSize
       ),
       end: this.mappedData.timeAtLogicalIndex(
-        this.visibleIndexRange.to - alignmentOffset,
+        this.visibleLogicalRange.to - alignmentOffset,
         stepSize
       )
     };
@@ -331,8 +331,8 @@ export class ChartModel {
 
   sliceVisibleData(margin = 0): ChartData[] {
     return this.mappedData.visibleIndexSlice(
-      this.visibleIndexRange.from - margin,
-      this.visibleIndexRange.to + margin
+      this.visibleLogicalRange.from - margin,
+      this.visibleLogicalRange.to + margin
     );
   }
 
@@ -361,9 +361,9 @@ export class ChartModel {
     };
   }
 
-  private clampVisibleIndexRange(range: TimeScaleRange): TimeScaleRange {
+  private clampVisibleLogicalRange(range: TimeScaleRange): TimeScaleRange {
     if (!Number.isFinite(range.from) || !Number.isFinite(range.to)) {
-      throw new RangeError("Visible index range values must be finite.");
+      throw new RangeError("Visible logical range values must be finite.");
     }
 
     const boundsSpan = this.getIndexBoundsSpan();
@@ -402,7 +402,7 @@ export class ChartModel {
   private getTimeScaleOptions(): DataScaleTimeOptions {
     return {
       barAlignment: this.barAlignment,
-      indexRange: this.visibleIndexRange,
+      indexRange: this.visibleLogicalRange,
       timeValues: this.getTimes()
     };
   }

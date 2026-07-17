@@ -359,7 +359,7 @@ export class ChartRenderer {
     ctx.fillStyle = theme.yAxis.backgroundColor;
     ctx.fillRect(0, 0, size.width, size.height);
     ctx.fillStyle = theme.yAxis.color;
-    ctx.font = `${theme.yAxis.fontSize}px ${theme.xAxis.font}, monospace`;
+    ctx.font = `${theme.yAxis.fontSize}px ${theme.yAxis.font}, monospace`;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
 

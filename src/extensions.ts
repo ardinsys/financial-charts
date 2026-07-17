@@ -12,9 +12,12 @@ export type { ChartData, TimeRange } from "./chart/types";
 export type {
   ChartEventMap,
   ChartCrosshairChangeEvent,
+  DrawingEvent,
   DrawingFinishedEvent,
   DrawingFinishedOperation,
-  DrawingSelectionEvent
+  DrawingSelectionEvent,
+  IndicatorEvent,
+  IndicatorVisibilityChangedEvent
 } from "./chart/event-emitter";
 export type { Formatter } from "./chart/formatter";
 export type {

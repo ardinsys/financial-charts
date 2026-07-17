@@ -15,7 +15,8 @@ export function mergeObjects<T extends object>(
   for (const key of keys) {
     const defaultValue = defaultValues[key];
     const overrideValue = overrideValues[key];
-    const hasOverride = key in overrideValues && overrideValue !== undefined;
+    const hasOverride =
+      Object.hasOwn(overrideValues, key) && overrideValue !== undefined;
     const value =
       hasOverride && isPlainRecord(defaultValue) && isPlainRecord(overrideValue)
         ? mergeObjects(defaultValue, overrideValue)

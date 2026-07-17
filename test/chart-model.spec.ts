@@ -150,7 +150,7 @@ describe("ChartModel data ownership", () => {
     });
     expect(() =>
       model.setVisibleLogicalRange({ from: Number.NaN, to: 2 })
-    ).toThrow("Visible index range values must be finite.");
+    ).toThrow("Visible logical range values must be finite.");
     expect(() =>
       model.logicalRangeForTimeRange({
         start: 0,
