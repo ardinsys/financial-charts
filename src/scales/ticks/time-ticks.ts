@@ -33,6 +33,8 @@ interface TickCandidate {
   step: number;
 }
 
+type PendingTimeTick = Omit<TimeTick, "label">;
+
 interface CalendarParts {
   year: number;
   month: number;
@@ -101,21 +103,24 @@ export class TimeTickGenerator {
         startIndex,
         endIndex,
         candidate,
-        options,
-        resolveCalendarParts
+        resolveCalendarParts,
+        targetTickCount
       );
-      if (ticks.length > 0 && ticks.length <= targetTickCount) {
-        return ticks;
+      if (ticks && ticks.length > 0) {
+        return this.formatTicks(ticks, options.formatter);
       }
     }
 
-    return this.buildTicks(
-      times,
-      startIndex,
-      endIndex,
-      candidates.at(-1)!,
-      options,
-      resolveCalendarParts
+    return this.formatTicks(
+      this.buildTicks(
+        times,
+        startIndex,
+        endIndex,
+        candidates.at(-1)!,
+        resolveCalendarParts,
+        Number.POSITIVE_INFINITY
+      ) ?? [],
+      options.formatter
     );
   }
 
@@ -193,10 +198,10 @@ export class TimeTickGenerator {
     startIndex: number,
     endIndex: number,
     candidate: TickCandidate,
-    options: TimeTickOptions,
-    resolveCalendarParts: CalendarPartsResolver
-  ): TimeTick[] {
-    const ticks: TimeTick[] = [];
+    resolveCalendarParts: CalendarPartsResolver,
+    acceptanceThreshold: number
+  ): PendingTimeTick[] | undefined {
+    const ticks: PendingTimeTick[] = [];
     const usedIndices = new Set<number>();
 
     for (let index = startIndex; index < endIndex; index++) {
@@ -217,13 +222,23 @@ export class TimeTickGenerator {
         index,
         time,
         kind,
-        priority: priorityByKind[kind],
-        label: formatTickLabel(options.formatter, kind, time),
+        priority: priorityByKind[kind]
       });
+      if (ticks.length > acceptanceThreshold) return undefined;
       usedIndices.add(index);
     }
 
     return ticks;
+  }
+
+  private formatTicks(
+    ticks: readonly PendingTimeTick[],
+    formatter: Formatter
+  ): TimeTick[] {
+    return ticks.map((tick) => ({
+      ...tick,
+      label: formatTickLabel(formatter, tick.kind, tick.time)
+    }));
   }
 
   private isBoundary(

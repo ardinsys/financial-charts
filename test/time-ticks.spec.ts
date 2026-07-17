@@ -147,6 +147,38 @@ describe("TimeTickGenerator", () => {
     );
   });
 
+  it("formats labels only for the accepted minute-bar candidate", () => {
+    const formatter = createFormatter();
+    const start = Date.UTC(2024, 0, 2, 9, 7);
+    const times = Array.from(
+      { length: 36 * 60 + 1 },
+      (_, index) => start + index * 60_000
+    );
+    const formatters = [
+      vi.spyOn(formatter, "formatYear"),
+      vi.spyOn(formatter, "formatMonth"),
+      vi.spyOn(formatter, "formatDay"),
+      vi.spyOn(formatter, "formatHour"),
+      vi.spyOn(formatter, "formatSecond"),
+      vi.spyOn(formatter, "formatSubMinute")
+    ];
+
+    const ticks = new TimeTickGenerator().generate({
+      times,
+      visibleRange: { from: 0, to: times.length },
+      formatter,
+      targetTickCount: 8
+    });
+    const formatCallCount = formatters.reduce(
+      (total, spy) => total + spy.mock.calls.length,
+      0
+    );
+
+    expect(ticks).toHaveLength(6);
+    expect(formatCallCount).toBe(ticks.length);
+    expect(formatCallCount).toBeLessThanOrEqual(8);
+  });
+
   it("chooses stable intraday hour ticks", () => {
     const start = Date.UTC(2024, 0, 2, 9);
     const times = Array.from({ length: 15 }, (_, index) => {
