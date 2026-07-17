@@ -1,7 +1,14 @@
 {
   "name": "@ardinsys/financial-charts-workspace",
   "private": true,
+  "description": "Workspace for @ardinsys/financial-charts — canvas-based charting library for financial time series.",
   "type": "module",
+  "license": "Apache-2.0",
+  "author": "ARDINSYS Zrt.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ardinsys/financial-charts.git"
+  },
   "packageManager": "pnpm@10.24.0",
   "scripts": {
     "dev": "pnpm --filter @ardinsys/financial-charts-playground dev",

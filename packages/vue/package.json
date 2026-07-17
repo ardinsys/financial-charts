@@ -1,8 +1,18 @@
 {
   "name": "@ardinsys/financial-charts-vue",
-  "version": "1.0.0",
+  "version": "0.9.8",
+  "description": "Official Vue 3 bindings for @ardinsys/financial-charts — a chart component owning lifecycle, data replacement, runtime options, and Teleport-based custom indicator labels.",
+  "keywords": [
+    "charts",
+    "financial",
+    "candlestick",
+    "trading",
+    "canvas",
+    "vue"
+  ],
+  "homepage": "https://docs.ardinsys.eu/financial-charts/integrations/vue.html",
   "type": "module",
-  "license": "Apache 2.0",
+  "license": "Apache-2.0",
   "author": "ARDINSYS Zrt.",
   "repository": {
     "type": "git",

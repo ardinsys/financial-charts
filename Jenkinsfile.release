@@ -8,6 +8,29 @@ pipeline {
     ansiColor('xterm')
   }
 
+  parameters {
+    choice(
+      name: 'BUMP',
+      choices: ['major', 'minor', 'patch', 'premajor', 'preminor', 'prepatch', 'prerelease'],
+      description: 'Version bump applied to all publishable packages in lockstep (bumpp).'
+    )
+    string(
+      name: 'PREID',
+      defaultValue: 'beta',
+      description: 'Prerelease identifier, used only by the pre* bump types (e.g. 1.0.0-beta.0).'
+    )
+    booleanParam(
+      name: 'DOCS_ONLY',
+      defaultValue: false,
+      description: 'Skip versioning and npm publish; build and deploy only the documentation site.'
+    )
+    booleanParam(
+      name: 'DRY_RUN',
+      defaultValue: false,
+      description: 'No version commit, npm publish --dry-run, no docs deploy, no git push.'
+    )
+  }
+
   environment {
     GIT_CREDENTIALS_ID = 'dd9216fb-464b-49d9-b6ba-778a68af4f91'
   }
@@ -17,7 +40,7 @@ pipeline {
       steps {
         git branch: "${refName()}", url: "https://github.com/ardinsys/financial-charts.git", credentialsId: "${GIT_CREDENTIALS_ID}"
       }
-	}
+    }
 
     stage('Install') {
       steps {
@@ -37,7 +60,7 @@ pipeline {
           '''
 
           echo "📦 Running versioning for packages"
-          nsh("pnpm --dir packages/core exec bumpp package.json ../vue/package.json ../react/package.json --no-push --yes --no-print-commits --commit \"chore: release v\" ${params.BUMP} --preid ${params.PREID}")
+          nsh("pnpm --dir packages/core exec bumpp package.json ../vue/package.json ../react/package.json --no-push --yes --no-print-commits --commit \"chore: release v\" --release ${params.BUMP} --preid ${params.PREID}")
         }
       }
     }
@@ -49,6 +72,20 @@ pipeline {
           nsh('''
             pnpm build
             pnpm docs:build
+          ''')
+        }
+      }
+    }
+
+    stage('Verify') {
+      when {
+        expression { !params.DOCS_ONLY }
+      }
+      steps {
+        script {
+          nsh('''
+            pnpm typecheck
+            pnpm test
           ''')
         }
       }

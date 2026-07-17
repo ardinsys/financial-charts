@@ -1,8 +1,21 @@
 {
   "name": "@ardinsys/financial-charts",
-  "version": "1.0.0",
+  "version": "0.9.8",
+  "description": "Canvas-based charting engine for financial time series — candlestick, bar, line, area, and HLC controllers, indicators, drawings, and plugins. Framework agnostic, zero runtime dependencies.",
+  "keywords": [
+    "charts",
+    "charting",
+    "financial",
+    "candlestick",
+    "ohlc",
+    "trading",
+    "stock",
+    "canvas",
+    "timeseries"
+  ],
+  "homepage": "https://docs.ardinsys.eu/financial-charts",
   "type": "module",
-  "license": "Apache 2.0",
+  "license": "Apache-2.0",
   "author": "ARDINSYS Zrt.",
   "packageManager": "pnpm@10.24.0",
   "repository": {
