@@ -156,6 +156,71 @@ describe("RenderPipeline", () => {
     expect(generate).toHaveBeenCalledOnce();
   });
 
+  it("redraws the complete main canvas composition for a series request", () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 11 }
+    ]);
+    const context = attachRenderContext(chart);
+    const main = getChartRenderer(chart).getContext("main");
+    vi.mocked(main.clearRect).mockClear();
+    vi.mocked(main.stroke).mockClear();
+
+    context.requestRedraw("series", true);
+
+    expect(main.clearRect).toHaveBeenCalledOnce();
+    expect(main.stroke).toHaveBeenCalled();
+  });
+
+  it("handles a real resize after a device-pixel-ratio change", () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 11 }
+    ]);
+    const renderer = getChartRenderer(chart);
+    const resizeCanvases = vi.spyOn(renderer, "resizeCanvases");
+    const observer = (
+      renderer as unknown as {
+        resizeObserver: ResizeObserver & {
+          callback: ResizeObserverCallback;
+        };
+      }
+    ).resizeObserver;
+    const devicePixelRatio = window.devicePixelRatio;
+
+    try {
+      Object.defineProperty(window, "devicePixelRatio", {
+        configurable: true,
+        value: devicePixelRatio + 1
+      });
+      window.dispatchEvent(new Event("resize"));
+
+      expect(resizeCanvases).toHaveBeenCalledOnce();
+
+      observer.callback(
+        [{ contentRect: { width: 800, height: 400 } } as ResizeObserverEntry],
+        observer
+      );
+      expect(resizeCanvases).toHaveBeenCalledOnce();
+
+      renderer.getCanvas("main").parentElement!.parentElement!.style.width =
+        "900px";
+      observer.callback(
+        [{ contentRect: { width: 900, height: 400 } } as ResizeObserverEntry],
+        observer
+      );
+
+      expect(resizeCanvases).toHaveBeenCalledTimes(2);
+    } finally {
+      Object.defineProperty(window, "devicePixelRatio", {
+        configurable: true,
+        value: devicePixelRatio
+      });
+    }
+  });
+
   it("schedules invalidations raised during rendering for the next frame", async () => {
     const start = Date.UTC(2024, 0, 1, 9);
     const chart = createChart([

@@ -7,6 +7,7 @@ import {
   calculateYAxisLabels as calculatePriceYAxisLabels
 } from "../scales/ticks/price-ticks";
 import type { BarAlignment, TimeScale } from "../scales/time-scale";
+import { alignStroke } from "../utils/dom";
 
 export interface PaneRegion {
   readonly x: number;
@@ -189,9 +190,10 @@ export class Pane {
 
       gridContext.lineWidth = theme.grid.width;
       gridContext.strokeStyle = theme.grid.color;
+      const lineY = alignStroke(y, gridContext.lineWidth);
       gridContext.beginPath();
-      gridContext.moveTo(0, y);
-      gridContext.lineTo(gridContext.canvas.width / pixelRatio, y);
+      gridContext.moveTo(0, lineY);
+      gridContext.lineTo(gridContext.canvas.width / pixelRatio, lineY);
       gridContext.stroke();
     }
   }

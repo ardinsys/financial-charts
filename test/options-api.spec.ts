@@ -132,6 +132,46 @@ describe("chart options API", () => {
     ).not.toBeNull();
   });
 
+  it("redraws an empty chart when its theme changes", async () => {
+    const chart = new FinancialChart(createContainer(), {
+      stepSize: 60_000,
+      theme: "light",
+      themes: {
+        custom: { backgroundColor: "#123456" }
+      }
+    });
+    charts.push(chart);
+    const main = getChartContext(chart, "main");
+    const xAxis = getChartContext(chart, "x-label");
+    vi.mocked(main.fillRect).mockClear();
+    vi.mocked(xAxis.clearRect).mockClear();
+
+    chart.updateOptions({ theme: "custom" });
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(main.fillRect).toHaveBeenCalled();
+    expect(xAxis.clearRect).toHaveBeenCalled();
+  });
+
+  it("clears the main canvas when volume is toggled", async () => {
+    const chart = createChart();
+    const main = getChartContext(chart, "main");
+    vi.mocked(main.clearRect).mockClear();
+
+    chart.updateOptions({ volume: false });
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(main.clearRect).toHaveBeenCalledOnce();
+
+    vi.mocked(main.clearRect).mockClear();
+    vi.mocked(main.fill).mockClear();
+    chart.updateOptions({ volume: true });
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+
+    expect(main.clearRect).toHaveBeenCalledOnce();
+    expect(main.fill).toHaveBeenCalled();
+  });
+
   it("owns retained option values without retaining caller mutations", () => {
     const timeRange = { start: 100, end: 400 };
     const themes = {

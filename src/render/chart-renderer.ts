@@ -19,6 +19,7 @@ import type {
 import { calculateYAxisLabels as calculatePriceYAxisLabels } from "../scales/ticks/price-ticks";
 import { TimeTickGenerator } from "../scales/ticks/time-ticks";
 import {
+  alignStroke,
   bindEvent,
   createCanvasLayer,
   resizeCanvasLayer,
@@ -87,6 +88,11 @@ interface XAxisLabelCache {
   readonly labels: readonly XAxisLabel[];
 }
 
+interface ObservedSize {
+  readonly width: number;
+  readonly height: number;
+}
+
 interface ChartRendererOptions {
   getLayout(): ChartRendererLayout;
   onResize(): void;
@@ -128,7 +134,7 @@ export class ChartRenderer {
   private paused = false;
   private stopped = false;
   private disposed = false;
-  private skipObservedResize = false;
+  private lastHandledObservedSize?: ObservedSize;
   private devicePixelRatio = pixelRatio();
   private lastXGridCoords: readonly number[] = [];
   private xAxisLabelCache?: XAxisLabelCache;
@@ -144,14 +150,17 @@ export class ChartRenderer {
       const nextRatio = pixelRatio();
       if (nextRatio === this.devicePixelRatio) return;
       this.devicePixelRatio = nextRatio;
+      this.lastHandledObservedSize ??= this.getObservedSize();
       this.options.onResize();
-      this.skipObservedResize = true;
     });
-    this.resizeObserver = new ResizeObserver(() => {
-      if (this.skipObservedResize) {
-        this.skipObservedResize = false;
-        return;
-      }
+    this.resizeObserver = new ResizeObserver((entries) => {
+      const contentRect = entries.at(-1)?.contentRect;
+      const size = contentRect
+        ? { width: contentRect.width, height: contentRect.height }
+        : this.getObservedSize();
+      if (sizesEqual(size, this.lastHandledObservedSize)) return;
+
+      this.lastHandledObservedSize = size;
       this.options.onResize();
     });
     this.resizeObserver.observe(container);
@@ -218,6 +227,10 @@ export class ChartRenderer {
     if (this.stopped) return;
     const parts = Array.isArray(part) ? part : [part];
     for (const layer of parts) this.pendingLayers.add(layer);
+    if (parts.includes("grid") || parts.includes("series")) {
+      this.pendingLayers.add("grid");
+      this.pendingLayers.add("series");
+    }
     if (this.paused) return;
 
     if (immediate) {
@@ -274,8 +287,8 @@ export class ChartRenderer {
     ctx.fillRect(0, 0, size.width, size.height);
     ctx.strokeStyle = theme.separatorColor;
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(size.width, 0);
+    ctx.moveTo(0, 0.5);
+    ctx.lineTo(size.width, 0.5);
     ctx.stroke();
     ctx.fillStyle = theme.color;
     ctx.font = `${theme.fontSize}px ${theme.font}, monospace`;
@@ -359,9 +372,10 @@ export class ChartRenderer {
       const y = value.position;
       if (y - options.theme.yAxis.fontSize < 0) continue;
       if (y + options.theme.yAxis.fontSize > yAxisSize.height) continue;
+      const lineY = alignStroke(y, main.lineWidth);
       main.beginPath();
-      main.moveTo(0, y);
-      main.lineTo(mainSize.width, y);
+      main.moveTo(0, lineY);
+      main.lineTo(mainSize.width, lineY);
       main.stroke();
     }
 
@@ -369,9 +383,10 @@ export class ChartRenderer {
     xAxis.font = `${options.theme.xAxis.fontSize}px ${options.theme.xAxis.font}, monospace`;
     const xGridCoords: number[] = [];
     for (const label of this.getXAxisLabels(xAxis)) {
+      const lineX = alignStroke(label.x, main.lineWidth);
       main.beginPath();
-      main.moveTo(label.x, 0);
-      main.lineTo(label.x, mainSize.height);
+      main.moveTo(lineX, 0);
+      main.lineTo(lineX, mainSize.height);
       main.stroke();
       xGridCoords.push(label.x);
     }
@@ -480,13 +495,16 @@ export class ChartRenderer {
     context.strokeStyle = options.theme.crosshair.color;
     context.lineWidth = options.theme.crosshair.width;
     context.setLineDash(options.theme.crosshair.lineDash);
+    const lineX = alignStroke(x, context.lineWidth);
+    const lineY = alignStroke(state.y, context.lineWidth);
     context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x, layout.paneLayoutHeight);
-    context.moveTo(0, state.y);
-    context.lineTo(this.getDrawingSize().width, state.y);
+    context.moveTo(lineX, 0);
+    context.lineTo(lineX, layout.paneLayoutHeight);
+    context.moveTo(0, lineY);
+    context.lineTo(this.getDrawingSize().width, lineY);
     context.stroke();
 
+    context.font = `${options.theme.crosshair.tooltip.fontSize}px ${options.theme.crosshair.tooltip.font}, monospace`;
     const text = options.formatter.formatTooltipDate(state.time);
     const textPadding = 10;
     const textWidth = context.measureText(text).width;
@@ -502,6 +520,7 @@ export class ChartRenderer {
     );
 
     context.fillStyle = options.theme.crosshair.tooltip.backgroundColor;
+    context.beginPath();
     context.rect(
       rectX,
       layout.paneLayoutHeight,
@@ -533,7 +552,6 @@ export class ChartRenderer {
     );
     context.fill();
 
-    context.font = `${options.theme.crosshair.tooltip.fontSize}px ${options.theme.crosshair.tooltip.font}, monospace`;
     context.fillStyle = options.theme.crosshair.tooltip.color;
     context.fillText(text, textX, layout.paneLayoutHeight + textPadding * 2);
     context.fillText(
@@ -718,6 +736,13 @@ export class ChartRenderer {
     return value / this.devicePixelRatio;
   }
 
+  private getObservedSize(): ObservedSize {
+    return {
+      width: this.container.offsetWidth,
+      height: this.container.offsetHeight
+    };
+  }
+
   private scheduleFrame(): void {
     if (this.frame !== undefined || this.paused || this.stopped) return;
     this.frame = requestAnimationFrame(() => {
@@ -740,4 +765,11 @@ export class ChartRenderer {
     this.pendingLayers.clear();
     this.pipeline.render(layers);
   }
+}
+
+function sizesEqual(
+  left: ObservedSize,
+  right: ObservedSize | undefined
+): boolean {
+  return left.width === right?.width && left.height === right?.height;
 }

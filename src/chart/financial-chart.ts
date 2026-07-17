@@ -914,6 +914,9 @@ export class FinancialChart {
     const includeRedrawParts = (parts: readonly RenderLayer[]) => {
       for (const part of parts) redrawParts.add(part);
     };
+    if (changed.has("theme")) {
+      includeRedrawParts(["grid", "axes"]);
+    }
     if (this.model.hasData()) {
       if (typeChanged || coreChanged || changed.has("theme")) {
         includeRedrawParts(ALL_REDRAW_PARTS);

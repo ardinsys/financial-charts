@@ -123,6 +123,10 @@ export function scaleCanvasContext(
   context.scale(ratio, ratio);
 }
 
+export function alignStroke(value: number, width: number): number {
+  return Math.round(value) + (Math.round(width) % 2 === 0 ? 0 : 0.5);
+}
+
 export function resizeCanvasLayer(
   canvas: HTMLCanvasElement,
   options: CanvasLayerOptions
