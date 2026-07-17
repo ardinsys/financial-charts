@@ -4,6 +4,8 @@ import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
 import { RenderPipeline } from "../src/render/render-pipeline";
+import { TimeTickGenerator } from "../src/scales/ticks/time-ticks";
+import { getChartRenderer } from "./chart-test-harness";
 
 const charts: FinancialChart[] = [];
 
@@ -133,6 +135,25 @@ describe("RenderPipeline", () => {
     expect(grid).toHaveBeenCalledOnce();
     expect(axes).toHaveBeenCalledOnce();
     expect(afterDraw).toHaveBeenCalledOnce();
+  });
+
+  it("generates x-axis labels once per frame", () => {
+    const start = Date.UTC(2024, 0, 1, 9);
+    const chart = createChart([
+      { time: start, close: 10 },
+      { time: start + 60_000, close: 11 }
+    ]);
+    const context = attachRenderContext(chart);
+    const generator = (
+      getChartRenderer(chart) as unknown as {
+        timeTickGenerator: TimeTickGenerator;
+      }
+    ).timeTickGenerator;
+    const generate = vi.spyOn(generator, "generate");
+
+    context.requestRedraw(["grid", "axes"], true);
+
+    expect(generate).toHaveBeenCalledOnce();
   });
 
   it("schedules invalidations raised during rendering for the next frame", async () => {

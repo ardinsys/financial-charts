@@ -73,6 +73,20 @@ interface ChartRenderModel {
   afterDraw(): void;
 }
 
+interface XAxisLabel {
+  readonly label: string;
+  readonly x: number;
+  readonly start: number;
+}
+
+interface XAxisLabelCache {
+  readonly times: readonly number[];
+  readonly from: number;
+  readonly to: number;
+  readonly width: number;
+  readonly labels: readonly XAxisLabel[];
+}
+
 interface ChartRendererOptions {
   getLayout(): ChartRendererLayout;
   onResize(): void;
@@ -117,6 +131,7 @@ export class ChartRenderer {
   private skipObservedResize = false;
   private devicePixelRatio = pixelRatio();
   private lastXGridCoords: readonly number[] = [];
+  private xAxisLabelCache?: XAxisLabelCache;
 
   constructor(
     private readonly container: HTMLElement,
@@ -575,9 +590,21 @@ export class ChartRenderer {
     const canvasWidth = this.getOwnedCanvas("main").width;
     const logicalCanvasWidth = this.toLogical(canvasWidth);
     const options = this.model.getOptions();
+    const times = this.model.getTimes();
+    const visibleRange = this.model.getVisibleIndexRange();
+    const cached = this.xAxisLabelCache;
+    if (
+      cached?.times === times &&
+      cached.from === visibleRange.from &&
+      cached.to === visibleRange.to &&
+      cached.width === logicalCanvasWidth
+    ) {
+      return cached.labels;
+    }
+
     const labels = this.timeTickGenerator.generate({
-      times: this.model.getTimes(),
-      visibleRange: this.model.getVisibleIndexRange(),
+      times,
+      visibleRange,
       formatter: options.formatter,
       targetTickCount: Math.max(2, Math.floor(logicalCanvasWidth / 90))
     });
@@ -603,6 +630,13 @@ export class ChartRenderer {
         occupied.push(bounds);
       }
     }
+    this.xAxisLabelCache = {
+      times,
+      from: visibleRange.from,
+      to: visibleRange.to,
+      width: logicalCanvasWidth,
+      labels: visible
+    };
     return visible;
   }
 
@@ -701,6 +735,7 @@ export class ChartRenderer {
 
   private flush(): void {
     if (this.pendingLayers.size === 0 || this.paused || this.stopped) return;
+    this.xAxisLabelCache = undefined;
     const layers = new Set(this.pendingLayers);
     this.pendingLayers.clear();
     this.pipeline.render(layers);

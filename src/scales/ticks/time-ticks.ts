@@ -7,6 +7,7 @@ export type TimeTickKind =
   | "week"
   | "day"
   | "hour"
+  | "minute"
   | "second"
   | "subMinute";
 
@@ -57,6 +58,7 @@ const priorityByKind: Record<TimeTickKind, number> = {
   week: 3,
   day: 2,
   hour: 1,
+  minute: 0.75,
   second: 0.5,
   subMinute: 0.25,
 };
@@ -72,6 +74,11 @@ const weekdayByShortName: Record<string, number> = {
 };
 
 export class TimeTickGenerator {
+  private readonly calendarPartsResolvers = new WeakMap<
+    Formatter,
+    { timeZone?: string; resolve: CalendarPartsResolver }
+  >();
+
   generate(options: TimeTickOptions): TimeTick[] {
     const targetTickCount = options.targetTickCount ?? 8;
     const times = options.times;
@@ -84,7 +91,9 @@ export class TimeTickGenerator {
     const firstTime = times[startIndex];
     const lastTime = times[endIndex - 1];
     const candidates = this.getCandidatesForDuration(lastTime - firstTime);
-    const resolveCalendarParts = createCalendarPartsResolver(options.formatter);
+    const resolveCalendarParts = this.getCalendarPartsResolver(
+      options.formatter
+    );
 
     for (const candidate of candidates) {
       const ticks = this.buildTicks(
@@ -132,6 +141,10 @@ export class TimeTickGenerator {
 
     if (duration <= 2 * DAY_MS) {
       return [
+        { granularity: "minute", step: 1 },
+        { granularity: "minute", step: 5 },
+        { granularity: "minute", step: 15 },
+        { granularity: "minute", step: 30 },
         { granularity: "hour", step: 1 },
         { granularity: "hour", step: 2 },
         { granularity: "hour", step: 3 },
@@ -218,6 +231,16 @@ export class TimeTickGenerator {
     previous: CalendarParts | undefined,
     candidate: TickCandidate
   ) {
+    if (
+      candidate.granularity === "subMinute" ||
+      candidate.granularity === "second" ||
+      candidate.granularity === "minute"
+    ) {
+      if (!previous) return true;
+      return getSmallUnitBucket(current, candidate) !==
+        getSmallUnitBucket(previous, candidate);
+    }
+
     if (!isAligned(current, candidate)) return false;
     if (!previous) return true;
 
@@ -235,22 +258,17 @@ export class TimeTickGenerator {
           current.hour !== previous.hour ||
           current.dayNumber !== previous.dayNumber
         );
-      case "second":
-        return (
-          current.second !== previous.second ||
-          current.minute !== previous.minute ||
-          current.hour !== previous.hour ||
-          current.dayNumber !== previous.dayNumber
-        );
-      case "subMinute":
-        return (
-          current.millisecond !== previous.millisecond ||
-          current.second !== previous.second ||
-          current.minute !== previous.minute ||
-          current.hour !== previous.hour ||
-          current.dayNumber !== previous.dayNumber
-        );
     }
+  }
+
+  private getCalendarPartsResolver(formatter: Formatter) {
+    const timeZone = formatter.getTimeZone?.();
+    const cached = this.calendarPartsResolvers.get(formatter);
+    if (cached && cached.timeZone === timeZone) return cached.resolve;
+
+    const resolve = createCalendarPartsResolver(timeZone);
+    this.calendarPartsResolvers.set(formatter, { timeZone, resolve });
+    return resolve;
   }
 }
 
@@ -270,11 +288,25 @@ function isAligned(parts: CalendarParts, candidate: TickCandidate) {
       return parts.dayNumber % candidate.step === 0;
     case "hour":
       return parts.hour % candidate.step === 0;
+    case "minute":
     case "second":
-      return parts.second % candidate.step === 0 && parts.millisecond === 0;
     case "subMinute":
-      return parts.millisecond % candidate.step === 0;
+      return true;
   }
+}
+
+function getSmallUnitBucket(parts: CalendarParts, candidate: TickCandidate) {
+  const minuteNumber = parts.dayNumber * 24 * 60 + parts.hour * 60 + parts.minute;
+  if (candidate.granularity === "minute") {
+    return Math.floor(minuteNumber / candidate.step);
+  }
+
+  const secondNumber = minuteNumber * 60 + parts.second;
+  if (candidate.granularity === "second") {
+    return Math.floor(secondNumber / candidate.step);
+  }
+
+  return Math.floor((secondNumber * 1_000 + parts.millisecond) / candidate.step);
 }
 
 function classifyBoundary(
@@ -296,9 +328,9 @@ function classifyBoundary(
   if (current.weekNumber !== previous.weekNumber) return "week";
   if (current.dayNumber !== previous.dayNumber) return "day";
   if (current.hour !== previous.hour) return "hour";
+  if (current.minute !== previous.minute) return "minute";
   if (
-    current.second !== previous.second ||
-    current.minute !== previous.minute
+    current.second !== previous.second
   ) {
     return "second";
   }
@@ -320,6 +352,7 @@ function formatTickLabel(
     case "day":
       return formatter.formatDay(timestamp);
     case "hour":
+    case "minute":
       return formatter.formatHour(timestamp);
     case "second":
       return (
@@ -334,10 +367,7 @@ function formatTickLabel(
   }
 }
 
-function createCalendarPartsResolver(
-  formatter: Formatter
-): CalendarPartsResolver {
-  const timeZone = formatter.getTimeZone?.();
+function createCalendarPartsResolver(timeZone?: string): CalendarPartsResolver {
   const timeZoneFormatter = timeZone
     ? createTimeZoneCalendarFormatter(timeZone)
     : undefined;

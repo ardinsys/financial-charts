@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DefaultFormatter } from "../src/chart/formatter";
 import { TimeTickGenerator } from "../src/scales/ticks/time-ticks";
 
@@ -65,6 +65,86 @@ describe("TimeTickGenerator", () => {
       "3:04:08 AM",
       "3:04:09 AM",
     ]);
+  });
+
+  it.each([10, 30, 90])(
+    "generates useful minute labels for a %i-minute window",
+    (durationMinutes) => {
+      const start = Date.UTC(2024, 0, 2, 9, 7);
+      const times = Array.from(
+        { length: durationMinutes + 1 },
+        (_, index) => start + index * 60_000
+      );
+
+      const ticks = generateTicks(times, 8);
+
+      expect(ticks.length).toBeGreaterThanOrEqual(3);
+      expect(ticks.length).toBeLessThanOrEqual(9);
+      expect(
+        ticks.every((tick) =>
+          ["minute", "hour", "day"].includes(tick.kind)
+        )
+      ).toBe(true);
+    }
+  );
+
+  it("uses the first bar in second and sub-minute boundaries", () => {
+    const secondStart = Date.UTC(2024, 0, 2, 3, 4, 5, 250);
+    const secondTicks = generateTicks(
+      Array.from({ length: 5 }, (_, index) => secondStart + index * 1_000),
+      10
+    );
+    const subMinuteStart = Date.UTC(2024, 0, 2, 3, 4, 5, 50);
+    const subMinuteTicks = generateTicks(
+      Array.from({ length: 5 }, (_, index) => subMinuteStart + index * 100),
+      10
+    );
+
+    expect(secondTicks).toHaveLength(5);
+    expect(secondTicks.every((tick) => tick.kind === "second")).toBe(true);
+    expect(subMinuteTicks).toHaveLength(5);
+    expect(subMinuteTicks.every((tick) => tick.kind === "subMinute")).toBe(
+      true
+    );
+  });
+
+  it("reuses timezone calendar parts without changing generated labels", () => {
+    const formatter = createFormatter();
+    const generator = new TimeTickGenerator();
+    const start = Date.UTC(2024, 0, 2, 9, 7);
+    const times = Array.from(
+      { length: 31 },
+      (_, index) => start + index * 60_000
+    );
+    const formatToParts = vi.spyOn(
+      Intl.DateTimeFormat.prototype,
+      "formatToParts"
+    );
+
+    const first = generator.generate({
+      times,
+      visibleRange: { from: 0, to: times.length },
+      formatter,
+      targetTickCount: 8
+    });
+    const callsAfterFirstGeneration = formatToParts.mock.calls.length;
+    const cached = generator.generate({
+      times,
+      visibleRange: { from: 0, to: times.length },
+      formatter,
+      targetTickCount: 8
+    });
+
+    expect(cached).toEqual(first);
+    expect(formatToParts).toHaveBeenCalledTimes(callsAfterFirstGeneration);
+    expect(cached).toEqual(
+      new TimeTickGenerator().generate({
+        times,
+        visibleRange: { from: 0, to: times.length },
+        formatter,
+        targetTickCount: 8
+      })
+    );
   });
 
   it("chooses stable intraday hour ticks", () => {
