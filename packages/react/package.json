@@ -1,0 +1,54 @@
+{
+  "name": "@ardinsys/financial-charts-react",
+  "version": "1.0.0",
+  "type": "module",
+  "license": "Apache 2.0",
+  "author": "ARDINSYS Zrt.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ardinsys/financial-charts.git",
+    "directory": "packages/react"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsdown && pnpm verify:package",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "verify:package": "tsc -p scripts/consumer-fixtures/tsconfig.json && node -e \"import('./dist/index.js')\""
+  },
+  "peerDependencies": {
+    "@ardinsys/financial-charts": "workspace:^",
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0"
+  },
+  "devDependencies": {
+    "@ardinsys/financial-charts": "workspace:*",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "jsdom": "^29.1.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tsdown": "^0.22.9",
+    "typescript": "~7.0.2",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10"
+  }
+}

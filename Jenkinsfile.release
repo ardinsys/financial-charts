@@ -37,7 +37,7 @@ pipeline {
           '''
 
           echo "📦 Running versioning for packages"
-          nsh("pnpm --dir packages/core exec bumpp package.json ../vue/package.json --no-push --yes --no-print-commits --commit \"chore: release v\" ${params.BUMP} --preid ${params.PREID}")
+          nsh("pnpm --dir packages/core exec bumpp package.json ../vue/package.json ../react/package.json --no-push --yes --no-print-commits --commit \"chore: release v\" ${params.BUMP} --preid ${params.PREID}")
         }
       }
     }

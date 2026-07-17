@@ -2,8 +2,9 @@
 
 `@ardinsys/financial-charts` only requires a real DOM element, a predictable
 container size, and lifecycle hooks for cleanup. The official
-`@ardinsys/financial-charts-vue` package provides those bindings for Vue 3;
-other runtimes can integrate the imperative core directly.
+`@ardinsys/financial-charts-react` and `@ardinsys/financial-charts-vue`
+packages provide those bindings for React and Vue. Other runtimes can integrate
+the imperative core directly.
 
 ## Integration checklist
 
