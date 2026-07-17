@@ -39,12 +39,12 @@
   },
   "devDependencies": {
     "@ardinsys/financial-charts": "workspace:*",
-    "@types/node": "^24.4.0",
+    "@types/node": "^24.13.3",
     "jsdom": "^29.1.1",
-    "tsdown": "^0.21.10",
-    "typescript": "~5.8.3",
-    "vite": "^7.0.4",
+    "tsdown": "^0.22.9",
+    "typescript": "~7.0.2",
+    "vite": "^8.1.5",
     "vitest": "^4.1.10",
-    "vue": "^3.3.11"
+    "vue": "^3.5.40"
   }
 }

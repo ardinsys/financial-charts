@@ -18,7 +18,7 @@ for (const internalPath of [
   "dist/index.js",
   "dist/style.css",
   "src/core.ts",
-  "src/ui/icons.ts"
+  "src/ui/icons.ts",
 ]) {
   assertPackagePathNotExported(`${packageJson.name}/${internalPath}`);
 }
@@ -27,17 +27,17 @@ const publicDeclarationPaths = [
   "dist/index.d.ts",
   "dist/core.d.ts",
   "dist/extensions.d.ts",
-  "dist/engine.d.ts"
+  "dist/engine.d.ts",
 ];
 const internalRuntimeExports = [
   "restoreValidatedIndicator",
-  "validateIndicatorState"
+  "validateIndicatorState",
 ];
 const bundledExtensionImplementations = [
   "ChartSyncPlugin",
   "DefaultDOMAdapter",
   "DrawingManager",
-  "TrendLine"
+  "TrendLine",
 ];
 
 for (const modulePath of ["dist/extensions.js", "dist/engine.js"]) {
@@ -77,7 +77,7 @@ for (const declarationPath of publicDeclarationPaths) {
     "defaultControllers",
     "drawNextPoint",
     ...internalRuntimeExports,
-    "updateCoreOptions"
+    "updateCoreOptions",
   ]) {
     if (declaration.includes(forbiddenExport)) {
       throw new Error(
@@ -109,7 +109,7 @@ for (const declarationPath of publicDeclarationPaths) {
     "setChart",
     "setVisibleIndexRange",
     "updateCoreOptions",
-    "updateLabel"
+    "updateLabel",
   ]) {
     if (new RegExp(`\\b${removedName}\\b`).test(declaration)) {
       throw new Error(`${removedName} must not appear in ${declarationPath}`);
@@ -123,10 +123,9 @@ for (const declarationPath of publicDeclarationPaths) {
   }
 }
 
-const documentationPaths = await readdir(
-  documentationRoot,
-  { recursive: true }
-);
+const documentationPaths = await readdir(documentationRoot, {
+  recursive: true,
+});
 for (const documentationPath of documentationPaths) {
   if (!documentationPath.endsWith(".md")) continue;
   const documentation = await readFile(
@@ -161,6 +160,8 @@ const exportInventory = await readFile(
 const rootExports = [...rootDeclaration.matchAll(/export \{([^}]*)\}/gs)]
   .flatMap((match) => match[1].split(","))
   .map((name) => name.trim())
+  .map((name) => name.replace(/^type\s+/, ""))
+  .map((name) => name.split(/\s+as\s+/).at(-1))
   .filter(Boolean);
 const undocumentedExports = rootExports.filter(
   (name) => !new RegExp(`\\b${escapeRegExp(name)}\\b`).test(exportInventory)

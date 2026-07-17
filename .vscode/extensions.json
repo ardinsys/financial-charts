@@ -1,7 +1,7 @@
 {
   "recommendations": [
     "Vue.volar",
-    "esbenp.prettier-vscode",
+    "oxc.oxc-vscode",
     "Tobermory.es6-string-html"
   ]
 }

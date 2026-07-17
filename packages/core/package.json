@@ -79,12 +79,13 @@
     "verify:package": "node scripts/verify-package-exports.mjs && tsc -p scripts/consumer-fixtures/tsconfig.json && node scripts/verify-tree-shaking.mjs"
   },
   "devDependencies": {
-    "@types/node": "^24.4.0",
-    "bumpp": "^10.3.2",
+    "@tsdown/css": "^0.22.9",
+    "@types/node": "^24.13.3",
+    "bumpp": "^11.1.0",
     "jsdom": "^29.1.1",
-    "tsdown": "^0.21.10",
-    "typescript": "~5.8.3",
-    "vite": "^7.0.4",
+    "tsdown": "^0.22.9",
+    "typescript": "~7.0.2",
+    "vite": "^8.1.5",
     "vitest": "^4.1.10"
   }
 }

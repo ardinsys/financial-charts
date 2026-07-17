@@ -9,12 +9,13 @@
     "build": "pnpm -r --filter './packages/**' --if-present run build",
     "test": "pnpm -r --filter './packages/**' --if-present run test",
     "typecheck": "pnpm -r --filter './packages/**' --if-present run typecheck",
+    "format": "oxfmt",
     "verify:package": "pnpm --filter @ardinsys/financial-charts verify:package",
     "docs:dev": "pnpm --filter @ardinsys/financial-charts-docs dev",
     "docs:build": "pnpm --filter @ardinsys/financial-charts-docs build",
     "docs:preview": "pnpm --filter @ardinsys/financial-charts-docs preview"
   },
   "devDependencies": {
-    "prettier": "^3.6.2"
+    "oxfmt": "^0.59.0"
   }
 }
