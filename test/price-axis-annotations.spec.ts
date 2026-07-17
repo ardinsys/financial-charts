@@ -3,7 +3,7 @@ import type { PriceAxisAnnotation } from "../src/annotations/price-axis-annotati
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
-import { TestIndicator } from "../src/indicators/paneled/test-indicator";
+import { TestIndicator } from "./fixtures/test-indicator";
 import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
 import {
   getChartContext,

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { FinancialChart } from "../src/chart/default-financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
-import { TestIndicator } from "../src/indicators/paneled/test-indicator";
+import { TestIndicator } from "./fixtures/test-indicator";
 import { DrawingSelectionPlugin } from "../src/plugins/drawing-selection-plugin";
 import type { BarAlignment } from "../src/scales/time-scale";
 import {

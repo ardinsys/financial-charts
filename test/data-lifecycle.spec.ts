@@ -4,7 +4,7 @@ import { LineController } from "../src/controllers/line-controller";
 import {
   FixedRangeTestIndicator,
   TestIndicator,
-} from "../src/indicators/paneled/test-indicator";
+} from "./fixtures/test-indicator";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
 import {
   getChartContext,

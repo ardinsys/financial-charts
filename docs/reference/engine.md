@@ -47,25 +47,24 @@ class CloseController extends ChartController {
   }
 
   getTimeFromRawDataPoint(point: ChartData): number {
-    return (
-      Math.round(point.time / this.options.stepSize) * this.options.stepSize
-    );
+    return this.bucketTime(point.time, "round");
   }
 
   draw(): void {
     const {
       canvasContext,
       visibleData,
-      projectTime,
+      visibleStartIndex,
+      projectIndex,
       projectPrice
     } = this.context.getDrawingContext();
     let started = false;
 
     canvasContext.beginPath();
-    for (const point of visibleData) {
+    for (const [offset, point] of visibleData.entries()) {
       if (point.close == null) continue;
 
-      const x = projectTime(point.time);
+      const x = projectIndex(visibleStartIndex + offset);
       const y = projectPrice(point.close);
       if (started) canvasContext.lineTo(x, y);
       else {
@@ -94,13 +93,14 @@ const chart = new FinancialChart(container, {
 | `getCrosshairValues()`             | Returns named `ChartData` value keys in the order they should appear. Volume is still omitted when chart volume is disabled. |
 | `getBarAlignment()`                | Returns `"center"` for point/line series or `"edge"` when a bar body begins at its timestamp.                                |
 | `getTimeAnchorAlignment()`         | Optionally gives drawings and X-axis anchors an alignment different from bar bodies. Defaults to `"center"`.                 |
-| `getTimeFromRawDataPoint(point)`   | Maps a raw timestamp to the controller's bucket timestamp.                                                                   |
+| `getTimeFromRawDataPoint(point)`   | Maps a raw timestamp to the controller's bucket timestamp. Use `this.bucketTime(time, "round" | "floor")` to make the alignment policy explicit. |
 | `draw()`                           | Draws the series into the main context. Chart contexts use logical coordinates.                                              |
 
 Controllers receive a `ChartControllerContext`, not the chart instance.
 `getDrawingContext()` returns the current canvas, logical size, visible-data
-snapshot, time range, pixels per bar, and time/price projection functions. This
-is the complete controller capability set. It deliberately cannot mutate chart
+snapshot and its starting logical index, time range, pixels per bar, and
+logical-index/price projection functions. This is the complete controller
+capability set. It deliberately cannot mutate chart
 scales, load data, change options, attach extensions, publish events, or dispose
 the chart.
 

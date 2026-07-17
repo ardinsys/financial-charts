@@ -1,5 +1,6 @@
 import type { ResolvedChartOptions } from "../chart/chart-options";
 import type { ChartData, ChartDataValueKey, TimeRange } from "../chart/types";
+import { DataStore, type TimeBucketPolicy } from "../data/data-store";
 import { DataScaleModel } from "../scales/data-scale-model";
 import type { BarAlignment } from "../scales/time-scale";
 
@@ -38,6 +39,10 @@ export abstract class ChartController {
   }
   abstract getTimeFromRawDataPoint(rawPoint: ChartData): number;
   abstract draw(): void;
+
+  protected bucketTime(time: number, policy: TimeBucketPolicy): number {
+    return DataStore.bucketTime(time, this.options.stepSize, policy);
+  }
 }
 
 export abstract class SimpleController extends ChartController {
@@ -57,9 +62,7 @@ export abstract class SimpleController extends ChartController {
   }
 
   getTimeFromRawDataPoint(rawPoint: ChartData): number {
-    return (
-      Math.round(rawPoint.time / this.options.stepSize) * this.options.stepSize
-    );
+    return this.bucketTime(rawPoint.time, "round");
   }
 
   getCrosshairValues(): readonly ChartDataValueKey[] {
@@ -90,7 +93,7 @@ export abstract class OHLCController extends ChartController {
   }
 
   getTimeFromRawDataPoint(rawPoint: ChartData): number {
-    return rawPoint.time - (rawPoint.time % this.options.stepSize);
+    return this.bucketTime(rawPoint.time, "floor");
   }
 
   getCrosshairValues(): readonly ChartDataValueKey[] {

@@ -1,14 +1,14 @@
-import { DataScaleModel } from "../../scales/data-scale-model";
+import { DataScaleModel } from "../../src/scales/data-scale-model";
 import {
   DefaultIndicatorOptions,
   type IndicatorLabelContent,
-} from "../indicator";
+} from "../../src/indicators/indicator";
 import {
   PaneledIndicator,
   type PaneledIndicatorDrawingContext,
-} from "../paneled-indicator";
-import type { ExtensionThemeDefaults } from "../../plugin/extension-theme";
-import type { ChartData, TimeRange } from "../../chart/types";
+} from "../../src/indicators/paneled-indicator";
+import type { ExtensionThemeDefaults } from "../../src/plugin/extension-theme";
+import type { ChartData, TimeRange } from "../../src/chart/types";
 
 export class TestIndicator extends PaneledIndicator<
   {},

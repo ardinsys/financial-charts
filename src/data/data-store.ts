@@ -1,5 +1,7 @@
 import type { ChartData } from "../chart/types";
 
+export type TimeBucketPolicy = "floor" | "round";
+
 type MutableChartData = {
   -readonly [Field in keyof ChartData]: ChartData[Field];
 };
@@ -190,7 +192,11 @@ export class DataStore {
     return new DataStore(data).createMappedStore(stepSize).snapshot();
   }
 
-  static bucketTime(time: number, stepSize: number): number {
+  static bucketTime(
+    time: number,
+    stepSize: number,
+    policy: TimeBucketPolicy
+  ): number {
     if (!Number.isFinite(time)) {
       throw new TypeError("ChartData.time must be a finite number.");
     }
@@ -200,7 +206,11 @@ export class DataStore {
       );
     }
 
-    return Math.floor(time / stepSize) * stepSize;
+    const bucketIndex = time / stepSize;
+    return (
+      (policy === "round" ? Math.round(bucketIndex) : Math.floor(bucketIndex)) *
+      stepSize
+    );
   }
 
   private lowerBound(time: number): number {
@@ -239,7 +249,7 @@ export class DataStore {
     point: ChartData,
     stepSize: number
   ): ChartData {
-    const time = DataStore.bucketTime(point.time, stepSize);
+    const time = DataStore.bucketTime(point.time, stepSize, "floor");
     if (time === point.time) return point;
     return { ...point, time };
   }

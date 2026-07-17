@@ -129,6 +129,9 @@ On a successful restore, the chart:
 
 Intermediate indicator, option, and drawing mutations are suppressed. The
 `state-restored` payload contains a newly normalized final snapshot.
+Applications that mirror indicator or drawing collections must rebuild that
+mirror from the chart and restored contributors when `state-restored` fires;
+restoration intentionally does not replay the per-item public events.
 
 Restoration may run before `setData()`. In that case, the precise visible window
 is retained and resolved against the next dataset. Restoring after data is

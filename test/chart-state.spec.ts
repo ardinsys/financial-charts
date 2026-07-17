@@ -4,7 +4,7 @@ import type { ChartStateContributor } from "../src/chart/financial-chart";
 import type { ChartData } from "../src/chart/types";
 import { DrawingManager, TrendLine } from "../src/drawings";
 import type { IndicatorResolver } from "../src/indicators/indicator";
-import { TestIndicator } from "../src/indicators/paneled/test-indicator";
+import { TestIndicator } from "./fixtures/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import type { ChartPlugin } from "../src/plugin/chart-plugin";
 

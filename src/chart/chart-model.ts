@@ -73,7 +73,11 @@ export class ChartModel {
 
     const originalIndex = this.originalData.append(data);
     const storedOriginal = this.originalData.get(originalIndex)!;
-    const bucketTime = DataStore.bucketTime(storedOriginal.time, stepSize);
+    const bucketTime = DataStore.bucketTime(
+      storedOriginal.time,
+      stepSize,
+      "floor"
+    );
     this.mappedData.mergeStored(storedOriginal, stepSize);
     return this.mappedData.get(this.mappedData.indexOfTime(bucketTime))!;
   }

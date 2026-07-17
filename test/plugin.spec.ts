@@ -4,7 +4,7 @@ import type { ChartEventMap } from "../src/chart/event-emitter";
 import type { ChartData } from "../src/chart/types";
 import { LineController } from "../src/controllers/line-controller";
 import type { Drawing } from "../src/drawings";
-import { TestIndicator } from "../src/indicators/paneled/test-indicator";
+import { TestIndicator } from "./fixtures/test-indicator";
 import { MovingAverageIndicator } from "../src/indicators/simple/moving-average";
 import type { ChartContext, ChartPlugin } from "../src/plugin/chart-plugin";
 import {

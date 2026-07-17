@@ -61,9 +61,10 @@ visible logical range uses fractional bar indices. This removes visual gaps for
 weekends, holidays, and missing data while still allowing smooth pan and zoom.
 `TimeScale` converts between logical positions, timestamps, and pixels.
 
-`DataScaleModel` groups the time, price, and volume scales for a dataset. The main
-pane and every indicator pane share the active time scale. Each pane owns its own
-price scale and Y-axis region.
+`DataScaleModel` groups the time, price, and volume scales for the visible
+dataset. There is no separate full-data scale. The main pane and every indicator
+pane share the active time scale. Each pane owns its own price scale and Y-axis
+region.
 
 ## Module ownership
 
@@ -73,7 +74,7 @@ price scale and Y-axis region.
 | Public option contracts | `chart-options.ts` | Constructor/update options, resolved controller options, locale values, and immutable option snapshots |
 | Resolved option state | `ChartOptionsState` | Input isolation, runtime option ownership, effective update detection, controller snapshot reuse, and public snapshot identity |
 | Controller registration | `ControllerRegistry` | Chart-scoped constructor identity, class defaults, lookup, and stable frozen registration snapshots |
-| Chart model | `ChartModel` | Retained source bars, step-size remapping, streaming updates, logical/time view ranges, data/visible scales, and their derived snapshots |
+| Chart model | `ChartModel` | Retained source bars, step-size remapping, streaming updates, logical/time view ranges, the visible scale, and derived snapshots |
 | Bar storage | `DataStore` | Sorted immutable points, binary-search lookup, bucketing, merging, and stable data/time snapshots |
 | Coordinate systems | `DataScaleModel`, `TimeScale`, `PriceScale` | Logical/time/price projection and numeric scale ranges |
 | Series behavior | `ChartController`, `ChartControllerContext` | Controller-specific scale input, bar alignment, crosshair values, and primary-series drawing through a projection-only context |
@@ -84,7 +85,7 @@ price scale and Y-axis region.
 | Pane layout | `PaneLayout`, `Pane` | Pane identity and associations, regions, heights, dividers, resize interaction, and per-pane scales |
 | Browser interaction | `InteractionController`, `CrosshairResolver`, `interaction/crosshair.ts` | Listener lifetime, gesture state, pointer normalization, shared coordinate resolution, and the public crosshair contract |
 | Rendering | `ChartRenderer`, `RenderPipeline`, `chart-render-types.ts` | Canvas/context ownership, authoring layer contracts, DPR resizing, axes and ticks, built-in drawing stages, frame coalescing, and render hooks |
-| DOM chrome | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
+| Overlay DOM | `ChartDOMAdapter` | Overlay, indicator labels/actions, and pane divider elements |
 | Public events | private `EventEmitter<ChartEventMap>` | Application subscription through `FinancialChart.on()` and `off()`; internal and extension-originated publication |
 | Chart persistence | `ChartStateController`, `chart-state.ts` | Serialization, restoration preparation, deferred restored views, versioned state contracts, validation, and contributor indexing |
 | Extension persistence | indicator and drawing state helpers | Versioned JSON-safe indicator and drawing state plus reconstruction contracts |
@@ -142,10 +143,10 @@ conversion and range clamping. `FinancialChart` supplies viewport capacity and
 controller alignment, then publishes a change only when the model reports an
 effective range change.
 
-The model also owns the full-data and visible `DataScaleModel` instances and
-keeps their time scales synchronized with its current data and logical window.
-The facade mirrors the shared time scale and visible price range into panes after
-model changes; panes continue to own their individual price scales.
+The model owns the visible `DataScaleModel` and keeps its time scale synchronized
+with current data and the logical window. The facade mirrors the shared time
+scale and visible price range into panes after model changes; panes continue to
+own their individual price scales.
 
 ### Options
 
@@ -160,7 +161,8 @@ directly instead of copying it at the adjacent boundary.
 
 `formatter` and `domAdapter` are service references. Their identities are part of
 the resolved snapshot, but the chart does not recursively freeze application or
-adapter instances.
+adapter instances. A formatter belongs to one chart because option resolution
+updates its locale and timezone.
 
 ### Controller capabilities
 
@@ -218,6 +220,15 @@ invalidation, and self-removal. It does not expose `FinancialChart` or mutable
 chart scale models. `ChartIndicatorHost` composes these capabilities from the
 model, renderer, extension read model, and three indicator lifecycle operations.
 
+`PaneledIndicator` owns its pane scale. Its base drawing path refreshes that
+scale from current data and the visible range before drawing; fixed-range or
+specialized indicators override the protected scale-update hook.
+
+`DrawingManager` owns the drawing-creation state machine. A creation factory
+declares its anchor count, and the manager supports drag-release or successive
+click placement while retaining one preview drawing. Escape, pointer cancel,
+or a competing touch gesture rolls the preview back.
+
 Initial state is delivered synchronously after attachment in this order:
 
 1. `onOptionsChanged()` with an empty `changedKeys` array and the current options
@@ -241,9 +252,10 @@ Data, view, option, and crosshair notification paths are coordinated by
 
 | Trigger | Extension callbacks | Public event | Render effect |
 |---|---|---|---|
-| `setData` / `updateData` | Data, then visible range when changed | None | All dependent layers |
-| Visible-range setter or interaction | Visible range | None | View-dependent layers |
-| `updateOptions` | Options, remapped data when changed, then visible range | `options-change` after extension delivery | Layers classified by changed keys |
+| `setData` / `updateData` | Data, then visible range when changed | `visible-range-change` when changed | All dependent layers |
+| Visible-range setter or interaction | Visible range | `visible-range-change` | View-dependent layers |
+| `updateOptions` | Options, remapped data when changed, then visible range | `options-change`, then `visible-range-change` when changed | Layers classified by changed keys |
+| Pane resize or explicit pane heights | Pane heights | `pane-heights-change` | Pane-dependent layers |
 | Crosshair movement or command | None | `crosshair-change` or `crosshair-clear` | Crosshair layer |
 | Add indicator | Initial options, data, range | `indicator-add` after initial delivery | Indicator/all layers as required |
 | Remove indicator | Detach and release resources | `indicator-remove` after cleanup | Indicator/all layers as required |
@@ -344,6 +356,11 @@ non-empty render pass. Extensions register attachment-scoped stage hooks through
 `ChartContext.onRenderStage()`. `ExtensionHost` delegates extension canvas,
 logical-size, render-hook, redraw, and annotation invalidation capabilities
 directly to `ChartRenderer`; `FinancialChart` does not proxy those operations.
+
+Grid and series share the main canvas, whose grid stage clears the backing
+store. Requesting either layer therefore expands to both before the pipeline
+runs. Other stages use independent canvases and remain independently
+invalidatable.
 
 Canvas backing-store sizes use the device pixel ratio, while chart calculations
 and extension-facing canvas sizes use logical pixels. Resize observers and

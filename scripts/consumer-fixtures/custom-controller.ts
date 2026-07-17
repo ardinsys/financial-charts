@@ -29,9 +29,7 @@ class CloseController extends ChartController {
   }
 
   getTimeFromRawDataPoint(point: ChartData): number {
-    return (
-      Math.round(point.time / this.options.stepSize) * this.options.stepSize
-    );
+    return this.bucketTime(point.time, "round");
   }
 
   draw(): void {

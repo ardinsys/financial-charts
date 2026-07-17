@@ -66,6 +66,10 @@ If a custom indicator declares its own constructor, accept
 `IndicatorOptionsInput<MyOptions>` for the options argument and forward it to
 `super(...)` so callers can supply `instanceId`.
 
+`getDefaultThemes()` and `getDefaultOptions()` run from the base constructor,
+before subclass fields are initialized. Keep defaults independent of
+constructor-injected fields; use injected services after construction.
+
 ### Serializable state
 
 `toJSON()` returns an independent, versioned, JSON-safe `IndicatorState`

@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { DataStore } from "../src/data/data-store";
 
 describe("DataStore", () => {
+  it("applies explicit floor and round bucketing policies", () => {
+    expect(DataStore.bucketTime(89, 60, "floor")).toBe(60);
+    expect(DataStore.bucketTime(89, 60, "round")).toBe(60);
+    expect(DataStore.bucketTime(91, 60, "floor")).toBe(60);
+    expect(DataStore.bucketTime(91, 60, "round")).toBe(120);
+    expect(DataStore.bucketTime(-1, 60, "floor")).toBe(-60);
+    expect(DataStore.bucketTime(-1, 60, "round")).toBe(-0);
+  });
+
   it("handles empty stores", () => {
     const store = new DataStore();
 

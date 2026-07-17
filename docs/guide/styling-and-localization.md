@@ -200,6 +200,10 @@ const formatter = new DefaultFormatter({
 });
 ```
 
+A formatter is stateful: its locale and timezone are updated by its owning
+chart. Construct one formatter per chart instead of sharing an instance across
+charts with potentially different localization settings.
+
 For completely custom label formatting, extend the `Formatter` interface (or `DefaultFormatter`) and pass an instance to the chart:
 
 ```ts

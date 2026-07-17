@@ -113,6 +113,12 @@ Indicators use the same `ExtensionThemeResolver` as other visual extensions.
 additional complete custom-key definitions. Constructor theme maps are deep
 partial overrides for base or custom chart theme keys.
 
+The `Indicator` base constructor calls `getDefaultThemes()` and
+`getDefaultOptions()` before subclass field initializers run. These methods must
+return intrinsic defaults and must not read constructor-injected instance
+fields. Use those dependencies after construction, such as during `attach()` or
+drawing.
+
 `getDrawingContext()` gives you the canvas context, mapped data, visible data, formatter, theme, visible range, and helpers such as `projectTime`, `projectPrice`, and `projectPoint`. Use those helpers instead of reading canvas dimensions and scales directly.
 
 ## Paneled indicator

@@ -25,9 +25,7 @@ export class HLCAreaController extends OHLCController {
   }
 
   getTimeFromRawDataPoint(rawPoint: ChartData): number {
-    return (
-      Math.round(rawPoint.time / this.options.stepSize) * this.options.stepSize
-    );
+    return this.bucketTime(rawPoint.time, "round");
   }
 
   draw(): void {

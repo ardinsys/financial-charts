@@ -80,7 +80,7 @@ type ChartOptions = {
 | `domAdapter`                | `ChartDOMAdapter` implementation for overlay UI, indicator labels/actions, and pane dividers. Defaults to `DefaultDOMAdapter`. |
 | `locale`                    | Locale code forwarded to the formatter. Defaults to the runtime locale when available, then `en-US`.                                    |
 | `timeZone`                  | IANA timezone forwarded to formatters that support `setTimeZone()`.                                                                     |
-| `formatter`                 | Custom implementation of the `Formatter` interface. Defaults to `DefaultFormatter`.                                                     |
+| `formatter`                 | Chart-owned implementation of the `Formatter` interface. Defaults to a new `DefaultFormatter`. Do not share a mutable formatter instance between charts. |
 | `localeValues`              | Localized indicator labels keyed by locale. Merged with built-in English strings.                                                       |
 
 `stepSize` and `maxZoom` must be finite and greater than zero. Explicit
@@ -361,7 +361,9 @@ Indicator state requires an application-owned `indicatorResolver`, which is
 where custom constructors receive runtime dependencies. Attach stateful plugins
 before calling `restoreState()`. Restoration suppresses intermediate option,
 indicator, and drawing events, coalesces rendering, and emits one
-`state-restored` event with the final state. If data has not arrived yet, the
+`state-restored` event with the final state. Consumers that mirror indicator or
+drawing collections should rebuild them on that event because restoration does
+not replay per-item events. If data has not arrived yet, the
 precise visible window is retained and applied by the next `setData()` call.
 
 ### Indicator management
