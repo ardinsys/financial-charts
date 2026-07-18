@@ -7,6 +7,11 @@ export default defineConfig({
     tsconfig: "./tsconfig.build.json",
   },
   sourcemap: true,
+  // Next.js App Router: the component uses hooks, so the built entry must
+  // declare itself a client module.
+  outputOptions: {
+    banner: '"use client";',
+  },
   deps: {
     neverBundle: [
       /^react$/,

@@ -215,9 +215,35 @@ class ModelStore<T> implements ReactModelEntry<T> {
   };
 
   update(model: T): void {
+    // Crosshair frames produce content-identical models with new identities;
+    // keeping the old reference lets React skip re-rendering the portal.
+    if (shallowModelsEqual(this.model, model)) return;
     this.model = model;
     for (const listener of this.listeners) listener();
   }
+}
+
+function shallowModelsEqual<T>(left: T, right: T): boolean {
+  if (Object.is(left, right)) return true;
+  if (
+    typeof left !== "object" ||
+    typeof right !== "object" ||
+    left === null ||
+    right === null
+  ) {
+    return false;
+  }
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  return (
+    leftKeys.length === rightKeys.length &&
+    leftKeys.every((key) =>
+      Object.is(
+        (left as Record<string, unknown>)[key],
+        (right as Record<string, unknown>)[key]
+      )
+    )
+  );
 }
 
 function applyIndicatorLabelModel(

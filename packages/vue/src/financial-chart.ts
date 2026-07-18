@@ -12,6 +12,7 @@ import {
   onBeforeUnmount,
   onMounted,
   shallowRef,
+  toRaw,
   watch,
   type PropType,
 } from "vue";
@@ -83,14 +84,15 @@ export const FinancialChart = defineComponent({
 
       const adapter = createVueDOMAdapter(props);
       vueDOMAdapter.value = adapter;
+      const rawOptions = toRawChartOptions(props.options);
       const options: ChartOptions = adapter
-        ? { ...props.options, domAdapter: adapter }
-        : props.options;
+        ? { ...rawOptions, domAdapter: adapter }
+        : rawOptions;
       const instance = markRaw(new FinancialChartInstance(host.value, options));
 
       chart.value = instance;
       previousRuntimeOptions = takeRuntimeOptions(props.options);
-      instance.setData(props.data ?? []);
+      instance.setData(toRaw(props.data ?? []));
       emit("ready", instance);
     };
 
@@ -151,7 +153,7 @@ export const FinancialChart = defineComponent({
     watch(
       () => props.data,
       (data) => {
-        chart.value?.setData(data ?? []);
+        chart.value?.setData(toRaw(data ?? []));
       }
     );
 
@@ -184,19 +186,37 @@ function createVueDOMAdapter(props: {
   );
 }
 
+/**
+ * Unwraps reactive proxies before values cross into core. Core retains and
+ * structuredClone()s themes/localeValues, and structuredClone throws
+ * DataCloneError on Vue proxies.
+ */
+function toRawChartOptions(options: ChartOptions): ChartOptions {
+  const raw = toRaw(options);
+  const unwrapped: ChartOptions = { ...raw };
+  if (raw.controllers) unwrapped.controllers = toRaw(raw.controllers);
+  if (raw.themes) unwrapped.themes = toRaw(raw.themes);
+  if (raw.localeValues) unwrapped.localeValues = toRaw(raw.localeValues);
+  if (raw.timeRange && raw.timeRange !== "auto") {
+    unwrapped.timeRange = toRaw(raw.timeRange);
+  }
+  return unwrapped;
+}
+
 function takeRuntimeOptions(options: ChartOptions): RuntimeOptionsSnapshot {
+  const raw = toRawChartOptions(options);
   return {
-    type: options.type,
-    timeRange: options.timeRange,
-    stepSize: options.stepSize,
-    maxZoom: options.maxZoom,
-    wheelZoom: options.wheelZoom,
-    volume: options.volume,
-    theme: options.theme,
-    locale: options.locale,
-    timeZone: options.timeZone,
-    formatter: options.formatter,
-    localeValues: options.localeValues,
+    type: raw.type,
+    timeRange: raw.timeRange,
+    stepSize: raw.stepSize,
+    maxZoom: raw.maxZoom,
+    wheelZoom: raw.wheelZoom,
+    volume: raw.volume,
+    theme: raw.theme,
+    locale: raw.locale,
+    timeZone: raw.timeZone,
+    formatter: raw.formatter,
+    localeValues: raw.localeValues,
   };
 }
 

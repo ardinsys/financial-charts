@@ -145,4 +145,38 @@ describe("FinancialChart React component", () => {
     await act(async () => root.unmount());
     appHost.remove();
   });
+
+  it("keeps the chart when an equivalent options object is recreated each render", async () => {
+    const ready = vi.fn<(chart: FinancialChartInstance) => void>();
+    const data: readonly ChartData[] = [{ time: 0, close: 100 }];
+    const appHost = document.body.appendChild(document.createElement("div"));
+    const root = createRoot(appHost);
+
+    // A fresh options object per render — the pattern consumers write first.
+    // Structurally identical content must not tear the chart down.
+    const render = (renderCount: number) =>
+      createElement(FinancialChart, {
+        options: {
+          stepSize: 60_000,
+          theme: "brand",
+          themes: { brand: { base: "dark" } },
+        },
+        data,
+        title: String(renderCount),
+        style: { width: 800, height: 400 },
+        onReady: ready,
+      });
+
+    await act(async () => root.render(render(0)));
+    expect(ready).toHaveBeenCalledOnce();
+    const firstChart = ready.mock.calls[0][0];
+    const dispose = vi.spyOn(firstChart, "dispose");
+
+    await act(async () => root.render(render(1)));
+    expect(dispose).not.toHaveBeenCalled();
+    expect(ready).toHaveBeenCalledOnce();
+
+    await act(async () => root.unmount());
+    appHost.remove();
+  });
 });

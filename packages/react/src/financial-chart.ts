@@ -56,8 +56,26 @@ export const FinancialChart = forwardRef<
   const hostRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<FinancialChartInstance | undefined>(undefined);
   const appliedDataRef = useRef<readonly ChartData[] | undefined>(undefined);
-  const previousRuntimeOptionsRef = useRef(takeRuntimeOptions(options));
   const stableIndicatorLabels = useStableRendererMap(indicatorLabels);
+  // Consumers routinely recreate the options object per render; reuse the
+  // previous reference for structurally-equal values so equal content never
+  // tears the chart down or spams updateOptions.
+  const stableControllers = useStableValue(
+    options.controllers,
+    arraysShallowEqual
+  );
+  const stableThemes = useStableValue(options.themes, plainDeepEqual);
+  const stableLocaleValues = useStableValue(
+    options.localeValues,
+    plainDeepEqual
+  );
+  const stableOptions: ChartOptions = {
+    ...options,
+    controllers: stableControllers,
+    themes: stableThemes,
+    localeValues: stableLocaleValues,
+  };
+  const previousRuntimeOptionsRef = useRef(takeRuntimeOptions(stableOptions));
   const adapter = useMemo(
     () =>
       createReactDOMAdapter({
@@ -69,12 +87,12 @@ export const FinancialChart = forwardRef<
     [options.domAdapter, indicatorLabel, stableIndicatorLabels, paneDivider]
   );
   const currentPropsRef = useRef<CurrentProps>({
-    options,
+    options: stableOptions,
     data,
     adapter,
     onReady,
   });
-  currentPropsRef.current = { options, data, adapter, onReady };
+  currentPropsRef.current = { options: stableOptions, data, adapter, onReady };
 
   const destroyChart = useCallback(() => {
     const chart = chartRef.current;
@@ -119,14 +137,14 @@ export const FinancialChart = forwardRef<
     replaceChart,
     destroyChart,
     adapter,
-    options.controllers,
+    stableControllers,
     options.includeDefaultControllers,
-    options.themes,
+    stableThemes,
     options.domAdapter,
   ]);
 
   useEffect(() => {
-    const next = takeRuntimeOptions(options);
+    const next = takeRuntimeOptions(currentPropsRef.current.options);
     const previous = previousRuntimeOptionsRef.current;
     if (requiresRecreation(previous, next)) {
       replaceChart();
@@ -151,7 +169,7 @@ export const FinancialChart = forwardRef<
     options.locale,
     options.timeZone,
     options.formatter,
-    options.localeValues,
+    stableLocaleValues,
   ]);
 
   useEffect(() => {
@@ -191,6 +209,66 @@ function useStableRendererMap(
     stable.current = renderers;
   }
   return stable.current;
+}
+
+function useStableValue<T>(value: T, equals: (a: T, b: T) => boolean): T {
+  const stable = useRef(value);
+  if (stable.current !== value && !equals(stable.current, value)) {
+    stable.current = value;
+  }
+  return stable.current;
+}
+
+function arraysShallowEqual<T>(
+  left: readonly T[] | undefined,
+  right: readonly T[] | undefined
+): boolean {
+  if (left === right) return true;
+  if (!left || !right || left.length !== right.length) return false;
+  return left.every((item, index) => item === right[index]);
+}
+
+/**
+ * Structural equality for plain-data option values (themes, localeValues).
+ * Class instances and functions compare by identity only.
+ */
+function plainDeepEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (
+    typeof left !== "object" ||
+    typeof right !== "object" ||
+    left === null ||
+    right === null
+  ) {
+    return false;
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return (
+      Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every((item, index) => plainDeepEqual(item, right[index]))
+    );
+  }
+  if (!isPlainObject(left) || !isPlainObject(right)) return false;
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  return (
+    leftKeys.length === rightKeys.length &&
+    leftKeys.every(
+      (key) =>
+        Object.hasOwn(right, key) &&
+        plainDeepEqual(
+          (left as Record<string, unknown>)[key],
+          (right as Record<string, unknown>)[key]
+        )
+    )
+  );
+}
+
+function isPlainObject(value: object): value is Record<string, unknown> {
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
 function takeRuntimeOptions(options: ChartOptions): RuntimeOptionsSnapshot {

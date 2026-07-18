@@ -140,4 +140,49 @@ describe("ReactDOMAdapter", () => {
     await act(async () => root.unmount());
     appHost.remove();
   });
+
+  it("skips re-rendering a label when the updated model is content-identical", async () => {
+    let renders = 0;
+    const OrderLabel = ({ model }: IndicatorLabelRendererProps) => {
+      renders++;
+      return createElement("span", { className: "order-label" }, model.name);
+    };
+    const adapter = new ReactDOMAdapter({
+      indicatorLabels: { orders: OrderLabel },
+    });
+    const appHost = document.body.appendChild(document.createElement("div"));
+    const root = createRoot(appHost);
+    await act(async () => {
+      root.render(createElement(ReactDOMPortals, { adapter }));
+    });
+
+    let handle: IndicatorLabelHandle;
+    await act(async () => {
+      handle = adapter.createIndicatorLabel(labelModel, {
+        onToggleVisibility: vi.fn(),
+        onOpenSettings: vi.fn(),
+        onRemove: vi.fn(),
+      });
+      document.body.appendChild(handle.root);
+    });
+    expect(handle!.root.textContent).toContain("Orders");
+    const rendersAfterMount = renders;
+
+    // Same content, new object identity — the shape a crosshair frame
+    // produces while the pointer stays within one candle.
+    await act(async () => {
+      handle!.update({ ...labelModel });
+    });
+    expect(renders).toBe(rendersAfterMount);
+
+    // A genuine content change must still re-render.
+    await act(async () => {
+      handle!.update({ ...labelModel, name: "Trades" });
+    });
+    expect(handle!.root.textContent).toContain("Trades");
+
+    await act(async () => handle!.destroy());
+    await act(async () => root.unmount());
+    appHost.remove();
+  });
 });

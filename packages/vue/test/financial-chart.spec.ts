@@ -2,6 +2,7 @@ import {
   createApp,
   defineComponent,
   h,
+  isProxy,
   nextTick,
   reactive,
   shallowRef,
@@ -13,6 +14,7 @@ import {
   type ChartData,
   type ChartOptions,
   type FinancialChart as FinancialChartInstance,
+  type LocaleValues,
 } from "@ardinsys/financial-charts";
 import type {
   IndicatorLabelActions,
@@ -114,6 +116,108 @@ describe("FinancialChart Vue component", () => {
     renderCount.value++;
     await nextTick();
     expect(ready).toHaveBeenCalledOnce();
+    app.unmount();
+    appHost.remove();
+  });
+
+  it("accepts reactive options containing themes at mount and localeValues on update", async () => {
+    // Core structuredClone()s themes and localeValues; the component must
+    // unwrap reactive proxies before they cross that boundary.
+    const huLocale: LocaleValues = {
+      common: {
+        sources: {
+          open: "Nyitó",
+          high: "Maximum",
+          low: "Minimum",
+          close: "Záró",
+          volume: "Forgalom",
+        },
+      },
+      indicators: {
+        actions: {
+          show: "Megjelenítés",
+          hide: "Elrejtés",
+          settings: "Beállítások",
+          remove: "Eltávolítás",
+        },
+      },
+    };
+    const options = reactive<ChartOptions>({
+      stepSize: 60_000,
+      theme: "brand",
+      themes: { brand: { base: "dark" } },
+    });
+    const ready = vi.fn<(chart: FinancialChartInstance) => void>();
+    const errors: unknown[] = [];
+    const Root = defineComponent({
+      setup() {
+        return () =>
+          h(FinancialChart, {
+            options,
+            data: [{ time: 0, close: 100 }],
+            style: "width: 800px; height: 400px",
+            onReady: ready,
+          });
+      },
+    });
+    const appHost = document.body.appendChild(document.createElement("div"));
+    const app = createApp(Root);
+    app.config.errorHandler = (err) => {
+      errors.push(err);
+    };
+    app.mount(appHost);
+    await nextTick();
+
+    expect(errors).toEqual([]);
+    expect(ready).toHaveBeenCalledOnce();
+    const chart = ready.mock.calls[0][0];
+    expect(chart.getOptions().theme.key).toBe("brand");
+
+    options.localeValues = { "hu-HU": huLocale };
+    await nextTick();
+
+    expect(errors).toEqual([]);
+    expect(chart.getOptions().localeValues["hu-HU"]?.common.sources.open).toBe(
+      "Nyitó"
+    );
+
+    app.unmount();
+    appHost.remove();
+  });
+
+  it("passes raw arrays to the chart when the data prop is reactive", async () => {
+    const data = shallowRef<readonly ChartData[]>([{ time: 0, close: 100 }]);
+    const ready = vi.fn<(chart: FinancialChartInstance) => void>();
+    const Root = defineComponent({
+      setup() {
+        return () =>
+          h(FinancialChart, {
+            options: { stepSize: 60_000 },
+            data: data.value,
+            style: "width: 800px; height: 400px",
+            onReady: ready,
+          });
+      },
+    });
+    const appHost = document.body.appendChild(document.createElement("div"));
+    const app = createApp(Root);
+    app.mount(appHost);
+    await nextTick();
+
+    expect(ready).toHaveBeenCalledOnce();
+    const chart = ready.mock.calls[0][0];
+    const setData = vi.spyOn(chart, "setData");
+
+    data.value = reactive([
+      { time: 0, close: 100 },
+      { time: 60_000, close: 101 },
+    ]);
+    await nextTick();
+
+    expect(setData).toHaveBeenCalledOnce();
+    expect(isProxy(setData.mock.calls[0][0])).toBe(false);
+    expect(chart.getData()).toHaveLength(2);
+
     app.unmount();
     appHost.remove();
   });
