@@ -1,6 +1,6 @@
 {
   "name": "@ardinsys/financial-charts-vue",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Official Vue 3 bindings for @ardinsys/financial-charts — a chart component owning lifecycle, data replacement, runtime options, and Teleport-based custom indicator labels.",
   "keywords": [
     "charts",
